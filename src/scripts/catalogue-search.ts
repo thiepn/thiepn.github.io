@@ -153,6 +153,48 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     else { dialogEl.removeAttribute('open'); dialogEl.dispatchEvent(new Event('close')); }
   }
 
+  function focusableElements(): HTMLElement[] {
+    return Array.from(dialogEl.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => {
+      if (element.hasAttribute('hidden') || element.getAttribute('aria-hidden') === 'true') return false;
+      return element.getClientRects().length > 0;
+    });
+  }
+
+  function handleDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSearch();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = focusableElements();
+    if (!focusable.length) {
+      event.preventDefault();
+      inputEl.focus();
+      return;
+    }
+
+    const active = document.activeElement;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    } else if (!(active instanceof HTMLElement) || !dialogEl.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function activateSelected(external: boolean) {
     const item = selectedItem();
     if (!item) return;
@@ -218,6 +260,8 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   });
   randomTriggerEl.addEventListener('click', () => void renderRandom());
   closeEl.addEventListener('click', closeSearch);
+  dialogEl.addEventListener('keydown', handleDialogKeydown, { capture: true });
+  dialogEl.addEventListener('cancel', (event) => { event.preventDefault(); closeSearch(); });
   dialogEl.addEventListener('click', (event) => { if (event.target === dialogEl) closeSearch(); });
   dialogEl.addEventListener('close', () => { inputEl.setAttribute('aria-expanded', 'false'); window.clearTimeout(previewTimer); returnFocus?.focus(); });
 
