@@ -43,7 +43,12 @@ class PreviewInstance {
   onVideoError = () => {
     this.mediaFailed = true;
     this.root.dataset.previewMedia = 'fallback';
-    if (this.root.dataset.previewState === 'armed') this.activate();
+    window.clearTimeout(this.armTimer);
+    window.clearTimeout(this.settleTimer);
+    this.video?.pause();
+    this.setState('unavailable');
+    const index = active.indexOf(this);
+    if (index >= 0) active.splice(index, 1);
   };
 
   setVisible(visible: boolean) {
@@ -65,6 +70,7 @@ class PreviewInstance {
     const source = this.root.dataset.previewSource;
     if (!source) {
       this.mediaFailed = true;
+      this.root.dataset.previewMedia = 'fallback';
       this.setState('unavailable');
       return;
     }
@@ -74,28 +80,26 @@ class PreviewInstance {
   }
 
   arm() {
-    if (!this.visible || prefersReducedMotion() || this.kind === 'static') return;
+    if (!this.visible || prefersReducedMotion() || this.kind === 'static' || this.mediaFailed) return;
     window.clearTimeout(this.armTimer);
     window.clearTimeout(this.settleTimer);
     this.setState('armed');
     this.prepareMedia();
+    if (this.mediaFailed) return;
     this.armTimer = window.setTimeout(() => this.activate(), getPreviewActivationDelay(this.kind));
   }
 
   activate() {
-    if (!this.visible || prefersReducedMotion()) return;
+    if (!this.visible || prefersReducedMotion() || this.mediaFailed) return;
     window.clearTimeout(this.armTimer);
     while (active.length >= activeLimit) active.shift()?.reset();
     if (!active.includes(this)) active.push(this);
     this.setState('active');
 
-    if (this.kind === 'video' && this.video && !this.mediaFailed) {
+    if (this.kind === 'video' && this.video) {
       this.video.currentTime = 0;
       const play = this.video.play();
-      play?.catch(() => {
-        this.mediaFailed = true;
-        this.root.dataset.previewMedia = 'fallback';
-      });
+      play?.catch(() => this.onVideoError());
     }
 
     window.clearTimeout(this.settleTimer);
@@ -116,7 +120,7 @@ class PreviewInstance {
     this.video?.pause();
     if (this.video) this.video.currentTime = 0;
     delete this.root.dataset.previewMedia;
-    this.setState('poster');
+    this.setState(this.mediaFailed ? 'unavailable' : 'poster');
     const index = active.indexOf(this);
     if (index >= 0) active.splice(index, 1);
   }
