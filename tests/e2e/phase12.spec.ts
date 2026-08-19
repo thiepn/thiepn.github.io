@@ -35,8 +35,10 @@ test('major pages expose stable landmark and heading semantics', async ({ page }
 test('accessibility tree exposes the archive hierarchy', async ({ page }) => {
   await page.goto('/projects/');
   const main = page.getByRole('main');
-  await expect(main.getByRole('heading', { name: 'Project Archive', level: 1 })).toBeVisible();
-  await expect(main.getByRole('heading', { name: 'Catalogue', level: 2 })).toBeVisible();
+  const title = main.getByRole('heading', { name: 'Project Archive', level: 1 });
+  const catalogue = main.getByRole('heading', { name: 'Catalogue', level: 2 });
+  await expect(title).toMatchAriaSnapshot(`- heading "Project Archive" [level=1]`);
+  await expect(catalogue).toMatchAriaSnapshot(`- heading "Catalogue" [level=2]`);
 });
 
 test('search follows combobox/listbox semantics and restores focus', async ({ page }) => {
