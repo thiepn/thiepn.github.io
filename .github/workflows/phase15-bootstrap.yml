@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: phase15-bootstrap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   materialize-and-certify:
     if: ${{ (github.event_name == 'push' && !contains(github.event.head_commit.message, '[phase15-materialized]')) || (github.event_name == 'pull_request' && github.head_ref == 'agent/phase15-production') }}
@@ -27,7 +31,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Reconstruct and verify exact Phase 15 archive
+      - name: Reconstruct and verify exact Phase 15 archives
         shell: bash
         run: |
           set -euo pipefail
@@ -40,14 +44,35 @@ jobs:
           test -f /tmp/phase15-source/CNAME
           test "$(cat /tmp/phase15-source/CNAME)" = 'thiepn.dev'
 
+          test "$(find .phase15/required-docs -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 3
+          cat .phase15/required-docs/part-*.b64 | base64 --decode > /tmp/phase15-required-docs.tar.xz
+          echo '0b94fc51fef2f6a85bbfb0aba94aa28d1b322f2ab681af1e9730826cbedc70dc  /tmp/phase15-required-docs.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/phase15-required-docs
+          tar -xJf /tmp/phase15-required-docs.tar.xz -C /tmp/phase15-required-docs
+          test -f /tmp/phase15-required-docs/docs/PHASE_14_REPORT.md
+          test -f /tmp/phase15-required-docs/docs/RELEASE_CANDIDATE.md
+
       - name: Replace staging tree with verified production source
         shell: bash
         run: |
           set -euo pipefail
           find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -a /tmp/phase15-source/. .
+
+          mkdir -p docs
+          for file in DESIGN_SYSTEM.md CONTENT_MODEL.md ARCHITECTURE.md MASTER_IMPLEMENTATION_PROMPT.md; do
+            git show "origin/main:docs/$file" > "docs/$file"
+          done
+          cp -a /tmp/phase15-required-docs/docs/. docs/
+
           test ! -d .phase15
           test -f .github/workflows/deploy.yml
+          test -f docs/DESIGN_SYSTEM.md
+          test -f docs/AUTOMATION.md
+          test -f docs/ACCESSIBILITY.md
+          test -f docs/VISUAL_REGRESSION.md
+          test -f docs/RELEASE_CANDIDATE.md
+          test -f docs/PHASE_15_REPORT.md
 
       - name: Set up Node
         uses: actions/setup-node@v6
