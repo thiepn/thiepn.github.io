@@ -28,7 +28,7 @@ try {
       await input.fill(target.query ?? 'analysis');
       await page.waitForTimeout(100);
     }
-    await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'});
+    await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}*{content-visibility:visible!important}'});
     await page.screenshot({path:path.join(outDir,`${target.id}.png`),fullPage:true,animations:'disabled'});
     await context.close();
     console.log(`captured ${target.id}`);
