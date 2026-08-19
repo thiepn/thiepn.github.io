@@ -4,6 +4,7 @@ const desktop = {
   viewport: { width: 1440, height: 900 },
 };
 const isCI = Boolean(process.env.CI);
+const mobileCertification = /@mobile-cert/;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -22,19 +23,22 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      grepInvert: mobileCertification,
       use: { ...devices['Desktop Chrome'], ...desktop },
     },
     {
       name: 'firefox',
+      grepInvert: mobileCertification,
       use: { ...devices['Desktop Firefox'], ...desktop },
     },
     {
       name: 'webkit',
+      grepInvert: mobileCertification,
       use: { ...devices['Desktop Safari'], ...desktop },
     },
     {
       name: 'mobile-chromium',
-      grep: /@mobile-cert/,
+      grep: mobileCertification,
       use: {
         browserName: 'chromium',
         viewport: { width: 390, height: 844 },
@@ -45,7 +49,7 @@ export default defineConfig({
     },
     {
       name: 'mobile-webkit',
-      grep: /@mobile-cert/,
+      grep: mobileCertification,
       use: {
         browserName: 'webkit',
         viewport: { width: 390, height: 844 },
@@ -56,9 +60,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4321',
+    command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4321',
     url: 'http://127.0.0.1:4321',
-    reuseExistingServer: !isCI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });
