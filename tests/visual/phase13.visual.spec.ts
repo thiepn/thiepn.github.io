@@ -35,7 +35,9 @@ async function prepare(page: Page, target: Target) {
     await input.fill(target.query ?? 'analysis');
     await expect(page.getByRole('dialog', { name: 'Search / The Index' })).toBeVisible();
   }
-  await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' });
+  await page.addStyleTag({
+    content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}*{content-visibility:visible!important}',
+  });
 }
 
 test.describe('Phase 13 canonical visual regression', () => {
