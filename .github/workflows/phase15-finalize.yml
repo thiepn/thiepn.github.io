@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/phase15-finalize.yml'
       - '.phase15/browser-fixes/**'
+      - '.phase15/validator-fix.b64'
 
 permissions:
   contents: write
@@ -55,6 +56,12 @@ jobs:
           mkdir -p /tmp/browser-fixes
           tar -xJf /tmp/browser-fixes.tar.xz -C /tmp/browser-fixes
 
+          base64 --decode .phase15/validator-fix.b64 > /tmp/validator-fix.tar.xz
+          echo '3c6573d52e367e5610f44dc29b4a6987c63a913cd8e6662f635ada736da03059  /tmp/validator-fix.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/validator-fix
+          tar -xJf /tmp/validator-fix.tar.xz -C /tmp/validator-fix
+          test -f /tmp/validator-fix/scripts/validate-phase12.mjs
+
           cp .phase15/PHASE_15_REPORT.md /tmp/PHASE_15_REPORT.md
           test -f /tmp/source/package.json
           test "$(cat /tmp/source/CNAME)" = 'thiepn.dev'
@@ -76,6 +83,7 @@ jobs:
           cp /tmp/PHASE_15_REPORT.md docs/PHASE_15_REPORT.md
           cp -a /tmp/source-fixes/. .
           cp -a /tmp/browser-fixes/. .
+          cp -a /tmp/validator-fix/. .
 
           test ! -d .phase15
           test -f docs/DESIGN_SYSTEM.md
@@ -83,6 +91,7 @@ jobs:
           test -f docs/PHASE_15_REPORT.md
           grep -q 'vitest run tests/unit' package.json
           grep -q 'npm run build && npm run preview' playwright.config.ts
+          grep -q 'hasExplicitTreeAssertions' scripts/validate-phase12.mjs
 
       - name: Set up Node
         uses: actions/setup-node@v6
