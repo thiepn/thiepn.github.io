@@ -52,6 +52,9 @@ jobs:
           test -f /tmp/phase15-required-docs/docs/PHASE_14_REPORT.md
           test -f /tmp/phase15-required-docs/docs/RELEASE_CANDIDATE.md
 
+          cp .phase15/PHASE_15_REPORT.md /tmp/PHASE_15_REPORT.md
+          test -s /tmp/PHASE_15_REPORT.md
+
       - name: Replace staging tree with verified production source
         shell: bash
         run: |
@@ -64,6 +67,7 @@ jobs:
             git show "origin/main:docs/$file" > "docs/$file"
           done
           cp -a /tmp/phase15-required-docs/docs/. docs/
+          cp /tmp/PHASE_15_REPORT.md docs/PHASE_15_REPORT.md
 
           test ! -d .phase15
           test -f .github/workflows/deploy.yml
