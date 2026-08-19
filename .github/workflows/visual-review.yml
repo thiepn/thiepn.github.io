@@ -1,0 +1,62 @@
+name: Visual Review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/capture-visuals.mjs'
+      - 'scripts/build-visual-contact-sheet.mjs'
+      - 'visual-regression.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'astro.config.mjs'
+      - '.github/workflows/visual-review.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture canonical visual states
+        run: npm run visual:capture
+
+      - name: Build visual review contact sheet
+        run: npm run visual:contact-sheet
+
+      - name: Upload visual review artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phase15-visual-review-${{ github.event.pull_request.head.sha }}
+          path: |
+            artifacts/visual/current/*.png
+            artifacts/visual/contact-sheet.png
+            artifacts/visual/contact-sheet.html
+          if-no-files-found: error
+          retention-days: 7
