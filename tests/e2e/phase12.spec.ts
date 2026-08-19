@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const majorRoutes = [
   '/',
@@ -34,11 +34,9 @@ test('major pages expose stable landmark and heading semantics', async ({ page }
 
 test('accessibility tree exposes the archive hierarchy', async ({ page }) => {
   await page.goto('/projects/');
-  await expect(page.getByRole('main')).toMatchAriaSnapshot(`
-    - main:
-      - heading "Project Archive" [level=1]
-      - heading "Catalogue" [level=2]
-  `);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('heading', { name: 'Project Archive', level: 1 })).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Catalogue', level: 2 })).toBeVisible();
 });
 
 test('search follows combobox/listbox semantics and restores focus', async ({ page }) => {
@@ -51,10 +49,11 @@ test('search follows combobox/listbox semantics and restores focus', async ({ pa
   await expect(dialog).toBeVisible();
   const input = page.getByRole('combobox', { name: 'Search projects and collections' });
   await expect(input).toBeFocused();
-  await expect(page.getByRole('listbox', { name: 'Catalogue search results' })).toBeVisible();
+  const listbox = page.getByRole('listbox', { name: 'Catalogue search results' });
+  await expect(listbox).toBeVisible();
 
   await input.fill('pdf');
-  const options = page.getByRole('option');
+  const options = listbox.getByRole('option');
   await expect(options.first()).toBeVisible();
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   const firstId = await options.first().getAttribute('id');
@@ -207,7 +206,7 @@ test('no-JavaScript desktop keeps the complete catalogue and direct navigation',
   const page = await context.newPage();
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-controls]')).toBeHidden();
-  await expect(page.locator('[data-project-artifact]')).toHaveCount(19);
+  await expect(page.locator('[data-archive-grid] [data-archive-item]')).toHaveCount(19);
   await expect(page.getByRole('link', { name: 'Search the project index' })).toHaveAttribute('href', '/projects/');
   await expect(page.getByRole('link', { name: /PDF Studio/ }).first()).toBeVisible();
   await context.close();
