@@ -1,0 +1,82 @@
+name: Phase 15 Post-Merge Materialize
+
+# Temporary release-only materialization workflow; remove before merge.
+on:
+  push:
+    branches: [phase15-postmerge-certification]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase15-postmerge-materialize
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    if: ${{ !contains(github.event.head_commit.message, '[phase15-generated]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout certification branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase15-postmerge-certification
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Materialize generated catalogue outputs
+        run: |
+          npm run catalogue:refresh
+          npm run generated:check
+
+      - name: Install visual certification browser and contact-sheet dependency
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      - name: Generate candidate visual baselines
+        run: npm run visual:update
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Capture canonical visual states and contact sheet
+        run: |
+          npm run visual:capture
+          npm run visual:contact-sheet
+
+      - name: Verify visual baseline gate
+        run: npm run release:visual
+
+      - name: Upload visual review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase15-postmerge-visual-review
+          path: |
+            artifacts/visual/**
+            tests/visual/baselines/*.png
+          if-no-files-found: error
+
+      - name: Commit generated release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A src/generated public/og tests/visual/baselines
+          if git diff --cached --quiet; then
+            echo 'No generated changes to commit.'
+            exit 0
+          fi
+          git commit -m 'build(release): materialize generated data and visual baselines [phase15-generated]'
+          git push origin HEAD:phase15-postmerge-certification

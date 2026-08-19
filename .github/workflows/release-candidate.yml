@@ -30,8 +30,29 @@ jobs:
       - name: Release-candidate source gate
         run: npm run release:source
 
+      - name: Media audit
+        run: npm run media:validate
+
+      - name: Generate candidate visual baselines
+        run: npm run visual:update
+
       - name: Full release audit
         run: npm run audit:release
+
+      - name: Capture canonical visual review states
+        run: npm run visual:capture
+
+      - name: Upload visual review artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-visual-review
+          path: |
+            tests/visual/baselines/*.png
+            artifacts/visual/current/*.png
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
 
       - name: Online launch/repository health
         run: npm run release:links
