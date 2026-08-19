@@ -52,6 +52,14 @@ jobs:
           test -f /tmp/phase15-required-docs/docs/PHASE_14_REPORT.md
           test -f /tmp/phase15-required-docs/docs/RELEASE_CANDIDATE.md
 
+          test "$(find .phase15/source-fixes -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 2
+          cat .phase15/source-fixes/part-*.b64 | base64 --decode > /tmp/phase15-source-fixes.tar.xz
+          echo '007db5cc9f9357877f40d91561e9fb64bfca5963c1c706622e82566b1f008280  /tmp/phase15-source-fixes.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/phase15-source-fixes
+          tar -xJf /tmp/phase15-source-fixes.tar.xz -C /tmp/phase15-source-fixes
+          test -f /tmp/phase15-source-fixes/package.json
+          grep -q '"@types/node"' /tmp/phase15-source-fixes/package.json
+
           cp .phase15/PHASE_15_REPORT.md /tmp/PHASE_15_REPORT.md
           test -s /tmp/PHASE_15_REPORT.md
 
@@ -68,6 +76,7 @@ jobs:
           done
           cp -a /tmp/phase15-required-docs/docs/. docs/
           cp /tmp/PHASE_15_REPORT.md docs/PHASE_15_REPORT.md
+          cp -a /tmp/phase15-source-fixes/. .
 
           test ! -d .phase15
           test -f .github/workflows/deploy.yml
@@ -77,6 +86,7 @@ jobs:
           test -f docs/VISUAL_REGRESSION.md
           test -f docs/RELEASE_CANDIDATE.md
           test -f docs/PHASE_15_REPORT.md
+          grep -q '"@types/node"' package.json
 
       - name: Set up Node
         uses: actions/setup-node@v6
