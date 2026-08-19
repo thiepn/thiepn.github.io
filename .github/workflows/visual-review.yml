@@ -38,6 +38,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Visual language audit
+        run: npm run visual:audit
+
       - name: Build production site
         run: npm run build
 
