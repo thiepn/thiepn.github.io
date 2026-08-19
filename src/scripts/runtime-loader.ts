@@ -60,20 +60,11 @@ if (collectionMap) {
   }
 }
 
-
-// Gallery inspection is below the record hero and loads only when the gallery approaches.
-const gallery = document.querySelector<HTMLElement>('[data-artifact-gallery]');
-if (gallery) {
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      observer.disconnect();
-      once('gallery', () => import('./gallery-controller'));
-    }, { rootMargin: '500px 0px' });
-    observer.observe(gallery);
-  } else {
-    idle('gallery', () => import('./gallery-controller'), 1000);
-  }
+// Gallery controls must already be wired when a keyboard or touch user reaches
+// them. Import the tiny controller after first paint rather than waiting for an
+// IntersectionObserver callback that can race immediate activation.
+if (document.querySelector('[data-artifact-gallery]')) {
+  requestAnimationFrame(() => once('gallery', () => import('./gallery-controller')));
 }
 
 // Performance diagnostics are opt-in and therefore cost nothing for normal users.
