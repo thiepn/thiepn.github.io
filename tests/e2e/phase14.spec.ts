@@ -35,8 +35,10 @@ test.describe('Phase 14 / release candidate', () => {
     const query = page.locator('[data-archive-query]');
     await expect(query).toHaveValue('word');
     await expect(page.locator('[data-archive-view="list"]')).toHaveAttribute('aria-pressed','true');
-    await page.locator('[data-archive-list] a[href^="/project/"]').first().click();
-    await expect(page).toHaveURL(/\/project\//);
+    const visibleResult = page.locator('[data-archive-list] a[href="/project/wordstrike/"]');
+    await expect(visibleResult).toBeVisible();
+    await visibleResult.click();
+    await expect(page).toHaveURL(/\/project\/wordstrike\//);
     await page.goBack();
     await expect(page).toHaveURL(/category=games/);
     await expect(query).toHaveValue('word');
