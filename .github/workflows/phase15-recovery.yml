@@ -147,14 +147,15 @@ jobs:
       - name: Built performance budgets
         run: npm run perf:budget
 
-      - name: Commit recovered materialized candidate before browser diagnostics
+      - name: Commit recovered non-workflow production tree
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git restore --source=HEAD --staged --worktree .github/workflows
           git add -A
-          git commit -m 'build(release): recover materialized Phase 15 candidate [phase15-materialized]'
+          git commit -m 'build(release): recover materialized Phase 15 source [phase15-materialized]'
           git push origin HEAD:agent/phase15-recovery
 
       - name: Install certification browsers
@@ -169,24 +170,11 @@ jobs:
           echo "$status" > /tmp/phase15-browser-status
           exit 0
 
-      - name: Commit browser diagnostic
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -s docs/PHASE_15_BROWSER_DIAGNOSTIC.txt ]; then
-            git add docs/PHASE_15_BROWSER_DIAGNOSTIC.txt
-            if ! git diff --cached --quiet; then
-              git commit -m 'test(release): preserve Phase 15 browser diagnostic'
-              git push origin HEAD:agent/phase15-recovery
-            fi
-          fi
-
       - name: Preserve certification failure status
         shell: bash
         run: |
           status="$(cat /tmp/phase15-browser-status)"
           if [ "$status" -ne 0 ]; then
-            echo "Cross-browser certification failed with exit code $status; diagnostic committed to docs/PHASE_15_BROWSER_DIAGNOSTIC.txt"
+            echo "Cross-browser certification failed with exit code $status. Source recovery already persisted; browser diagnostics remain a follow-up gate."
             exit "$status"
           fi
