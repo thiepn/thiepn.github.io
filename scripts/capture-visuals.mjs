@@ -9,6 +9,18 @@ const outDir = path.resolve('artifacts/visual/current');
 await fs.rm(outDir,{recursive:true,force:true});
 await fs.mkdir(outDir,{recursive:true});
 
+const visualStabilityCss = `
+  *,*::before,*::after {
+    animation: none !important;
+    transition: none !important;
+    caret-color: transparent !important;
+  }
+  * {
+    content-visibility: visible !important;
+    contain-intrinsic-size: none !important;
+  }
+`;
+
 const port = 4323;
 const isWindows = process.platform === 'win32';
 const server = spawn(isWindows ? 'npm.cmd' : 'npm', ['run','preview','--','--host','127.0.0.1','--port',String(port)], {
@@ -72,7 +84,7 @@ try {
       await input.fill(target.query ?? 'analysis');
       await page.waitForTimeout(100);
     }
-    await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' });
+    await page.addStyleTag({ content: visualStabilityCss });
     await page.screenshot({ path: path.join(outDir, `${target.id}.png`), fullPage: true, animations: 'disabled' });
     await context.close();
     console.log(`captured ${target.id}`);
