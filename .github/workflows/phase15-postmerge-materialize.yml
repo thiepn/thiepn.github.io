@@ -1,5 +1,6 @@
 name: Phase 15 Post-Merge Materialize
 
+# Temporary release-only materialization workflow; remove before merge.
 on:
   push:
     branches: [phase15-postmerge-certification]
