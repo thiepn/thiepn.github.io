@@ -31,8 +31,9 @@ test('forced colors keeps primary structure and controls visible', async ({ page
   await page.emulateMedia({ forcedColors: 'active' });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Explore/ })).toBeVisible();
-  const buttonBorder = await page.getByRole('link', { name: /Explore/ }).evaluate((element) => getComputedStyle(element).borderTopStyle);
+  const explore = page.getByRole('link', { name: 'Explore ↓', exact: true });
+  await expect(explore).toBeVisible();
+  const buttonBorder = await explore.evaluate((element) => getComputedStyle(element).borderTopStyle);
   expect(buttonBorder).not.toBe('none');
 });
 
