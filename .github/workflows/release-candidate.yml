@@ -30,6 +30,9 @@ jobs:
       - name: Release-candidate source gate
         run: npm run release:source
 
+      - name: Media audit
+        run: npm run media:validate
+
       - name: Generate candidate visual baselines
         run: npm run visual:update
 
