@@ -36,9 +36,9 @@ test('accessibility tree exposes the archive hierarchy', async ({ page }) => {
   await page.goto('/projects/');
   const main = page.getByRole('main');
   const title = main.getByRole('heading', { name: 'Project Archive', level: 1 });
-  const catalogue = main.getByRole('heading', { name: 'Catalogue', level: 2 });
+  const catalogue = main.getByRole('heading', { name: '03.1 Catalogue', level: 2, exact: true });
   await expect(title).toMatchAriaSnapshot(`- heading "Project Archive" [level=1]`);
-  await expect(catalogue).toMatchAriaSnapshot(`- heading "Catalogue" [level=2]`);
+  await expect(catalogue).toMatchAriaSnapshot(`- heading "03.1 Catalogue" [level=2]`);
 });
 
 test('search follows combobox/listbox semantics and restores focus', async ({ page }) => {
