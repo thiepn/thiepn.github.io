@@ -1,0 +1,67 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generated catalogue freshness
+        run: npm run generated:check
+
+      - name: Structural validation
+        run: npm run validate
+
+      - name: Data-only G-010 automation fixture
+        run: npm run test:automation
+
+      - name: Phase 11 source performance budgets
+        run: npm run perf:source
+
+      - name: Phase 12 accessibility source audit
+        run: npm run a11y:source
+
+      - name: Phase 13 visual language audit
+        run: npm run visual:audit
+
+      - name: Phase 14 release-candidate source gate
+        run: npm run release:source
+
+      - name: 250-artifact scale benchmark
+        run: npm run perf:scale
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Built performance budgets
+        run: npm run perf:budget
+
+      - name: Install certification browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Cross-browser and accessibility certification
+        run: npm run test:e2e
