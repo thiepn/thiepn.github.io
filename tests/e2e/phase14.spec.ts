@@ -99,7 +99,8 @@ test.describe('Phase 14 / release candidate', () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
     await page.locator('[data-mobile-menu-open]').click();
-    await expect(page.locator('[data-mobile-menu-dialog]')).toBeVisible();
-    await expect(page.locator('[data-mobile-menu-dialog] a[href="/projects/"]')).toBeVisible();
+    const dialog = page.locator('[data-mobile-menu-dialog]');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('link', { name: /Projects$/ })).toBeVisible();
   });
 });
