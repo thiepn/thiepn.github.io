@@ -54,22 +54,21 @@ jobs:
       - name: Production build and budgets
         run: npm run build && npm run perf:budget
 
-      - name: Install certification browsers
-        run: npx playwright install --with-deps chromium firefox webkit
-
-      - name: Cross-browser production certification
-        run: npm run test:e2e:release
+      - name: Install Chromium for visual review
+        run: npx playwright install --with-deps chromium
 
       - name: Capture canonical visual states
         run: npm run visual:capture && npm run visual:contact-sheet
 
       - name: Upload visual review artifact
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phase15-pr3-visual-review
-          path: |
-            artifacts/visual/**
-            test-results/**
-            playwright-report/**
-          if-no-files-found: ignore
+          path: artifacts/visual/**
+          if-no-files-found: error
+
+      - name: Install remaining certification browsers
+        run: npx playwright install --with-deps firefox webkit
+
+      - name: Cross-browser production certification
+        run: npm run test:e2e:release
