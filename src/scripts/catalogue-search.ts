@@ -146,6 +146,21 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     syncSelection();
   }
 
+  function getFocusableElements(): HTMLElement[] {
+    const selector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+    return Array.from(dialogEl.querySelectorAll<HTMLElement>(selector)).filter((element) => {
+      if (element.getAttribute('aria-hidden') === 'true' || element.hasAttribute('hidden')) return false;
+      return element.getClientRects().length > 0;
+    });
+  }
+
   function closeSearch() {
     inputEl.setAttribute('aria-expanded', 'false');
     if (!dialogEl.open) return;
@@ -205,6 +220,41 @@ async function createController(root: HTMLElement): Promise<SearchController | n
 
   document.addEventListener('keydown', (event) => {
     if (!dialogEl.open) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSearch();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      const focusable = getFocusableElements();
+      if (!focusable.length) {
+        event.preventDefault();
+        inputEl.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (!dialogEl.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+        return;
+      }
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last?.focus();
+        return;
+      }
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first?.focus();
+        return;
+      }
+    }
+
     const comboboxActive = document.activeElement === inputEl;
     if (comboboxActive && event.key === 'ArrowDown' && ranked.length) { event.preventDefault(); selectedIndex = Math.min(ranked.length - 1, selectedIndex + 1); syncSelection(); resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' }); }
     else if (comboboxActive && event.key === 'ArrowUp' && ranked.length) { event.preventDefault(); selectedIndex = Math.max(0, selectedIndex - 1); syncSelection(); resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' }); }
@@ -218,8 +268,18 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   });
   randomTriggerEl.addEventListener('click', () => void renderRandom());
   closeEl.addEventListener('click', closeSearch);
+  dialogEl.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeSearch();
+  });
   dialogEl.addEventListener('click', (event) => { if (event.target === dialogEl) closeSearch(); });
-  dialogEl.addEventListener('close', () => { inputEl.setAttribute('aria-expanded', 'false'); window.clearTimeout(previewTimer); returnFocus?.focus(); });
+  dialogEl.addEventListener('close', () => {
+    inputEl.setAttribute('aria-expanded', 'false');
+    window.clearTimeout(previewTimer);
+    const target = returnFocus;
+    returnFocus = null;
+    requestAnimationFrame(() => { if (target?.isConnected) target.focus(); });
+  });
 
   return { open };
 }
