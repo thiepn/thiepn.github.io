@@ -1,0 +1,28 @@
+name: Media Audit
+
+on:
+  pull_request:
+    paths:
+      - 'public/projects/**'
+      - 'src/content/projects/**'
+      - 'scripts/validate-media.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate preview media budgets
+        run: npm run media:validate

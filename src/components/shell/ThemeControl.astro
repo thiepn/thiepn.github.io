@@ -1,0 +1,125 @@
+<div class="theme-control" data-theme-control aria-label="Theme preference">
+  <span class="theme-control__label meta">Theme</span>
+  <div class="theme-control__options" role="group" aria-label="Theme">
+    <button type="button" data-theme-option="system" aria-pressed="false">System</button>
+    <span aria-hidden="true">/</span>
+    <button type="button" data-theme-option="light" aria-pressed="false">Light</button>
+    <span aria-hidden="true">/</span>
+    <button type="button" data-theme-option="dark" aria-pressed="false">Dark</button>
+  </div>
+</div>
+
+<script>
+  import { THEME_STORAGE_KEY, isThemePreference, resolveTheme } from '../../lib/theme';
+  import type { ThemePreference } from '../../types/theme';
+
+  const root = document.documentElement;
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const controls = document.querySelectorAll<HTMLElement>('[data-theme-control]');
+
+  const readPreference = (): ThemePreference => {
+    try {
+      const value = window.localStorage.getItem(THEME_STORAGE_KEY);
+      return isThemePreference(value) ? value : 'system';
+    } catch {
+      return 'system';
+    }
+  };
+
+  const writePreference = (preference: ThemePreference) => {
+    try {
+      if (preference === 'system') {
+        window.localStorage.removeItem(THEME_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(THEME_STORAGE_KEY, preference);
+      }
+    } catch {
+      // Storage is a preference enhancement; the theme still works without it.
+    }
+  };
+
+  const syncPressedState = (preference: ThemePreference) => {
+    controls.forEach((control) => {
+      control.querySelectorAll<HTMLButtonElement>('[data-theme-option]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.themeOption === preference));
+      });
+    });
+  };
+
+  const applyTheme = (preference: ThemePreference) => {
+    const resolved = resolveTheme(preference, media.matches);
+    root.dataset.theme = resolved;
+    root.dataset.themePreference = preference;
+    root.style.colorScheme = resolved;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute(
+      'content',
+      resolved === 'dark' ? '#0B0C0C' : '#ECEAE3',
+    );
+    syncPressedState(preference);
+  };
+
+  controls.forEach((control) => {
+    control.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-theme-option]');
+      const preference = button?.dataset.themeOption;
+      if (!isThemePreference(preference)) return;
+      writePreference(preference);
+      applyTheme(preference);
+    });
+  });
+
+  media.addEventListener('change', () => {
+    const preference = readPreference();
+    if (preference === 'system') applyTheme(preference);
+  });
+
+  applyTheme(readPreference());
+</script>
+
+<style>
+  .theme-control {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--ink-muted);
+  }
+
+  .theme-control__label {
+    color: var(--ink-muted);
+  }
+
+  .theme-control__options {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-meta);
+    font-size: .68rem;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+
+  .theme-control button {
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .theme-control button:hover,
+  .theme-control button[aria-pressed="true"] {
+    color: var(--ink);
+  }
+
+  @media (max-width: 599px) {
+    .theme-control__label {
+      display: none;
+    }
+
+    .theme-control__options {
+      gap: 5px;
+      font-size: .64rem;
+    }
+  }
+</style>

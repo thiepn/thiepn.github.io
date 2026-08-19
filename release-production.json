@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "phase": 15,
+  "productionUrl": "https://thiepn.dev/",
+  "repository": "thiepn/thiepn.github.io",
+  "customDomain": "thiepn.dev",
+  "featureFreeze": true,
+  "tag": "v1.0.0",
+  "requiredPostDeployChecks": [
+    "homepage",
+    "projects",
+    "collections",
+    "catalogue-json",
+    "sitemap",
+    "all-artifact-records",
+    "all-live-destinations",
+    "mobile",
+    "production-performance"
+  ]
+}

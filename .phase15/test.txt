@@ -1,2 +1,0 @@
-write-access-ok
-bootstrap-trigger-2026-08-19

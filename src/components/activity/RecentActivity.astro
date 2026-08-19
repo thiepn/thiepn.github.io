@@ -1,0 +1,18 @@
+---
+import type { CollectionEntry } from 'astro:content';
+interface Props { projects: CollectionEntry<'projects'>[]; }
+const { projects } = Astro.props;
+const dateLabel = (date: Date) => new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'2-digit'}).format(date).toUpperCase();
+const activityDate=(project:CollectionEntry<'projects'>)=>project.data.lastMajorUpdate ?? project.data.dateAdded;
+const activityLabel=(project:CollectionEntry<'projects'>)=>project.data.lastMajorUpdate ? `Major update / ${project.data.status}` : `Added / ${project.data.category}`;
+---
+<div class="recent-activity">
+  {projects.slice(0,5).map((project)=><article class="recent-activity__row">
+    <time datetime={activityDate(project).toISOString()}>{dateLabel(activityDate(project))}</time>
+    <div><h3><a href={`/project/${project.data.slug}/`}>{project.data.title}</a></h3><p>{activityLabel(project)}</p></div>
+    <span>{project.data.code}</span>
+  </article>)}
+</div>
+<style>
+  .recent-activity{border-top:1px solid var(--line-strong)}.recent-activity__row{display:grid;grid-template-columns:130px minmax(0,1fr) 70px;gap:var(--space-5);padding:var(--space-4) 0;border-bottom:1px solid var(--line)}time,.recent-activity__row>span{font:500 .65rem var(--font-meta);letter-spacing:.065em;color:var(--ink-muted);text-transform:uppercase}.recent-activity__row>span{text-align:right}h3{font-size:1rem}h3 a{text-decoration:none}p{margin-top:3px;color:var(--ink-muted);font:500 .59rem var(--font-meta);letter-spacing:.05em;text-transform:uppercase}@media(max-width:599px){.recent-activity__row{grid-template-columns:92px minmax(0,1fr)}.recent-activity__row>span{display:none}}
+</style>

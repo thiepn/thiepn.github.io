@@ -1,0 +1,183 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import PreviewAperture from './PreviewAperture.astro';
+import { isInteractivePreviewType } from '../../lib/preview-core';
+interface Props {
+  project: CollectionEntry<'projects'>;
+  size?: 'hero' | 'feature' | 'standard';
+  focusable?: boolean;
+}
+const { project, size = 'standard', focusable = false } = Astro.props;
+const p = project.data;
+const interactive = isInteractivePreviewType(p.preview.type);
+const duration = p.preview.duration ?? (p.preview.type === 'video' ? 3400 : 3800);
+const source = p.preview.source ?? '';
+const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'synthetic' : p.preview.type === 'video' ? 'captured' : 'static');
+---
+<div
+  class:list={['preview-shell', interactive && 'preview-shell--interactive', `preview-shell--${p.slug}`]}
+  data-preview-root={interactive ? '' : undefined}
+  data-preview-slug={p.slug}
+  data-preview-kind={p.preview.type}
+  data-preview-source={source || undefined}
+  data-preview-duration={String(duration)}
+  data-preview-provenance={provenance}
+  data-preview-state={interactive ? 'poster' : 'static'}
+  data-preview-focusable={focusable ? 'true' : 'false'}
+  tabindex={focusable && interactive ? 0 : undefined}
+  role={focusable && interactive ? 'group' : undefined}
+  aria-label={focusable && interactive ? `${p.title} interactive preview` : undefined}
+>
+  <PreviewAperture project={project} size={size} />
+  {interactive && p.preview.type === 'video' && source && (
+    <video class="preview-shell__video" data-preview-video muted playsinline preload="none" aria-hidden="true"></video>
+  )}
+  {interactive && (
+    <div class="preview-shell__status" aria-hidden="true">
+      <span class="preview-shell__signal"></span>
+      <span data-preview-status>PREVIEW</span>
+    </div>
+  )}
+</div>
+
+<style>
+  .preview-shell{position:relative;min-width:0;isolation:isolate;--preview-accent:var(--project-accent-dark,#fff)}
+  .preview-shell__video{position:absolute;z-index:5;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none;background:#05080e;transition:opacity var(--motion-standard) var(--ease-standard)}
+  .preview-shell[data-preview-media="video"] .preview-shell__video{opacity:1}
+  .preview-shell__status{position:absolute;z-index:9;right:12px;bottom:7px;display:flex;align-items:center;gap:6px;font:500 .53rem var(--font-meta);letter-spacing:.07em;text-transform:uppercase;color:rgb(245 242 235 / .66);pointer-events:none}
+  .preview-shell__signal{width:5px;height:5px;border:1px solid currentColor;background:transparent}
+  .preview-shell[data-preview-state="armed"] .preview-shell__signal{background:currentColor;opacity:.55}
+  .preview-shell[data-preview-state="active"] .preview-shell__status{color:var(--preview-accent)}
+  .preview-shell[data-preview-state="active"] .preview-shell__signal{background:currentColor}
+  .preview-shell[data-preview-state="settled"] .preview-shell__signal{background:currentColor;opacity:.5}
+  .preview-shell[data-preview-state="unavailable"] .preview-shell__status{color:rgb(245 242 235 / .54)}
+
+  /* P5 — PDF Studio: organize → redact → export. */
+  .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-page--moving){animation:p7-pdf-page 3.8s var(--ease-enter) both}
+  .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-thumb--3){animation:p7-pdf-thumb 3.8s var(--ease-standard) both}
+  .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-selection){animation:p7-pdf-selection 3.8s var(--ease-standard) both}
+  .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-page--moving .redact){animation:p7-pdf-redact 3.8s var(--ease-standard) both}
+  .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-tool strong){animation:p7-pdf-export 3.8s var(--ease-standard) both}
+
+  /* P5 — Manuscript: source enters → build → publication resolves. */
+  .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--1){animation:p7-md-line 4s .12s var(--ease-enter) both}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--2){animation:p7-md-line 4s .36s var(--ease-enter) both}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--3){animation:p7-md-line 4s .62s var(--ease-enter) both}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.md-cursor){animation:p7-cursor .5s steps(1,end) 5}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.publish-arrow i){animation:p7-build-arrow 4s var(--ease-standard) both}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.paper-pane strong),
+  .preview-shell--manuscript[data-preview-state="active"] :global(.paper-pane p),
+  .preview-shell--manuscript[data-preview-state="active"] :global(.paper-figure){animation:p7-paper-resolve 4s var(--ease-enter) both}
+  .preview-shell--manuscript[data-preview-state="active"] :global(.manuscript-progress span){animation:p7-build-progress 4s var(--ease-standard) both}
+
+  /* P4 — Clean30: three concrete tasks, no decorative confetti. */
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--1 i){animation:p7-check 3.6s .35s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--2 i){animation:p7-check 3.6s 1.05s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--3 i){animation:p7-check 3.6s 1.75s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--1 span){animation:p7-task-done 3.6s .35s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--2 span){animation:p7-task-done 3.6s 1.05s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--3 span){animation:p7-task-done 3.6s 1.75s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-progress span){animation:p7-clean-progress 3.6s var(--ease-standard) both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-count b:nth-child(1)){animation:p7-count-0 3.6s both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-count b:nth-child(2)){animation:p7-count-1 3.6s both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-count b:nth-child(3)){animation:p7-count-2 3.6s both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-count b:nth-child(4)){animation:p7-count-3 3.6s both}
+  .preview-shell--clean30[data-preview-state="active"] :global(.clean-complete){animation:p7-clean-complete 3.6s var(--ease-enter) both}
+
+  /* P4 — French 3000: prompt → reveal → rate → next. */
+  .preview-shell--french-3000[data-preview-state="active"] :global(.french-card--one){animation:p7-french-first 3.6s var(--ease-enter) both}
+  .preview-shell--french-3000[data-preview-state="active"] :global(.rating .active){animation:p7-french-rate 3.6s var(--ease-standard) both}
+  .preview-shell--french-3000[data-preview-state="active"] :global(.french-card--two){animation:p7-french-next 3.6s var(--ease-enter) both}
+  .preview-shell--french-3000[data-preview-state="active"] :global(.french-progress span){animation:p7-french-progress 3.6s var(--ease-standard) both}
+
+  /* P4 — LiGo: timer → answer lock → score consequence. */
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-top strong i:first-child){animation:p7-quiz-time-a 3.9s both}
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-top strong i:nth-child(2)){animation:p7-quiz-time-b 3.9s both}
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.answer-correct){animation:p7-quiz-answer 3.9s var(--ease-standard) both}
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-lock){animation:p7-quiz-lock 3.9s var(--ease-enter) both}
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-score strong i:first-child){animation:p7-score-a 3.9s both}
+  .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-score strong i:nth-child(2)){animation:p7-score-b 3.9s both}
+
+  /* P4 — Analysis II: parameter change → graph response → mathematical result. */
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-curve--a){animation:p7-curve-a 4s var(--ease-standard) both}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-curve--b){animation:p7-curve-b 4s var(--ease-standard) both}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-head strong i:first-child){animation:p7-lambda-a 4s both}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-head strong i:nth-child(2)){animation:p7-lambda-b 4s both}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-point){animation:p7-analysis-point 4s var(--ease-enter) both}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-result strong){animation:p7-analysis-result 4s var(--ease-standard) both}
+
+  /* WORDSTRIKE static fallback also performs a faithful word-target sequence when media cannot play. */
+  .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--a){animation:p7-strike-a 3.4s linear both}
+  .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--k){animation:p7-strike-k 3.4s linear both}
+  .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--x){animation:p7-strike-x 3.4s linear both}
+  .preview-shell--wordstrike[data-preview-state="active"] :global(.strike-entry i){animation:p7-strike-entry 3.4s var(--ease-standard) both}
+  .preview-shell--wordstrike[data-preview-state="active"] :global(.strike-core){animation:p7-strike-core 3.4s var(--ease-enter) both}
+
+  .preview-shell--pdf-studio[data-preview-state="settled"] :global(.pdf-tool strong){opacity:1}
+  .preview-shell--manuscript[data-preview-state="settled"] :global(.manuscript-progress span){width:100%}
+  .preview-shell--manuscript[data-preview-state="settled"] :global(.md-line){opacity:.9}
+  .preview-shell--french-3000[data-preview-state="settled"] :global(.french-card--one){opacity:0;transform:translateX(-10px)}
+  .preview-shell--french-3000[data-preview-state="settled"] :global(.french-card--two){opacity:1;transform:none}
+  .preview-shell--french-3000[data-preview-state="settled"] :global(.french-progress span){width:46%}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-task i){background:var(--preview-accent);border-color:var(--preview-accent)}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-task span){opacity:.58;text-decoration:line-through}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-progress span){width:100%}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-count b){opacity:0}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-count b:nth-child(4)){opacity:1}
+  .preview-shell--clean30[data-preview-state="settled"] :global(.clean-complete){opacity:1;transform:none}
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.quiz-top strong i:first-child),
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.quiz-score strong i:first-child){opacity:0}
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.quiz-top strong i:nth-child(2)),
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.quiz-score strong i:nth-child(2)),
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.quiz-lock){opacity:1}
+  .preview-shell--ligo-quizabend[data-preview-state="settled"] :global(.answer-correct){border-color:var(--preview-accent)!important;background:color-mix(in srgb,var(--preview-accent) 12%,transparent)}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-curve--a),
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-head strong i:first-child){opacity:.08}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-curve--b),
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-head strong i:nth-child(2)),
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-point){opacity:1}
+  .preview-shell--analysis-ii-klausurlabor[data-preview-state="settled"] :global(.analysis-result strong){opacity:1;color:var(--preview-accent)}
+
+  @keyframes p7-pdf-page{0%,16%{transform:rotate(2deg)}32%{transform:translate(-34px,9px) rotate(-4deg)}48%{transform:translate(8px,-4px) rotate(0)}100%{transform:translate(8px,-4px) rotate(0)}}
+  @keyframes p7-pdf-thumb{0%,18%{outline-color:var(--project-accent);transform:translateY(0)}34%{transform:translateY(-6px)}48%,100%{transform:translateY(0);outline-color:transparent}}
+  @keyframes p7-pdf-selection{0%,48%{opacity:0;transform:scale(.8)}56%,70%{opacity:1;transform:scale(1)}78%,100%{opacity:0;transform:scale(1)}}
+  @keyframes p7-pdf-redact{0%,54%{opacity:.16;transform:scaleX(.35);transform-origin:left}68%,100%{opacity:1;transform:scaleX(1);transform-origin:left}}
+  @keyframes p7-pdf-export{0%,75%{opacity:.25}88%,100%{opacity:1}}
+
+  @keyframes p7-md-line{0%,8%{opacity:.12;clip-path:inset(0 100% 0 0)}25%,100%{opacity:.9;clip-path:inset(0 0 0 0)}}
+  @keyframes p7-cursor{0%,48%{opacity:1}49%,100%{opacity:0}}
+  @keyframes p7-build-arrow{0%,42%{transform:scaleX(.25);transform-origin:left;opacity:.35}58%,100%{transform:scaleX(1);transform-origin:left;opacity:1}}
+  @keyframes p7-paper-resolve{0%,48%{opacity:.28;transform:translateY(4px)}68%,100%{opacity:1;transform:translateY(0)}}
+  @keyframes p7-build-progress{0%{width:12%}40%{width:38%}68%{width:74%}100%{width:100%}}
+
+  @keyframes p7-check{0%,12%{background:transparent;border-color:#777}18%,100%{background:var(--project-accent);border-color:var(--project-accent)}}
+  @keyframes p7-task-done{0%,12%{opacity:1;text-decoration-color:transparent}20%,100%{opacity:.58;text-decoration:line-through;text-decoration-color:currentColor}}
+  @keyframes p7-clean-progress{0%,10%{width:0}30%{width:33%}52%{width:67%}72%,100%{width:100%}}
+  @keyframes p7-count-0{0%,18%{opacity:1}19%,100%{opacity:0}} @keyframes p7-count-1{0%,18%{opacity:0}19%,39%{opacity:1}40%,100%{opacity:0}} @keyframes p7-count-2{0%,39%{opacity:0}40%,61%{opacity:1}62%,100%{opacity:0}} @keyframes p7-count-3{0%,61%{opacity:0}62%,100%{opacity:1}}
+  @keyframes p7-clean-complete{0%,76%{opacity:0;transform:scale(.985)}88%,100%{opacity:1;transform:scale(1)}}
+
+  @keyframes p7-french-first{0%,18%{opacity:1;transform:translateX(0)}66%{opacity:1;transform:translateX(0)}80%,100%{opacity:0;transform:translateX(-10px)}}
+  @keyframes p7-french-rate{0%,38%{background:transparent;transform:scale(1)}52%,64%{background:color-mix(in srgb,var(--project-accent) 15%,transparent);transform:scale(1.03)}72%,100%{background:transparent;transform:scale(1)}}
+  @keyframes p7-french-next{0%,73%{opacity:0;transform:translateX(10px)}86%,100%{opacity:1;transform:translateX(0)}}
+  @keyframes p7-french-progress{0%{width:42%}70%{width:42%}100%{width:46%}}
+
+  @keyframes p7-quiz-time-a{0%,40%{opacity:1}50%,100%{opacity:0}} @keyframes p7-quiz-time-b{0%,40%{opacity:0}50%,100%{opacity:1}}
+  @keyframes p7-quiz-answer{0%,45%{border-color:#444;background:transparent}58%,100%{border-color:var(--project-accent);background:color-mix(in srgb,var(--project-accent) 12%,transparent)}}
+  @keyframes p7-quiz-lock{0%,50%{opacity:0;transform:translateY(3px)}62%,100%{opacity:1;transform:translateY(0)}}
+  @keyframes p7-score-a{0%,67%{opacity:1}74%,100%{opacity:0}} @keyframes p7-score-b{0%,67%{opacity:0}74%,100%{opacity:1}}
+
+  @keyframes p7-curve-a{0%,42%{opacity:1}58%,100%{opacity:.08}} @keyframes p7-curve-b{0%,42%{opacity:0}58%,100%{opacity:1}}
+  @keyframes p7-lambda-a{0%,43%{opacity:1}54%,100%{opacity:0}} @keyframes p7-lambda-b{0%,43%{opacity:0}54%,100%{opacity:1}}
+  @keyframes p7-analysis-point{0%,58%{opacity:0;transform:scale(.5)}68%,100%{opacity:1;transform:scale(1)}}
+  @keyframes p7-analysis-result{0%,68%{opacity:.35}82%,100%{opacity:1;color:var(--project-accent)}}
+
+  @keyframes p7-strike-a{0%{transform:translate(0,0);opacity:1}46%{transform:translate(96px,32px);opacity:1}58%,100%{transform:translate(116px,40px);opacity:0}}
+  @keyframes p7-strike-k{0%{transform:translate(0,0)}70%{transform:translate(-63px,48px)}100%{transform:translate(-76px,56px);opacity:.55}}
+  @keyframes p7-strike-x{0%,25%{transform:translate(0,0)}100%{transform:translate(-42px,-31px)}}
+  @keyframes p7-strike-entry{0%{transform:scaleX(.15);transform-origin:left}45%{transform:scaleX(.62);transform-origin:left}68%,100%{transform:scaleX(1);transform-origin:left}}
+  @keyframes p7-strike-core{0%,48%{transform:translate(-50%,-50%) scale(1)}59%{transform:translate(-50%,-50%) scale(1.07);box-shadow:0 0 34px color-mix(in srgb,var(--project-accent) 35%,transparent)}72%,100%{transform:translate(-50%,-50%) scale(1)}}
+
+  @media(prefers-reduced-motion:reduce){.preview-shell__video{display:none}.preview-shell__status{display:none}.preview-shell :global(*){animation:none!important;transition:none!important}}
+  @media(hover:none),(pointer:coarse){.preview-shell__status{display:none}}
+  @media(forced-colors:active){.preview-shell__status{color:CanvasText}.preview-shell__signal{border-color:CanvasText}}
+</style>

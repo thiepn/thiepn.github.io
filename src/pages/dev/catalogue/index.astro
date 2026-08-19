@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SectionIndex from '../../../components/index/SectionIndex.astro';
+import { getAllProjects, getCollections, getCatalogueStats } from '../../../lib/catalogue';
+import github from '../../../generated/github.json';
+import discovery from '../../../generated/github-discovery.json';
+const projects = await getAllProjects();
+const collections = await getCollections();
+const stats = await getCatalogueStats();
+type GithubRecord = { stale?: boolean; exists?: boolean | null };
+type DiscoveryRecord = { repo: string; state: string; pushedAt?: string | null };
+const githubBySlug: Record<string, GithubRecord> = github.projects;
+const discoveryRecords: DiscoveryRecord[] = discovery.repositories;
+const previewCounts = Object.fromEntries(['P0','P1','P2','P3','P4','P5'].map((tier) => [tier, projects.filter((project) => project.data.preview.tier === tier).length]));
+---
+<BaseLayout title="Catalogue Diagnostics — THIEPN." description="Internal catalogue diagnostics." noindex={true}>
+  <article class="dev-catalogue shell-wide">
+    <header class="dev-catalogue__hero index-grid">
+      <div><p class="section-kicker">DEV / CATALOGUE</p><h1>CATALOGUE<br/>DIAGNOSTICS</h1><p>Human-curated project records, generated outputs, GitHub enrichment state, and publication readiness in one inspection surface.</p></div>
+      <dl>
+        <div><dt>Registered</dt><dd>{stats.totalRegistered}</dd></div><div><dt>Listed</dt><dd>{stats.totalListed}</dd></div><div><dt>Collections</dt><dd>{collections.length}</dd></div><div><dt>Discovered</dt><dd>{discoveryRecords.filter((item) => item.state === 'candidate' || item.state === 'unindexed').length}</dd></div>
+      </dl>
+    </header>
+    <section><SectionIndex index="01" title="Preview Distribution"/><div class="dev-catalogue__tiers">{Object.entries(previewCounts).map(([tier,count])=><div><span>{tier}</span><strong>{String(count).padStart(2,'0')}</strong></div>)}</div></section>
+    <section><SectionIndex index="02" title="Project Ledger" meta={`${String(projects.length).padStart(2,'0')} RECORDS`}/><div class="dev-catalogue__table"><div class="dev-catalogue__row head"><span>Code</span><span>Artifact</span><span>State</span><span>Preview</span><span>GitHub</span></div>{projects.map((project)=>{const g=githubBySlug[project.data.slug];return <div class="dev-catalogue__row"><span>{project.data.code}</span><strong>{project.data.title}</strong><span>{project.data.visibility.toUpperCase()} / {project.data.status.toUpperCase()}</span><span>{project.data.preview.tier} / {project.data.preview.type}</span><span>{!project.data.repo?'NO SOURCE':!g?'NOT SYNCED':g.stale?'STALE':g.exists===false?'MISSING':'SYNCED'}</span></div>})}</div></section>
+    <section><SectionIndex index="03" title="Discovery Queue"/><div class="dev-catalogue__queue">{discoveryRecords.filter((item)=>item.state==='candidate'||item.state==='unindexed').length ? discoveryRecords.filter((item)=>item.state==='candidate'||item.state==='unindexed').map((item)=><div><strong>{item.repo}</strong><span>{item.state.toUpperCase()}</span><small>{item.pushedAt ?? 'NO PUSH DATE'}</small></div>) : <p>No discovery cache yet. Run <code>npm run projects:discover</code>.</p>}</div></section>
+  </article>
+</BaseLayout>
+<style>
+.dev-catalogue{padding:var(--space-8) 0 var(--space-10)}.dev-catalogue__hero{align-items:end;padding:var(--space-8) 0 var(--space-9);border-bottom:1px solid var(--line-strong)}.dev-catalogue__hero>div{grid-column:1/span 7}.dev-catalogue__hero h1{font-size:clamp(3.8rem,8vw,8rem);line-height:.82;letter-spacing:-.065em}.dev-catalogue__hero p:last-child{max-width:58ch;margin-top:var(--space-5);color:var(--ink-secondary)}.dev-catalogue__hero dl{grid-column:9/-1;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line-strong)}.dev-catalogue__hero dl div{padding:var(--space-4) 0;border-bottom:1px solid var(--line)}dt{font:500 .6rem var(--font-meta);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-muted)}dd{font-size:2rem}.dev-catalogue section{padding:var(--space-8) 0}.dev-catalogue__tiers{display:grid;grid-template-columns:repeat(6,1fr);margin-top:var(--space-5);border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}.dev-catalogue__tiers div{padding:var(--space-5);border-right:1px solid var(--line)}.dev-catalogue__tiers span{display:block;font:500 .65rem var(--font-meta)}.dev-catalogue__tiers strong{font-size:2.4rem}.dev-catalogue__table{margin-top:var(--space-5);border-top:1px solid var(--line-strong)}.dev-catalogue__row{display:grid;grid-template-columns:80px 2fr 1.4fr 1fr 1fr;gap:var(--space-4);align-items:center;min-height:52px;border-bottom:1px solid var(--line);font-size:.76rem}.dev-catalogue__row span{font-family:var(--font-meta);color:var(--ink-muted)}.dev-catalogue__row.head{min-height:34px;text-transform:uppercase;letter-spacing:.06em}.dev-catalogue__queue{margin-top:var(--space-5);border-top:1px solid var(--line-strong)}.dev-catalogue__queue>div{display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--space-4);padding:var(--space-4) 0;border-bottom:1px solid var(--line)}.dev-catalogue__queue span,.dev-catalogue__queue small{font:500 .62rem var(--font-meta);color:var(--ink-muted)}@media(max-width:899px){.dev-catalogue__hero>div,.dev-catalogue__hero dl{grid-column:1/-1}.dev-catalogue__hero dl{margin-top:var(--space-7)}.dev-catalogue__tiers{grid-template-columns:repeat(3,1fr)}.dev-catalogue__row{grid-template-columns:70px 2fr 1fr}.dev-catalogue__row>*:nth-child(4),.dev-catalogue__row>*:nth-child(5){display:none}}@media(max-width:599px){.dev-catalogue__tiers{grid-template-columns:repeat(2,1fr)}.dev-catalogue__queue>div{grid-template-columns:1fr}.dev-catalogue__row{grid-template-columns:64px 1fr}.dev-catalogue__row>*:nth-child(3){display:none}}
+</style>

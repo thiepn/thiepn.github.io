@@ -1,0 +1,7 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import ArtifactPlate from './ArtifactPlate.astro';
+interface Props { project: CollectionEntry<'projects'>; }
+const { project } = Astro.props;
+---
+<ArtifactPlate project={project} variant="hero" />

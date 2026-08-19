@@ -1,0 +1,56 @@
+/* THE INDEX responsive foundation. Component-specific composition remains local. */
+@media (min-width: 1600px) {
+  :root { --page-padding: clamp(56px, 4vw, 72px); }
+}
+
+@media (max-width: 1199px) {
+  :root { --page-padding: clamp(24px, 3vw, 40px); }
+}
+
+@media (max-width: 899px) {
+  :root {
+    --page-padding: clamp(20px, 3.8vw, 32px);
+    --artifact-cut: 8px;
+    --artifact-cut-feature: 12px;
+  }
+  .index-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
+
+@media (max-width: 599px) {
+  :root { --page-padding: clamp(16px, 4.5vw, 20px); }
+  .index-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+}
+
+@media (max-width: 379px) {
+  :root {
+    --page-padding: 14px;
+    --text-meta: .68rem;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  a, button { touch-action: manipulation; }
+  [data-hover-only] { display:none !important; }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --canvas: Canvas;
+    --canvas-raised: Canvas;
+    --surface-1: Canvas;
+    --surface-2: Canvas;
+    --surface-3: Canvas;
+    --ink: CanvasText;
+    --ink-secondary: CanvasText;
+    --ink-muted: CanvasText;
+    --ink-disabled: GrayText;
+    --line-soft: CanvasText;
+    --line: CanvasText;
+    --line-strong: CanvasText;
+    --selection: Highlight;
+  }
+  * { forced-color-adjust: auto; }
+}

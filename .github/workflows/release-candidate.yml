@@ -1,0 +1,48 @@
+name: Release Candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install certification browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Release-candidate source gate
+        run: npm run release:source
+
+      - name: Full release audit
+        run: npm run audit:release
+
+      - name: Online launch/repository health
+        run: npm run release:links
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-failure-diagnostics
+          path: |
+            test-results/**
+            playwright-report/**
+            artifacts/visual/**
+          if-no-files-found: ignore

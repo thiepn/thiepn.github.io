@@ -1,0 +1,10 @@
+{
+  "name": "THIEPN. Project Index",
+  "short_name": "THIEPN.",
+  "description": "Projects, tools, games & experiments.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ECEAE3",
+  "theme_color": "#ECEAE3"
+}

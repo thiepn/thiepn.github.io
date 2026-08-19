@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionIndex from '../../components/index/SectionIndex.astro';
+import CollectionPreview from '../../components/collections/CollectionPreview.astro';
+import { getCollections,getPublicProjects } from '../../lib/catalogue';
+const collections=await getCollections();collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));const projects=await getPublicProjects();const bySlug=new Map(projects.map((p)=>[p.data.slug,p]));const titles=(slugs:string[])=>slugs.map((s)=>bySlug.get(s)?.data.title).filter((v):v is string=>Boolean(v));
+---
+<BaseLayout title="Collections — THIEPN." description="Curated relationships across the THIEPN. project archive.">
+  <section class="collections-page page-shell" aria-labelledby="collections-title">
+    <SectionIndex index="04" title="Collections" meta={`${String(collections.length).padStart(2,'0')} Curated Sets`} headingLevel="div" />
+    <header><p class="meta">Connected artifacts</p><h1 id="collections-title">Collections</h1><p>Editorial groupings that explain how projects relate to one another—not another layer of category filters.</p></header>
+    <section class="collections-page__index" aria-labelledby="collection-index-title"><SectionIndex index="01" title="Collection Index" meta={`${String(collections.length).padStart(2,'0')} Sets`} headingId="collection-index-title" /><div class="collections-page__grid">{collections.map((collection)=><CollectionPreview collection={collection} projectTitles={titles(collection.data.projects)} />)}</div></section>
+  </section>
+</BaseLayout>
+<style>.collections-page{padding-top:clamp(34px,5vw,66px);padding-bottom:var(--space-9)}header{padding:var(--space-9) 0 var(--space-8)}header .meta{color:var(--ink-muted)}h1{margin-top:var(--space-4);font-size:var(--text-display-l);line-height:.88;letter-spacing:-.06em}header p:not(.meta){margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary)}.collections-page__index{padding-top:var(--space-6)}.collections-page__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-6)}@media(max-width:760px){.collections-page__grid{grid-template-columns:1fr}}</style>

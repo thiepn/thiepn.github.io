@@ -1,0 +1,18 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import StatusLabel from './StatusLabel.astro';
+interface Props { project: CollectionEntry<'projects'>; }
+const { project } = Astro.props; const p=project.data;
+---
+<article class="archive-row">
+  <span class="archive-row__code">{p.code}</span>
+  <h3 class="archive-row__title"><a href={`/project/${p.slug}/`}>{p.title}</a></h3>
+  <span class="archive-row__type">{p.category}</span>
+  <StatusLabel status={p.status} />
+  {p.liveUrl && <a class="archive-row__open" href={p.liveUrl} aria-label={`${p.actions.primaryLabel}: ${p.title}`}>↗</a>}
+</article>
+<style>
+  .archive-row{display:grid;grid-template-columns:72px minmax(0,1fr) 120px 110px 44px;gap:var(--space-4);align-items:center;min-height:56px;border-bottom:1px solid var(--line);font-family:var(--font-meta);font-size:.7rem;letter-spacing:.055em;text-transform:uppercase}.archive-row>*{min-width:0}.archive-row__code,.archive-row__type{color:var(--ink-muted)}.archive-row__title{font-family:var(--font-ui);font-size:1rem;line-height:1.2;letter-spacing:-.02em;text-transform:none;font-weight:550}.archive-row__title a{text-decoration:none}.archive-row__open{min-width:44px;min-height:44px;display:grid;place-items:center;text-decoration:none;text-align:right;font-size:1rem}
+  @media(max-width:700px){.archive-row{grid-template-columns:58px minmax(0,1fr) 44px;gap:var(--space-3)}.archive-row__type,.archive-row>:global(.status-label){display:none}}
+  @media(max-width:379px){.archive-row{grid-template-columns:48px minmax(0,1fr) 44px}.archive-row__code{font-size:.64rem}.archive-row__title{font-size:.94rem}}
+</style>

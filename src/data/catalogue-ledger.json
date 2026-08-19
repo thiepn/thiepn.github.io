@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "projects": {
+    "T-001": "pdf-studio",
+    "T-002": "manuscript",
+    "T-003": "clean30",
+    "L-001": "french-3000",
+    "L-002": "le-carnet-francais",
+    "L-003": "franzosisch-flashcards",
+    "L-004": "analysis-ii-klausurlabor",
+    "L-005": "analysis-ii-lernsystem",
+    "L-006": "algodat-study-system",
+    "L-007": "tms60",
+    "G-001": "wordstrike",
+    "G-002": "wordfall",
+    "G-003": "curio",
+    "G-004": "nebula-foundry",
+    "G-005": "the-bible-challenge",
+    "G-006": "ligo-quizabend",
+    "G-007": "echoframe-last-signal",
+    "G-008": "skyspire",
+    "G-009": "analysis-idle",
+    "R-001": "markdown-guide"
+  },
+  "collections": {
+    "C-001": "french-learning",
+    "C-002": "mathematics-cs",
+    "C-003": "browser-games",
+    "C-004": "bible-faith",
+    "C-005": "productivity-creation",
+    "C-006": "typing-games"
+  },
+  "retired": []
+}

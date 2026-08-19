@@ -1,0 +1,21 @@
+{
+  "pdf-studio": ["manuscript", "clean30"],
+  "manuscript": ["pdf-studio", "clean30"],
+  "clean30": ["manuscript", "pdf-studio"],
+  "french-3000": ["le-carnet-francais", "franzosisch-flashcards"],
+  "le-carnet-francais": ["french-3000", "franzosisch-flashcards"],
+  "franzosisch-flashcards": ["french-3000", "le-carnet-francais"],
+  "analysis-ii-klausurlabor": ["analysis-ii-lernsystem", "algodat-study-system"],
+  "analysis-ii-lernsystem": ["analysis-ii-klausurlabor", "analysis-idle"],
+  "algodat-study-system": ["analysis-ii-klausurlabor", "analysis-ii-lernsystem"],
+  "tms60": ["the-bible-challenge"],
+  "the-bible-challenge": ["tms60", "ligo-quizabend"],
+  "wordstrike": ["wordfall", "skyspire"],
+  "wordfall": ["wordstrike", "skyspire"],
+  "curio": ["nebula-foundry", "echoframe-last-signal"],
+  "nebula-foundry": ["curio", "analysis-idle"],
+  "ligo-quizabend": ["the-bible-challenge", "wordstrike"],
+  "echoframe-last-signal": ["skyspire", "curio"],
+  "skyspire": ["echoframe-last-signal", "wordfall"],
+  "analysis-idle": ["nebula-foundry", "analysis-ii-lernsystem"]
+}

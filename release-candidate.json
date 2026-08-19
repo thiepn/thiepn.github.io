@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "release": "1.0.0",
+  "phase": 15,
+  "featureFreeze": true,
+  "expected": {
+    "registeredProjects": 20,
+    "listedProjects": 19,
+    "collections": 6,
+    "featuredProjects": 7
+  },
+  "severityGate": {
+    "critical": 0,
+    "high": 0
+  },
+  "requiredPublicRoutes": [
+    "/",
+    "/projects/",
+    "/collections/",
+    "/catalogue.json"
+  ],
+  "releaseChecks": [
+    "generated-output-consistency",
+    "catalogue-integrity",
+    "search-all-projects",
+    "launch-all-listed-artifacts",
+    "theme-persistence",
+    "back-restoration",
+    "no-js",
+    "media-failure-fallback",
+    "github-metadata-failure-fallback",
+    "mobile",
+    "browser-matrix",
+    "accessibility",
+    "performance",
+    "visual-regression",
+    "production-custom-domain",
+    "post-deploy-smoke"
+  ]
+}

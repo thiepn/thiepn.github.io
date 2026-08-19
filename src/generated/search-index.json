@@ -1,0 +1,926 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    {
+      "kind": "project",
+      "code": "L-006",
+      "slug": "algodat-study-system",
+      "title": "AlgoDat Study System",
+      "subtitle": "Algorithms study environment",
+      "summary": "Learn algorithms and data structures through structured theory, visual steps, exercises, and exam-oriented review.",
+      "aliases": [
+        "algodat",
+        "algorithms and data structures",
+        "algorithms study"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "algorithms",
+        "computer-science",
+        "exam-prep"
+      ],
+      "collections": [
+        "Mathematics & Computer Science"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/algodat",
+      "liveUrl": "https://thiepn.dev/algodat/",
+      "accentLight": "#A0522A",
+      "accentDark": "#F39662",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-009",
+      "slug": "analysis-idle",
+      "title": "Analysis Idle",
+      "subtitle": "Mathematical incremental experiment",
+      "summary": "Explore mathematical progression through an experimental incremental-game structure inspired by Analysis.",
+      "aliases": [
+        "analysis idle",
+        "math idle",
+        "incremental analysis"
+      ],
+      "category": "games",
+      "status": "experiment",
+      "tags": [
+        "mathematics",
+        "incremental",
+        "game"
+      ],
+      "collections": [
+        "Browser Games",
+        "Mathematics & Computer Science"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/Analysis-Idle",
+      "liveUrl": "https://thiepn.dev/Analysis-Idle/",
+      "accentLight": "#684D87",
+      "accentDark": "#B78CE4",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-004",
+      "slug": "analysis-ii-klausurlabor",
+      "title": "Analysis II Klausurlabor",
+      "subtitle": "Analysis II exam laboratory",
+      "summary": "Study Analysis II through exam-style problems, interactive mathematics, and targeted practice.",
+      "aliases": [
+        "analysis2",
+        "analysis ii",
+        "klausurlabor",
+        "analysis exam"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "mathematics",
+        "analysis",
+        "exam-prep"
+      ],
+      "collections": [
+        "Mathematics & Computer Science"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/analysis2",
+      "liveUrl": "https://thiepn.dev/analysis2/",
+      "accentLight": "#245D8A",
+      "accentDark": "#68B4EF",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-005",
+      "slug": "analysis-ii-lernsystem",
+      "title": "Analysis II Lernsystem",
+      "subtitle": "Comprehensive Analysis II study system",
+      "summary": "Connect definitions, theorems, proofs, exercises, and exam practice in a structured Analysis II study system.",
+      "aliases": [
+        "analysis2ss",
+        "analysis study system",
+        "analysis ii lernsystem"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "mathematics",
+        "analysis",
+        "study"
+      ],
+      "collections": [
+        "Mathematics & Computer Science"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/analysis2ss",
+      "liveUrl": "https://thiepn.dev/analysis2ss/",
+      "accentLight": "#6E52A0",
+      "accentDark": "#B79BEA",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "T-003",
+      "slug": "clean30",
+      "title": "Clean30",
+      "subtitle": "Guided cleaning workflow",
+      "summary": "Turn household cleaning into a clear, paced sequence of focused tasks and visible progress.",
+      "aliases": [
+        "cleaning",
+        "cleaning app",
+        "30 minute clean"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "cleaning",
+        "productivity",
+        "routines"
+      ],
+      "collections": [
+        "Productivity & Creation"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/clean30",
+      "liveUrl": "https://thiepn.dev/clean30/",
+      "accentLight": "#32745A",
+      "accentDark": "#65D19F",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-003",
+      "slug": "curio",
+      "title": "Curio",
+      "subtitle": "Auction appraisal strategy",
+      "summary": "Inspect unusual objects, estimate their value, and compete through calculated auction decisions.",
+      "aliases": [
+        "objects of questionable value",
+        "auction game",
+        "appraisal game"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "strategy",
+        "auction",
+        "game"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet"
+      ],
+      "repo": "thiepn/curio",
+      "liveUrl": "https://thiepn.dev/curio/",
+      "accentLight": "#865934",
+      "accentDark": "#D59C67",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-007",
+      "slug": "echoframe-last-signal",
+      "title": "ECHOFRAME: LAST SIGNAL",
+      "subtitle": "Temporal action roguelite",
+      "summary": "Fight through runs built around temporal echoes that repeat and combine your previous actions.",
+      "aliases": [
+        "echoframe",
+        "last signal",
+        "echo game"
+      ],
+      "category": "games",
+      "status": "beta",
+      "tags": [
+        "action",
+        "roguelite",
+        "game"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop"
+      ],
+      "repo": "thiepn/echoframe",
+      "liveUrl": "https://thiepn.dev/echoframe/",
+      "accentLight": "#5F5167",
+      "accentDark": "#B9A6C4",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-003",
+      "slug": "franzosisch-flashcards",
+      "title": "Französisch Flashcards",
+      "subtitle": "Focused vocabulary flashcards",
+      "summary": "A lightweight French flashcard trainer for direct vocabulary review and recall practice.",
+      "aliases": [
+        "french2.2",
+        "french flashcards",
+        "franzosisch flashcards"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "french",
+        "vocabulary",
+        "study"
+      ],
+      "collections": [
+        "French Learning"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/french2.2",
+      "liveUrl": "https://thiepn.dev/french2.2/",
+      "accentLight": "#39689C",
+      "accentDark": "#79B5F8",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-001",
+      "slug": "french-3000",
+      "title": "French 3000",
+      "subtitle": "French vocabulary trainer",
+      "summary": "Build practical French vocabulary through focused flashcards, context, and spaced repetition.",
+      "aliases": [
+        "french vocabulary",
+        "vocab",
+        "flashcards",
+        "srs"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "french",
+        "vocabulary",
+        "study"
+      ],
+      "collections": [
+        "French Learning"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/french3000",
+      "liveUrl": "https://thiepn.dev/french3000/",
+      "accentLight": "#B63C3C",
+      "accentDark": "#FF7777",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-002",
+      "slug": "le-carnet-francais",
+      "title": "Le Carnet Français",
+      "subtitle": "French learning companion",
+      "summary": "Practice French grammar, vocabulary, and structured lessons in one course-oriented learning environment.",
+      "aliases": [
+        "french-a1-a2",
+        "french companion",
+        "french course"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "french",
+        "grammar",
+        "study"
+      ],
+      "collections": [
+        "French Learning"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/french-a1-a2",
+      "liveUrl": "https://thiepn.dev/french-a1-a2/",
+      "accentLight": "#76508D",
+      "accentDark": "#C89AE2",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-006",
+      "slug": "ligo-quizabend",
+      "title": "LiGo Quizabend",
+      "subtitle": "Community quiz-night system",
+      "summary": "Run a hosted quiz night with teams, timers, game formats, scoring, presentation, and clear rules.",
+      "aliases": [
+        "ligoquiz",
+        "quiz night",
+        "quizabend",
+        "community quiz"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "quiz",
+        "community",
+        "game"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/ligoquiz",
+      "liveUrl": "https://thiepn.dev/ligoquiz/",
+      "accentLight": "#84406F",
+      "accentDark": "#E58BC3",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "T-002",
+      "slug": "manuscript",
+      "title": "Manuscript",
+      "subtitle": "Local-first publishing studio",
+      "summary": "Write in Markdown and turn structured source into polished documents without leaving the browser.",
+      "aliases": [
+        "markdown",
+        "markdown editor",
+        "writing",
+        "publishing"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "markdown",
+        "documents",
+        "productivity"
+      ],
+      "collections": [
+        "Productivity & Creation"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/manuscript",
+      "liveUrl": "https://thiepn.dev/manuscript/",
+      "accentLight": "#765328",
+      "accentDark": "#D5AF6C",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-004",
+      "slug": "nebula-foundry",
+      "title": "Nebula Foundry",
+      "subtitle": "Cosmic incremental factory",
+      "summary": "Build an expanding cosmic production system that accelerates from careful upgrades into extreme automation.",
+      "aliases": [
+        "nebula",
+        "incremental idle",
+        "idle game"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "incremental",
+        "idle",
+        "game"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/nebula",
+      "liveUrl": "https://thiepn.dev/nebula/",
+      "accentLight": "#6551A5",
+      "accentDark": "#A58BFF",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "T-001",
+      "slug": "pdf-studio",
+      "title": "PDF Studio",
+      "subtitle": "Browser PDF workspace",
+      "summary": "Edit, organize, annotate, and transform PDFs directly in the browser.",
+      "aliases": [
+        "pdf",
+        "pdf editor",
+        "browser pdf editor"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "pdf",
+        "documents",
+        "productivity"
+      ],
+      "collections": [
+        "Productivity & Creation"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/pdf",
+      "liveUrl": "https://thiepn.dev/pdf/",
+      "accentLight": "#176FA6",
+      "accentDark": "#55C9FF",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-008",
+      "slug": "skyspire",
+      "title": "Skyspire",
+      "subtitle": "Vertical platform challenge",
+      "summary": "Climb upward through a precision platforming run where mistakes quickly turn height into risk.",
+      "aliases": [
+        "sky spire",
+        "platformer",
+        "vertical game"
+      ],
+      "category": "games",
+      "status": "beta",
+      "tags": [
+        "platformer",
+        "arcade",
+        "game"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "mobile"
+      ],
+      "repo": "thiepn/skyspire",
+      "liveUrl": "https://thiepn.dev/skyspire/",
+      "accentLight": "#28717B",
+      "accentDark": "#62CEDB",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-005",
+      "slug": "the-bible-challenge",
+      "title": "The Bible Challenge",
+      "subtitle": "Bible quiz collection",
+      "summary": "Play Bible knowledge challenges across multiple collections and modes in a browser-based quiz system.",
+      "aliases": [
+        "tbc",
+        "bible quiz",
+        "bible challenge"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "bible",
+        "quiz",
+        "game"
+      ],
+      "collections": [
+        "Browser Games",
+        "Bible & Faith"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/tbc",
+      "liveUrl": "https://thiepn.dev/tbc/",
+      "accentLight": "#806128",
+      "accentDark": "#DFC26A",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-007",
+      "slug": "tms60",
+      "title": "TMS60",
+      "subtitle": "Bible verse memorization system",
+      "summary": "Memorize and maintain a structured set of Bible verses through focused recall and review.",
+      "aliases": [
+        "bible memorization",
+        "verse memory",
+        "topical memory system",
+        "tms"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "bible",
+        "memorization",
+        "study"
+      ],
+      "collections": [
+        "Bible & Faith"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/tms60",
+      "liveUrl": "https://thiepn.dev/tms60/",
+      "accentLight": "#53683C",
+      "accentDark": "#9CC36E",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-002",
+      "slug": "wordfall",
+      "title": "Wordfall",
+      "subtitle": "Orbital typing defense",
+      "summary": "Protect the field by typing incoming threats before they reach their destination.",
+      "aliases": [
+        "word fall",
+        "orbital typing defense",
+        "typing defense"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "typing",
+        "arcade",
+        "game"
+      ],
+      "collections": [
+        "Browser Games",
+        "Typing Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop"
+      ],
+      "repo": "thiepn/wordfall",
+      "liveUrl": "https://thiepn.dev/wordfall/",
+      "accentLight": "#23678E",
+      "accentDark": "#5BC6FA",
+      "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-001",
+      "slug": "wordstrike",
+      "title": "WORDSTRIKE",
+      "subtitle": "Arcade typing game",
+      "summary": "Destroy incoming words through fast, accurate typing and build increasingly demanding combos.",
+      "aliases": [
+        "word strike",
+        "typing arcade",
+        "typing game"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "typing",
+        "arcade",
+        "game"
+      ],
+      "collections": [
+        "Browser Games",
+        "Typing Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop"
+      ],
+      "repo": "thiepn/WORDSTRIKE",
+      "liveUrl": "https://thiepn.dev/WORDSTRIKE/",
+      "accentLight": "#006977",
+      "accentDark": "#00F5FF",
+      "updatedAt": "2026-08-18"
+    }
+  ],
+  "collections": [
+    {
+      "kind": "collection",
+      "code": "C-004",
+      "slug": "bible-faith",
+      "title": "Bible & Faith",
+      "summary": "Interactive projects centered on Scripture knowledge, memorization, and Christian learning.",
+      "editorialNote": "Two different ways of returning to Scripture repeatedly: TMS60 concentrates on exact long-term verse recall, while The Bible Challenge turns biblical knowledge into active quiz play. Memorization and retrieval practice reinforce each other without becoming the same product.",
+      "projects": [
+        "tms60",
+        "the-bible-challenge"
+      ],
+      "projectTitles": [
+        "TMS60",
+        "The Bible Challenge"
+      ],
+      "keywords": [
+        "Bible",
+        "Scripture",
+        "memorization",
+        "quiz",
+        "Christian learning",
+        "retrieval"
+      ],
+      "relationshipLabels": [
+        "Memorization ↔ retrieval play",
+        "TMS60 develops exact verse recall; The Bible Challenge exercises broader Scripture knowledge under playful retrieval pressure."
+      ]
+    },
+    {
+      "kind": "collection",
+      "code": "C-003",
+      "slug": "browser-games",
+      "title": "Browser Games",
+      "summary": "Games and hosted play experiences that run directly in the browser, from arcade typing to long-form systems.",
+      "editorialNote": "A cross-section of how far a static browser can be pushed: arcade reflex games, social quiz formats, long-form incremental systems, atmospheric experiments, and progression-heavy action. The collection is organized by play pattern rather than by a single genre.",
+      "projects": [
+        "wordstrike",
+        "wordfall",
+        "curio",
+        "nebula-foundry",
+        "the-bible-challenge",
+        "ligo-quizabend",
+        "echoframe-last-signal",
+        "skyspire",
+        "analysis-idle"
+      ],
+      "projectTitles": [
+        "WORDSTRIKE",
+        "Wordfall",
+        "Curio",
+        "Nebula Foundry",
+        "The Bible Challenge",
+        "LiGo Quizabend",
+        "ECHOFRAME: LAST SIGNAL",
+        "Skyspire",
+        "Analysis Idle"
+      ],
+      "keywords": [
+        "browser games",
+        "arcade",
+        "quiz",
+        "incremental",
+        "strategy",
+        "typing",
+        "progression"
+      ],
+      "relationshipLabels": [
+        "Typing as the core mechanic",
+        "Both transform keyboard accuracy into immediate game action, but use different spatial pressure models.",
+        "Systems & progression",
+        "Both ask the player to read systems, make trade-offs, and build value over repeated decisions.",
+        "Social quiz play",
+        "Both turn questions into group-friendly play, with one centered on Bible knowledge and the other on flexible quiz-night hosting.",
+        "Atmosphere & movement",
+        "These projects use audiovisual atmosphere and continuous movement to make browser play feel more spatial and game-like.",
+        "Long-run progression",
+        "Both support sessions where accumulating progression changes how later play feels.",
+        "Incremental systems",
+        "Analysis Idle and Nebula Foundry both use compounding progression loops, with different themes and pacing.",
+        "High-pressure interaction",
+        "Fast input and immediate feedback create pressure in both projects, despite very different mechanics."
+      ]
+    },
+    {
+      "kind": "collection",
+      "code": "C-001",
+      "slug": "french-learning",
+      "title": "French Learning",
+      "summary": "Vocabulary, structured practice, and complementary systems for learning French.",
+      "editorialNote": "Three complementary layers of language acquisition: a broad spaced-repetition vocabulary base, a guided course-like notebook, and a lightweight flashcard set for focused review. The collection moves from exposure to structured practice to rapid retrieval.",
+      "projects": [
+        "french-3000",
+        "le-carnet-francais",
+        "franzosisch-flashcards"
+      ],
+      "projectTitles": [
+        "French 3000",
+        "Le Carnet Français",
+        "Französisch Flashcards"
+      ],
+      "keywords": [
+        "vocabulary",
+        "spaced repetition",
+        "A1",
+        "A2",
+        "French",
+        "review"
+      ],
+      "relationshipLabels": [
+        "Vocabulary → guided practice",
+        "French 3000 supplies breadth; Le Carnet places that vocabulary inside structured grammar, reading, and course practice.",
+        "Course practice → rapid review",
+        "The notebook builds context while the flashcards isolate weak items for quick retrieval practice.",
+        "Focused review → wider SRS",
+        "Small targeted review feeds back into the larger vocabulary system when broader retention work is needed."
+      ]
+    },
+    {
+      "kind": "collection",
+      "code": "C-002",
+      "slug": "mathematics-cs",
+      "title": "Mathematics & Computer Science",
+      "summary": "Study systems and experiments spanning university mathematics, algorithms, and exam preparation.",
+      "editorialNote": "A study-system cluster built around understanding difficult university material from different angles: exam simulation, structured theory, algorithm practice, and an experimental game-like interpretation of analysis. Together they form a loop from comprehension to retrieval to timed application.",
+      "projects": [
+        "analysis-ii-klausurlabor",
+        "analysis-ii-lernsystem",
+        "algodat-study-system",
+        "analysis-idle"
+      ],
+      "projectTitles": [
+        "Analysis II Klausurlabor",
+        "Analysis II Lernsystem",
+        "AlgoDat Study System",
+        "Analysis Idle"
+      ],
+      "keywords": [
+        "mathematics",
+        "algorithms",
+        "exam preparation",
+        "analysis",
+        "computer science",
+        "study systems"
+      ],
+      "relationshipLabels": [
+        "Timed application ↔ theory",
+        "Klausurlabor stresses exam execution; Lernsystem supplies the underlying definitions, theorems, and conceptual structure.",
+        "Exam craft across subjects",
+        "Both systems convert university material into deliberate exam-style practice, but for different technical domains.",
+        "Formal concepts → playful systems",
+        "Analysis Idle reinterprets mathematical progression in a game-like form after the formal learning system establishes the concepts.",
+        "Algorithms ↔ systems thinking",
+        "Both reward recognizing structures and progression rules, one academically and one experimentally."
+      ]
+    },
+    {
+      "kind": "collection",
+      "code": "C-005",
+      "slug": "productivity-creation",
+      "title": "Productivity & Creation",
+      "summary": "Practical tools for documents, publishing, and structured everyday workflows.",
+      "editorialNote": "Three tools built around turning messy inputs into controlled outputs: PDF Studio manipulates finished documents, Manuscript turns source text into publication-ready pages, and Clean30 turns an everyday environment into a finite workflow. The shared idea is structured transformation.",
+      "projects": [
+        "pdf-studio",
+        "manuscript",
+        "clean30"
+      ],
+      "projectTitles": [
+        "PDF Studio",
+        "Manuscript",
+        "Clean30"
+      ],
+      "keywords": [
+        "documents",
+        "publishing",
+        "workflow",
+        "productivity",
+        "local-first",
+        "creation"
+      ],
+      "relationshipLabels": [
+        "Finished documents ↔ source publishing",
+        "PDF Studio operates on existing documents; Manuscript creates polished documents from structured source.",
+        "Structured workflow",
+        "Both reduce a larger task into explicit ordered steps with visible progress toward a finished state.",
+        "Local task completion",
+        "Both emphasize direct local control, clear completion states, and practical work over account-driven collaboration."
+      ]
+    },
+    {
+      "kind": "collection",
+      "code": "C-006",
+      "slug": "typing-games",
+      "title": "Typing Games",
+      "summary": "Fast browser games where keyboard accuracy and reaction speed are the core mechanic.",
+      "editorialNote": "Two experiments in making typing itself the game rather than a supporting control scheme. WORDSTRIKE uses whole incoming words and a central core; Wordfall turns typed targets into a different spatial defense rhythm. The connection is mechanical, not merely thematic.",
+      "projects": [
+        "wordstrike",
+        "wordfall"
+      ],
+      "projectTitles": [
+        "WORDSTRIKE",
+        "Wordfall"
+      ],
+      "keywords": [
+        "typing",
+        "keyboard",
+        "arcade",
+        "accuracy",
+        "reaction",
+        "word games"
+      ],
+      "relationshipLabels": [
+        "Typing-driven defense",
+        "Both convert correct keyboard input into defense actions while using distinct target motion and pacing."
+      ]
+    }
+  ],
+  "featured": [
+    "pdf-studio",
+    "manuscript",
+    "clean30",
+    "wordstrike",
+    "french-3000",
+    "ligo-quizabend",
+    "analysis-ii-klausurlabor"
+  ]
+}

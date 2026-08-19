@@ -1,0 +1,49 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import PreviewAperture from '../artifacts/PreviewAperture.astro';
+interface Props { project: CollectionEntry<'projects'>; }
+const { project } = Astro.props;
+const p = project.data;
+const gallery = p.gallery ?? [];
+---
+{gallery.length > 0 && (
+<section class="artifact-gallery" aria-labelledby="gallery-title" data-artifact-gallery>
+  <header class="gallery-head">
+    <span>03</span><h2 id="gallery-title">Gallery</h2><span>{String(gallery.length).padStart(2,'0')} FIGURES</span>
+  </header>
+  <div class="gallery-grid">
+    {gallery.map((figure, index) => (
+      <figure class="gallery-figure">
+        <button class="gallery-figure__open" type="button" data-gallery-open data-gallery-label={`FIG.${String(index+1).padStart(2,'0')} / ${figure.label}`} data-gallery-caption={figure.caption} aria-label={`Inspect figure ${index+1}: ${figure.label}`}>
+          <span class="gallery-figure__visual"><PreviewAperture project={project} size="standard" variant={figure.variant} /></span>
+          <span class="gallery-figure__inspect">INSPECT ↗</span>
+        </button>
+        <figcaption><span>FIG.{String(index+1).padStart(2,'0')}</span><strong>{figure.label}</strong><p>{figure.caption}</p></figcaption>
+      </figure>
+    ))}
+  </div>
+  <dialog class="gallery-inspector" data-gallery-dialog aria-labelledby="gallery-dialog-title">
+    <div class="gallery-inspector__bar"><span id="gallery-dialog-title" data-gallery-dialog-label>FIGURE</span><button type="button" data-gallery-close>CLOSE ×</button></div>
+    <div class="gallery-inspector__visual" data-gallery-dialog-visual></div>
+    <p data-gallery-dialog-caption></p>
+  </dialog>
+</section>
+)}
+<style>
+  .artifact-gallery{padding:var(--space-9) 0}
+  .gallery-head{display:grid;grid-template-columns:80px 1fr auto;gap:var(--space-4);align-items:baseline;padding-bottom:var(--space-3);border-bottom:1px solid var(--line-strong)}
+  .gallery-head>span{font:500 .66rem var(--font-meta);letter-spacing:.075em;color:var(--ink-muted)}.gallery-head h2{font-size:var(--text-h2);letter-spacing:-.04em}
+  .gallery-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--space-5);padding-top:var(--space-6)}
+  .gallery-figure{grid-column:span 4;margin:0;min-width:0}.gallery-figure:nth-child(2){transform:translateY(var(--space-5))}
+  .gallery-figure__open{position:relative;display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:inherit;border-radius:0;cursor:zoom-in}.gallery-figure__open:focus-visible{outline:2px solid var(--project-accent);outline-offset:4px}
+  .gallery-figure__visual{display:block}.gallery-figure__inspect{position:absolute;right:10px;top:10px;z-index:20;padding:5px 7px;background:var(--surface-1);color:var(--ink);border:1px solid var(--line-strong);font:600 .55rem var(--font-meta);letter-spacing:.06em;opacity:0;transition:opacity var(--motion-fast) var(--ease-standard)}
+  .gallery-figure__open:hover .gallery-figure__inspect,.gallery-figure__open:focus-visible .gallery-figure__inspect{opacity:1}
+  .gallery-figure figcaption{display:grid;grid-template-columns:62px 1fr;gap:6px var(--space-3);padding-top:12px;border-top:1px solid var(--line)}.gallery-figure figcaption span{grid-row:1/3;font:500 .6rem var(--font-meta);color:var(--ink-muted)}.gallery-figure figcaption strong{font-size:.9rem}.gallery-figure figcaption p{font-size:.78rem;line-height:1.45;color:var(--ink-secondary)}
+  .gallery-inspector{width:min(1180px,calc(100vw - 40px));max-width:none;border:1px solid var(--line-strong);padding:0;background:var(--canvas);color:var(--ink)}.gallery-inspector::backdrop{background:rgb(0 0 0 / .72)}
+  .gallery-inspector__bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--line);font:500 .63rem var(--font-meta);letter-spacing:.07em}.gallery-inspector__bar button{min-height:38px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+  .gallery-inspector__visual{padding:clamp(12px,3vw,32px)}.gallery-inspector__visual :global(.aperture){max-height:72vh;margin:auto}.gallery-inspector>p{padding:0 clamp(12px,3vw,32px) var(--space-5);color:var(--ink-secondary);font-size:.85rem}
+  @media(max-width:800px){.gallery-figure{grid-column:span 6}.gallery-figure:nth-child(2){transform:none}.gallery-figure:last-child:nth-child(odd){grid-column:1/-1;max-width:620px}.gallery-head{grid-template-columns:48px 1fr}.gallery-head>span:last-child{grid-column:2}}
+  @media(max-width:560px){.gallery-grid{display:block}.gallery-figure+.gallery-figure{margin-top:var(--space-6)}.gallery-inspector{width:calc(100vw - 16px)}.gallery-figure__inspect{opacity:1}}
+  @media(prefers-reduced-motion:reduce){.gallery-figure__inspect{transition:none}}
+  @media(forced-colors:active){.gallery-inspector,.gallery-figure__inspect{border:1px solid CanvasText}}
+</style>

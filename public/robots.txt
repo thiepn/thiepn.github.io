@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /dev/
+Sitemap: https://thiepn.dev/sitemap.xml
