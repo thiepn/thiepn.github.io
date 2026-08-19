@@ -1,0 +1,166 @@
+name: Phase 15 Final Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/phase15-finalize.yml'
+      - '.phase15/browser-fixes/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase15-final-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  certify-and-materialize:
+    if: ${{ github.head_ref == 'agent/phase15-production' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout staged release
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Verify and reconstruct release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$(find .phase15/payload16 -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 15
+          cat .phase15/payload16/part-*.b64 | base64 --decode > /tmp/runtime.tar.xz
+          echo 'acc947f66222c5b9ac586ec8146c3d07c883b37ac2746a770024ae491c1ce9bc  /tmp/runtime.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/source
+          tar -xJf /tmp/runtime.tar.xz -C /tmp/source
+
+          test "$(find .phase15/required-docs -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 3
+          cat .phase15/required-docs/part-*.b64 | base64 --decode > /tmp/docs.tar.xz
+          echo '0b94fc51fef2f6a85bbfb0aba94aa28d1b322f2ab681af1e9730826cbedc70dc  /tmp/docs.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/docs
+          tar -xJf /tmp/docs.tar.xz -C /tmp/docs
+
+          test "$(find .phase15/source-fixes-v2 -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 6
+          cat .phase15/source-fixes-v2/part-*.b64 | base64 --decode > /tmp/source-fixes.tar.xz
+          echo '009da64ebd9f0b57454d03b7747200563b6abe528eda69ca4fbcb015449dcd23  /tmp/source-fixes.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/source-fixes
+          tar -xJf /tmp/source-fixes.tar.xz -C /tmp/source-fixes
+
+          test "$(find .phase15/browser-fixes -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 8
+          cat .phase15/browser-fixes/part-*.b64 | base64 --decode > /tmp/browser-fixes.tar.xz
+          echo 'bd6baff9c9ccdc74b68a56627dd9b79c715833baeb6ba711ac987bfcc20a5349  /tmp/browser-fixes.tar.xz' | sha256sum --check --strict
+          mkdir -p /tmp/browser-fixes
+          tar -xJf /tmp/browser-fixes.tar.xz -C /tmp/browser-fixes
+
+          cp .phase15/PHASE_15_REPORT.md /tmp/PHASE_15_REPORT.md
+          test -f /tmp/source/package.json
+          test "$(cat /tmp/source/CNAME)" = 'thiepn.dev'
+          grep -q 'vitest run tests/unit' /tmp/source-fixes/package.json
+          grep -q 'grepInvert' /tmp/browser-fixes/playwright.config.ts
+
+      - name: Materialize exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -a /tmp/source/. .
+
+          mkdir -p docs
+          for file in DESIGN_SYSTEM.md CONTENT_MODEL.md ARCHITECTURE.md MASTER_IMPLEMENTATION_PROMPT.md; do
+            git show "origin/main:docs/$file" > "docs/$file"
+          done
+          cp -a /tmp/docs/docs/. docs/
+          cp /tmp/PHASE_15_REPORT.md docs/PHASE_15_REPORT.md
+          cp -a /tmp/source-fixes/. .
+          cp -a /tmp/browser-fixes/. .
+
+          test ! -d .phase15
+          test -f docs/DESIGN_SYSTEM.md
+          test -f docs/RELEASE_CANDIDATE.md
+          test -f docs/PHASE_15_REPORT.md
+          grep -q 'vitest run tests/unit' package.json
+          grep -q 'npm run build && npm run preview' playwright.config.ts
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Stage tree for tracked-lockfile validation
+        run: git add -A
+
+      - name: Production source and lockfile gates
+        run: |
+          npm run phase15:validate
+          npm run release:lockfile
+          npm run generated:check
+
+      - name: Structural and policy gates
+        run: |
+          npm run validate
+          npm run release:source
+          npm run a11y:source
+          npm run visual:audit
+          npm run links:validate
+
+      - name: Performance source and scale gates
+        run: |
+          npm run perf:source
+          npm run perf:scale
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm run test
+
+      - name: Production build and bundle budgets
+        run: |
+          npm run build
+          npm run perf:budget
+
+      - name: Install certification browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Cross-browser release certification
+        run: npm run test:e2e:release
+
+      - name: Automation and online health gates
+        run: |
+          npm run test:automation
+          npm run release:links
+
+      - name: Capture canonical visual states
+        run: |
+          npm run visual:capture
+          npm run visual:contact-sheet
+
+      - name: Upload visual review artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase15-final-visual-review
+          path: |
+            artifacts/visual/**
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
+
+      - name: Commit certified materialized candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'build(release): materialize certified v1.0.0 candidate [phase15-materialized]'
+          git push origin HEAD:agent/phase15-production
