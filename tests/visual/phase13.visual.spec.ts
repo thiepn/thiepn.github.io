@@ -3,6 +3,18 @@ import config from '../../visual-regression.config.json';
 
 type Target = (typeof config.targets)[number];
 
+const visualStabilityCss = `
+  *,*::before,*::after {
+    animation: none !important;
+    transition: none !important;
+    caret-color: transparent !important;
+  }
+  * {
+    content-visibility: visible !important;
+    contain-intrinsic-size: none !important;
+  }
+`;
+
 async function prepare(page: Page, target: Target) {
   const viewport = target.viewport === 'mobile' ? config.mobileViewport : config.referenceViewport;
   await page.setViewportSize(viewport);
@@ -16,7 +28,7 @@ async function prepare(page: Page, target: Target) {
     await input.fill(('query' in target && target.query) || 'analysis');
     await expect(page.getByRole('dialog', { name: 'Search / The Index' })).toBeVisible();
   }
-  await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' });
+  await page.addStyleTag({ content: visualStabilityCss });
 }
 
 test.describe('Phase 13 canonical visual regression', () => {
