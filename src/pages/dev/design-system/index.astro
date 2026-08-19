@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SectionIndex from '../../../components/index/SectionIndex.astro';
+import StatusLabel from '../../../components/artifacts/StatusLabel.astro';
+import PreviewAperture from '../../../components/artifacts/PreviewAperture.astro';
+import { getPublicProjects } from '../../../lib/catalogue';
+const projects = (await getPublicProjects()).slice(0, 6);
+---
+<BaseLayout title="THE INDEX / DS-01 — THIEPN." description="Internal visual system diagnostics." noindex={true}>
+  <article class="ds shell-wide">
+    <header><p class="section-kicker">DEV / DESIGN SYSTEM</p><h1>THE INDEX<br/>DS-01</h1><p>Production primitives shown together to catch visual drift before it spreads into project pages.</p></header>
+    <section><SectionIndex index="01" title="Typography"/><div class="ds__type"><div class="hero-word">THIEPN.</div><h2>Artifact record heading</h2><h3>Structural subheading</h3><p>Body text is restrained, editorial, and designed to carry explanations without becoming a marketing landing page.</p><span class="meta">T-001 / LIVE / UPDATED 18 AUG 26</span></div></section>
+    <section><SectionIndex index="02" title="Canvas & Ink"/><div class="ds__swatches">{['canvas','canvas-raised','surface-1','surface-2','ink','ink-secondary','ink-muted','line','line-strong'].map((token)=><div><span style={`background:var(--${token})`}></span><code>--{token}</code></div>)}</div></section>
+    <section><SectionIndex index="03" title="Structural Controls"/><div class="ds__controls"><a class="structural-button" href="#">DETAILS →</a><a class="text-link" href="#">SOURCE ↗</a><StatusLabel status="live"/><StatusLabel status="beta"/><StatusLabel status="experiment"/></div></section>
+    <section><SectionIndex index="04" title="Preview Apertures"/><div class="ds__previews">{projects.map((project)=><div><span class="meta">{project.data.code} / {project.data.preview.tier}</span><PreviewAperture project={project} /></div>)}</div></section>
+  </article>
+</BaseLayout>
+<style>
+.ds{padding:var(--space-8) 0 var(--space-10)}.ds>header{padding:var(--space-8) 0 var(--space-9);border-bottom:1px solid var(--line-strong)}.ds>header h1{font-size:clamp(4rem,9vw,9rem);line-height:.8;letter-spacing:-.07em}.ds>header p:last-child{max-width:58ch;margin-top:var(--space-5);color:var(--ink-secondary)}.ds section{padding:var(--space-8) 0}.ds__type{margin-top:var(--space-5);display:grid;gap:var(--space-5)}.ds__type .hero-word{font-size:clamp(4.5rem,12vw,10rem);line-height:.82;letter-spacing:-.07em;font-weight:540}.ds__type p{max-width:65ch}.ds__swatches{display:grid;grid-template-columns:repeat(3,1fr);margin-top:var(--space-5);border-top:1px solid var(--line-strong)}.ds__swatches div{padding:var(--space-4);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.ds__swatches span{display:block;aspect-ratio:3/1;border:1px solid var(--line);margin-bottom:var(--space-3)}.ds__swatches code{font-size:.68rem}.ds__controls{display:flex;flex-wrap:wrap;gap:var(--space-5);align-items:center;margin-top:var(--space-5)}.ds__previews{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-5)}.ds__previews>div{min-width:0}.ds__previews .meta{display:block;margin-bottom:8px}@media(max-width:899px){.ds__previews{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:599px){.ds__swatches,.ds__previews{grid-template-columns:1fr}}
+</style>

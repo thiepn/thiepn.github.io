@@ -1,0 +1,14 @@
+.page-shell {
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  padding-left: max(var(--page-padding), env(safe-area-inset-left));
+  padding-right: max(var(--page-padding), env(safe-area-inset-right));
+}
+
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(16px, 1.5vw, 24px);
+}
+
+.index-grid > * { min-width: 0; }

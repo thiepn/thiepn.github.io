@@ -1,0 +1,110 @@
+---
+import ThemeControl from './ThemeControl.astro';
+const path = Astro.url.pathname;
+const active = (href: string) => {
+  if (href === '/') return path === '/';
+  if (href === '/projects/') return path.startsWith('/projects/') || path.startsWith('/project/');
+  if (href === '/collections/') return path.startsWith('/collections/') || path.startsWith('/collection/');
+  return path.startsWith(href);
+};
+const items = [
+  ['00', 'Index', '/'],
+  ['01', 'Featured', '/#featured'],
+  ['02', 'Projects', '/projects/'],
+  ['03', 'Collections', '/collections/'],
+  ['04', 'Recent', '/#recent'],
+] as const;
+---
+<div class="mobile-menu" data-mobile-menu>
+  <button class="mobile-menu__trigger" type="button" data-mobile-menu-open aria-haspopup="dialog" aria-controls="mobile-navigation">Menu</button>
+  <dialog class="mobile-menu__dialog" id="mobile-navigation" data-mobile-menu-dialog aria-labelledby="mobile-menu-title">
+    <div class="mobile-menu__surface">
+      <header class="mobile-menu__header">
+        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN. Project Index home">THIEPN.</a>
+        <button class="mobile-menu__close" type="button" data-mobile-menu-close aria-label="Close navigation menu">Close</button>
+      </header>
+      <div class="mobile-menu__index">
+        <p class="meta" id="mobile-menu-title">Navigate / The Index</p>
+        <nav aria-label="Mobile navigation">
+          {items.map(([index, label, href]) => (
+            <a class:list={[active(href) && 'is-active']} href={href} aria-current={active(href) ? 'page' : undefined}>
+              <span>{index}</span><strong>{label}</strong><i aria-hidden="true">→</i>
+            </a>
+          ))}
+        </nav>
+      </div>
+      <footer class="mobile-menu__footer">
+        <a href="/projects/" data-catalogue-search-open>Search index →</a>
+        <a href="https://github.com/thiepn">GitHub ↗</a>
+        <ThemeControl />
+      </footer>
+    </div>
+  </dialog>
+  <noscript>
+    <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
+      <a href="/">Index</a><a href="/projects/">Projects</a><a href="/collections/">Collections</a>
+    </nav>
+  </noscript>
+</div>
+
+<script>
+  const roots = document.querySelectorAll<HTMLElement>('[data-mobile-menu]');
+  roots.forEach((root) => {
+    const dialog = root.querySelector<HTMLDialogElement>('[data-mobile-menu-dialog]');
+    const open = root.querySelector<HTMLButtonElement>('[data-mobile-menu-open]');
+    const close = root.querySelector<HTMLButtonElement>('[data-mobile-menu-close]');
+    if (!dialog || !open || !close) return;
+
+    let returnFocus: HTMLElement | null = null;
+    let restoreOnClose = true;
+    const openDialog = () => {
+      returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : open;
+      restoreOnClose = true;
+      if (!dialog.open) {
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      }
+      close.focus();
+    };
+    const closeDialog = () => {
+      if (!dialog.open) return;
+      if (typeof dialog.close === 'function') dialog.close();
+      else { dialog.removeAttribute('open'); dialog.dispatchEvent(new Event('close')); }
+    };
+
+    open.addEventListener('click', openDialog);
+    close.addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener('close', () => { if (restoreOnClose) returnFocus?.focus(); });
+    dialog.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => link.addEventListener('click', () => { restoreOnClose = false; closeDialog(); }));
+  });
+</script>
+
+<style>
+  .mobile-menu{display:none}
+  .mobile-menu__trigger{display:none}.mobile-menu__close{min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--ink);font:500 .68rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase;cursor:pointer}
+  .mobile-menu__dialog{width:100%;max-width:none;height:100vh;height:100dvh;max-height:none;margin:0;padding:0;border:0;background:transparent;color:var(--ink)}
+  .mobile-menu__dialog::backdrop{background:rgb(0 0 0 / 42%)}
+  .mobile-menu__surface{min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:max(10px,env(safe-area-inset-top)) max(var(--page-padding),env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(var(--page-padding),env(safe-area-inset-left));background:var(--canvas)}
+  .mobile-menu__header{min-height:48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line-strong)}
+  .mobile-menu__wordmark{font-size:1.1rem;font-weight:630;letter-spacing:-.05em;text-decoration:none}
+  .mobile-menu__index{padding-top:clamp(40px,10vh,84px)}
+  .mobile-menu__index>p{padding-bottom:var(--space-4);border-bottom:1px solid var(--line-strong);color:var(--ink-muted)}
+  .mobile-menu__index nav{border-bottom:1px solid var(--line-strong)}
+  .mobile-menu__index nav a{display:grid;grid-template-columns:46px minmax(0,1fr) 30px;gap:var(--space-3);align-items:center;min-height:64px;border-bottom:1px solid var(--line);text-decoration:none}
+  .mobile-menu__index nav a:last-child{border-bottom:0}
+  .mobile-menu__index nav span{font:500 .66rem var(--font-meta);letter-spacing:.07em;color:var(--ink-muted)}
+  .mobile-menu__index nav strong{font-size:clamp(1.45rem,7vw,2rem);line-height:1;letter-spacing:-.045em;font-weight:540}
+  .mobile-menu__index nav i{font:500 1rem var(--font-meta);font-style:normal;text-align:right;color:var(--ink-muted)}
+  .mobile-menu__index nav a.is-active strong{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:7px}
+  .mobile-menu__footer{display:grid;grid-template-columns:1fr auto;gap:var(--space-4);align-items:end;padding-top:var(--space-6);border-top:1px solid var(--line-soft)}
+  .mobile-menu__footer>a{min-height:44px;display:flex;align-items:center;font:500 .66rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;text-decoration:none}
+  .mobile-menu__footer>a:nth-child(2){justify-self:end}
+  .mobile-menu__footer :global(.theme-control){grid-column:1/-1;justify-content:space-between;padding-top:var(--space-2)}
+  .mobile-menu__noscript{display:flex;gap:12px;flex-wrap:wrap;padding:8px 0;font:500 .62rem var(--font-meta);letter-spacing:.05em;text-transform:uppercase}
+
+  @media(max-width:650px){.mobile-menu{display:block}:global(html.js) .mobile-menu__trigger{display:block}}
+  @media(forced-colors:active){.mobile-menu__dialog::backdrop{background:Canvas}.mobile-menu__surface{border:1px solid CanvasText}}
+</style>

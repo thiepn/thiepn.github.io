@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "initialJavascriptGzipBytes": 122880,
+  "initialCssGzipBytes": 61440,
+  "initialUsefulTransferGzipBytes": 1048576,
+  "searchIndexGzipBytes": 153600,
+  "singlePreviewVideoBytes": 3145728,
+  "scaleFixtureProjects": 250,
+  "searchAverageMs": 50,
+  "searchP95Ms": 50,
+  "archiveInteractionP95Ms": 50,
+  "coreWebVitals": {
+    "lcpMs": 2500,
+    "inpMs": 200,
+    "cls": 0.1
+  },
+  "preferred": {
+    "lcpMs": 2000,
+    "inpMs": 150,
+    "cls": 0.05
+  },
+  "fontBytes": 184320
+}

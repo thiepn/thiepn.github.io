@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# Astro build output
+.astro/
+dist/
+
+# test output
+playwright-report/
+test-results/
+coverage/
+
+# generated caches
+.cache/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# environment
+.env
+.env.*
+!.env.example

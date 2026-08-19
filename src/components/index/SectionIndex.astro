@@ -1,0 +1,32 @@
+---
+interface Props {
+  index: string;
+  title: string;
+  meta?: string;
+  headingId?: string;
+  headingLevel?: 'h2' | 'h3' | 'div';
+}
+const { index, title, meta, headingId, headingLevel = 'h2' } = Astro.props;
+const Heading = headingLevel;
+---
+<div class="section-index">
+  <div class="section-index__line">
+    <Heading id={headingId} class="section-index__title"><span>{index}</span><span aria-hidden="true">/</span>{title}</Heading>
+    {meta && <span class="section-index__meta">{meta}</span>}
+  </div>
+  <div class="section-index__rule" aria-hidden="true"></div>
+</div>
+
+<style>
+  .section-index { width: 100%; }
+  .section-index__line { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-5); padding-bottom:var(--space-4); }
+  .section-index__title, .section-index__meta { font-family:var(--font-meta); font-size:var(--text-meta); line-height:var(--leading-meta); letter-spacing:.075em; text-transform:uppercase; }
+  .section-index__title { min-width:0; display:flex; gap:.55em; font-weight:500; color:var(--ink); overflow-wrap:anywhere; }
+  .section-index__title span:first-child { min-width:2.1ch;color:var(--ink-muted);font-variant-numeric:tabular-nums; }
+  .section-index__meta { color:var(--ink-muted); text-align:right; }
+  .section-index__rule { position:relative;height:1px;background:var(--line-strong); }
+  .section-index__rule::before,.section-index__rule::after{content:"";position:absolute;top:-2px;width:5px;height:5px;background:var(--canvas);border:1px solid var(--line-strong)}
+  .section-index__rule::before{left:0}.section-index__rule::after{right:0}
+  @media(max-width:599px){.section-index__line{gap:var(--space-3)}.section-index__meta{font-size:.64rem}}
+  @media(max-width:379px){.section-index__line{align-items:flex-start;flex-wrap:wrap}.section-index__meta{width:100%;padding-left:calc(2ch + .55em);text-align:left}}
+</style>

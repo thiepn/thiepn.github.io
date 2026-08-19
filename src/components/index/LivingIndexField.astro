@@ -1,0 +1,58 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import PreviewAperture from '../artifacts/PreviewAperture.astro';
+import { FEATURES } from '../../data/features';
+interface Props { projects: CollectionEntry<'projects'>[]; }
+const { projects } = Astro.props;
+---
+<div
+  class="index-field"
+  role="group"
+  aria-label="Selected project fragments"
+  data-living-index
+  data-scanner-enabled={String(FEATURES.livingIndexScanner)}
+  data-proximity-enabled={String(FEATURES.proximityActivation)}
+>
+  {projects.slice(0,7).map((project,index)=>
+    <a
+      class:list={["index-fragment",`index-fragment--${index+1}`]}
+      href={`/project/${project.data.slug}/`}
+      aria-label={`View ${project.data.title} details`}
+      data-index-fragment
+      data-awake="false"
+      style={`--project-accent-light:${project.data.accent.light};--project-accent-dark:${project.data.accent.dark};`}
+    >
+      <span class="index-fragment__stage" data-index-fragment-stage>
+        <span class="index-fragment__label"><b>{project.data.code}</b><i>{project.data.title}</i></span>
+        <PreviewAperture project={project} size="compact" />
+      </span>
+    </a>
+  )}
+  <span class="index-field__scanner" data-index-scanner aria-hidden="true"></span>
+  <span class="index-field__mark index-field__mark--a registration-mark" aria-hidden="true"></span>
+  <span class="index-field__mark index-field__mark--b registration-mark" aria-hidden="true"></span>
+</div>
+<style>
+  .index-field{--field-resolve:0;position:relative;height:360px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);background-size:64px 64px;background-position:-1px -1px;overflow:hidden;isolation:isolate}
+  .index-fragment{--proximity:0;--proximity-x:0px;--proximity-y:0px;--project-accent:var(--project-accent-light);position:absolute;display:block;text-decoration:none;opacity:calc(.58 + var(--proximity)*.42 - var(--field-resolve)*.18);filter:grayscale(calc(.82 - var(--proximity)*.82));transform:translate(var(--proximity-x),var(--proximity-y));transition:opacity var(--motion-standard) var(--ease-standard),filter var(--motion-standard) var(--ease-standard),transform var(--motion-fast) var(--ease-standard)}
+  :global(html[data-theme="dark"]) .index-fragment{--project-accent:var(--project-accent-dark)}
+  .index-fragment__stage{position:relative;display:block;transform:translateY(calc(var(--field-resolve)*8px));transition:transform var(--motion-layout) var(--ease-standard)}
+  .index-fragment__stage::after{content:"";position:absolute;left:0;right:0;top:-1px;height:2px;background:var(--project-accent);transform:scaleX(0);transform-origin:left center;transition:transform var(--motion-standard) var(--ease-enter)}
+  .index-fragment[data-awake="true"]{--proximity:1!important;opacity:calc(1 - var(--field-resolve)*.22);filter:none}
+  .index-fragment[data-awake="true"] .index-fragment__stage::after,.index-fragment:focus-visible .index-fragment__stage::after{transform:scaleX(1)}
+  .index-fragment__label{position:absolute;z-index:4;top:-18px;left:0;display:flex;gap:7px;font:500 .54rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;white-space:nowrap}
+  .index-fragment__label b{color:var(--project-accent);transition:color var(--motion-standard) var(--ease-standard)}
+  .index-fragment__label i{font-style:normal;color:var(--ink-muted);opacity:calc(.45 + var(--proximity)*.55);transition:opacity var(--motion-standard) var(--ease-standard),color var(--motion-standard) var(--ease-standard)}
+  .index-fragment[data-awake="true"] .index-fragment__label i{color:var(--ink-secondary);opacity:1}
+  .index-fragment :global(.aperture){border:1px solid var(--line-strong)}
+  .index-fragment:focus-visible{outline:2px solid var(--project-accent);outline-offset:4px}
+  .index-fragment--1{width:210px;right:7%;top:42px}.index-fragment--2{width:175px;left:7%;top:96px}.index-fragment--3{width:138px;left:40%;top:28px}.index-fragment--4{width:145px;right:28%;bottom:32px}.index-fragment--5{width:132px;left:24%;bottom:22px}.index-fragment--6{width:112px;right:2%;bottom:18px}.index-fragment--7{width:105px;left:1%;bottom:28px}
+  .index-field__mark{position:absolute;color:var(--line-strong);opacity:calc(1 - var(--field-resolve)*.55)}.index-field__mark--a{left:34%;top:44%}.index-field__mark--b{right:22%;top:66%}
+  .index-field__scanner{--scan-x:50%;position:absolute;z-index:8;inset:0 auto 0 var(--scan-x);width:1px;pointer-events:none;background:linear-gradient(to bottom,transparent 0,var(--line-strong) 16%,var(--line-strong) 84%,transparent 100%);opacity:0;transform:translateX(-.5px);transition:opacity var(--motion-fast) linear}
+  .index-field__scanner::after{content:"";position:absolute;top:0;left:-3px;width:7px;height:1px;background:var(--ink-muted)}
+  @media(hover:none),(pointer:coarse){.index-fragment{opacity:calc(.76 - var(--field-resolve)*.12);filter:grayscale(.45);transform:none}.index-fragment[data-awake="true"]{opacity:1;filter:none}.index-field__scanner{display:none}}
+  @media(max-width:900px){.index-field{height:300px}.index-fragment--1{width:180px}.index-fragment--2{width:145px}.index-fragment--3{width:120px}.index-fragment--4{width:125px}}
+  @media(max-width:599px){.index-field{height:230px;margin-inline:calc(var(--page-padding)*-1);border-inline:0;background-size:48px 48px}.index-fragment__label i{display:none}.index-fragment--1{width:140px;right:-18px;top:38px}.index-fragment--2{width:125px;left:-22px;top:78px}.index-fragment--3{width:96px;left:40%;top:20px}.index-fragment--4{width:110px;right:24%;bottom:16px}.index-fragment--5{width:90px;left:16%;bottom:8px}.index-fragment--6,.index-fragment--7{display:none}}
+  @media(prefers-reduced-motion:reduce){.index-fragment,.index-fragment__stage,.index-fragment__stage::after,.index-fragment__label i{transition:none!important}.index-fragment{opacity:.78;filter:grayscale(.35);transform:none!important}.index-field__scanner{display:none}.index-fragment[data-awake="true"]{opacity:.78;filter:grayscale(.35)}}
+  @media(forced-colors:active){.index-field{background-image:none}.index-fragment{filter:none;opacity:1}.index-fragment :global(.aperture){border-color:CanvasText}.index-fragment__stage::after,.index-field__scanner{background:Highlight}.index-fragment__label b{color:Highlight}}
+</style>

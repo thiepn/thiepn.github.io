@@ -1,0 +1,20 @@
+{
+  "thiepn/pdf": {
+    "name": "pdf",
+    "full_name": "thiepn/pdf",
+    "private": false,
+    "archived": false,
+    "disabled": false,
+    "default_branch": "main",
+    "language": "TypeScript",
+    "pushed_at": "2026-08-18T12:00:00Z",
+    "updated_at": "2026-08-18T12:00:00Z",
+    "created_at": "2026-01-01T00:00:00Z",
+    "homepage": "https://thiepn.github.io/pdf/",
+    "has_pages": true,
+    "topics": ["pdf", "local-first"],
+    "size": 1024,
+    "stargazers_count": 0,
+    "visibility": "public"
+  }
+}

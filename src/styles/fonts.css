@@ -1,0 +1,11 @@
+/*
+  THE INDEX typography is self-hosted at build time through Fontsource.
+  Astro/Vite emits the WOFF2 assets with the static site; there is no runtime
+  font CDN request. Instrument Sans carries the editorial/UI hierarchy and
+  IBM Plex Mono is reserved for accession codes, metadata, and controls.
+*/
+
+:root {
+  --font-ui: "Instrument Sans Variable", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-meta: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}

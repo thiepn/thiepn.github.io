@@ -1,0 +1,47 @@
+import { expect, test } from '@playwright/test';
+
+test('renders catalogue-derived Phase 1 index counts', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/THIEPN/);
+  await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
+  await expect(page.getByText('019', { exact: true })).toBeVisible();
+  await expect(page.getByText('016', { exact: true })).toBeVisible();
+});
+
+test('generates public artifact routes but not hold records', async ({ page }) => {
+  const publicResponse = await page.goto('/project/pdf-studio/');
+  expect(publicResponse?.ok()).toBe(true);
+  await expect(page.getByRole('heading', { name: 'PDF Studio' })).toBeVisible();
+
+  const holdResponse = await page.goto('/project/markdown-guide/');
+  expect(holdResponse?.status()).toBe(404);
+});
+
+test('generates collection routes from collection records', async ({ page }) => {
+  const response = await page.goto('/collection/french-learning/');
+  expect(response?.ok()).toBe(true);
+  await expect(page.getByRole('heading', { name: 'French Learning' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'French 3000' })).toBeVisible();
+});
+
+test('theme preference persists', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('320px viewport does not create page-level horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+});
+
+test('unknown routes use the uncatalogued language', async ({ page }) => {
+  const response = await page.goto('/definitely-not-indexed/');
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: 'This artifact does not exist.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Return to index/ })).toBeVisible();
+});

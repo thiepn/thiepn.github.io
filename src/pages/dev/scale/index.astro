@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ArchiveControls from '../../../components/archive/ArchiveControls.astro';
+import fixture from '../../../../tests/fixtures/catalogue-250.json';
+
+type FixtureProject = {
+  kind:'project'; code:string; slug:string; title:string; subtitle:string; summary:string; aliases:string[];
+  category:string; status:string; tags:string[]; collections:string[]; liveUrl:string; accentLight:string; accentDark:string; updatedAt:string;
+};
+const items = fixture as FixtureProject[];
+const projects = items.map((item) => ({ ...item, capabilityTags: [], platforms: [], repo: null }));
+const payload = JSON.stringify({ projects, curatedOrder: projects.map((project) => project.slug) }).replace(/</g,'\\u003c');
+---
+<BaseLayout title="Scale Harness — THIEPN." description="Internal 250-artifact archive/render harness." noindex={true}>
+  <article class="scale-harness shell-wide">
+    <header>
+      <div><p class="section-kicker">DEV / PERFORMANCE</p><h1>250 ARTIFACT<br/>SCALE HARNESS</h1><p>Real ArchiveController stress surface for filtering, sorting, lazy List construction, paint containment and responsive scrolling. Excluded from public discovery.</p></div>
+      <dl><div><dt>Artifacts</dt><dd>{items.length}</dd></div><div><dt>Search target</dt><dd>&lt;50ms</dd></div><div><dt>Reflow cap</dt><dd>60</dd></div></dl>
+    </header>
+
+    <section class="scale-archive" data-project-archive aria-label="250 artifact scale archive">
+      <script is:inline type="application/json" data-archive-data set:html={payload}></script>
+      <ArchiveControls count={items.length} />
+      <div class="scale-empty" hidden data-archive-empty><strong>No fixture artifacts match.</strong><button type="button" data-archive-reset>Reset archive →</button></div>
+      <div class="scale-grid" data-archive-grid>
+        {items.map((item,index) => <div class="scale-item" data-archive-item data-slug={item.slug} data-curated-index={index}>
+          <article class="scale-card" data-scale-card>
+            <div class="scale-card__meta"><span>{item.code}</span><span>{item.status}</span></div>
+            <div class="scale-card__preview" aria-hidden="true"><span></span><i></i></div>
+            <div class="scale-card__body"><p>{item.subtitle}</p><h2>{item.title}</h2><small>{item.category}</small></div>
+          </article>
+        </div>)}
+      </div>
+      <div class="scale-list" hidden data-archive-list></div>
+    </section>
+  </article>
+</BaseLayout>
+<style>
+.scale-harness{padding:var(--space-8) 0 var(--space-10)}.scale-harness>header{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:var(--space-8);align-items:end;padding:var(--space-8) 0 var(--space-9);border-bottom:1px solid var(--line-strong)}.scale-harness h1{font-size:clamp(3.8rem,8vw,8rem);line-height:.82;letter-spacing:-.065em}.scale-harness>header p:last-child{max-width:58ch;margin-top:var(--space-4);color:var(--ink-secondary)}.scale-harness dl{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line-strong)}.scale-harness dl div{padding:var(--space-3) 0;border-bottom:1px solid var(--line)}.scale-harness dt{font:500 .58rem var(--font-meta);text-transform:uppercase;color:var(--ink-muted)}.scale-harness dd{font:600 .9rem var(--font-meta)}
+.scale-archive{padding-top:var(--space-6)}.scale-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4);padding-top:var(--space-6)}.scale-item{min-width:0;content-visibility:auto;contain-intrinsic-size:auto 310px}.scale-list{margin-top:var(--space-6);border-top:1px solid var(--line-strong)}.scale-list>[data-archive-item]{content-visibility:auto;contain-intrinsic-size:auto 58px}.scale-empty{padding:var(--space-6) 0}.scale-empty button{display:block;min-height:44px;margin-top:var(--space-3);border:0;background:transparent;color:var(--ink);font:500 .65rem var(--font-meta);cursor:pointer}.scale-archive [hidden]{display:none!important}
+.scale-card{min-width:0;border:1px solid var(--line);background:var(--surface-1)}.scale-card__meta{min-height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;border-bottom:1px solid var(--line);font:500 .58rem var(--font-meta);text-transform:uppercase;color:var(--ink-muted)}.scale-card__preview{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,var(--surface-2),var(--surface-3));overflow:hidden}.scale-card__preview span{position:absolute;inset:18% 12%;border:1px solid var(--line-strong)}.scale-card__preview i{position:absolute;left:12%;right:32%;bottom:18%;height:2px;background:var(--line-strong)}.scale-card__body{padding:var(--space-4)}.scale-card__body p,.scale-card__body small{font:500 .58rem var(--font-meta);text-transform:uppercase;color:var(--ink-muted)}.scale-card h2{margin:8px 0 16px;font-size:1.15rem;line-height:1.05;letter-spacing:-.035em}
+:global(.scale-list .archive-runtime-row){display:grid;grid-template-columns:72px minmax(0,1fr) 120px 110px 44px;gap:var(--space-4);align-items:center;min-height:56px;border-bottom:1px solid var(--line);font-family:var(--font-meta);font-size:.7rem;letter-spacing:.055em;text-transform:uppercase}:global(.scale-list .archive-runtime-row__title){font-family:var(--font-ui);font-size:1rem;text-transform:none}:global(.scale-list .archive-runtime-row__title a){text-decoration:none}:global(.scale-list .archive-runtime-row__code),:global(.scale-list .archive-runtime-row__type),:global(.scale-list .archive-runtime-row__status){color:var(--ink-muted)}:global(.scale-list .archive-runtime-row__open){min-height:44px;display:grid;place-items:center;text-decoration:none}
+@media(max-width:1100px){.scale-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:899px){.scale-harness>header{grid-template-columns:1fr}.scale-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){:global(.scale-list .archive-runtime-row){grid-template-columns:58px minmax(0,1fr) 44px}:global(.scale-list .archive-runtime-row__type),:global(.scale-list .archive-runtime-row__status){display:none}}@media(max-width:599px){.scale-grid{grid-template-columns:1fr}.scale-harness dl{grid-template-columns:1fr 1fr 1fr}}
+</style>

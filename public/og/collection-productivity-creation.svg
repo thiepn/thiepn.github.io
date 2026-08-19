@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Productivity &amp; Creation">
+  <rect width="1200" height="630" fill="#ECEAE3"/>
+  <path d="M54 54H1146M54 576H1146" stroke="#AAA79E" stroke-width="1"/>
+  <rect x="54" y="54" width="6" height="522" fill="#666A63"/>
+  <text x="86" y="104" fill="#555650" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">C-005 / COLLECTION</text>
+  <text x="86" y="320" fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="600" letter-spacing="-4">Productivity &amp; Creation</text>
+  <text x="88" y="378" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="28">Practical tools for documents, publishing, and structured everyday workflows.</text>
+  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN. / THE INDEX</text>
+</svg>

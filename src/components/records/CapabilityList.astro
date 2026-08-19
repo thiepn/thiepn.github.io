@@ -1,0 +1,57 @@
+---
+import type { CollectionEntry } from 'astro:content';
+interface Props { project: CollectionEntry<'projects'>; }
+const { project } = Astro.props;
+const p = project.data;
+const sectionTitle = p.category === 'learning' ? 'Learning Modes' : p.category === 'games' ? 'Core Systems' : 'Capabilities';
+---
+<section class="record-capabilities" aria-labelledby="capabilities-title">
+  <header class="record-subhead">
+    <span class="record-subhead__index">02</span>
+    <h2 id="capabilities-title">{sectionTitle}</h2>
+    <span class="record-subhead__meta">{String(p.capabilities.length).padStart(2,'0')} ENTRIES</span>
+  </header>
+  <ol class="capability-list">
+    {p.capabilities.map((capability, index) => (
+      <li>
+        {capability.previewState ? (
+          <button
+            type="button"
+            class="capability-row"
+            data-capability-preview={capability.previewState}
+            aria-label={`Show ${capability.title} preview state`}
+          >
+            <span class="capability-row__number">{String(index + 1).padStart(2,'0')}</span>
+            <strong>{capability.title}</strong>
+            <span class="capability-row__description">{capability.description}</span>
+            <span class="capability-row__signal" aria-hidden="true">VIEW ↗</span>
+          </button>
+        ) : (
+          <div class="capability-row capability-row--static">
+            <span class="capability-row__number">{String(index + 1).padStart(2,'0')}</span>
+            <strong>{capability.title}</strong>
+            <span class="capability-row__description">{capability.description}</span>
+            <span class="capability-row__signal" aria-hidden="true">—</span>
+          </div>
+        )}
+      </li>
+    ))}
+  </ol>
+</section>
+<style>
+  .record-capabilities{padding:var(--space-9) 0}
+  .record-subhead{display:grid;grid-template-columns:80px 1fr auto;gap:var(--space-4);align-items:baseline;padding-bottom:var(--space-3);border-bottom:1px solid var(--line-strong)}
+  .record-subhead__index,.record-subhead__meta{font:500 .66rem var(--font-meta);letter-spacing:.075em;text-transform:uppercase;color:var(--ink-muted)}
+  .record-subhead h2{font-size:var(--text-h2);letter-spacing:-.04em}
+  .capability-list{list-style:none;margin:0;padding:0}
+  .capability-row{width:100%;display:grid;grid-template-columns:80px minmax(160px,2.2fr) minmax(260px,5fr) auto;gap:var(--space-4);align-items:start;padding:18px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;font:inherit;border-radius:0}
+  .capability-row:not(:disabled){cursor:pointer}
+  .capability-row:not(:disabled):hover,.capability-row:not(:disabled):focus-visible{background:color-mix(in srgb,var(--project-accent) 5%,transparent)}
+    .capability-row__number,.capability-row__signal{font:500 .64rem var(--font-meta);letter-spacing:.06em;color:var(--ink-muted)}
+  .capability-row strong{font-size:clamp(1rem,1.4vw,1.25rem);font-weight:560;letter-spacing:-.02em}
+  .capability-row__description{max-width:64ch;color:var(--ink-secondary);line-height:1.55}
+  .capability-row__signal{justify-self:end;white-space:nowrap}
+  .capability-row:not(:disabled):hover .capability-row__signal,.capability-row:not(:disabled):focus-visible .capability-row__signal{color:var(--project-accent)}
+  @media(max-width:760px){.record-subhead{grid-template-columns:48px 1fr}.record-subhead__meta{grid-column:2}.capability-row{grid-template-columns:44px minmax(0,1fr) auto}.capability-row__description{grid-column:2/-1}.capability-row__signal{grid-column:3;grid-row:1}}
+  @media(max-width:480px){.capability-row{grid-template-columns:36px minmax(0,1fr)}.capability-row__signal{display:none}.capability-row__description{grid-column:2}}
+</style>

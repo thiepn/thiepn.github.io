@@ -1,0 +1,5502 @@
+[
+  {
+    "kind": "project",
+    "code": "T-001",
+    "slug": "fixture-project-1",
+    "title": "Fixture Project 001",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 1",
+      "project 1"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/1/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-002",
+    "slug": "fixture-project-2",
+    "title": "Fixture Project 002",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 2",
+      "project 2"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/2/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-003",
+    "slug": "fixture-project-3",
+    "title": "Fixture Project 003",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 3",
+      "project 3"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/3/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-004",
+    "slug": "fixture-project-4",
+    "title": "Fixture Project 004",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 4",
+      "project 4"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/4/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-005",
+    "slug": "fixture-project-5",
+    "title": "Fixture Project 005",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 5",
+      "project 5"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/5/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-006",
+    "slug": "fixture-project-6",
+    "title": "Fixture Project 006",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 6",
+      "project 6"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/6/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-007",
+    "slug": "fixture-project-7",
+    "title": "Fixture Project 007",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 7",
+      "project 7"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/7/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-008",
+    "slug": "fixture-project-8",
+    "title": "Fixture Project 008",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 8",
+      "project 8"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/8/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-009",
+    "slug": "fixture-project-9",
+    "title": "Fixture Project 009",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 9",
+      "project 9"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/9/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-010",
+    "slug": "fixture-project-10",
+    "title": "Fixture Project 010",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 10",
+      "project 10"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/10/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-011",
+    "slug": "fixture-project-11",
+    "title": "Fixture Project 011",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 11",
+      "project 11"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/11/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-012",
+    "slug": "fixture-project-12",
+    "title": "Fixture Project 012",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 12",
+      "project 12"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/12/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-013",
+    "slug": "fixture-project-13",
+    "title": "Fixture Project 013",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 13",
+      "project 13"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/13/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-014",
+    "slug": "fixture-project-14",
+    "title": "Fixture Project 014",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 14",
+      "project 14"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/14/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-015",
+    "slug": "fixture-project-15",
+    "title": "Fixture Project 015",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 15",
+      "project 15"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/15/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-016",
+    "slug": "fixture-project-16",
+    "title": "Fixture Project 016",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 16",
+      "project 16"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/16/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-017",
+    "slug": "fixture-project-17",
+    "title": "Fixture Project 017",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 17",
+      "project 17"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/17/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-018",
+    "slug": "fixture-project-18",
+    "title": "Fixture Project 018",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 18",
+      "project 18"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/18/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-019",
+    "slug": "fixture-project-19",
+    "title": "Fixture Project 019",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 19",
+      "project 19"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/19/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-020",
+    "slug": "fixture-project-20",
+    "title": "Fixture Project 020",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 20",
+      "project 20"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/20/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-021",
+    "slug": "fixture-project-21",
+    "title": "Fixture Project 021",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 21",
+      "project 21"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/21/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-022",
+    "slug": "fixture-project-22",
+    "title": "Fixture Project 022",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 22",
+      "project 22"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/22/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-023",
+    "slug": "fixture-project-23",
+    "title": "Fixture Project 023",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 23",
+      "project 23"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/23/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-024",
+    "slug": "fixture-project-24",
+    "title": "Fixture Project 024",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 24",
+      "project 24"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/24/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-025",
+    "slug": "fixture-project-25",
+    "title": "Fixture Project 025",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 25",
+      "project 25"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/25/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-026",
+    "slug": "fixture-project-26",
+    "title": "Fixture Project 026",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 26",
+      "project 26"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/26/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-027",
+    "slug": "fixture-project-27",
+    "title": "Fixture Project 027",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 27",
+      "project 27"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/27/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-028",
+    "slug": "fixture-project-28",
+    "title": "Fixture Project 028",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 28",
+      "project 28"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/28/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-029",
+    "slug": "fixture-project-29",
+    "title": "Fixture Project 029",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 29",
+      "project 29"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/29/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-030",
+    "slug": "fixture-project-30",
+    "title": "Fixture Project 030",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 30",
+      "project 30"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/30/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-031",
+    "slug": "fixture-project-31",
+    "title": "Fixture Project 031",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 31",
+      "project 31"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/31/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-032",
+    "slug": "fixture-project-32",
+    "title": "Fixture Project 032",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 32",
+      "project 32"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/32/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-033",
+    "slug": "fixture-project-33",
+    "title": "Fixture Project 033",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 33",
+      "project 33"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/33/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-034",
+    "slug": "fixture-project-34",
+    "title": "Fixture Project 034",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 34",
+      "project 34"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/34/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-035",
+    "slug": "fixture-project-35",
+    "title": "Fixture Project 035",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 35",
+      "project 35"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/35/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-036",
+    "slug": "fixture-project-36",
+    "title": "Fixture Project 036",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 36",
+      "project 36"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/36/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-037",
+    "slug": "fixture-project-37",
+    "title": "Fixture Project 037",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 37",
+      "project 37"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/37/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-038",
+    "slug": "fixture-project-38",
+    "title": "Fixture Project 038",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 38",
+      "project 38"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/38/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-039",
+    "slug": "fixture-project-39",
+    "title": "Fixture Project 039",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 39",
+      "project 39"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/39/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-040",
+    "slug": "fixture-project-40",
+    "title": "Fixture Project 040",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 40",
+      "project 40"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/40/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-041",
+    "slug": "fixture-project-41",
+    "title": "Fixture Project 041",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 41",
+      "project 41"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/41/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-042",
+    "slug": "fixture-project-42",
+    "title": "Fixture Project 042",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 42",
+      "project 42"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/42/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-043",
+    "slug": "fixture-project-43",
+    "title": "Fixture Project 043",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 43",
+      "project 43"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/43/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-044",
+    "slug": "fixture-project-44",
+    "title": "Fixture Project 044",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 44",
+      "project 44"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/44/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-045",
+    "slug": "fixture-project-45",
+    "title": "Fixture Project 045",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 45",
+      "project 45"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/45/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-046",
+    "slug": "fixture-project-46",
+    "title": "Fixture Project 046",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 46",
+      "project 46"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/46/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-047",
+    "slug": "fixture-project-47",
+    "title": "Fixture Project 047",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 47",
+      "project 47"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/47/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-048",
+    "slug": "fixture-project-48",
+    "title": "Fixture Project 048",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 48",
+      "project 48"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/48/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-049",
+    "slug": "fixture-project-49",
+    "title": "Fixture Project 049",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 49",
+      "project 49"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/49/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-050",
+    "slug": "fixture-project-50",
+    "title": "Fixture Project 050",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 50",
+      "project 50"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/50/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-051",
+    "slug": "fixture-project-51",
+    "title": "Fixture Project 051",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 51",
+      "project 51"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/51/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-052",
+    "slug": "fixture-project-52",
+    "title": "Fixture Project 052",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 52",
+      "project 52"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/52/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-053",
+    "slug": "fixture-project-53",
+    "title": "Fixture Project 053",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 53",
+      "project 53"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/53/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-054",
+    "slug": "fixture-project-54",
+    "title": "Fixture Project 054",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 54",
+      "project 54"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/54/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-055",
+    "slug": "fixture-project-55",
+    "title": "Fixture Project 055",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 55",
+      "project 55"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/55/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-056",
+    "slug": "fixture-project-56",
+    "title": "Fixture Project 056",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 56",
+      "project 56"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/56/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-057",
+    "slug": "fixture-project-57",
+    "title": "Fixture Project 057",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 57",
+      "project 57"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/57/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-058",
+    "slug": "fixture-project-58",
+    "title": "Fixture Project 058",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 58",
+      "project 58"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/58/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-059",
+    "slug": "fixture-project-59",
+    "title": "Fixture Project 059",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 59",
+      "project 59"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/59/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-060",
+    "slug": "fixture-project-60",
+    "title": "Fixture Project 060",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 60",
+      "project 60"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/60/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-061",
+    "slug": "fixture-project-61",
+    "title": "Fixture Project 061",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 61",
+      "project 61"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/61/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-062",
+    "slug": "fixture-project-62",
+    "title": "Fixture Project 062",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 62",
+      "project 62"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/62/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-063",
+    "slug": "fixture-project-63",
+    "title": "Fixture Project 063",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 63",
+      "project 63"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/63/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-064",
+    "slug": "fixture-project-64",
+    "title": "Fixture Project 064",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 64",
+      "project 64"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/64/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-065",
+    "slug": "fixture-project-65",
+    "title": "Fixture Project 065",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 65",
+      "project 65"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/65/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-066",
+    "slug": "fixture-project-66",
+    "title": "Fixture Project 066",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 66",
+      "project 66"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/66/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-067",
+    "slug": "fixture-project-67",
+    "title": "Fixture Project 067",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 67",
+      "project 67"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/67/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-068",
+    "slug": "fixture-project-68",
+    "title": "Fixture Project 068",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 68",
+      "project 68"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/68/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-069",
+    "slug": "fixture-project-69",
+    "title": "Fixture Project 069",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 69",
+      "project 69"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/69/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-070",
+    "slug": "fixture-project-70",
+    "title": "Fixture Project 070",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 70",
+      "project 70"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/70/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-071",
+    "slug": "fixture-project-71",
+    "title": "Fixture Project 071",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 71",
+      "project 71"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/71/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-072",
+    "slug": "fixture-project-72",
+    "title": "Fixture Project 072",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 72",
+      "project 72"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/72/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-073",
+    "slug": "fixture-project-73",
+    "title": "Fixture Project 073",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 73",
+      "project 73"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/73/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-074",
+    "slug": "fixture-project-74",
+    "title": "Fixture Project 074",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 74",
+      "project 74"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/74/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-075",
+    "slug": "fixture-project-75",
+    "title": "Fixture Project 075",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 75",
+      "project 75"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/75/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-076",
+    "slug": "fixture-project-76",
+    "title": "Fixture Project 076",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 76",
+      "project 76"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/76/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-077",
+    "slug": "fixture-project-77",
+    "title": "Fixture Project 077",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 77",
+      "project 77"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/77/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-078",
+    "slug": "fixture-project-78",
+    "title": "Fixture Project 078",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 78",
+      "project 78"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/78/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-079",
+    "slug": "fixture-project-79",
+    "title": "Fixture Project 079",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 79",
+      "project 79"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/79/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-080",
+    "slug": "fixture-project-80",
+    "title": "Fixture Project 080",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 80",
+      "project 80"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/80/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-081",
+    "slug": "fixture-project-81",
+    "title": "Fixture Project 081",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 81",
+      "project 81"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/81/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-082",
+    "slug": "fixture-project-82",
+    "title": "Fixture Project 082",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 82",
+      "project 82"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/82/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-083",
+    "slug": "fixture-project-83",
+    "title": "Fixture Project 083",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 83",
+      "project 83"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/83/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-084",
+    "slug": "fixture-project-84",
+    "title": "Fixture Project 084",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 84",
+      "project 84"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/84/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-085",
+    "slug": "fixture-project-85",
+    "title": "Fixture Project 085",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 85",
+      "project 85"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/85/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-086",
+    "slug": "fixture-project-86",
+    "title": "Fixture Project 086",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 86",
+      "project 86"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/86/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-087",
+    "slug": "fixture-project-87",
+    "title": "Fixture Project 087",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 87",
+      "project 87"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/87/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-088",
+    "slug": "fixture-project-88",
+    "title": "Fixture Project 088",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 88",
+      "project 88"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/88/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-089",
+    "slug": "fixture-project-89",
+    "title": "Fixture Project 089",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 89",
+      "project 89"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/89/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-090",
+    "slug": "fixture-project-90",
+    "title": "Fixture Project 090",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 90",
+      "project 90"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/90/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-091",
+    "slug": "fixture-project-91",
+    "title": "Fixture Project 091",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 91",
+      "project 91"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/91/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-092",
+    "slug": "fixture-project-92",
+    "title": "Fixture Project 092",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 92",
+      "project 92"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/92/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-093",
+    "slug": "fixture-project-93",
+    "title": "Fixture Project 093",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 93",
+      "project 93"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/93/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-094",
+    "slug": "fixture-project-94",
+    "title": "Fixture Project 094",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 94",
+      "project 94"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/94/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-095",
+    "slug": "fixture-project-95",
+    "title": "Fixture Project 095",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 95",
+      "project 95"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/95/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-096",
+    "slug": "fixture-project-96",
+    "title": "Fixture Project 096",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 96",
+      "project 96"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/96/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-097",
+    "slug": "fixture-project-97",
+    "title": "Fixture Project 097",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 97",
+      "project 97"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/97/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-098",
+    "slug": "fixture-project-98",
+    "title": "Fixture Project 098",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 98",
+      "project 98"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/98/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-099",
+    "slug": "fixture-project-99",
+    "title": "Fixture Project 099",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 99",
+      "project 99"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/99/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-100",
+    "slug": "fixture-project-100",
+    "title": "Fixture Project 100",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 100",
+      "project 100"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/100/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-101",
+    "slug": "fixture-project-101",
+    "title": "Fixture Project 101",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 101",
+      "project 101"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/101/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-102",
+    "slug": "fixture-project-102",
+    "title": "Fixture Project 102",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 102",
+      "project 102"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/102/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-103",
+    "slug": "fixture-project-103",
+    "title": "Fixture Project 103",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 103",
+      "project 103"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/103/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-104",
+    "slug": "fixture-project-104",
+    "title": "Fixture Project 104",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 104",
+      "project 104"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/104/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-105",
+    "slug": "fixture-project-105",
+    "title": "Fixture Project 105",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 105",
+      "project 105"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/105/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-106",
+    "slug": "fixture-project-106",
+    "title": "Fixture Project 106",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 106",
+      "project 106"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/106/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-107",
+    "slug": "fixture-project-107",
+    "title": "Fixture Project 107",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 107",
+      "project 107"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/107/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-108",
+    "slug": "fixture-project-108",
+    "title": "Fixture Project 108",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 108",
+      "project 108"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/108/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-109",
+    "slug": "fixture-project-109",
+    "title": "Fixture Project 109",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 109",
+      "project 109"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/109/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-110",
+    "slug": "fixture-project-110",
+    "title": "Fixture Project 110",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 110",
+      "project 110"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/110/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-111",
+    "slug": "fixture-project-111",
+    "title": "Fixture Project 111",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 111",
+      "project 111"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/111/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-112",
+    "slug": "fixture-project-112",
+    "title": "Fixture Project 112",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 112",
+      "project 112"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/112/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-113",
+    "slug": "fixture-project-113",
+    "title": "Fixture Project 113",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 113",
+      "project 113"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/113/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-114",
+    "slug": "fixture-project-114",
+    "title": "Fixture Project 114",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 114",
+      "project 114"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/114/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-115",
+    "slug": "fixture-project-115",
+    "title": "Fixture Project 115",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 115",
+      "project 115"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/115/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-116",
+    "slug": "fixture-project-116",
+    "title": "Fixture Project 116",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 116",
+      "project 116"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/116/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-117",
+    "slug": "fixture-project-117",
+    "title": "Fixture Project 117",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 117",
+      "project 117"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/117/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-118",
+    "slug": "fixture-project-118",
+    "title": "Fixture Project 118",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 118",
+      "project 118"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/118/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-119",
+    "slug": "fixture-project-119",
+    "title": "Fixture Project 119",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 119",
+      "project 119"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/119/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-120",
+    "slug": "fixture-project-120",
+    "title": "Fixture Project 120",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 120",
+      "project 120"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/120/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-121",
+    "slug": "fixture-project-121",
+    "title": "Fixture Project 121",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 121",
+      "project 121"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/121/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-122",
+    "slug": "fixture-project-122",
+    "title": "Fixture Project 122",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 122",
+      "project 122"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/122/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-123",
+    "slug": "fixture-project-123",
+    "title": "Fixture Project 123",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 123",
+      "project 123"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/123/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-124",
+    "slug": "fixture-project-124",
+    "title": "Fixture Project 124",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 124",
+      "project 124"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/124/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-125",
+    "slug": "fixture-project-125",
+    "title": "Fixture Project 125",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 125",
+      "project 125"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/125/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-126",
+    "slug": "fixture-project-126",
+    "title": "Fixture Project 126",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 126",
+      "project 126"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/126/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-127",
+    "slug": "fixture-project-127",
+    "title": "Fixture Project 127",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 127",
+      "project 127"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/127/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-128",
+    "slug": "fixture-project-128",
+    "title": "Fixture Project 128",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 128",
+      "project 128"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/128/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-129",
+    "slug": "fixture-project-129",
+    "title": "Fixture Project 129",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 129",
+      "project 129"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/129/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-130",
+    "slug": "fixture-project-130",
+    "title": "Fixture Project 130",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 130",
+      "project 130"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/130/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-131",
+    "slug": "fixture-project-131",
+    "title": "Fixture Project 131",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 131",
+      "project 131"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/131/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-132",
+    "slug": "fixture-project-132",
+    "title": "Fixture Project 132",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 132",
+      "project 132"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/132/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-133",
+    "slug": "fixture-project-133",
+    "title": "Fixture Project 133",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 133",
+      "project 133"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/133/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-134",
+    "slug": "fixture-project-134",
+    "title": "Fixture Project 134",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 134",
+      "project 134"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/134/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-135",
+    "slug": "fixture-project-135",
+    "title": "Fixture Project 135",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 135",
+      "project 135"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/135/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-136",
+    "slug": "fixture-project-136",
+    "title": "Fixture Project 136",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 136",
+      "project 136"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/136/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-137",
+    "slug": "fixture-project-137",
+    "title": "Fixture Project 137",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 137",
+      "project 137"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/137/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-138",
+    "slug": "fixture-project-138",
+    "title": "Fixture Project 138",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 138",
+      "project 138"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/138/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-139",
+    "slug": "fixture-project-139",
+    "title": "Fixture Project 139",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 139",
+      "project 139"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/139/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-140",
+    "slug": "fixture-project-140",
+    "title": "Fixture Project 140",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 140",
+      "project 140"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/140/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-141",
+    "slug": "fixture-project-141",
+    "title": "Fixture Project 141",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 141",
+      "project 141"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/141/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-142",
+    "slug": "fixture-project-142",
+    "title": "Fixture Project 142",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 142",
+      "project 142"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/142/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-143",
+    "slug": "fixture-project-143",
+    "title": "Fixture Project 143",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 143",
+      "project 143"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/143/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-144",
+    "slug": "fixture-project-144",
+    "title": "Fixture Project 144",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 144",
+      "project 144"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/144/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-145",
+    "slug": "fixture-project-145",
+    "title": "Fixture Project 145",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 145",
+      "project 145"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/145/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-146",
+    "slug": "fixture-project-146",
+    "title": "Fixture Project 146",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 146",
+      "project 146"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/146/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-147",
+    "slug": "fixture-project-147",
+    "title": "Fixture Project 147",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 147",
+      "project 147"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/147/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-148",
+    "slug": "fixture-project-148",
+    "title": "Fixture Project 148",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 148",
+      "project 148"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/148/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-149",
+    "slug": "fixture-project-149",
+    "title": "Fixture Project 149",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 149",
+      "project 149"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/149/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-150",
+    "slug": "fixture-project-150",
+    "title": "Fixture Project 150",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 150",
+      "project 150"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/150/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-151",
+    "slug": "fixture-project-151",
+    "title": "Fixture Project 151",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 151",
+      "project 151"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/151/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-152",
+    "slug": "fixture-project-152",
+    "title": "Fixture Project 152",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 152",
+      "project 152"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/152/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-153",
+    "slug": "fixture-project-153",
+    "title": "Fixture Project 153",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 153",
+      "project 153"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/153/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-154",
+    "slug": "fixture-project-154",
+    "title": "Fixture Project 154",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 154",
+      "project 154"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/154/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-155",
+    "slug": "fixture-project-155",
+    "title": "Fixture Project 155",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 155",
+      "project 155"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/155/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-156",
+    "slug": "fixture-project-156",
+    "title": "Fixture Project 156",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 156",
+      "project 156"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/156/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-157",
+    "slug": "fixture-project-157",
+    "title": "Fixture Project 157",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 157",
+      "project 157"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/157/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-158",
+    "slug": "fixture-project-158",
+    "title": "Fixture Project 158",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 158",
+      "project 158"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/158/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-159",
+    "slug": "fixture-project-159",
+    "title": "Fixture Project 159",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 159",
+      "project 159"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/159/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-160",
+    "slug": "fixture-project-160",
+    "title": "Fixture Project 160",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 160",
+      "project 160"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/160/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-161",
+    "slug": "fixture-project-161",
+    "title": "Fixture Project 161",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 161",
+      "project 161"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/161/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-162",
+    "slug": "fixture-project-162",
+    "title": "Fixture Project 162",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 162",
+      "project 162"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/162/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-163",
+    "slug": "fixture-project-163",
+    "title": "Fixture Project 163",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 163",
+      "project 163"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/163/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-164",
+    "slug": "fixture-project-164",
+    "title": "Fixture Project 164",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 164",
+      "project 164"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/164/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-165",
+    "slug": "fixture-project-165",
+    "title": "Fixture Project 165",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 165",
+      "project 165"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/165/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-166",
+    "slug": "fixture-project-166",
+    "title": "Fixture Project 166",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 166",
+      "project 166"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/166/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-167",
+    "slug": "fixture-project-167",
+    "title": "Fixture Project 167",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 167",
+      "project 167"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/167/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-168",
+    "slug": "fixture-project-168",
+    "title": "Fixture Project 168",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 168",
+      "project 168"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/168/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-169",
+    "slug": "fixture-project-169",
+    "title": "Fixture Project 169",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 169",
+      "project 169"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/169/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-170",
+    "slug": "fixture-project-170",
+    "title": "Fixture Project 170",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 170",
+      "project 170"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/170/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-171",
+    "slug": "fixture-project-171",
+    "title": "Fixture Project 171",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 171",
+      "project 171"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/171/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-172",
+    "slug": "fixture-project-172",
+    "title": "Fixture Project 172",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 172",
+      "project 172"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/172/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-173",
+    "slug": "fixture-project-173",
+    "title": "Fixture Project 173",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 173",
+      "project 173"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/173/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-174",
+    "slug": "fixture-project-174",
+    "title": "Fixture Project 174",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 174",
+      "project 174"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/174/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-175",
+    "slug": "fixture-project-175",
+    "title": "Fixture Project 175",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 175",
+      "project 175"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/175/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-176",
+    "slug": "fixture-project-176",
+    "title": "Fixture Project 176",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 176",
+      "project 176"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/176/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-177",
+    "slug": "fixture-project-177",
+    "title": "Fixture Project 177",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 177",
+      "project 177"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/177/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-178",
+    "slug": "fixture-project-178",
+    "title": "Fixture Project 178",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 178",
+      "project 178"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/178/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-179",
+    "slug": "fixture-project-179",
+    "title": "Fixture Project 179",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 179",
+      "project 179"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/179/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-180",
+    "slug": "fixture-project-180",
+    "title": "Fixture Project 180",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 180",
+      "project 180"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/180/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-181",
+    "slug": "fixture-project-181",
+    "title": "Fixture Project 181",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 181",
+      "project 181"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/181/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-182",
+    "slug": "fixture-project-182",
+    "title": "Fixture Project 182",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 182",
+      "project 182"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/182/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-183",
+    "slug": "fixture-project-183",
+    "title": "Fixture Project 183",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 183",
+      "project 183"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/183/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-184",
+    "slug": "fixture-project-184",
+    "title": "Fixture Project 184",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 184",
+      "project 184"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/184/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-185",
+    "slug": "fixture-project-185",
+    "title": "Fixture Project 185",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 185",
+      "project 185"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/185/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-186",
+    "slug": "fixture-project-186",
+    "title": "Fixture Project 186",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 186",
+      "project 186"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/186/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-187",
+    "slug": "fixture-project-187",
+    "title": "Fixture Project 187",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 187",
+      "project 187"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/187/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-188",
+    "slug": "fixture-project-188",
+    "title": "Fixture Project 188",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 188",
+      "project 188"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/188/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-189",
+    "slug": "fixture-project-189",
+    "title": "Fixture Project 189",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 189",
+      "project 189"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/189/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-190",
+    "slug": "fixture-project-190",
+    "title": "Fixture Project 190",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 190",
+      "project 190"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/190/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-191",
+    "slug": "fixture-project-191",
+    "title": "Fixture Project 191",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 191",
+      "project 191"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/191/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-192",
+    "slug": "fixture-project-192",
+    "title": "Fixture Project 192",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 192",
+      "project 192"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/192/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-193",
+    "slug": "fixture-project-193",
+    "title": "Fixture Project 193",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 193",
+      "project 193"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/193/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-194",
+    "slug": "fixture-project-194",
+    "title": "Fixture Project 194",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 194",
+      "project 194"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/194/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-195",
+    "slug": "fixture-project-195",
+    "title": "Fixture Project 195",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 195",
+      "project 195"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/195/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-196",
+    "slug": "fixture-project-196",
+    "title": "Fixture Project 196",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 196",
+      "project 196"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/196/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-197",
+    "slug": "fixture-project-197",
+    "title": "Fixture Project 197",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 197",
+      "project 197"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/197/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-198",
+    "slug": "fixture-project-198",
+    "title": "Fixture Project 198",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 198",
+      "project 198"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/198/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-199",
+    "slug": "fixture-project-199",
+    "title": "Fixture Project 199",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 199",
+      "project 199"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/199/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-200",
+    "slug": "fixture-project-200",
+    "title": "Fixture Project 200",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 200",
+      "project 200"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/200/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-201",
+    "slug": "fixture-project-201",
+    "title": "Fixture Project 201",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 201",
+      "project 201"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/201/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-202",
+    "slug": "fixture-project-202",
+    "title": "Fixture Project 202",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 202",
+      "project 202"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/202/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-203",
+    "slug": "fixture-project-203",
+    "title": "Fixture Project 203",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 203",
+      "project 203"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/203/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-204",
+    "slug": "fixture-project-204",
+    "title": "Fixture Project 204",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 204",
+      "project 204"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/204/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-205",
+    "slug": "fixture-project-205",
+    "title": "Fixture Project 205",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 205",
+      "project 205"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/205/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-206",
+    "slug": "fixture-project-206",
+    "title": "Fixture Project 206",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 206",
+      "project 206"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/206/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-207",
+    "slug": "fixture-project-207",
+    "title": "Fixture Project 207",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 207",
+      "project 207"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/207/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-208",
+    "slug": "fixture-project-208",
+    "title": "Fixture Project 208",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 208",
+      "project 208"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/208/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-209",
+    "slug": "fixture-project-209",
+    "title": "Fixture Project 209",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 209",
+      "project 209"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/209/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-210",
+    "slug": "fixture-project-210",
+    "title": "Fixture Project 210",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 210",
+      "project 210"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/210/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-211",
+    "slug": "fixture-project-211",
+    "title": "Fixture Project 211",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 211",
+      "project 211"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/211/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-212",
+    "slug": "fixture-project-212",
+    "title": "Fixture Project 212",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 212",
+      "project 212"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/212/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-213",
+    "slug": "fixture-project-213",
+    "title": "Fixture Project 213",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 213",
+      "project 213"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/213/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-214",
+    "slug": "fixture-project-214",
+    "title": "Fixture Project 214",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 214",
+      "project 214"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/214/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-215",
+    "slug": "fixture-project-215",
+    "title": "Fixture Project 215",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 215",
+      "project 215"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/215/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-216",
+    "slug": "fixture-project-216",
+    "title": "Fixture Project 216",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 216",
+      "project 216"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/216/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-217",
+    "slug": "fixture-project-217",
+    "title": "Fixture Project 217",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 217",
+      "project 217"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/217/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-218",
+    "slug": "fixture-project-218",
+    "title": "Fixture Project 218",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 218",
+      "project 218"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/218/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-219",
+    "slug": "fixture-project-219",
+    "title": "Fixture Project 219",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 219",
+      "project 219"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/219/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-220",
+    "slug": "fixture-project-220",
+    "title": "Fixture Project 220",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 220",
+      "project 220"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/220/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-221",
+    "slug": "fixture-project-221",
+    "title": "Fixture Project 221",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 221",
+      "project 221"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/221/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-222",
+    "slug": "fixture-project-222",
+    "title": "Fixture Project 222",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 222",
+      "project 222"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/222/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-223",
+    "slug": "fixture-project-223",
+    "title": "Fixture Project 223",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 223",
+      "project 223"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/223/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-224",
+    "slug": "fixture-project-224",
+    "title": "Fixture Project 224",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 224",
+      "project 224"
+    ],
+    "category": "learning",
+    "status": "beta",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/224/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-225",
+    "slug": "fixture-project-225",
+    "title": "Fixture Project 225",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 225",
+      "project 225"
+    ],
+    "category": "games",
+    "status": "experiment",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/225/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-226",
+    "slug": "fixture-project-226",
+    "title": "Fixture Project 226",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 226",
+      "project 226"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/226/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-227",
+    "slug": "fixture-project-227",
+    "title": "Fixture Project 227",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 227",
+      "project 227"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/227/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-228",
+    "slug": "fixture-project-228",
+    "title": "Fixture Project 228",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 228",
+      "project 228"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/228/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-229",
+    "slug": "fixture-project-229",
+    "title": "Fixture Project 229",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 229",
+      "project 229"
+    ],
+    "category": "tools",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/229/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-230",
+    "slug": "fixture-project-230",
+    "title": "Fixture Project 230",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 230",
+      "project 230"
+    ],
+    "category": "learning",
+    "status": "experiment",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/230/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-231",
+    "slug": "fixture-project-231",
+    "title": "Fixture Project 231",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 231",
+      "project 231"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/231/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-232",
+    "slug": "fixture-project-232",
+    "title": "Fixture Project 232",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 232",
+      "project 232"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/232/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-233",
+    "slug": "fixture-project-233",
+    "title": "Fixture Project 233",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 233",
+      "project 233"
+    ],
+    "category": "visualizations",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/233/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-17T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-234",
+    "slug": "fixture-project-234",
+    "title": "Fixture Project 234",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 234",
+      "project 234"
+    ],
+    "category": "experiments",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/234/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-235",
+    "slug": "fixture-project-235",
+    "title": "Fixture Project 235",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 235",
+      "project 235"
+    ],
+    "category": "tools",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/235/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-236",
+    "slug": "fixture-project-236",
+    "title": "Fixture Project 236",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 236",
+      "project 236"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/236/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-02T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-237",
+    "slug": "fixture-project-237",
+    "title": "Fixture Project 237",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 237",
+      "project 237"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/237/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-03T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-238",
+    "slug": "fixture-project-238",
+    "title": "Fixture Project 238",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 238",
+      "project 238"
+    ],
+    "category": "resources",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/238/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-04T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-239",
+    "slug": "fixture-project-239",
+    "title": "Fixture Project 239",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 239",
+      "project 239"
+    ],
+    "category": "visualizations",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/239/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-05T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-240",
+    "slug": "fixture-project-240",
+    "title": "Fixture Project 240",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 240",
+      "project 240"
+    ],
+    "category": "experiments",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/240/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-06T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-241",
+    "slug": "fixture-project-241",
+    "title": "Fixture Project 241",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 241",
+      "project 241"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/241/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-07T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-242",
+    "slug": "fixture-project-242",
+    "title": "Fixture Project 242",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 242",
+      "project 242"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/242/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-08T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-243",
+    "slug": "fixture-project-243",
+    "title": "Fixture Project 243",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 243",
+      "project 243"
+    ],
+    "category": "games",
+    "status": "live",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/243/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-09T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-244",
+    "slug": "fixture-project-244",
+    "title": "Fixture Project 244",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 244",
+      "project 244"
+    ],
+    "category": "resources",
+    "status": "beta",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/244/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-10T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "V-245",
+    "slug": "fixture-project-245",
+    "title": "Fixture Project 245",
+    "subtitle": "visualizations scale fixture",
+    "summary": "Synthetic visualizations project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 245",
+      "project 245"
+    ],
+    "category": "visualizations",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/245/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-11T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "X-246",
+    "slug": "fixture-project-246",
+    "title": "Fixture Project 246",
+    "subtitle": "experiments scale fixture",
+    "summary": "Synthetic experiments project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 246",
+      "project 246"
+    ],
+    "category": "experiments",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/246/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-12T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "T-247",
+    "slug": "fixture-project-247",
+    "title": "Fixture Project 247",
+    "subtitle": "tools scale fixture",
+    "summary": "Synthetic tools project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 247",
+      "project 247"
+    ],
+    "category": "tools",
+    "status": "live",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/247/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-13T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "L-248",
+    "slug": "fixture-project-248",
+    "title": "Fixture Project 248",
+    "subtitle": "learning scale fixture",
+    "summary": "Synthetic learning project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 248",
+      "project 248"
+    ],
+    "category": "learning",
+    "status": "live",
+    "tags": [
+      "study"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/248/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "G-249",
+    "slug": "fixture-project-249",
+    "title": "Fixture Project 249",
+    "subtitle": "games scale fixture",
+    "summary": "Synthetic games project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 249",
+      "project 249"
+    ],
+    "category": "games",
+    "status": "beta",
+    "tags": [
+      "game"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/249/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-15T00:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "code": "R-250",
+    "slug": "fixture-project-250",
+    "title": "Fixture Project 250",
+    "subtitle": "resources scale fixture",
+    "summary": "Synthetic resources project used to measure local catalogue filtering and search performance.",
+    "aliases": [
+      "fixture 250",
+      "project 250"
+    ],
+    "category": "resources",
+    "status": "experiment",
+    "tags": [
+      "productivity"
+    ],
+    "collections": [],
+    "liveUrl": "https://example.invalid/250/",
+    "accentLight": "#345B78",
+    "accentDark": "#7BC4F0",
+    "updatedAt": "2026-08-16T00:00:00.000Z"
+  }
+]

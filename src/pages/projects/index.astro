@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionIndex from '../../components/index/SectionIndex.astro';
+import CategoryIndex from '../../components/archive/CategoryIndex.astro';
+import ProjectArchive from '../../components/archive/ProjectArchive.astro';
+import { getCatalogueStats, getPublicProjects } from '../../lib/catalogue';
+const projects = await getPublicProjects();
+const stats = await getCatalogueStats();
+---
+<BaseLayout title="Projects — THIEPN." description="Search, filter, and browse the complete THIEPN. project catalogue.">
+  <section class="archive-page page-shell" aria-labelledby="projects-title">
+    <SectionIndex index="03" title="Project Archive" meta={`${String(stats.totalListed).padStart(3,'0')} Artifacts`} headingLevel="div" />
+    <header class="archive-page__hero index-grid">
+      <div><p class="meta">Complete catalogue / queryable index</p><h1 id="projects-title">Project Archive</h1><p>Every listed artifact in THE INDEX. Search locally, filter by type, reorder the catalogue, or switch to the compact ledger.</p></div>
+      <aside><span class="meta">Index size</span><strong>{String(stats.totalListed).padStart(3,'0')}</strong><span class="meta">Registered</span><strong>{String(stats.totalRegistered).padStart(3,'0')}</strong></aside>
+    </header>
+    <div class="archive-page__types"><CategoryIndex stats={stats} /></div>
+    <section class="archive-page__catalogue" aria-labelledby="catalogue-title">
+      <SectionIndex index="03.1" title="Catalogue" meta="Search / Filter / Sort" headingId="catalogue-title" />
+      <ProjectArchive projects={projects} />
+    </section>
+  </section>
+</BaseLayout>
+<style>
+  .archive-page{padding-top:clamp(34px,5vw,66px);padding-bottom:var(--space-9)}.archive-page__hero{padding:var(--space-9) 0 var(--space-8);align-items:end}.archive-page__hero>div{grid-column:1/span 8}.archive-page__hero h1{margin-top:var(--space-4);font-size:var(--text-display-l);line-height:.88;letter-spacing:-.06em}.archive-page__hero p:not(.meta){margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary)}.archive-page__hero aside{grid-column:10/-1;display:grid;grid-template-columns:1fr auto;gap:8px 16px;border-top:1px solid var(--line-strong);padding-top:var(--space-4)}.archive-page__hero aside strong{font:600 1rem var(--font-meta);text-align:right}.archive-page__hero aside .meta{color:var(--ink-muted)}.archive-page__types{padding-bottom:var(--space-9)}.archive-page__catalogue{padding-top:var(--space-7)}
+  @media(max-width:899px){.archive-page__hero>div{grid-column:1/-1}.archive-page__hero aside{grid-column:5/-1;margin-top:var(--space-7)}}@media(max-width:599px){.archive-page__hero aside{grid-column:1/-1}.archive-page__types{padding-bottom:var(--space-8)}}
+</style>

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "referenceViewport": { "width": 1440, "height": 900 },
+  "mobileViewport": { "width": 390, "height": 844 },
+  "maxDiffPixelRatio": 0.006,
+  "targets": [
+    { "id": "home-light-desktop", "path": "/", "theme": "light", "viewport": "desktop" },
+    { "id": "home-dark-desktop", "path": "/", "theme": "dark", "viewport": "desktop" },
+    { "id": "home-light-mobile", "path": "/", "theme": "light", "viewport": "mobile" },
+    { "id": "home-dark-mobile", "path": "/", "theme": "dark", "viewport": "mobile" },
+    { "id": "projects-light-desktop", "path": "/projects/", "theme": "light", "viewport": "desktop" },
+    { "id": "projects-dark-desktop", "path": "/projects/", "theme": "dark", "viewport": "desktop" },
+    { "id": "projects-light-mobile", "path": "/projects/", "theme": "light", "viewport": "mobile" },
+    { "id": "pdf-studio-light", "path": "/project/pdf-studio/", "theme": "light", "viewport": "desktop" },
+    { "id": "pdf-studio-dark", "path": "/project/pdf-studio/", "theme": "dark", "viewport": "desktop" },
+    { "id": "pdf-studio-mobile", "path": "/project/pdf-studio/", "theme": "light", "viewport": "mobile" },
+    { "id": "wordstrike-dark", "path": "/project/wordstrike/", "theme": "dark", "viewport": "desktop" },
+    { "id": "collections-light", "path": "/collections/", "theme": "light", "viewport": "desktop" },
+    { "id": "browser-games-light", "path": "/collection/browser-games/", "theme": "light", "viewport": "desktop" },
+    { "id": "browser-games-dark", "path": "/collection/browser-games/", "theme": "dark", "viewport": "desktop" },
+    { "id": "browser-games-mobile", "path": "/collection/browser-games/", "theme": "light", "viewport": "mobile" },
+    { "id": "search-analysis-light", "path": "/", "theme": "light", "viewport": "desktop", "state": "search", "query": "analysis" }
+  ]
+}

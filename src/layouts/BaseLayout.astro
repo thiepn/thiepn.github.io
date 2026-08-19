@@ -1,0 +1,60 @@
+---
+import SiteHeader from '../components/shell/SiteHeader.astro';
+import SiteFooter from '../components/shell/SiteFooter.astro';
+import CatalogueSearch from '../components/search/CatalogueSearch.astro';
+import { SITE } from '../data/site';
+import { getCatalogueStats } from '../lib/catalogue';
+import '@fontsource-variable/instrument-sans/wght.css';
+import '@fontsource/ibm-plex-mono/latin-500.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
+import '../styles/global.css';
+interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; noindex?: boolean; }
+const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage = '/og/index.svg', noindex = false } = Astro.props;
+const stats = await getCatalogueStats();
+const absoluteOgImage = new URL(ogImage, SITE.url).href;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ECEAE3" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="THIEPN. / THE INDEX" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={new URL(Astro.url.pathname, SITE.url)} />
+    <meta property="og:image" content={absoluteOgImage} />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={absoluteOgImage} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, SITE.url)} />
+    <title>{title}</title>
+    <script is:inline>
+      (() => {
+        const key = 'thiepn:index-theme'; let preference = 'system';
+        try { const stored = localStorage.getItem(key); if (stored === 'light' || stored === 'dark') preference = stored; } catch {}
+        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolved = preference === 'system' ? (dark ? 'dark' : 'light') : preference;
+        const root = document.documentElement; root.classList.add('js'); root.dataset.theme = resolved; root.dataset.themePreference = preference; root.style.colorScheme = resolved;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#0B0C0C' : '#ECEAE3');
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    {!hideHeader && <SiteHeader />}
+    <main id="main-content" tabindex="-1"><slot /></main>
+    {!hideFooter && <SiteFooter count={stats.totalListed} />}
+    <CatalogueSearch />
+    <script>import '../scripts/runtime-loader';</script>
+  </body>
+</html>
