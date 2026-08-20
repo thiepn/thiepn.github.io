@@ -13,8 +13,8 @@ type: game
 status: live
 visibility: listed
 summary: Destroy incoming words through fast, accurate typing and build increasingly demanding combos.
-repo: thiepn/WORDSTRIKE
-liveUrl: https://thiepn.dev/WORDSTRIKE/
+repo: thiepn/wordstrike
+liveUrl: https://thiepn.dev/wordstrike/
 tags:
 - typing
 - arcade
