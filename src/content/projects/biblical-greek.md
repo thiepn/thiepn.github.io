@@ -14,8 +14,8 @@ type: study-system
 status: beta
 visibility: listed
 summary: Learn Biblical Greek through structured grammar, parsing drills, progressive hints, guided New Testament reading, review, and meaningful progress tracking.
-repo: thiepn/thiepn.github.io
-liveUrl: https://thiepn.dev/biblical-greek/
+repo: thiepn/greek
+liveUrl: https://thiepn.github.io/greek/
 tags:
 - bible
 - grammar
@@ -23,7 +23,6 @@ tags:
 - vocabulary
 capabilityTags:
 - local-first
-- offline
 platforms:
 - desktop
 - tablet
@@ -47,13 +46,13 @@ dateAdded: '2026-08-21'
 yearAdded: 2026
 capabilities:
 - title: Structured Greek course
-  description: Move from alphabet and case recognition into noun morphology, present verbs, and direct reading of John 1.
+  description: Move from alphabet and case recognition into noun morphology, present verbs, and direct reading of John 1:1.
   previewState: learn
 - title: Recall-first parsing drills
   description: Identify morphology before seeing answers, with mistakes automatically collected into a focused review queue.
   previewState: drill
 - title: Progressive reader hints
-  description: Explore New Testament words through staged grammatical cues, lemma reveals, full parsing, and optional translation support.
+  description: Explore John 1:1 through staged grammatical cues, lemma reveals, full parsing, and optional translation support.
   previewState: reader
 - title: Local guided tutor
   description: Ask foundation grammar questions through a deterministic Socratic tutor designed for a later secure server-side AI bridge.
@@ -69,10 +68,10 @@ gallery:
   caption: Parsing practice turns endings and paradigms into automatic recognition.
   variant: drill
 - label: Reader
-  caption: John 1 uses progressive hints instead of instant interlinear answers.
+  caption: John 1:1 uses progressive hints instead of instant interlinear answers.
   variant: reader
 ---
 
 Koinē Path is an interactive Biblical Greek study system built around one principle: grammar should move the learner toward reading the Greek New Testament as early as possible.
 
-The first beta combines five foundation lessons, active-recall parsing drills, a guided John 1:1–5 reader, a local review queue, competency-based progress tracking, and a deterministic tutor interface. The tutor layer is intentionally local in the GitHub Pages build because API secrets must not be embedded in a static client; the interface is prepared for a later secure AI proxy.
+The first beta combines five foundation lessons, active-recall parsing drills, a guided John 1:1 reader, a local review queue, competency-based progress tracking, and a deterministic tutor interface. The tutor layer is intentionally local in the GitHub Pages build because API secrets must not be embedded in a static client; the interface is prepared for a later secure AI proxy.
