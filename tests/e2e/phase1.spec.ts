@@ -1,11 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-test('renders catalogue-derived Phase 1 index counts', async ({ page }) => {
+test('renders catalogue-derived portfolio hub counts', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/THIEPN/);
-  await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
-  await expect(page.getByText('019', { exact: true })).toBeVisible();
-  await expect(page.getByText('016', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Projects, tools & experiments.' })).toBeVisible();
+  await expect(page.locator('.portfolio-hero__stats strong')).toHaveText(['19', '05', '05']);
 });
 
 test('generates public artifact routes but not hold records', async ({ page }) => {
