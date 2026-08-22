@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('search index is lazy and loads only when Catalogue Search opens', async ({ page }) => {
+test('search index is lazy and loads only when Project Search opens', async ({ page }) => {
   const searchRequests: string[] = [];
   page.on('request', (request) => { if (request.url().endsWith('/search-index.json')) searchRequests.push(request.url()); });
   await page.goto('/');
@@ -11,7 +11,7 @@ test('search index is lazy and loads only when Catalogue Search opens', async ({
   await expect.poll(() => searchRequests.length).toBe(1);
 });
 
-test('archive list DOM is materialized only on demand', async ({ page }) => {
+test('project list DOM is materialized only on demand', async ({ page }) => {
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(0);
   const listButton = page.locator('[data-archive-view="list"]');
@@ -20,12 +20,12 @@ test('archive list DOM is materialized only on demand', async ({ page }) => {
   await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(19);
 });
 
-test('250-artifact harness remains contained and has no horizontal overflow', async ({ page }) => {
+test('250-project harness remains contained and has no horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/dev/scale/');
   await expect(page.locator('[data-scale-card]')).toHaveCount(250);
   await page.getByRole('button',{name:'Games',exact:true}).click();
-  await expect(page.locator('[data-archive-result-count]')).toHaveText('042');
+  await expect(page.locator('[data-archive-result-count]')).toHaveText('42');
   await page.getByRole('button',{name:'All',exact:true}).click();
   await page.getByRole('button',{name:'List',exact:true}).click();
   await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(250);
