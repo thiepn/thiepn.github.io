@@ -23,6 +23,7 @@ const { previous, next }=await getProjectNeighbors(p.slug);
 const { Content }=await render(project);
 const accentStyle=`--project-accent-light:${p.accent.light};--project-accent-dark:${p.accent.dark};`;
 const sectionTitle = p.category === 'learning' ? 'Learning Modes' : p.category === 'games' ? 'Core Systems' : 'Capabilities';
+const previewLabel = p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';
 ---
 <BaseLayout title={`${p.title} — THIEPN`} description={p.summary} ogImage={`/og/${p.slug}.svg`}>
   <article class="record page-shell" style={accentStyle} data-record-slug={p.slug}>
@@ -40,7 +41,7 @@ const sectionTitle = p.category === 'learning' ? 'Learning Modes' : p.category =
         </div>
       </div>
       <div class="record__preview" data-record-preview>
-        <div class="record__preview-label"><span>Preview</span><strong data-record-preview-label>{p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'interactive' ? 'Interactive demo' : 'Project preview'}</strong></div>
+        <div class="record__preview-label"><span>Preview</span><strong data-record-preview-label>{previewLabel}</strong></div>
         <InteractivePreview project={project} size="hero" focusable={true} />
       </div>
     </header>
