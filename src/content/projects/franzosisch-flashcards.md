@@ -11,7 +11,7 @@ aliases:
 category: learning
 type: flashcards
 status: live
-visibility: listed
+visibility: hidden
 summary: A lightweight French flashcard trainer for direct vocabulary review and recall practice.
 repo: thiepn/french2.2
 liveUrl: https://thiepn.dev/french2.2/
@@ -25,8 +25,7 @@ platforms:
 - desktop
 - tablet
 - mobile
-collections:
-- french-learning
+collections: []
 accent:
   light: '#39689C'
   dark: '#79B5F8'
