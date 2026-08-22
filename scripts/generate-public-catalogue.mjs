@@ -6,7 +6,7 @@ const projects = publicProjects(await readProjects());
 const collections = await readCollections();
 const payload = {
   schemaVersion: 1,
-  identity: 'THE INDEX',
+  identity: 'THIEPN PROJECTS',
   projects: projects.map((project) => ({
     code: project.data.code,
     slug: project.data.slug,
@@ -38,4 +38,4 @@ const payload = {
   })),
 };
 await writeJson(path.join(PATHS.generated, 'catalogue-public.json'), payload, { check: Boolean(args.check) });
-console.log(`Public catalogue: ${payload.projects.length} projects / ${payload.collections.length} collections.`);
+console.log(`Public project data: ${payload.projects.length} projects / ${payload.collections.length} collections.`);
