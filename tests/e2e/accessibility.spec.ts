@@ -10,6 +10,8 @@ test('skip link moves keyboard focus to main content', async ({ page }) => {
 });
 
 test('desktop navigation exposes current-page semantics', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.site-nav a[aria-current="page"]')).toHaveText('Home');
   await page.goto('/projects/');
   await expect(page.locator('.site-nav a[aria-current="page"]')).toHaveText('Projects');
   await page.goto('/project/pdf-studio/');
@@ -26,14 +28,14 @@ test('reduced motion collapses transition durations', async ({ page }) => {
   expect(Math.max(...seconds)).toBeLessThanOrEqual(.001);
 });
 
-test('forced colors keeps primary structure and controls visible', async ({ page, browserName }) => {
+test('forced colors keeps primary portfolio structure and controls visible', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'forced-colors emulation is certified in Chromium; CSS fallback is source-audited for all engines.');
   await page.emulateMedia({ forcedColors: 'active' });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
-  const explore = page.getByRole('link', { name: 'Explore ↓', exact: true });
-  await expect(explore).toBeVisible();
-  const buttonBorder = await explore.evaluate((element) => getComputedStyle(element).borderTopStyle);
+  await expect(page.getByRole('heading', { name: 'Projects, tools & experiments.' })).toBeVisible();
+  const browse = page.getByRole('link', { name: 'Browse all projects', exact: true });
+  await expect(browse).toBeVisible();
+  const buttonBorder = await browse.evaluate((element) => getComputedStyle(element).borderTopStyle);
   expect(buttonBorder).not.toBe('none');
 });
 
@@ -47,8 +49,8 @@ test('text-spacing stress does not produce horizontal page overflow', async ({ p
   expect(overflow).toBe(false);
 });
 
-test('empty categories are not misleading links', async ({ page }) => {
-  await page.goto('/');
+test('empty categories are not misleading links in the dedicated project browser', async ({ page }) => {
+  await page.goto('/projects/');
   const resources = page.locator('.category-index__row').filter({ hasText: 'Resources' });
   await expect(resources).toHaveAttribute('aria-disabled', 'true');
   await expect(resources.locator('a')).toHaveCount(0);
