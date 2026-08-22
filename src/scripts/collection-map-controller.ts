@@ -55,7 +55,15 @@ function initCollectionMap(root: HTMLElement) {
     if (event.pointerType === 'mouse') apply(initialSlug);
   });
 
-  apply(initialSlug);
+  const focusedNode = nodes.find((node) => node === document.activeElement);
+  const focusedRelation = relations.find((relation) => relation === document.activeElement);
+  if (focusedNode) {
+    apply(focusedNode.dataset.projectSlug || initialSlug, true);
+  } else if (focusedRelation) {
+    apply(focusedRelation.dataset.relationFrom || initialSlug, true);
+  } else {
+    apply(initialSlug);
+  }
 }
 
 document.querySelectorAll<HTMLElement>('[data-collection-map]').forEach(initCollectionMap);
