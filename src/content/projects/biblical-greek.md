@@ -15,7 +15,7 @@ status: beta
 visibility: listed
 summary: Learn Biblical Greek through structured grammar, parsing drills, progressive hints, guided New Testament reading, review, and meaningful progress tracking.
 repo: thiepn/greek
-liveUrl: https://thiepn.github.io/greek/
+liveUrl: https://thiepn.dev/greek/
 tags:
 - bible
 - grammar
@@ -31,7 +31,8 @@ controls:
 - keyboard
 - mouse
 - touch
-collections: []
+collections:
+- bible-faith
 accent:
   light: '#9A6A2F'
   dark: '#D5B075'
