@@ -33,7 +33,7 @@ async function prepare(page: Page, target: Target) {
     await page.keyboard.press('Control+K');
     const input = page.getByRole('combobox', { name: 'Search projects and collections' });
     await input.fill(target.query ?? 'analysis');
-    await expect(page.getByRole('dialog', { name: 'Search projects' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Find a project' })).toBeVisible();
   }
   await page.addStyleTag({
     content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}*{content-visibility:visible!important}',
