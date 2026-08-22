@@ -34,7 +34,7 @@ accent:
   light: '#007F96'
   dark: '#2DE2FF'
 preview:
-  tier: P0
+  tier: P3
   type: static
   provenance: static
 actions:
