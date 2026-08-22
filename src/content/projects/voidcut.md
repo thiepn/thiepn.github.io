@@ -31,7 +31,7 @@ controls:
 collections:
 - browser-games
 accent:
-  light: '#007F96'
+  light: '#006E82'
   dark: '#2DE2FF'
 preview:
   tier: P3
