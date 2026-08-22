@@ -4,6 +4,7 @@
     "T-001": "pdf-studio",
     "T-002": "manuscript",
     "T-003": "clean30",
+    "T-004": "mathlab",
     "L-001": "french-3000",
     "L-002": "le-carnet-francais",
     "L-003": "franzosisch-flashcards",
@@ -11,6 +12,7 @@
     "L-005": "analysis-ii-lernsystem",
     "L-006": "algodat-study-system",
     "L-007": "tms60",
+    "L-901": "biblical-greek",
     "G-001": "wordstrike",
     "G-002": "wordfall",
     "G-003": "curio",
@@ -20,11 +22,13 @@
     "G-007": "echoframe-last-signal",
     "G-008": "skyspire",
     "G-009": "analysis-idle",
-    "R-001": "markdown-guide"
+    "G-010": "impossible-transit",
+    "G-011": "voidcut",
+    "R-001": "markdown-guide",
+    "V-001": "unreached"
   },
   "collections": {
     "C-001": "french-learning",
-    "C-002": "mathematics-cs",
     "C-003": "browser-games",
     "C-004": "bible-faith",
     "C-005": "productivity-creation",
