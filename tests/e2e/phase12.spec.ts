@@ -15,7 +15,7 @@ async function hasHorizontalOverflow(page: Page) {
 async function openSearch(page: Page) {
   await page.goto('/');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
-  const dialog = page.getByRole('dialog', { name: 'Search projects' });
+  const dialog = page.getByRole('dialog', { name: 'Find a project' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -47,12 +47,13 @@ test('search follows combobox/listbox semantics and restores focus', async ({ pa
   await opener.focus();
   await opener.press('Enter');
 
-  const dialog = page.getByRole('dialog', { name: 'Search projects' });
+  const dialog = page.getByRole('dialog', { name: 'Find a project' });
   await expect(dialog).toBeVisible();
   const input = page.getByRole('combobox', { name: 'Search projects and collections' });
   await expect(input).toBeFocused();
   const listbox = page.getByRole('listbox', { name: 'Project search results' });
   await expect(listbox).toBeVisible();
+  await expect(listbox.getByRole('option')).toHaveCount(5);
 
   await input.fill('pdf');
   const options = listbox.getByRole('option');
@@ -71,6 +72,14 @@ test('search follows combobox/listbox semantics and restores focus', async ({ pa
   await expect(opener).toBeFocused();
 });
 
+test('search suggestions are visible and populate the finder', async ({ page }) => {
+  const dialog = await openSearch(page);
+  const input = page.getByRole('combobox', { name: 'Search projects and collections' });
+  await dialog.getByRole('button', { name: 'Games', exact: true }).click();
+  await expect(input).toHaveValue('games');
+  await expect(dialog.getByRole('listbox', { name: 'Project search results' }).getByRole('option').first()).toBeVisible();
+});
+
 test('search close control keeps its native keyboard activation', async ({ page }) => {
   await page.goto('/');
   const opener = page.getByRole('link', { name: 'Search projects' }).first();
@@ -79,10 +88,10 @@ test('search close control keeps its native keyboard activation', async ({ page 
   const input = page.getByRole('combobox', { name: 'Search projects and collections' });
   await expect(input).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  const close = page.getByRole('button', { name: 'Esc' });
+  const close = page.getByRole('button', { name: 'Close project search' });
   await expect(close).toBeFocused();
   await close.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'Search projects' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Find a project' })).not.toBeVisible();
   await expect(opener).toBeFocused();
 });
 
