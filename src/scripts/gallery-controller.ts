@@ -1,3 +1,13 @@
+function keepFocusVisible(element: HTMLElement) {
+  const header = document.querySelector<HTMLElement>('.site-header');
+  const headerBottom = header?.getBoundingClientRect().bottom ?? 0;
+  const rect = element.getBoundingClientRect();
+  const safeTop = headerBottom + 12;
+  if (rect.top < safeTop) {
+    window.scrollBy({ top: rect.top - safeTop, left: 0, behavior: 'auto' });
+  }
+}
+
 for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-gallery]'))) {
   const dialog = gallery.querySelector('[data-gallery-dialog]');
   if (!(dialog instanceof HTMLDialogElement)) continue;
@@ -6,6 +16,10 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
   const caption = dialog.querySelector('[data-gallery-dialog-caption]');
   let opener: HTMLElement | null = null;
   gallery.querySelectorAll<HTMLButtonElement>('[data-gallery-open]').forEach((button) => {
+    button.addEventListener('focus', () => {
+      keepFocusVisible(button);
+      requestAnimationFrame(() => keepFocusVisible(button));
+    });
     button.addEventListener('click', () => {
       opener = button;
       const source = button.querySelector('.gallery-figure__visual');
