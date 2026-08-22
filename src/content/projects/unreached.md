@@ -18,7 +18,7 @@ liveUrl: https://thiepn.dev/unreached/
 tags:
 - bible
 - reference
-- visualization
+- study
 capabilityTags:
 - local-first
 platforms:
