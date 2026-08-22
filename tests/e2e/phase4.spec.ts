@@ -37,20 +37,23 @@ test('shared category browser applies local filter and Back restores state', asy
   await expect(page.getByRole('button',{name:'Games',exact:true})).toHaveAttribute('aria-pressed','true');
 });
 
-test('Random project selects a project without auto-launching it', async ({ page }) => {
-  await page.goto('/projects/');
-  await page.locator('[data-archive-random]').click();
-  await expect(page.locator('[data-catalogue-search-dialog]')).toBeVisible();
-  await expect(page.locator('[data-catalogue-search-random]')).toBeVisible();
-  await expect(page.locator('[data-catalogue-search-random-card] a')).toHaveText(/Open details/);
-  await expect(page).toHaveURL(/\/projects\//);
+test('active project filters expose an explicit clear action', async ({ page }) => {
+  await page.goto('/projects/?category=games&q=typing&sort=az');
+  const clear = page.locator('[data-archive-clear]');
+  await expect(clear).toBeVisible();
+  await clear.click();
+  await expect(page).not.toHaveURL(/category=/);
+  await expect(page).not.toHaveURL(/q=/);
+  await expect(page).not.toHaveURL(/sort=/);
+  await expect(page.getByRole('button',{name:'All',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('[data-archive-query]')).toHaveValue('');
 });
 
 test('mobile Project Search is full screen and usable with touch viewport', async ({ page }) => {
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await page.getByRole('button',{name:'Menu'}).click();
-  await page.getByRole('link',{name:'Search projects',exact:true}).click();
+  await page.getByRole('link',{name:/Search projects/}).click();
   await expect(page.locator('[data-catalogue-search-dialog]')).toBeVisible();
   await page.locator('[data-catalogue-search-input]').fill('french');
   await expect(page.getByText('French 3000',{exact:true}).first()).toBeVisible();
