@@ -1,6 +1,5 @@
 interface SearchOpenDetail {
   query?: string;
-  random?: boolean;
 }
 
 let modulePromise: Promise<typeof import('./catalogue-search')> | null = null;
@@ -32,10 +31,7 @@ document.addEventListener('click', (event) => {
     : null;
   if (!target) return;
   event.preventDefault();
-  void open({
-    query: target.dataset.catalogueSearchQuery || '',
-    random: target.hasAttribute('data-catalogue-search-random'),
-  });
+  void open({ query: target.dataset.catalogueSearchQuery || '' });
 });
 
 document.addEventListener('keydown', (event) => {
