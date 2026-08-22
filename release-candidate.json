@@ -4,10 +4,10 @@
   "phase": 15,
   "featureFreeze": true,
   "expected": {
-    "registeredProjects": 20,
+    "registeredProjects": 25,
     "listedProjects": 19,
-    "collections": 6,
-    "featuredProjects": 7
+    "collections": 5,
+    "featuredProjects": 5
   },
   "severityGate": {
     "critical": 0,
