@@ -55,6 +55,8 @@ const items = [
 
     let returnFocus: HTMLElement | null = null;
     let restoreOnClose = true;
+    const focusableSelector = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const focusableElements = () => [...dialog.querySelectorAll<HTMLElement>(focusableSelector)].filter((element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'));
     const openDialog = () => {
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : open;
       restoreOnClose = true;
@@ -74,6 +76,21 @@ const items = [
     close.addEventListener('click', closeDialog);
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const focusable = focusableElements();
+      if (!focusable.length) {
+        event.preventDefault();
+        close.focus();
+        return;
+      }
+      const current = document.activeElement instanceof HTMLElement ? focusable.indexOf(document.activeElement) : -1;
+      const next = event.shiftKey
+        ? (current <= 0 ? focusable.length - 1 : current - 1)
+        : (current < 0 || current === focusable.length - 1 ? 0 : current + 1);
+      event.preventDefault();
+      focusable[next]?.focus();
     });
     dialog.addEventListener('close', () => { if (restoreOnClose) returnFocus?.focus(); });
     dialog.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => link.addEventListener('click', () => { restoreOnClose = false; closeDialog(); }));
