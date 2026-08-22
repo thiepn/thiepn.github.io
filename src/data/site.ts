@@ -1,9 +1,9 @@
 export const SITE = {
   name: 'THIEPN',
-  title: 'THIEPN — Project Index',
+  title: 'THIEPN — Projects',
   description: 'Projects, tools, games & experiments.',
   url: 'https://thiepn.dev',
   githubUrl: 'https://github.com/thiepn',
-  designSystem: 'THE INDEX / DS-01',
-  phase: 15,
+  designSystem: 'THIEPN Portfolio / DS-01',
+  phase: 16,
 } as const;
