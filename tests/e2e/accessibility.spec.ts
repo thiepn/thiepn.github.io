@@ -32,7 +32,7 @@ test('forced colors keeps primary portfolio structure and controls visible', asy
   test.skip(browserName !== 'chromium', 'forced-colors emulation is certified in Chromium; CSS fallback is source-audited for all engines.');
   await page.emulateMedia({ forcedColors: 'active' });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Projects, tools & experiments.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
   const browse = page.getByRole('link', { name: 'Browse all projects', exact: true });
   await expect(browse).toBeVisible();
   const buttonBorder = await browse.evaluate((element) => getComputedStyle(element).borderTopStyle);
