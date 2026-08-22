@@ -16,15 +16,13 @@ const payload = JSON.stringify({ projects:data, curatedOrder:CURATED_PROJECT_ORD
   <script is:inline type="application/json" data-archive-data set:html={payload}></script>
   <ArchiveControls count={projects.length} />
   <div class="project-archive__empty" hidden data-archive-empty>
-    <span class="meta">00 / No matches</span>
-    <strong>No artifacts match this catalogue state.</strong>
-    <button type="button" data-archive-reset>Reset archive →</button>
+    <span class="meta">No matches</span>
+    <strong>No projects match these filters.</strong>
+    <button type="button" data-archive-reset>Clear filters →</button>
   </div>
   <div class="project-archive__grid" data-archive-grid>
     {projects.map((project, index) => <div class="project-archive__item" data-archive-item data-slug={project.data.slug} data-curated-index={index}><ArtifactPlate project={project} /></div>)}
   </div>
-  <!-- List markup is created only if the visitor selects List view. This keeps
-       the no-JS archive complete while avoiding a second 250-item DOM tree. -->
   <div class="project-archive__list" hidden data-archive-list></div>
 </div>
 <style>
