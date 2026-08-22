@@ -45,14 +45,19 @@ if (document.querySelector('[data-record-preview]')) {
   idle('record-preview', () => import('./record-preview-controller'), 750);
 }
 
-// Collection map JS is loaded only as the relationship field approaches view.
+// Collection map JS is normally loaded only as the secondary relationship view
+// approaches the viewport. Keyboard focus is a higher-priority signal: import the
+// controller immediately on focusin so a fast tab/automation path cannot outrun
+// the lazy IntersectionObserver callback.
 const collectionMap = document.querySelector<HTMLElement>('[data-collection-map]');
 if (collectionMap) {
+  const loadCollectionMap = () => once('collection-map', () => import('./collection-map-controller'));
+  collectionMap.addEventListener('focusin', loadCollectionMap, { once: true });
   if ('IntersectionObserver' in window) {
     const observer = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting)) return;
       observer.disconnect();
-      once('collection-map', () => import('./collection-map-controller'));
+      loadCollectionMap();
     }, { rootMargin: '400px 0px' });
     observer.observe(collectionMap);
   } else {
