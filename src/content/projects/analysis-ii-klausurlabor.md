@@ -12,7 +12,7 @@ aliases:
 category: learning
 type: study-system
 status: live
-visibility: listed
+visibility: hidden
 summary: Study Analysis II through exam-style problems, interactive mathematics, and targeted practice.
 repo: thiepn/analysis2
 liveUrl: https://thiepn.dev/analysis2/
@@ -27,8 +27,7 @@ platforms:
 - desktop
 - tablet
 - mobile
-collections:
-- mathematics-cs
+collections: []
 accent:
   light: '#245D8A'
   dark: '#68B4EF'
