@@ -38,10 +38,10 @@ function initArchive(root: HTMLElement) {
   const grid = root.querySelector<HTMLElement>('[data-archive-grid]');
   const list = root.querySelector<HTMLElement>('[data-archive-list]');
   const empty = root.querySelector<HTMLElement>('[data-archive-empty]');
-  const reset = root.querySelector<HTMLButtonElement>('[data-archive-reset]');
-  const random = root.querySelector<HTMLButtonElement>('[data-archive-random]');
-  if (!dataNode || !queryInput || !sortSelect || !count || !grid || !list || !empty || !reset || !random) return;
-  const queryEl=queryInput; const sortEl=sortSelect; const countEl=count; const gridEl=grid; const listEl=list; const emptyEl=empty; const resetEl=reset; const randomEl=random;
+  const emptyReset = root.querySelector<HTMLButtonElement>('[data-archive-reset]');
+  const clear = root.querySelector<HTMLButtonElement>('[data-archive-clear]');
+  if (!dataNode || !queryInput || !sortSelect || !count || !grid || !list || !empty || !emptyReset || !clear) return;
+  const queryEl=queryInput; const sortEl=sortSelect; const countEl=count; const gridEl=grid; const listEl=list; const emptyEl=empty; const emptyResetEl=emptyReset; const clearEl=clear;
   let payload: ArchivePayload;
   try { payload = JSON.parse(dataNode.textContent || '{}') as ArchivePayload; } catch { return; }
   const storedView = (() => { try { return localStorage.getItem(VIEW_KEY); } catch { return null; } })();
@@ -66,6 +66,10 @@ function initArchive(root: HTMLElement) {
     listBuilt = true;
   }
 
+  function hasActiveFilters() {
+    return state.category !== DEFAULT_ARCHIVE_STATE.category || Boolean(state.query.trim()) || state.sort !== DEFAULT_ARCHIVE_STATE.sort;
+  }
+
   function syncControls() {
     queryEl.value = state.query;
     sortEl.value = state.sort;
@@ -73,6 +77,7 @@ function initArchive(root: HTMLElement) {
     root.querySelectorAll<HTMLButtonElement>('[data-archive-view]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.archiveView === state.view)));
     gridEl.hidden = state.view !== 'grid';
     listEl.hidden = state.view !== 'list';
+    clearEl.hidden = !hasActiveFilters();
   }
 
   function updateUrl(mode: 'replace'|'push' = 'replace') {
@@ -102,7 +107,7 @@ function initArchive(root: HTMLElement) {
     const visible = new Set(ordered.map((project) => project.slug));
     reorder(gridEl, gridMap, ordered, visible);
     if (listBuilt) reorder(listEl, listMap, ordered, visible);
-    countEl.textContent = String(ordered.length).padStart(3, '0');
+    countEl.textContent = String(ordered.length).padStart(2, '0');
     emptyEl.hidden = ordered.length > 0;
     syncControls();
     if (motionAllowed) {
@@ -123,6 +128,12 @@ function initArchive(root: HTMLElement) {
     applyFrame = requestAnimationFrame(() => { applyFrame = 0; apply(options); });
   }
 
+  function resetFilters() {
+    state = { ...DEFAULT_ARCHIVE_STATE, view: state.view };
+    apply({ url: true, historyMode: 'push' });
+    queryEl.focus();
+  }
+
   root.querySelectorAll<HTMLButtonElement>('[data-archive-category]').forEach((button) => button.addEventListener('click', () => {
     state = { ...state, category: (button.dataset.archiveCategory || 'all') as ArchiveCategory };
     apply({ url: true, historyMode: 'push' });
@@ -133,8 +144,8 @@ function initArchive(root: HTMLElement) {
   }));
   queryEl.addEventListener('input', () => { state = { ...state, query: queryEl.value }; scheduleApply({ url: true, historyMode: 'replace' }); });
   sortEl.addEventListener('change', () => { state = { ...state, sort: sortEl.value as ArchiveSort }; apply({ url: true, historyMode: 'push' }); });
-  resetEl.addEventListener('click', () => { state = { ...DEFAULT_ARCHIVE_STATE, view: state.view }; apply({ url: true, historyMode: 'push' }); queryEl.focus(); });
-  randomEl.addEventListener('click', () => window.dispatchEvent(new CustomEvent('thiepn:search-open', { detail: { random: true } })));
+  emptyResetEl.addEventListener('click', resetFilters);
+  clearEl.addEventListener('click', resetFilters);
 
   document.querySelectorAll<HTMLAnchorElement>('[data-archive-filter-link]').forEach((link) => link.addEventListener('click', (event) => {
     const category = link.dataset.archiveFilterLink as ArchiveCategory | undefined;
