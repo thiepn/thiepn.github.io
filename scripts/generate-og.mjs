@@ -8,7 +8,7 @@ const collections = await readCollections();
 
 function shorten(value, max = 78) { return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`; }
 
-function svg({ code, title, subtitle, accent = '#777A73', kind = 'ARTIFACT' }) {
+function svg({ code, title, subtitle, accent = '#777A73', kind = 'PROJECT' }) {
   const safeTitle = xmlEscape(compactText(title));
   const safeSubtitle = xmlEscape(shorten(compactText(subtitle)));
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="${safeTitle}">
@@ -18,11 +18,11 @@ function svg({ code, title, subtitle, accent = '#777A73', kind = 'ARTIFACT' }) {
   <text x="86" y="104" fill="#555650" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">${xmlEscape(code)} / ${xmlEscape(kind)}</text>
   <text x="86" y="320" fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="600" letter-spacing="-4">${safeTitle}</text>
   <text x="88" y="378" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="28">${safeSubtitle}</text>
-  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN. / THE INDEX</text>
+  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN / PROJECTS</text>
 </svg>\n`;
 }
 
-await writeText(path.join(PATHS.og, 'index.svg'), svg({ code: '00', title: 'THIEPN.', subtitle: 'Projects, tools, games & experiments.', kind: 'PROJECT INDEX', accent: '#555650' }), { check });
+await writeText(path.join(PATHS.og, 'index.svg'), svg({ code: 'HOME', title: 'THIEPN', subtitle: 'Projects, tools, games & experiments.', kind: 'PORTFOLIO', accent: '#555650' }), { check });
 for (const project of projects) {
   await writeText(path.join(PATHS.og, `${project.data.slug}.svg`), svg({ code: project.data.code, title: project.data.title, subtitle: project.data.subtitle, accent: project.data.accent.light }), { check });
 }

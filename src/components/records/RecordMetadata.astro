@@ -9,18 +9,18 @@ const mobile = p.platforms.includes('mobile') ? 'YES' : 'NO';
 const offline = p.capabilityTags.includes('offline') ? 'YES' : p.capabilityTags.includes('local-first') ? 'LOCAL-FIRST' : 'NO';
 ---
 <dl class="record-metadata">
-  <div><dt>Catalogue</dt><dd>{p.code}</dd></div>
+  <div><dt>Project code</dt><dd>{p.code}</dd></div>
   <div><dt>Status</dt><dd>{p.status}</dd></div>
   <div><dt>Type</dt><dd>{p.type}</dd></div>
   <div><dt>Category</dt><dd>{p.category}</dd></div>
-  <div><dt>First indexed</dt><dd>{fmt(p.dateAdded)}</dd></div>
-  <div><dt>Last major</dt><dd>{p.lastMajorUpdate ? fmt(p.lastMajorUpdate) : '—'}</dd></div>
+  <div><dt>Added</dt><dd>{fmt(p.dateAdded)}</dd></div>
+  <div><dt>Last major update</dt><dd>{p.lastMajorUpdate ? fmt(p.lastMajorUpdate) : '—'}</dd></div>
   <div><dt>Platform</dt><dd>{platform}</dd></div>
   <div><dt>Mobile</dt><dd>{mobile}</dd></div>
   <div><dt>Offline</dt><dd>{offline}</dd></div>
   <div><dt>Preview</dt><dd>{p.preview.tier} / {p.preview.type}</dd></div>
-  {p.repo && <div><dt>Source</dt><dd><a href={`https://github.com/${p.repo}`}>{p.repo} ↗</a></dd></div>}
-  {p.liveUrl && <div><dt>Live</dt><dd><a href={p.liveUrl}>{p.actions.primaryLabel} ↗</a></dd></div>}
+  {p.repo && <div><dt>GitHub</dt><dd><a href={`https://github.com/${p.repo}`}>{p.repo} ↗</a></dd></div>}
+  {p.liveUrl && <div><dt>Live project</dt><dd><a href={p.liveUrl}>{p.actions.primaryLabel} ↗</a></dd></div>}
 </dl>
 <style>
   .record-metadata{margin-top:var(--space-6);border-top:1px solid var(--line-strong);display:grid;grid-template-columns:1fr 1fr}

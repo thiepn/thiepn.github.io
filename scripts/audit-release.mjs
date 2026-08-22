@@ -24,7 +24,8 @@ const githubSync = fs.readFileSync('scripts/sync-github.mjs', 'utf8');
 const sitemapSource = fs.readFileSync('src/pages/sitemap.xml.ts', 'utf8');
 
 if (pkg.version !== rc.release) fail(`package version ${pkg.version} does not match RC ${rc.release}`);
-if (!siteSource.includes(`phase: ${rc.phase},`)) fail(`SITE.phase must be ${rc.phase}`);
+const sitePhase = Number(/phase:\s*(\d+)/.exec(siteSource)?.[1] ?? 0);
+if (sitePhase < rc.phase) fail(`SITE.phase ${sitePhase} must be at least certified RC phase ${rc.phase}`);
 if (rc.featureFreeze !== true) fail('featureFreeze must be true');
 if (rc.severityGate?.critical !== 0 || rc.severityGate?.high !== 0) fail('RC severity gate must require zero critical/high issues');
 

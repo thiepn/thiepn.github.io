@@ -8,11 +8,9 @@ const active = (href: string) => {
   return path.startsWith(href);
 };
 const items = [
-  ['00', 'Index', '/'],
-  ['01', 'Featured', '/#featured'],
-  ['02', 'Projects', '/projects/'],
-  ['03', 'Collections', '/collections/'],
-  ['04', 'Recent', '/#recent'],
+  ['Home', '/'],
+  ['Projects', '/projects/'],
+  ['Collections', '/collections/'],
 ] as const;
 ---
 <div class="mobile-menu" data-mobile-menu>
@@ -24,17 +22,17 @@ const items = [
         <button class="mobile-menu__close" type="button" data-mobile-menu-close aria-label="Close navigation menu">Close</button>
       </header>
       <div class="mobile-menu__index">
-        <p class="meta" id="mobile-menu-title">Navigate / The Index</p>
+        <p class="meta" id="mobile-menu-title">Navigation</p>
         <nav aria-label="Mobile navigation">
-          {items.map(([index, label, href]) => (
+          {items.map(([label, href]) => (
             <a class:list={[active(href) && 'is-active']} href={href} aria-current={active(href) ? 'page' : undefined}>
-              <span>{index}</span><strong>{label}</strong><i aria-hidden="true">→</i>
+              <strong>{label}</strong><i aria-hidden="true">→</i>
             </a>
           ))}
         </nav>
       </div>
       <footer class="mobile-menu__footer">
-        <a href="/projects/" data-catalogue-search-open>Search index →</a>
+        <a href="/projects/" data-catalogue-search-open>Search projects</a>
         <a href="https://github.com/thiepn">GitHub ↗</a>
         <ThemeControl />
       </footer>
@@ -42,7 +40,7 @@ const items = [
   </dialog>
   <noscript>
     <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
-      <a href="/">Index</a><a href="/projects/">Projects</a><a href="/collections/">Collections</a>
+      <a href="/">Home</a><a href="/projects/">Projects</a><a href="/collections/">Collections</a>
     </nav>
   </noscript>
 </div>
@@ -57,6 +55,8 @@ const items = [
 
     let returnFocus: HTMLElement | null = null;
     let restoreOnClose = true;
+    const focusableSelector = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const focusableElements = () => [...dialog.querySelectorAll<HTMLElement>(focusableSelector)].filter((element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'));
     const openDialog = () => {
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : open;
       restoreOnClose = true;
@@ -77,6 +77,21 @@ const items = [
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) closeDialog();
     });
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const focusable = focusableElements();
+      if (!focusable.length) {
+        event.preventDefault();
+        close.focus();
+        return;
+      }
+      const current = document.activeElement instanceof HTMLElement ? focusable.indexOf(document.activeElement) : -1;
+      const next = event.shiftKey
+        ? (current <= 0 ? focusable.length - 1 : current - 1)
+        : (current < 0 || current === focusable.length - 1 ? 0 : current + 1);
+      event.preventDefault();
+      focusable[next]?.focus();
+    });
     dialog.addEventListener('close', () => { if (restoreOnClose) returnFocus?.focus(); });
     dialog.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => link.addEventListener('click', () => { restoreOnClose = false; closeDialog(); }));
   });
@@ -94,9 +109,8 @@ const items = [
   .mobile-menu__index{padding-top:clamp(40px,10vh,84px)}
   .mobile-menu__index>p{padding-bottom:var(--space-4);border-bottom:1px solid var(--line-strong);color:var(--ink-muted)}
   .mobile-menu__index nav{border-bottom:1px solid var(--line-strong)}
-  .mobile-menu__index nav a{display:grid;grid-template-columns:46px minmax(0,1fr) 30px;gap:var(--space-3);align-items:center;min-height:64px;border-bottom:1px solid var(--line);text-decoration:none}
+  .mobile-menu__index nav a{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:var(--space-3);align-items:center;min-height:68px;border-bottom:1px solid var(--line);text-decoration:none}
   .mobile-menu__index nav a:last-child{border-bottom:0}
-  .mobile-menu__index nav span{font:500 .66rem var(--font-meta);letter-spacing:.07em;color:var(--ink-muted)}
   .mobile-menu__index nav strong{font-size:clamp(1.45rem,7vw,2rem);line-height:1;letter-spacing:-.045em;font-weight:540}
   .mobile-menu__index nav i{font:500 1rem var(--font-meta);font-style:normal;text-align:right;color:var(--ink-muted)}
   .mobile-menu__index nav a.is-active strong{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:7px}

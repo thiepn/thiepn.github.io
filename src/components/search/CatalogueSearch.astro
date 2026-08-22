@@ -4,34 +4,33 @@
   <dialog class="catalogue-search__dialog" data-catalogue-search-dialog aria-labelledby="catalogue-search-title">
     <div class="catalogue-search__surface">
       <header class="catalogue-search__header">
-        <p class="meta" id="catalogue-search-title">Search / The Index</p>
+        <p class="meta" id="catalogue-search-title">Search projects</p>
         <button type="button" data-catalogue-search-close>Esc</button>
       </header>
       <div class="catalogue-search__query">
         <span aria-hidden="true">&gt;</span>
         <label class="sr-only" for="catalogue-query">Search projects and collections</label>
-        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search the catalogue" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-expanded="false" data-catalogue-search-input />
+        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search projects" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-expanded="false" data-catalogue-search-input />
       </div>
-      <div class="catalogue-search__status" aria-live="polite" aria-atomic="true" data-catalogue-search-status>Type a project, topic, or catalogue code.</div>
+      <div class="catalogue-search__status" aria-live="polite" aria-atomic="true" data-catalogue-search-status>Type a project, topic, or project code.</div>
       <div class="catalogue-search__workspace">
-        <div class="catalogue-search__results" id="catalogue-search-results" role="listbox" aria-label="Catalogue search results" data-catalogue-search-results></div>
+        <div class="catalogue-search__results" id="catalogue-search-results" role="listbox" aria-label="Project search results" data-catalogue-search-results></div>
         <aside class="catalogue-search__preview" aria-live="polite" data-catalogue-search-preview>
-          <span class="meta">Catalogue ready</span>
-          <strong>Search across projects and curated collections.</strong>
+          <span class="meta">Search ready</span>
+          <strong>Search projects and collections.</strong>
           <p>Try “French”, “typing”, “PDF”, “G-003”, or a project title.</p>
         </aside>
       </div>
       <div class="catalogue-search__random" hidden data-catalogue-search-random>
-        <p class="meta">Random Access / Selected Artifact</p>
+        <p class="meta">Random project</p>
         <div data-catalogue-search-random-card></div>
       </div>
       <footer class="catalogue-search__footer">
-        <span>↑↓ Select</span><span>Enter Details</span><span>Ctrl/⌘+Enter Open</span><button type="button" data-catalogue-search-random-trigger>Random Access R</button>
+        <span>↑↓ Select</span><span>Enter Details</span><span>Ctrl/⌘+Enter Open</span><button type="button" data-catalogue-search-random-trigger>Random project R</button>
       </footer>
     </div>
   </dialog>
 </div>
-
 
 <style is:global>
   .catalogue-search__dialog{width:min(1180px,calc(100vw - 80px));max-width:none;max-height:min(760px,80vh);margin:10vh auto auto;padding:0;border:1px solid var(--line-strong);background:var(--canvas);color:var(--ink)}

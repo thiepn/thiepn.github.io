@@ -3,11 +3,11 @@ import type { CollectionEntry } from 'astro:content';
 interface Props { previous?: CollectionEntry<'projects'> | undefined; next?: CollectionEntry<'projects'> | undefined; }
 const { previous, next } = Astro.props;
 ---
-<nav class="record-navigation" aria-label="Adjacent artifacts">
-  {previous ? <a href={`/project/${previous.data.slug}/`}><span>← PREVIOUS</span><strong>{previous.data.code} / {previous.data.title}</strong></a> : <span></span>}
-  {next ? <a class="record-navigation__next" href={`/project/${next.data.slug}/`}><span>NEXT →</span><strong>{next.data.code} / {next.data.title}</strong></a> : <span></span>}
+<nav class="record-navigation" aria-label="Adjacent projects">
+  {previous ? <a href={`/project/${previous.data.slug}/`}><span>← Previous project</span><strong>{previous.data.title}</strong></a> : <span></span>}
+  {next ? <a class="record-navigation__next" href={`/project/${next.data.slug}/`}><span>Next project →</span><strong>{next.data.title}</strong></a> : <span></span>}
 </nav>
 <style>
-  .record-navigation{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}.record-navigation a{display:grid;gap:8px;padding:var(--space-5) 0;text-decoration:none}.record-navigation a+a{border-left:1px solid var(--line);padding-left:var(--space-5)}.record-navigation span{font:500 .62rem var(--font-meta);letter-spacing:.07em;color:var(--ink-muted)}.record-navigation strong{font-size:clamp(.85rem,1.2vw,1.05rem);font-weight:560}.record-navigation__next{text-align:right}
+  .record-navigation{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}.record-navigation a{display:grid;gap:8px;padding:var(--space-5) 0;text-decoration:none}.record-navigation a+a{border-left:1px solid var(--line);padding-left:var(--space-5)}.record-navigation span{font:500 .62rem var(--font-meta);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted)}.record-navigation strong{font-size:clamp(.85rem,1.2vw,1.05rem);font-weight:560}.record-navigation__next{text-align:right}
   @media(max-width:599px){.record-navigation{grid-template-columns:1fr}.record-navigation a+a{border-left:0;border-top:1px solid var(--line);padding-left:0}.record-navigation__next{text-align:left}}
 </style>

@@ -2,8 +2,8 @@
   <rect width="1200" height="630" fill="#ECEAE3"/>
   <path d="M54 54H1146M54 576H1146" stroke="#AAA79E" stroke-width="1"/>
   <rect x="54" y="54" width="6" height="522" fill="#B63C3C"/>
-  <text x="86" y="104" fill="#555650" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">L-001 / ARTIFACT</text>
+  <text x="86" y="104" fill="#555650" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">L-001 / PROJECT</text>
   <text x="86" y="320" fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="600" letter-spacing="-4">French 3000</text>
   <text x="88" y="378" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="28">French vocabulary trainer</text>
-  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN. / THE INDEX</text>
+  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN / PROJECTS</text>
 </svg>

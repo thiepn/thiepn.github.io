@@ -11,7 +11,7 @@ const collections = await getCollections();
 collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));
 ---
 <BaseLayout>
-  <main class="portfolio-home page-shell" data-index-hero>
+  <div class="portfolio-home page-shell" data-index-hero>
     <section class="portfolio-hero" aria-labelledby="portfolio-title">
       <div class="portfolio-hero__copy">
         <p class="eyebrow">Personal project portfolio</p>
@@ -111,7 +111,7 @@ collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));
         ))}
       </div>
     </section>
-  </main>
+  </div>
 </BaseLayout>
 
 <style>

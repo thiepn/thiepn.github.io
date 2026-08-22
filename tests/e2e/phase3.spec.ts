@@ -42,9 +42,9 @@ test('mobile menu is modal, keyboard closable, and restores focus', async ({ pag
   const trigger = page.getByRole('button', { name: 'Menu' });
   await trigger.focus();
   await trigger.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Navigate / The Index' });
+  const dialog = page.getByRole('dialog', { name: 'Navigation' });
   await expect(dialog).toBeVisible();
-  await expect(page.getByRole('link', { name: /Projects/ }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Projects', exact: true }).last()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();

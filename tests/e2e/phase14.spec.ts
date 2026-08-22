@@ -6,7 +6,7 @@ const catalogue = JSON.parse(fs.readFileSync('src/generated/catalogue-public.jso
 const projects = catalogue.projects;
 
 test.describe('Phase 14 / release candidate', () => {
-  test('every public project is searchable by exact title and resolves to its record', async ({ page }) => {
+  test('every public project is searchable by exact title and resolves to its project page', async ({ page }) => {
     await page.goto('/');
     for (const project of projects) {
       await page.locator('[data-catalogue-search-open]').first().click();
@@ -21,7 +21,7 @@ test.describe('Phase 14 / release candidate', () => {
     }
   });
 
-  test('every listed record exposes its canonical live launch destination', async ({ page }) => {
+  test('every public project exposes its canonical live launch destination', async ({ page }) => {
     for (const project of projects) {
       await page.goto(project.route);
       const launch = page.locator(`a[href="${project.liveUrl}"]`).first();
@@ -30,7 +30,7 @@ test.describe('Phase 14 / release candidate', () => {
     }
   });
 
-  test('archive URL state and scroll context survive detail navigation and Back', async ({ page }) => {
+  test('project browser URL state and scroll context survive detail navigation and Back', async ({ page }) => {
     await page.goto('/projects/?category=games&q=word&sort=az&view=list');
     const query = page.locator('[data-archive-query]');
     await expect(query).toHaveValue('word');
@@ -54,16 +54,16 @@ test.describe('Phase 14 / release candidate', () => {
     await expect(page.locator('[data-theme-option="dark"]').first()).toHaveAttribute('aria-pressed','true');
   });
 
-  test('search index failure degrades to an explicit unavailable state without breaking navigation', async ({ page }) => {
+  test('search failure degrades to an explicit unavailable state without breaking navigation', async ({ page }) => {
     await page.route('**/search-index.json', (route) => route.abort('failed'));
     await page.goto('/');
     await page.locator('[data-catalogue-search-open]').first().click();
-    await expect(page.locator('[data-catalogue-search-status]')).toContainText('Catalogue index unavailable');
+    await expect(page.locator('[data-catalogue-search-status]')).toContainText('Project search is unavailable');
     await page.locator('[data-catalogue-search-close]').click();
     await expect(page.getByRole('link', { name: /Projects/i }).first()).toBeVisible();
   });
 
-  test('preview media failure returns to the static project aperture', async ({ page }) => {
+  test('preview media failure returns to the static project preview', async ({ page }) => {
     await page.goto('/project/wordstrike/');
     const preview = page.locator('[data-preview-root]').first();
     await expect(preview).toBeVisible();
@@ -76,14 +76,14 @@ test.describe('Phase 14 / release candidate', () => {
     }
   });
 
-  test('404 preserves useful release navigation', async ({ page }) => {
+  test('404 preserves useful project navigation', async ({ page }) => {
     await page.goto('/404.html');
-    await expect(page.getByRole('heading', { name: /This artifact does not exist/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Return to index/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Project archive/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /This page doesn't exist/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Go home/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Browse projects/i })).toBeVisible();
   });
 
-  test('no-JS public catalogue remains complete and launchable', async ({ browser }) => {
+  test('no-JS public project grid remains complete and launchable', async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     await page.goto('/projects/');
@@ -91,7 +91,7 @@ test.describe('Phase 14 / release candidate', () => {
     await expect(page.locator('noscript')).toHaveCount(1);
     const firstProject = projects[0];
     expect(firstProject).toBeDefined();
-    if (!firstProject) throw new Error('Phase 14 catalogue fixture must contain at least one public project.');
+    if (!firstProject) throw new Error('Phase 14 project fixture must contain at least one public project.');
     await expect(page.locator(`a[href="${firstProject.route}"]`).first()).toBeVisible();
     await context.close();
   });
@@ -103,6 +103,6 @@ test.describe('Phase 14 / release candidate', () => {
     await page.locator('[data-mobile-menu-open]').click();
     const dialog = page.locator('[data-mobile-menu-dialog]');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('link', { name: /Projects$/ })).toBeVisible();
+    await expect(dialog.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
   });
 });

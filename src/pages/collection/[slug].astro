@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import SectionIndex from '../../components/index/SectionIndex.astro';
 import CompactArtifact from '../../components/artifacts/CompactArtifact.astro';
 import ArtifactPlate from '../../components/artifacts/ArtifactPlate.astro';
 import CollectionMap from '../../components/collections/CollectionMap.astro';
@@ -20,63 +19,63 @@ const bySlug=new Map(allProjects.map((p)=>[p.data.slug,p]));
 const projects=c.projects.map((slug)=>bySlug.get(slug)).filter((v):v is NonNullable<typeof v>=>Boolean(v));
 const anchors=c.anchors.map((slug)=>bySlug.get(slug)).filter((v):v is NonNullable<typeof v>=>Boolean(v));
 ---
-<BaseLayout title={`${c.title} — THIEPN.`} description={c.summary} ogImage={`/og/collection-${c.slug}.svg`}>
+<BaseLayout title={`${c.title} — THIEPN`} description={c.summary} ogImage={`/og/collection-${c.slug}.svg`}>
   <article class="collection-record page-shell">
-    <SectionIndex index="04" title="Collection" meta={c.code} headingLevel="div" />
+    <div class="collection-record__breadcrumb"><a href="/collections/">Collections</a><span aria-hidden="true">/</span><span>{c.title}</span></div>
 
     <header class="collection-record__hero index-grid">
       <div>
-        <p class="meta">{c.code} / {c.type}</p>
+        <p class="meta">{c.type}</p>
         <h1>{c.title}</h1>
         <p>{c.summary}</p>
       </div>
       <aside aria-label="Collection counts">
-        <span class="meta">Artifacts</span><strong>{String(projects.length).padStart(2,'0')}</strong>
-        <span class="meta">Anchor records</span><strong>{String(anchors.length).padStart(2,'0')}</strong>
-        <span class="meta">Relationships</span><strong>{String(c.relationships.length).padStart(2,'0')}</strong>
+        <span class="meta">Projects</span><strong>{String(projects.length).padStart(2,'0')}</strong>
+        <span class="meta">Highlights</span><strong>{String(anchors.length).padStart(2,'0')}</strong>
+        <span class="meta">Connections</span><strong>{String(c.relationships.length).padStart(2,'0')}</strong>
       </aside>
     </header>
 
     <section class="collection-record__logic" aria-labelledby="logic-title">
-      <SectionIndex index="01" title="Collection Logic" meta="Why these belong together" headingId="logic-title" />
+      <header class="collection-record__section-head"><div><p class="meta">About</p><h2 id="logic-title">About this collection</h2></div></header>
       <div class="collection-record__logic-grid">
         <p>{c.editorialNote}</p>
         <dl>
-          <div><dt>Scope</dt><dd>{String(projects.length).padStart(2,'0')} artifacts</dd></div>
-          <div><dt>Structure</dt><dd>{projects.length > 8 ? 'Anchor map + full index' : 'Complete relationship map'}</dd></div>
-          <div><dt>Keywords</dt><dd>{c.keywords.join(' / ')}</dd></div>
+          <div><dt>Projects</dt><dd>{String(projects.length).padStart(2,'0')}</dd></div>
+          <div><dt>Browse</dt><dd>{projects.length > 8 ? 'Highlights + full project list' : 'Complete project group'}</dd></div>
+          <div><dt>Topics</dt><dd>{c.keywords.join(' / ')}</dd></div>
         </dl>
       </div>
     </section>
 
     <section class="collection-record__map" aria-labelledby="map-title">
-      <SectionIndex index="02" title="Relationships" meta="Editorial Map" headingId="map-title" />
+      <header class="collection-record__section-head"><div><p class="meta">Connections</p><h2 id="map-title">How the projects relate</h2></div></header>
       <CollectionMap collection={collection} projects={projects} />
     </section>
 
     {anchors.length>0&&(
       <section class="collection-record__anchors" aria-labelledby="anchors-title">
-        <SectionIndex index="03" title="Anchor Artifacts" meta={`${String(anchors.length).padStart(2,'0')} Selected`} headingId="anchors-title" />
-        <p class="collection-record__section-note">These records define the collection's main axes. They are editorial anchors, not a ranking of the remaining artifacts.</p>
+        <header class="collection-record__section-head"><div><p class="meta">Highlights</p><h2 id="anchors-title">Featured projects</h2></div><span class="meta">{String(anchors.length).padStart(2,'0')} selected</span></header>
+        <p class="collection-record__section-note">A few projects that best represent this collection.</p>
         <div>{anchors.map((project)=><ArtifactPlate project={project} variant="feature" />)}</div>
       </section>
     )}
 
     <section class="collection-record__index" aria-labelledby="collection-index-title">
-      <SectionIndex index="04" title="Collection Index" meta={`${String(projects.length).padStart(2,'0')} Artifacts`} headingId="collection-index-title" />
-      <p class="collection-record__section-note">The complete set, retained even when the relationship map uses a smaller anchor selection.</p>
+      <header class="collection-record__section-head"><div><p class="meta">All projects</p><h2 id="collection-index-title">Everything in this collection</h2></div><span class="meta">{String(projects.length).padStart(2,'0')} projects</span></header>
       <div>{projects.map((project)=><CompactArtifact project={project} />)}</div>
     </section>
   </article>
 </BaseLayout>
 <style>
 .collection-record{padding-top:clamp(34px,5vw,66px);padding-bottom:var(--space-9)}
-.collection-record__hero{padding:var(--space-9) 0 var(--space-10);align-items:end}.collection-record__hero>div{grid-column:1/span 8}.collection-record__hero .meta{color:var(--ink-muted)}.collection-record__hero h1{margin-top:var(--space-4);font-size:var(--text-display-l);line-height:.86;letter-spacing:-.06em}.collection-record__hero p:not(.meta){margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary);font-size:var(--text-body-l)}.collection-record__hero aside{grid-column:10/-1;display:grid;grid-template-columns:1fr auto;gap:8px 16px;border-top:1px solid var(--line-strong);padding-top:var(--space-4)}.collection-record__hero aside strong{font:600 1rem var(--font-meta)}.collection-record__hero aside .meta{color:var(--ink-muted)}
-.collection-record__logic,.collection-record__map,.collection-record__anchors,.collection-record__index{padding:var(--space-9) 0}
+.collection-record__breadcrumb{display:flex;align-items:center;gap:8px;font:500 .62rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.collection-record__breadcrumb a{text-decoration:none;color:inherit}.collection-record__breadcrumb a:hover{color:var(--ink)}
+.collection-record__hero{padding:var(--space-8) 0 var(--space-10);align-items:end}.collection-record__hero>div{grid-column:1/span 8}.collection-record__hero .meta{color:var(--ink-muted)}.collection-record__hero h1{margin-top:var(--space-4);font-size:var(--text-display-l);line-height:.86;letter-spacing:-.06em}.collection-record__hero p:not(.meta){margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary);font-size:var(--text-body-l)}.collection-record__hero aside{grid-column:10/-1;display:grid;grid-template-columns:1fr auto;gap:8px 16px;border-top:1px solid var(--line-strong);padding-top:var(--space-4)}.collection-record__hero aside strong{font:600 1rem var(--font-meta)}.collection-record__hero aside .meta{color:var(--ink-muted)}
+.collection-record__logic,.collection-record__map,.collection-record__anchors,.collection-record__index{padding:var(--space-9) 0}.collection-record__section-head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:var(--space-3);border-bottom:1px solid var(--line-strong)}.collection-record__section-head .meta{color:var(--ink-muted)}.collection-record__section-head h2{margin-top:4px;font-size:var(--text-h2);letter-spacing:-.04em}
 .collection-record__logic-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);gap:clamp(32px,7vw,110px);margin-top:var(--space-6);align-items:start}.collection-record__logic-grid>p{max-width:62ch;font-size:clamp(1.05rem,1.8vw,1.42rem);line-height:1.48;letter-spacing:-.018em}.collection-record__logic-grid dl{margin:0;border-top:1px solid var(--line-strong)}.collection-record__logic-grid dl div{display:grid;grid-template-columns:86px 1fr;gap:var(--space-4);padding:10px 0;border-bottom:1px solid var(--line)}.collection-record__logic-grid dt{font:500 .59rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.collection-record__logic-grid dd{margin:0;font-size:.78rem;color:var(--ink-secondary)}
 .collection-record__section-note{margin-top:var(--space-5);max-width:66ch;color:var(--ink-muted);font-size:.78rem;line-height:1.5}
 .collection-record__anchors>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-6)}.collection-record__index>div{margin-top:var(--space-5);border-top:1px solid var(--line-strong)}
 @media(max-width:899px){.collection-record__hero>div{grid-column:1/-1}.collection-record__hero aside{grid-column:5/-1;margin-top:var(--space-7)}.collection-record__logic-grid{grid-template-columns:1fr;gap:var(--space-6)}}
 @media(max-width:760px){.collection-record__anchors>div{grid-template-columns:1fr}}
-@media(max-width:599px){.collection-record__hero aside{grid-column:1/-1}.collection-record__logic-grid>p{font-size:1.05rem}.collection-record__logic-grid dl div{grid-template-columns:76px 1fr}}
+@media(max-width:599px){.collection-record__hero aside{grid-column:1/-1}.collection-record__logic-grid>p{font-size:1.05rem}.collection-record__logic-grid dl div{grid-template-columns:76px 1fr}.collection-record__section-head>span{display:none}}
 </style>

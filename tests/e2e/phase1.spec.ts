@@ -3,11 +3,11 @@ import { expect, test } from '@playwright/test';
 test('renders catalogue-derived portfolio hub counts', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/THIEPN/);
-  await expect(page.getByRole('heading', { name: 'Projects, tools & experiments.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
   await expect(page.locator('.portfolio-hero__stats strong')).toHaveText(['19', '05', '05']);
 });
 
-test('generates public artifact routes but not hold records', async ({ page }) => {
+test('generates public project routes but not hold records', async ({ page }) => {
   const publicResponse = await page.goto('/project/pdf-studio/');
   expect(publicResponse?.ok()).toBe(true);
   await expect(page.getByRole('heading', { name: 'PDF Studio' })).toBeVisible();
@@ -38,9 +38,9 @@ test('320px viewport does not create page-level horizontal overflow', async ({ p
   expect(overflow).toBe(false);
 });
 
-test('unknown routes use the uncatalogued language', async ({ page }) => {
+test('unknown routes use normal portfolio navigation', async ({ page }) => {
   const response = await page.goto('/definitely-not-indexed/');
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole('heading', { name: 'This artifact does not exist.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Return to index/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This page doesn't exist." })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Go home/ })).toBeVisible();
 });

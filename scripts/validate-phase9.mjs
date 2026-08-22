@@ -29,17 +29,17 @@ for(const file of files){
 const browser=read('src/content/collections/browser-games.md');
 const projectCount=(browser.match(/^projects:\n([\s\S]*?)^anchors:/m)?.[1].match(/^- /gm)||[]).length;
 const anchorCount=(browser.match(/^anchors:\n([\s\S]*?)^relationships:/m)?.[1].match(/^- /gm)||[]).length;
-if(projectCount<9||anchorCount<4||anchorCount>=projectCount){console.error('Browser Games must prove the large-set anchor-map + full-index pattern.');process.exit(1);}
+if(projectCount<9||anchorCount<4||anchorCount>=projectCount){console.error('Browser Games must prove the large-set highlights-map + full-project-list pattern.');process.exit(1);}
 const schema=read('src/content.config.ts');
 for(const needle of ['editorialNote: z.string','keywords: z.array','note: z.string']) if(!schema.includes(needle)){console.error(`Collection schema missing ${needle}`);process.exit(1);}
 const map=read('src/components/collections/CollectionMap.astro');
 for(const needle of ['chooseCollectionMapSlugs','data-collection-node','data-collection-edge','data-collection-preview','PreviewAperture','collection-map-shell__relations']) if(!map.includes(needle)){console.error(`Collection map missing ${needle}`);process.exit(1);}
 const page=read('src/pages/collection/[slug].astro');
-for(const needle of ['title="Collection Logic"','CollectionMap','title="Anchor Artifacts"','title="Collection Index"']) if(!page.includes(needle)){console.error(`Collection Record missing ${needle}`);process.exit(1);}
+for(const needle of ['About this collection','CollectionMap','Featured projects','Everything in this collection']) if(!page.includes(needle)){console.error(`Collection page missing ${needle}`);process.exit(1);}
 const search=read('src/lib/search-core.ts');
 for(const needle of ['relationshipLabels','projectTitles','keywords','editorialNote']) if(!search.includes(needle)){console.error(`Search integration missing ${needle}`);process.exit(1);}
 const controller=read('src/scripts/collection-map-controller.ts');
 for(const needle of ['pointerenter','focus','data-collection-preview','data-collection-relation']) if(!controller.includes(needle)){console.error(`Collection map controller missing ${needle}`);process.exit(1);}
 const site=read('src/data/site.ts');
 const phase=/phase:\s*(\d+)/.exec(site);if(!phase||Number(phase[1])<9){console.error('SITE.phase must be at least 9.');process.exit(1);}
-console.log(`Phase 9 Collections validation passed (${files.length} editorial collections, interactive maps, anchor/full-index pattern, search integration).`);
+console.log(`Phase 9 Collections validation passed (${files.length} project collections, interactive maps, highlights/full-list pattern, search integration).`);

@@ -3,29 +3,27 @@ import type { CatalogueStats } from '../../types/catalogue';
 interface Props { stats: CatalogueStats; }
 const { stats } = Astro.props;
 const categories = [
-  ['01','Tools','tools'],['02','Learning','learning'],['03','Games','games'],['04','Resources','resources'],['05','Visualizations','visualizations'],['06','Experiments','experiments'],
+  ['Tools','tools'],['Learning','learning'],['Games','games'],['Resources','resources'],['Visualizations','visualizations'],['Experiments','experiments'],
 ] as const;
-const hint = (key: typeof categories[number][2]) => key === 'tools' ? 'PDF Studio / Manuscript / Clean30' : key === 'learning' ? 'French / Mathematics / Algorithms' : key === 'games' ? 'Typing / Strategy / Incremental' : 'Catalogue section';
+const hint = (key: typeof categories[number][1]) => key === 'tools' ? 'PDF Studio / Manuscript / Clean30' : key === 'learning' ? 'French / Mathematics / Study tools' : key === 'games' ? 'Typing / Strategy / Arcade' : 'Projects in this category';
 ---
 <nav class="category-index" aria-label="Browse projects by type">
-  {categories.map(([index,label,key]) => stats.categories[key] > 0 ? (
+  {categories.map(([label,key]) => stats.categories[key] > 0 ? (
     <a class="category-index__row" href={`/projects/?category=${key}`} data-archive-filter-link={key}>
-      <span class="category-index__number">{index}</span>
       <span class="category-index__name">{label}</span>
       <span class="category-index__hint">{hint(key)}</span>
-      <span class="category-index__count" aria-label={`${stats.categories[key]} projects`}>{String(stats.categories[key]).padStart(3,'0')}</span>
+      <span class="category-index__count" aria-label={`${stats.categories[key]} projects`}>{String(stats.categories[key]).padStart(2,'0')}</span>
     </a>
   ) : (
     <div class="category-index__row is-empty" aria-disabled="true">
-      <span class="category-index__number">{index}</span>
       <span class="category-index__name">{label}</span>
-      <span class="category-index__hint">No listed artifacts yet</span>
-      <span class="category-index__count" aria-label="0 projects">000</span>
+      <span class="category-index__hint">No public projects yet</span>
+      <span class="category-index__count" aria-label="0 projects">00</span>
     </div>
   ))}
 </nav>
 <style>
-  .category-index{border-top:1px solid var(--line-strong)}.category-index__row{display:grid;grid-template-columns:72px minmax(180px,.7fr) minmax(0,1.3fr) 48px;gap:var(--space-4);align-items:center;min-height:76px;border-bottom:1px solid var(--line);text-decoration:none}.category-index__row>*{min-width:0}.category-index__number,.category-index__count{font:500 .68rem var(--font-meta);letter-spacing:.07em;color:var(--ink-muted)}.category-index__name{font-size:clamp(1.45rem,2.4vw,2.5rem);line-height:1;letter-spacing:-.045em}.category-index__hint{color:var(--ink-muted);font-size:.82rem}.category-index__count{text-align:right;font-variant-numeric:tabular-nums}.category-index__row.is-empty{opacity:.58}.category-index__row[href]:hover .category-index__name{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:7px}
-  @media(max-width:700px){.category-index__row{grid-template-columns:50px minmax(0,1fr) 42px;min-height:64px}.category-index__hint{display:none}.category-index__name{font-size:1.45rem}}
-  @media(max-width:379px){.category-index__row{grid-template-columns:38px minmax(0,1fr) 38px;gap:var(--space-2)}.category-index__name{font-size:1.3rem}}
+  .category-index{border-top:1px solid var(--line-strong)}.category-index__row{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr) 48px;gap:var(--space-4);align-items:center;min-height:72px;border-bottom:1px solid var(--line);text-decoration:none}.category-index__row>*{min-width:0}.category-index__name{font-size:clamp(1.35rem,2.2vw,2.2rem);line-height:1;letter-spacing:-.04em}.category-index__hint{color:var(--ink-muted);font-size:.82rem}.category-index__count{font:500 .68rem var(--font-meta);letter-spacing:.07em;color:var(--ink-muted);text-align:right;font-variant-numeric:tabular-nums}.category-index__row.is-empty{opacity:.58}.category-index__row[href]:hover .category-index__name{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:7px}
+  @media(max-width:700px){.category-index__row{grid-template-columns:minmax(0,1fr) 42px;min-height:62px}.category-index__hint{display:none}.category-index__name{font-size:1.4rem}}
+  @media(max-width:379px){.category-index__row{grid-template-columns:minmax(0,1fr) 38px;gap:var(--space-2)}.category-index__name{font-size:1.3rem}}
 </style>

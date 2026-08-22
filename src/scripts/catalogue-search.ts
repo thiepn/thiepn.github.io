@@ -68,7 +68,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
 
   async function ensurePayload() {
     if (payload) return payload;
-    statusEl.textContent = 'Loading local catalogue index…';
+    statusEl.textContent = 'Loading project search…';
     payload = await getPayload();
     items = [...payload.projects, ...payload.collections];
     return payload;
@@ -80,7 +80,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       if (!item) {
         previewEl.style.removeProperty('--preview-accent-light');
         previewEl.style.removeProperty('--preview-accent-dark');
-        previewEl.innerHTML = '<span class="meta">Catalogue ready</span><strong>Search across projects and curated collections.</strong><p>Try “French”, “typing”, “PDF”, “G-003”, or a project title.</p>';
+        previewEl.innerHTML = '<span class="meta">Search ready</span><strong>Search projects and collections.</strong><p>Try “French”, “typing”, “PDF”, “G-003”, or a project title.</p>';
         return;
       }
       previewEl.style.setProperty('--preview-accent-light', item.kind === 'project' ? item.accentLight : 'var(--line-strong)');
@@ -140,8 +140,8 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     resultsEl.replaceChildren(...ranked.map(({ item }, index) => buildResult(item, index)));
     const projectCount = ranked.filter(({ item }) => item.kind === 'project').length;
     const collectionCount = ranked.length - projectCount;
-    if (!query) statusEl.textContent = 'Type a project, topic, or catalogue code.';
-    else if (!ranked.length) statusEl.textContent = '0 matches / try another term or Random Access.';
+    if (!query) statusEl.textContent = 'Type a project, topic, or project code.';
+    else if (!ranked.length) statusEl.textContent = '0 matches / try another term or a random project.';
     else statusEl.textContent = `${String(ranked.length).padStart(2, '0')} matches / ${projectCount} projects / ${collectionCount} collections`;
     syncSelection();
   }
@@ -175,10 +175,10 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     const code = document.createElement('span'); code.className = 'meta'; code.textContent = project.code;
     const title = document.createElement('strong'); title.textContent = project.title;
     const details = document.createElement('a'); details.href = `/project/${project.slug}/`; details.textContent = 'Open details →';
-    const reroll = document.createElement('button'); reroll.type = 'button'; reroll.textContent = 'Reroll'; reroll.addEventListener('click', () => void renderRandom());
+    const reroll = document.createElement('button'); reroll.type = 'button'; reroll.textContent = 'Another project'; reroll.addEventListener('click', () => void renderRandom());
     randomCardEl.className = 'catalogue-search__random-card';
     randomCardEl.append(code, title, details, reroll);
-    statusEl.textContent = `Random Access / ${project.code} selected`;
+    statusEl.textContent = `Random project / ${project.code}`;
     setPreview(project);
   }
 
@@ -196,7 +196,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       if (detail.random) await renderRandom();
       else render();
     } catch {
-      statusEl.textContent = 'Catalogue index unavailable. Project navigation remains available.';
+      statusEl.textContent = 'Project search is unavailable. Project navigation remains available.';
       resultsEl.replaceChildren();
       randomPanelEl.hidden = true;
     }

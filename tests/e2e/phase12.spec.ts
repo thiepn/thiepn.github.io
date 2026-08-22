@@ -15,7 +15,7 @@ async function hasHorizontalOverflow(page: Page) {
 async function openSearch(page: Page) {
   await page.goto('/');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
-  const dialog = page.getByRole('dialog', { name: 'Search / The Index' });
+  const dialog = page.getByRole('dialog', { name: 'Search projects' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -32,26 +32,26 @@ test('major pages expose stable landmark and heading semantics', async ({ page }
   }
 });
 
-test('accessibility tree exposes the archive hierarchy', async ({ page }) => {
+test('accessibility tree exposes the project browser hierarchy', async ({ page }) => {
   await page.goto('/projects/');
   const main = page.getByRole('main');
-  const title = main.getByRole('heading', { name: 'Project Archive', level: 1 });
-  const catalogue = main.getByRole('heading', { name: 'Catalogue', level: 2 });
-  await expect(title).toMatchAriaSnapshot(`- heading "Project Archive" [level=1]`);
-  await expect(catalogue).toMatchAriaSnapshot(`- heading "Catalogue" [level=2]`);
+  const title = main.getByRole('heading', { name: 'Projects', level: 1 });
+  const browser = main.getByRole('heading', { name: 'Find a project', level: 2 });
+  await expect(title).toMatchAriaSnapshot(`- heading "Projects" [level=1]`);
+  await expect(browser).toMatchAriaSnapshot(`- heading "Find a project" [level=2]`);
 });
 
 test('search follows combobox/listbox semantics and restores focus', async ({ page }) => {
   await page.goto('/');
-  const opener = page.getByRole('link', { name: 'Search the project index' });
+  const opener = page.getByRole('link', { name: 'Search projects' }).first();
   await opener.focus();
   await opener.press('Enter');
 
-  const dialog = page.getByRole('dialog', { name: 'Search / The Index' });
+  const dialog = page.getByRole('dialog', { name: 'Search projects' });
   await expect(dialog).toBeVisible();
   const input = page.getByRole('combobox', { name: 'Search projects and collections' });
   await expect(input).toBeFocused();
-  const listbox = page.getByRole('listbox', { name: 'Catalogue search results' });
+  const listbox = page.getByRole('listbox', { name: 'Project search results' });
   await expect(listbox).toBeVisible();
 
   await input.fill('pdf');
@@ -73,7 +73,7 @@ test('search follows combobox/listbox semantics and restores focus', async ({ pa
 
 test('search close control keeps its native keyboard activation', async ({ page }) => {
   await page.goto('/');
-  const opener = page.getByRole('link', { name: 'Search the project index' });
+  const opener = page.getByRole('link', { name: 'Search projects' }).first();
   await opener.focus();
   await opener.press('Enter');
   const input = page.getByRole('combobox', { name: 'Search projects and collections' });
@@ -82,7 +82,7 @@ test('search close control keeps its native keyboard activation', async ({ page 
   const close = page.getByRole('button', { name: 'Esc' });
   await expect(close).toBeFocused();
   await close.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'Search / The Index' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Search projects' })).not.toBeVisible();
   await expect(opener).toBeFocused();
 });
 
@@ -105,10 +105,10 @@ test('gallery dialog closes with Escape and restores the exact opener', async ({
   await page.goto('/project/pdf-studio/');
   const gallery = page.locator('[data-artifact-gallery]');
   await gallery.scrollIntoViewIfNeeded();
-  const opener = gallery.getByRole('button', { name: /Inspect figure 1:/ });
+  const opener = gallery.getByRole('button', { name: /Open view 1:/ });
   await opener.focus();
   await opener.press('Enter');
-  const dialog = page.getByRole('dialog', { name: /FIG\.01/ });
+  const dialog = page.locator('[data-gallery-dialog]');
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
@@ -130,7 +130,7 @@ test('collection relationship selection is announced without misusing aria-curre
 test('keyboard-focused controls are not obscured by the sticky header', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 700 });
   await page.goto('/project/pdf-studio/');
-  const target = page.getByRole('button', { name: /Inspect figure 1:/ });
+  const target = page.getByRole('button', { name: /Open view 1:/ });
   await target.scrollIntoViewIfNeeded();
   await target.focus();
   const geometry = await page.evaluate(() => {
@@ -186,7 +186,7 @@ test('reduced motion leaves project content usable and suppresses preview activa
     await page.waitForTimeout(350);
     await expect(preview).toHaveAttribute('data-preview-state', 'poster');
   }
-  await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
 });
 
 test('forced-colors mode preserves focus, borders, and selected states', async ({ page, browserName }) => {
@@ -203,13 +203,13 @@ test('forced-colors mode preserves focus, borders, and selected states', async (
   expect(styles.color).not.toBe('rgba(0, 0, 0, 0)');
 });
 
-test('no-JavaScript desktop keeps the complete catalogue and direct navigation', async ({ browser }) => {
+test('no-JavaScript desktop keeps the complete project set and direct navigation', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-controls]')).toBeHidden();
   await expect(page.locator('[data-archive-grid] [data-archive-item]')).toHaveCount(19);
-  await expect(page.getByRole('link', { name: 'Search the project index' })).toHaveAttribute('href', '/projects/');
+  await expect(page.getByRole('link', { name: 'Search projects' }).first()).toHaveAttribute('href', '/projects/');
   await expect(page.getByRole('link', { name: /PDF Studio/ }).first()).toBeVisible();
   await context.close();
 });
@@ -220,7 +220,7 @@ test.describe('@mobile-cert mobile certification', () => {
     const trigger = page.getByRole('button', { name: 'Menu' });
     await trigger.focus();
     await trigger.press('Enter');
-    const dialog = page.getByRole('dialog', { name: 'Navigate / The Index' });
+    const dialog = page.getByRole('dialog', { name: 'Navigation' });
     await expect(dialog).toBeVisible();
     for (let index = 0; index < 10; index += 1) {
       await page.keyboard.press('Tab');
@@ -249,8 +249,9 @@ test.describe('@mobile-cert mobile certification', () => {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:4321/');
-    await expect(page.getByRole('navigation', { name: 'Mobile navigation without JavaScript' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
+    const fallbackNav = page.getByRole('navigation', { name: 'Mobile navigation without JavaScript' });
+    await expect(fallbackNav).toBeVisible();
+    await expect(fallbackNav.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
     await context.close();
   });
 });
