@@ -52,9 +52,14 @@ test('active project filters expose an explicit clear action', async ({ page }) 
 test('mobile Project Search is full screen and usable with touch viewport', async ({ page }) => {
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
-  await page.getByRole('button',{name:'Menu'}).click();
+  const menu = page.getByRole('button',{name:'Menu'});
+  await menu.click();
   await page.getByRole('link',{name:/Search projects/}).click();
-  await expect(page.locator('[data-catalogue-search-dialog]')).toBeVisible();
+  const search = page.getByRole('dialog',{name:'Find a project'});
+  await expect(search).toBeVisible();
   await page.locator('[data-catalogue-search-input]').fill('french');
   await expect(page.getByText('French 3000',{exact:true}).first()).toBeVisible();
+  await page.getByRole('button',{name:'Close project search'}).click();
+  await expect(search).not.toBeVisible();
+  await expect(menu).toBeFocused();
 });
