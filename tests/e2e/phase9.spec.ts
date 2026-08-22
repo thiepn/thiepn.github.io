@@ -1,19 +1,20 @@
 import { test, expect } from '@playwright/test';
 
-test('collection record explains its editorial logic before the relationship map', async ({ page }) => {
+test('collection page explains its purpose before the relationship map', async ({ page }) => {
   await page.goto('/collection/productivity-creation/');
   await expect(page.getByRole('heading',{name:'Productivity & Creation',level:1})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Collection Logic',level:2})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'About this collection',level:2})).toBeVisible();
   await expect(page.getByText(/turning messy inputs into controlled outputs/i)).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Relationships',level:2})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'How the projects relate',level:2})).toBeVisible();
   await expect(page.getByText('Finished documents ↔ source publishing',{exact:true})).toBeVisible();
 });
 
-test('large Browser Games collection uses anchor map plus complete nine-artifact index', async ({ page }) => {
+test('large Browser Games collection uses a relationship map plus the complete ten-project list', async ({ page }) => {
   await page.goto('/collection/browser-games/');
   await expect(page.locator('[data-collection-node]')).toHaveCount(6);
-  await expect(page.locator('.collection-record__index .compact-artifact')).toHaveCount(9);
-  await expect(page.getByText(/06 anchor artifacts \/ 09 total/i)).toBeVisible();
+  await expect(page.locator('.collection-record__index .compact-artifact')).toHaveCount(10);
+  await expect(page.getByRole('heading',{name:'Featured projects',level:2})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Everything in this collection',level:2})).toBeVisible();
 });
 
 test('focusing a map node updates the selected project preview and relationship emphasis', async ({ page }) => {
@@ -25,7 +26,7 @@ test('focusing a map node updates the selected project preview and relationship 
   await expect(page.locator('[data-collection-relation][data-relation-from="curio"]')).toHaveClass(/is-active/);
 });
 
-test('collection relationship language is included in Catalogue Search', async ({ page }) => {
+test('collection relationship language is included in Project Search', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
   const input=page.locator('[data-catalogue-search-input]');
