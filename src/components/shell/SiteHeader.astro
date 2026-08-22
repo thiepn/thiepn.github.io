@@ -11,14 +11,14 @@ const active = (href: string) => {
 ---
 <header class="site-header">
   <div class="page-shell site-header__inner">
-    <a class="site-wordmark" href="/" aria-label="THIEPN. Project Index home">THIEPN.</a>
+    <a class="site-wordmark" href="/" aria-label="THIEPN. portfolio home">THIEPN.</a>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Index</a>
+      <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Home</a>
       <a class:list={[active('/projects/') && 'is-active']} href="/projects/" aria-current={active('/projects/') ? 'page' : undefined}>Projects</a>
       <a class:list={[active('/collections/') && 'is-active']} href="/collections/" aria-current={active('/collections/') ? 'page' : undefined}>Collections</a>
     </nav>
     <div class="site-header__tools">
-      <a class="site-header__search" href="/projects/" data-catalogue-search-open aria-label="Search the project index">Search&nbsp;⌘K</a>
+      <a class="site-header__search" href="/projects/" data-catalogue-search-open aria-label="Search projects">Search&nbsp;⌘K</a>
       <ThemeControl />
     </div>
     <MobileMenu />
