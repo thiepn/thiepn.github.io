@@ -26,17 +26,17 @@ test('WORDSTRIKE video is lazy and only receives a source after interaction', as
 test('global desktop controller never leaves more than two previews active', async ({ page }) => {
   await page.goto('/');
   const pdf = page.locator('[data-preview-slug="pdf-studio"]').first();
-  const french = page.locator('[data-preview-slug="french-3000"]').first();
+  const manuscript = page.locator('[data-preview-slug="manuscript"]').first();
   const strike = page.locator('[data-preview-slug="wordstrike"]').first();
   await pdf.hover(); await page.waitForTimeout(230);
-  await french.hover(); await page.waitForTimeout(230);
+  await manuscript.hover(); await page.waitForTimeout(230);
   await strike.hover(); await page.waitForTimeout(330);
   expect(await page.locator('[data-preview-state="active"]').count()).toBeLessThanOrEqual(2);
 });
 
-test('leaving viewport or hiding the page resets previews', async ({ page }) => {
+test('leaving viewport resets an animated preview', async ({ page }) => {
   await page.goto('/');
-  const root = page.locator('[data-preview-slug="french-3000"]').first();
+  const root = page.locator('[data-preview-slug="manuscript"]').first();
   await root.hover(); await page.waitForTimeout(230);
   await expect(root).toHaveAttribute('data-preview-state', 'active');
   await page.locator('footer').scrollIntoViewIfNeeded();
