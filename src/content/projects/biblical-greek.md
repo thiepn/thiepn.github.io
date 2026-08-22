@@ -34,7 +34,7 @@ controls:
 collections:
 - bible-faith
 accent:
-  light: '#9A6A2F'
+  light: '#8A5B20'
   dark: '#D5B075'
 preview:
   tier: P0
