@@ -3,21 +3,22 @@
   "identity": "THE INDEX",
   "projects": [
     {
-      "code": "L-006",
-      "slug": "algodat-study-system",
-      "title": "AlgoDat Study System",
-      "subtitle": "Algorithms study environment",
-      "summary": "Learn algorithms and data structures through structured theory, visual steps, exercises, and exam-oriented review.",
+      "code": "L-901",
+      "slug": "biblical-greek",
+      "title": "Koinē Path",
+      "subtitle": "Interactive Biblical Greek learning",
+      "summary": "Learn Biblical Greek through structured grammar, parsing drills, progressive hints, guided New Testament reading, review, and meaningful progress tracking.",
       "category": "learning",
       "type": "study-system",
-      "status": "live",
-      "route": "/project/algodat-study-system/",
-      "liveUrl": "https://thiepn.dev/algodat/",
-      "repo": "thiepn/algodat",
+      "status": "beta",
+      "route": "/project/biblical-greek/",
+      "liveUrl": "https://thiepn.dev/greek/",
+      "repo": "thiepn/greek",
       "tags": [
-        "algorithms",
-        "computer-science",
-        "exam-prep"
+        "bible",
+        "grammar",
+        "study",
+        "vocabulary"
       ],
       "capabilityTags": [
         "local-first"
@@ -28,113 +29,12 @@
         "mobile"
       ],
       "collections": [
-        "mathematics-cs"
+        "bible-faith"
       ],
-      "previewTier": "P3",
-      "previewType": "synthetic",
-      "previewProvenance": null,
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "code": "G-009",
-      "slug": "analysis-idle",
-      "title": "Analysis Idle",
-      "subtitle": "Mathematical incremental experiment",
-      "summary": "Explore mathematical progression through an experimental incremental-game structure inspired by Analysis.",
-      "category": "games",
-      "type": "game",
-      "status": "experiment",
-      "route": "/project/analysis-idle/",
-      "liveUrl": "https://thiepn.dev/Analysis-Idle/",
-      "repo": "thiepn/Analysis-Idle",
-      "tags": [
-        "mathematics",
-        "incremental",
-        "game"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [
-        "browser-games",
-        "mathematics-cs"
-      ],
-      "previewTier": "P3",
-      "previewType": "synthetic",
-      "previewProvenance": null,
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "code": "L-004",
-      "slug": "analysis-ii-klausurlabor",
-      "title": "Analysis II Klausurlabor",
-      "subtitle": "Analysis II exam laboratory",
-      "summary": "Study Analysis II through exam-style problems, interactive mathematics, and targeted practice.",
-      "category": "learning",
-      "type": "study-system",
-      "status": "live",
-      "route": "/project/analysis-ii-klausurlabor/",
-      "liveUrl": "https://thiepn.dev/analysis2/",
-      "repo": "thiepn/analysis2",
-      "tags": [
-        "mathematics",
-        "analysis",
-        "exam-prep"
-      ],
-      "capabilityTags": [
-        "local-first",
-        "offline"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [
-        "mathematics-cs"
-      ],
-      "previewTier": "P4",
-      "previewType": "synthetic",
-      "previewProvenance": "synthetic",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "code": "L-005",
-      "slug": "analysis-ii-lernsystem",
-      "title": "Analysis II Lernsystem",
-      "subtitle": "Comprehensive Analysis II study system",
-      "summary": "Connect definitions, theorems, proofs, exercises, and exam practice in a structured Analysis II study system.",
-      "category": "learning",
-      "type": "study-system",
-      "status": "live",
-      "route": "/project/analysis-ii-lernsystem/",
-      "liveUrl": "https://thiepn.dev/analysis2ss/",
-      "repo": "thiepn/analysis2ss",
-      "tags": [
-        "mathematics",
-        "analysis",
-        "study"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [
-        "mathematics-cs"
-      ],
-      "previewTier": "P3",
-      "previewType": "synthetic",
-      "previewProvenance": null,
-      "updatedAt": "2026-08-18"
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-21"
     },
     {
       "code": "T-003",
@@ -234,39 +134,6 @@
       "updatedAt": "2026-08-18"
     },
     {
-      "code": "L-003",
-      "slug": "franzosisch-flashcards",
-      "title": "Französisch Flashcards",
-      "subtitle": "Focused vocabulary flashcards",
-      "summary": "A lightweight French flashcard trainer for direct vocabulary review and recall practice.",
-      "category": "learning",
-      "type": "flashcards",
-      "status": "live",
-      "route": "/project/franzosisch-flashcards/",
-      "liveUrl": "https://thiepn.dev/french2.2/",
-      "repo": "thiepn/french2.2",
-      "tags": [
-        "french",
-        "vocabulary",
-        "study"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [
-        "french-learning"
-      ],
-      "previewTier": "P3",
-      "previewType": "synthetic",
-      "previewProvenance": null,
-      "updatedAt": "2026-08-18"
-    },
-    {
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -300,6 +167,37 @@
       "previewType": "synthetic",
       "previewProvenance": "synthetic",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "G-010",
+      "slug": "impossible-transit",
+      "title": "Impossible Transit",
+      "subtitle": "Surreal first-person transit game",
+      "summary": "Travel through a surreal browser transit network where architecture, scale, gravity, recursion, and space stop obeying normal rules.",
+      "category": "games",
+      "type": "game",
+      "status": "live",
+      "route": "/project/impossible-transit/",
+      "liveUrl": "https://thiepn.dev/impossible-transit/",
+      "repo": "thiepn/impossible-transit",
+      "tags": [
+        "game",
+        "action",
+        "strategy"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop"
+      ],
+      "collections": [
+        "browser-games"
+      ],
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-22"
     },
     {
       "code": "L-002",
@@ -400,6 +298,39 @@
       "previewType": "synthetic",
       "previewProvenance": "synthetic",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "T-004",
+      "slug": "mathlab",
+      "title": "MathLab",
+      "subtitle": "University mathematics workbench",
+      "summary": "Work with symbolic algebra, calculus, linear algebra, probability, discrete math, numerical methods, proofs, visualization, and practice in one local-first math environment.",
+      "category": "tools",
+      "type": "tool",
+      "status": "beta",
+      "route": "/project/mathlab/",
+      "liveUrl": "https://thiepn.dev/mathlab/",
+      "repo": "thiepn/mathlab",
+      "tags": [
+        "mathematics",
+        "study",
+        "reference"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-22"
     },
     {
       "code": "G-004",
@@ -570,6 +501,74 @@
       "updatedAt": "2026-08-18"
     },
     {
+      "code": "V-001",
+      "slug": "unreached",
+      "title": "Unreached",
+      "subtitle": "Christian world mission atlas",
+      "summary": "Explore unreached peoples, countries, languages, Scripture access, and prayer context through a browser-based Christian world mission atlas.",
+      "category": "visualizations",
+      "type": "app",
+      "status": "beta",
+      "route": "/project/unreached/",
+      "liveUrl": "https://thiepn.dev/unreached/",
+      "repo": "thiepn/unreached",
+      "tags": [
+        "bible",
+        "reference",
+        "visualization"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [
+        "bible-faith"
+      ],
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-22"
+    },
+    {
+      "code": "G-011",
+      "slug": "voidcut",
+      "title": "VOIDCUT",
+      "subtitle": "Precision space-cutting arcade game",
+      "summary": "Cut away space with precise swipes, protect moving nodes, master stages, and race deterministic runs in a fast browser arcade game.",
+      "category": "games",
+      "type": "game",
+      "status": "live",
+      "route": "/project/voidcut/",
+      "liveUrl": "https://thiepn.dev/voidcut/",
+      "repo": "thiepn/voidcut",
+      "tags": [
+        "game",
+        "arcade",
+        "action"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [
+        "browser-games"
+      ],
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-22"
+    },
+    {
       "code": "G-002",
       "slug": "wordfall",
       "title": "Wordfall",
@@ -611,8 +610,8 @@
       "type": "game",
       "status": "live",
       "route": "/project/wordstrike/",
-      "liveUrl": "https://thiepn.dev/WORDSTRIKE/",
-      "repo": "thiepn/WORDSTRIKE",
+      "liveUrl": "https://thiepn.dev/wordstrike/",
+      "repo": "thiepn/wordstrike",
       "tags": [
         "typing",
         "arcade",
@@ -639,18 +638,20 @@
       "code": "C-004",
       "slug": "bible-faith",
       "title": "Bible & Faith",
-      "summary": "Interactive projects centered on Scripture knowledge, memorization, and Christian learning.",
+      "summary": "Interactive projects centered on Scripture knowledge, memorization, Biblical Greek, global mission, and informed prayer.",
       "route": "/collection/bible-faith/",
       "projects": [
         "tms60",
-        "the-bible-challenge"
+        "the-bible-challenge",
+        "biblical-greek",
+        "unreached"
       ]
     },
     {
       "code": "C-003",
       "slug": "browser-games",
       "title": "Browser Games",
-      "summary": "Games and hosted play experiences that run directly in the browser, from arcade typing to long-form systems.",
+      "summary": "Games and hosted play experiences that run directly in the browser, from precision arcade play to surreal 3D worlds and long-form systems.",
       "route": "/collection/browser-games/",
       "projects": [
         "wordstrike",
@@ -661,32 +662,19 @@
         "ligo-quizabend",
         "echoframe-last-signal",
         "skyspire",
-        "analysis-idle"
+        "impossible-transit",
+        "voidcut"
       ]
     },
     {
       "code": "C-001",
       "slug": "french-learning",
       "title": "French Learning",
-      "summary": "Vocabulary, structured practice, and complementary systems for learning French.",
+      "summary": "Vocabulary and structured course practice for learning French across complementary browser-based systems.",
       "route": "/collection/french-learning/",
       "projects": [
         "french-3000",
-        "le-carnet-francais",
-        "franzosisch-flashcards"
-      ]
-    },
-    {
-      "code": "C-002",
-      "slug": "mathematics-cs",
-      "title": "Mathematics & Computer Science",
-      "summary": "Study systems and experiments spanning university mathematics, algorithms, and exam preparation.",
-      "route": "/collection/mathematics-cs/",
-      "projects": [
-        "analysis-ii-klausurlabor",
-        "analysis-ii-lernsystem",
-        "algodat-study-system",
-        "analysis-idle"
+        "le-carnet-francais"
       ]
     },
     {
