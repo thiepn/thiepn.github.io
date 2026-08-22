@@ -35,7 +35,7 @@
       ],
       "repo": "thiepn/greek",
       "liveUrl": "https://thiepn.dev/greek/",
-      "accentLight": "#9A6A2F",
+      "accentLight": "#8A5B20",
       "accentDark": "#D5B075",
       "updatedAt": "2026-08-21"
     },
@@ -615,7 +615,7 @@
       ],
       "repo": "thiepn/voidcut",
       "liveUrl": "https://thiepn.dev/voidcut/",
-      "accentLight": "#007F96",
+      "accentLight": "#006E82",
       "accentDark": "#2DE2FF",
       "updatedAt": "2026-08-22"
     },
