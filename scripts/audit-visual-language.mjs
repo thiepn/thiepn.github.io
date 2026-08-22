@@ -25,15 +25,22 @@ for (const rel of files) {
 
 const preview = read('src/components/artifacts/PreviewAperture.astro');
 const projectDir = path.join(root, 'src/content/projects');
-const publicSlugs = [];
+const publicProjects = [];
 for (const file of fs.readdirSync(projectDir).filter((name) => name.endsWith('.md'))) {
   const source = fs.readFileSync(path.join(projectDir, file), 'utf8');
   const slug = source.match(/^slug:\s*([^\n]+)/m)?.[1]?.trim();
   const visibility = source.match(/^visibility:\s*([^\n]+)/m)?.[1]?.trim();
-  if (slug && visibility === 'listed') publicSlugs.push(slug);
+  const previewBlock = source.match(/^preview:\s*\n([\s\S]*?)(?=^[A-Za-z][A-Za-z0-9_-]*:\s*(?:\n|$)|^---$)/m)?.[1] ?? '';
+  const previewType = previewBlock.match(/^\s*type:\s*([^\n]+)/m)?.[1]?.trim().replace(/["']/g, '') ?? 'static';
+  if (slug && visibility === 'listed') publicProjects.push({ slug, previewType });
 }
-const missingScenes = publicSlugs.filter((slug) => !preview.includes(`p.slug === '${slug}'`));
-if (missingScenes.length) fail(`Public artifacts missing dedicated aperture scenes: ${missingScenes.join(', ')}`);
+const dedicatedSceneSlugs = publicProjects.filter(({ slug }) => preview.includes(`p.slug === '${slug}'`)).map(({ slug }) => slug);
+const staticFallbackSlugs = publicProjects.filter(({ slug, previewType }) => previewType === 'static' && !preview.includes(`p.slug === '${slug}'`)).map(({ slug }) => slug);
+const missingRequiredScenes = publicProjects
+  .filter(({ slug, previewType }) => previewType !== 'static' && !preview.includes(`p.slug === '${slug}'`))
+  .map(({ slug }) => slug);
+if (missingRequiredScenes.length) fail(`Interactive/video public artifacts missing dedicated aperture scenes: ${missingRequiredScenes.join(', ')}`);
+if (!preview.includes('scene--generic')) fail('Static preview fallback composition is missing');
 if (preview.includes('p.slug === \'markdown-guide\'')) fail('HOLD artifact should not require a public aperture composition');
 
 const collectionPreview = read('src/components/collections/CollectionPreview.astro');
@@ -69,6 +76,7 @@ if (failures.length) {
   failures.forEach((message) => console.error(`- ${message}`));
   process.exit(1);
 }
-console.log(`Visual language audit passed.`);
-console.log(`${publicSlugs.length}/${publicSlugs.length} public artifacts have dedicated aperture compositions.`);
+console.log('Visual language audit passed.');
+console.log(`${dedicatedSceneSlugs.length} public artifacts use dedicated aperture compositions.`);
+console.log(`${staticFallbackSlugs.length} public static artifacts use the honest generic fallback: ${staticFallbackSlugs.join(', ') || 'none'}.`);
 console.log(`${config.targets.length} canonical visual-regression states configured.`);
