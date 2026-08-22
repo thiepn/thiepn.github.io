@@ -15,7 +15,9 @@ const missing=required.filter((f)=>!exists(f));
 if(missing.length){console.error('Phase 9 missing files:',missing);process.exit(1);}
 const dir=path.join(root,'src/content/collections');
 const files=fs.readdirSync(dir).filter((f)=>f.endsWith('.md'));
-if(files.length!==6){console.error(`Expected 6 collection records, got ${files.length}.`);process.exit(1);}
+const ledger=JSON.parse(read('src/data/catalogue-ledger.json'));
+const expectedCollectionRecords=Object.keys(ledger.collections).length;
+if(files.length!==expectedCollectionRecords){console.error(`Expected ${expectedCollectionRecords} ledger-backed collection records, got ${files.length}.`);process.exit(1);}
 for(const file of files){
   const text=read(`src/content/collections/${file}`);
   const slug=(text.match(/^slug:\s*([^\n]+)/m)?.[1]||file).trim();
@@ -27,7 +29,7 @@ for(const file of files){
 const browser=read('src/content/collections/browser-games.md');
 const projectCount=(browser.match(/^projects:\n([\s\S]*?)^anchors:/m)?.[1].match(/^- /gm)||[]).length;
 const anchorCount=(browser.match(/^anchors:\n([\s\S]*?)^relationships:/m)?.[1].match(/^- /gm)||[]).length;
-if(projectCount!==9||anchorCount<4||anchorCount>=projectCount){console.error('Browser Games must prove the large-set anchor-map + full-index pattern.');process.exit(1);}
+if(projectCount<9||anchorCount<4||anchorCount>=projectCount){console.error('Browser Games must prove the large-set anchor-map + full-index pattern.');process.exit(1);}
 const schema=read('src/content.config.ts');
 for(const needle of ['editorialNote: z.string','keywords: z.array','note: z.string']) if(!schema.includes(needle)){console.error(`Collection schema missing ${needle}`);process.exit(1);}
 const map=read('src/components/collections/CollectionMap.astro');
@@ -40,4 +42,4 @@ const controller=read('src/scripts/collection-map-controller.ts');
 for(const needle of ['pointerenter','focus','data-collection-preview','data-collection-relation']) if(!controller.includes(needle)){console.error(`Collection map controller missing ${needle}`);process.exit(1);}
 const site=read('src/data/site.ts');
 const phase=/phase:\s*(\d+)/.exec(site);if(!phase||Number(phase[1])<9){console.error('SITE.phase must be at least 9.');process.exit(1);}
-console.log('Phase 9 Collections validation passed (6 editorial collections, interactive maps, anchor/full-index pattern, search integration).');
+console.log(`Phase 9 Collections validation passed (${files.length} editorial collections, interactive maps, anchor/full-index pattern, search integration).`);

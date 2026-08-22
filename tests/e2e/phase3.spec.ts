@@ -26,10 +26,7 @@ test('mandatory Phase 3 viewports have no page-level horizontal overflow', async
   }
 });
 
-
-
 test('200% desktop zoom reflow equivalent remains usable at 640 CSS pixels', async ({ page }) => {
-  // A 1280px desktop viewport at 200% browser zoom exposes roughly 640 CSS pixels.
   await page.setViewportSize({ width: 640, height: 900 });
   for (const path of ['/', '/projects/', '/project/pdf-studio/', '/collection/french-learning/']) {
     await page.goto(path);
@@ -62,7 +59,7 @@ test('mobile header stays compact and primary desktop nav is replaced', async ({
   expect(headerHeight).toBeLessThanOrEqual(64);
 });
 
-test('tablet pages use the explicit 8-column-safe composition', async ({ page }) => {
+test('tablet pages use the explicit grid-safe composition', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   for (const path of ['/', '/projects/', '/collection/browser-games/']) {
     await page.goto(path);
@@ -93,11 +90,13 @@ test('touch-sized core controls meet the 44px target', async ({ page }) => {
   }
 });
 
-test('no-hover/touch context keeps project fragments readable without hover', async ({ browser, browserName }) => {
+test('no-hover/touch context keeps featured project cards readable without hover', async ({ browser, browserName }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(browserName === 'firefox' ? {} : { isMobile: true }) });
   const page = await context.newPage();
   await page.goto('/');
-  const opacity = await page.locator('.index-fragment').first().evaluate((element) => Number.parseFloat(getComputedStyle(element).opacity));
+  const card = page.locator('.featured-card').first();
+  await expect(card).toBeVisible();
+  const opacity = await card.evaluate((element) => Number.parseFloat(getComputedStyle(element).opacity));
   expect(opacity).toBeGreaterThanOrEqual(.85);
   await context.close();
 });

@@ -43,7 +43,10 @@ if (!(searchComponent.includes('search-index.json') || searchRuntime.includes('/
   throw new Error('Catalogue Search must consume generated search-index.json directly or through the Phase 11 static endpoint.');
 }
 const homepage = await fs.readFile(path.join(ROOT, 'src/pages/index.astro'), 'utf8');
-if (!homepage.includes('getPublicProjects') || !homepage.includes('<ProjectArchive projects={projects}')) throw new Error('Homepage archive must remain driven by the public project collection.');
+if (!homepage.includes('getPublicProjects') || !homepage.includes('data-project-directory') || !homepage.includes('projects.map')) {
+  throw new Error('Homepage project directory must remain driven by the public project collection.');
+}
+if (homepage.includes('<ProjectArchive')) throw new Error('Homepage must not duplicate the full interactive archive; /projects/ owns that workflow.');
 const projectArchive = await fs.readFile(path.join(ROOT, 'src/pages/projects/index.astro'), 'utf8');
 if (!projectArchive.includes('getPublicProjects')) throw new Error('Dedicated project archive must remain data-driven.');
 const packageText = await fs.readFile(path.join(ROOT, 'package.json'), 'utf8');

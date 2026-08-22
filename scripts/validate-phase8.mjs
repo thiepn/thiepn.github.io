@@ -16,7 +16,9 @@ const missing=required.filter((file)=>!exists(file));
 if(missing.length){console.error('Phase 8 missing files:',missing);process.exit(1);}
 const projectDir=path.join(root,'src/content/projects');
 const files=fs.readdirSync(projectDir).filter((file)=>file.endsWith('.md'));
-if(files.length!==20){console.error(`Expected 20 project records, got ${files.length}.`);process.exit(1);}
+const ledger=JSON.parse(read('src/data/catalogue-ledger.json'));
+const expectedProjectRecords=Object.values(ledger.projects).filter((slug)=>slug!=='__retired__').length;
+if(files.length!==expectedProjectRecords){console.error(`Expected ${expectedProjectRecords} ledger-backed project records, got ${files.length}.`);process.exit(1);}
 const featured=new Set(['pdf-studio','manuscript','clean30','wordstrike','french-3000','ligo-quizabend','analysis-ii-klausurlabor']);
 for(const file of files){
   const text=fs.readFileSync(path.join(projectDir,file),'utf8');
@@ -56,4 +58,4 @@ if(!catalogue.includes('getProjectNeighbors')||!catalogue.includes('sharedCollec
 const site=read('src/data/site.ts');
 const phaseMatch=/phase:\s*(\d+)/.exec(site);
 if(!phaseMatch||Number(phaseMatch[1])<8){console.error('SITE.phase must be at least 8.');process.exit(1);}
-console.log('Phase 8 Artifact-Record validation passed (20 capability records, 7 galleries, related fallback + curated navigation).');
+console.log(`Phase 8 Artifact-Record validation passed (${files.length} capability records, related fallback + curated navigation).`);

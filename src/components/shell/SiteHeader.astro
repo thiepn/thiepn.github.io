@@ -11,9 +11,9 @@ const active = (href: string) => {
 ---
 <header class="site-header">
   <div class="page-shell site-header__inner">
-    <a class="site-wordmark" href="/" aria-label="THIEPN. Project Index home">THIEPN.</a>
+    <a class="site-wordmark" href="/" aria-label="THIEPN portfolio home">THIEPN</a>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Index</a>
+      <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Home</a>
       <a class:list={[active('/projects/') && 'is-active']} href="/projects/" aria-current={active('/projects/') ? 'page' : undefined}>Projects</a>
       <a class:list={[active('/collections/') && 'is-active']} href="/collections/" aria-current={active('/collections/') ? 'page' : undefined}>Collections</a>
     </nav>
@@ -28,11 +28,11 @@ const active = (href: string) => {
 <style>
   .site-header{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:var(--canvas)}
   .site-header__inner{min-height:58px;display:grid;grid-template-columns:minmax(120px,1fr) auto minmax(240px,1fr);align-items:center;gap:var(--space-5)}
-  .site-wordmark{font-size:1.08rem;font-weight:630;letter-spacing:-.05em;line-height:1;text-decoration:none;justify-self:start}.site-wordmark::after{content:'';display:inline-block;width:4px;height:4px;margin-left:2px;background:currentColor;transform:translateY(-1px)}
+  .site-wordmark{font-size:1.08rem;font-weight:630;letter-spacing:-.05em;line-height:1;text-decoration:none;justify-self:start}
   .site-nav{display:flex;align-items:center;gap:var(--space-5);font:500 .65rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase}.site-nav a{position:relative;min-height:44px;display:flex;align-items:center;text-decoration:none;color:var(--ink-muted)}.site-nav a:hover,.site-nav a.is-active{color:var(--ink)}.site-nav a.is-active::after{content:'';position:absolute;left:0;right:0;bottom:7px;height:1px;background:currentColor}
   .site-header__tools{justify-self:end;display:flex;align-items:center;gap:var(--space-5)}.site-header__search{min-height:44px;display:flex;align-items:center;font:500 .64rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--ink-muted)}
   :global(.mobile-menu){justify-self:end}
   @media(max-width:900px){.site-header__inner{grid-template-columns:auto 1fr auto}.site-nav{justify-self:center;gap:var(--space-4)}.site-header__search{display:none}.site-header__tools{gap:0}}
-  @media(max-width:650px){.site-header{top:0}.site-header__inner{grid-template-columns:1fr auto;min-height:58px;gap:var(--space-3);padding-inline:max(var(--page-padding),env(safe-area-inset-left)) max(var(--page-padding),env(safe-area-inset-right))}.site-nav,.site-header__tools{display:none}.site-wordmark{grid-column:1}.site-wordmark::after{width:3px;height:3px}}
+  @media(max-width:650px){.site-header{top:0}.site-header__inner{grid-template-columns:1fr auto;min-height:58px;gap:var(--space-3);padding-inline:max(var(--page-padding),env(safe-area-inset-left)) max(var(--page-padding),env(safe-area-inset-right))}.site-nav,.site-header__tools{display:none}.site-wordmark{grid-column:1}}
   @media(forced-colors:active){.site-header{background:Canvas;border-color:CanvasText}.site-nav a.is-active::after{background:CanvasText}}
 </style>

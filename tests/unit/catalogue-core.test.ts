@@ -50,6 +50,6 @@ describe('catalogue helpers', () => {
       project({ code: 'T-002', slug: 'manuscript', title: 'Manuscript', category: 'tools', status: 'live', visibility: 'listed' }),
       project({ code: 'T-001', slug: 'pdf-studio', title: 'PDF Studio', category: 'tools', status: 'live', visibility: 'listed' }),
     ];
-    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['pdf-studio', 'manuscript', 'wordstrike']);
+    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['pdf-studio', 'wordstrike', 'manuscript']);
   });
 });

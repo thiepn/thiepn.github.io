@@ -1,14 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SectionIndex from '../components/index/SectionIndex.astro';
-import LivingIndexField from '../components/index/LivingIndexField.astro';
-import HeroArtifact from '../components/artifacts/HeroArtifact.astro';
-import FeatureArtifact from '../components/artifacts/FeatureArtifact.astro';
-import CompactArtifact from '../components/artifacts/CompactArtifact.astro';
-import CategoryIndex from '../components/archive/CategoryIndex.astro';
-import ProjectArchive from '../components/archive/ProjectArchive.astro';
-import CollectionPreview from '../components/collections/CollectionPreview.astro';
-import RecentActivity from '../components/activity/RecentActivity.astro';
+import InteractivePreview from '../components/artifacts/InteractivePreview.astro';
+import StatusLabel from '../components/artifacts/StatusLabel.astro';
 import { getCatalogueStats, getCollections, getFeaturedProjects, getPublicProjects } from '../lib/catalogue';
 
 const stats = await getCatalogueStats();
@@ -16,79 +9,187 @@ const featured = await getFeaturedProjects();
 const projects = await getPublicProjects();
 const collections = await getCollections();
 collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));
-const projectBySlug = new Map(projects.map((p)=>[p.data.slug,p]));
-const collectionTitles = (slugs:string[]) => slugs.map((slug)=>projectBySlug.get(slug)?.data.title).filter((v):v is string=>Boolean(v));
-const heroFeatured = featured.slice(0,2);
-const mediumFeatured = featured.slice(2,5);
-const editorialFeatured = featured.slice(5,7);
 ---
 <BaseLayout>
-  <section class="hero page-shell" aria-labelledby="index-title" data-index-hero>
-    <SectionIndex index="00" title="Index" meta="Current / 2026—" headingLevel="div" />
-    <div class="hero__grid index-grid">
-      <div class="hero__copy">
-        <h1 id="index-title" data-hero-title>THIEPN.</h1>
-        <p class="hero__statement" data-hero-copy>Things I've built.</p>
-        <p class="hero__description" data-hero-copy>Tools, games, learning systems, resources and experiments—kept as one evolving project index.</p>
-        <div class="hero__actions" data-hero-copy><a class="structural-button" href="#featured">Explore ↓</a><a class="text-link" href="/projects/" data-catalogue-search-open>Search the index →</a></div>
+  <main class="portfolio-home page-shell" data-index-hero>
+    <section class="portfolio-hero" aria-labelledby="portfolio-title">
+      <div class="portfolio-hero__copy">
+        <p class="eyebrow">Personal project portfolio</p>
+        <h1 id="portfolio-title" data-hero-title><span class="portfolio-hero__sr">THIEPN </span>Projects, tools & experiments.</h1>
+        <p class="portfolio-hero__intro" data-hero-copy>A practical hub for the things I build: browser games, productivity tools, learning systems, Bible projects and experiments.</p>
+        <div class="portfolio-hero__actions" data-hero-copy>
+          <a class="structural-button" href="/projects/">Browse all projects</a>
+          <a class="text-link" href="/projects/" data-catalogue-search-open>Search projects →</a>
+        </div>
       </div>
-      <aside class="hero__record" aria-label="Catalogue overview" data-hero-record>
-        <div><span>Index size</span><strong>{String(stats.totalListed).padStart(3,'0')}</strong></div>
-        <div><span>Live</span><strong>{String(stats.status.live).padStart(3,'0')}</strong></div>
-        <div><span>Beta</span><strong>{String(stats.status.beta).padStart(3,'0')}</strong></div>
-        <div><span>Experiment</span><strong>{String(stats.status.experiment).padStart(3,'0')}</strong></div>
+      <aside class="portfolio-hero__stats" aria-label="Portfolio overview" data-hero-record>
+        <div><strong>{String(stats.totalListed).padStart(2,'0')}</strong><span>Public projects</span></div>
+        <div><strong>{String(featured.length).padStart(2,'0')}</strong><span>Featured</span></div>
+        <div><strong>{String(collections.length).padStart(2,'0')}</strong><span>Collections</span></div>
       </aside>
-    </div>
-    <LivingIndexField projects={featured} />
-  </section>
+    </section>
 
-  <section id="featured" class="featured page-shell section-space--large" aria-labelledby="featured-title" data-motion-section>
-    <SectionIndex index="01" title="Featured Work" meta={`${String(featured.length).padStart(3,'0')} Selected`} headingId="featured-title" />
-    <p class="section-deck">Selected artifacts that show the range of the index.</p>
-    <div class="featured__heroes">
-      {heroFeatured.map((project)=><HeroArtifact project={project} />)}
-    </div>
-    <div class="featured__medium">
-      {mediumFeatured.map((project)=><FeatureArtifact project={project} />)}
-    </div>
-    <div class="featured__editorial">
-      {editorialFeatured.map((project)=><CompactArtifact project={project} />)}
-    </div>
-  </section>
+    <section id="featured" class="hub-section" aria-labelledby="featured-title" data-motion-section>
+      <header class="hub-section__header">
+        <div>
+          <p class="eyebrow">Featured</p>
+          <h2 id="featured-title">Selected projects</h2>
+        </div>
+        <a class="text-link" href="/projects/">All projects →</a>
+      </header>
 
-  <section class="types page-shell section-space" aria-labelledby="types-title" data-motion-section>
-    <SectionIndex index="02" title="Browse by Type" meta="06 Categories" headingId="types-title" />
-    <CategoryIndex stats={stats} />
-  </section>
+      <div class="featured-grid">
+        {featured.map((project, index) => {
+          const p = project.data;
+          return (
+            <article class:list={['featured-card', index < 2 ? 'featured-card--wide' : 'featured-card--standard']}>
+              <a class="featured-card__preview" href={`/project/${p.slug}/`} aria-label={`View ${p.title} details`}>
+                <InteractivePreview project={project} size={index < 2 ? 'feature' : 'standard'} />
+              </a>
+              <div class="featured-card__body">
+                <div class="featured-card__meta">
+                  <span>{p.category}</span>
+                  <StatusLabel status={p.status} />
+                </div>
+                <h3><a href={`/project/${p.slug}/`}>{p.title}</a></h3>
+                <p>{p.summary}</p>
+                <div class="featured-card__actions">
+                  <a href={`/project/${p.slug}/`}>Details</a>
+                  {p.liveUrl && <a href={p.liveUrl}>Launch ↗</a>}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
 
-  <section id="projects" class="archive page-shell section-space--large" aria-labelledby="archive-title" data-motion-section>
-    <SectionIndex index="03" title="Project Archive" meta={`${String(stats.totalListed).padStart(3,'0')} Artifacts`} headingId="archive-title" />
-    <div class="archive__intro"><p>Every listed project, in curated order. Filter, search, sort, or switch to a compact ledger; without JavaScript the full catalogue remains visible.</p><a class="text-link" href="/projects/">Open dedicated archive →</a></div>
-    <ProjectArchive projects={projects} id="home-archive-catalogue" />
-  </section>
+    <section id="projects" class="hub-section" aria-labelledby="directory-title" data-motion-section data-project-directory>
+      <header class="hub-section__header">
+        <div>
+          <p class="eyebrow">Directory</p>
+          <h2 id="directory-title">All projects</h2>
+        </div>
+        <div class="hub-section__header-actions">
+          <span>{String(projects.length).padStart(2,'0')} projects</span>
+          <a class="text-link" href="/projects/">Filter & search →</a>
+        </div>
+      </header>
 
-  <section id="collections" class="collections page-shell section-space--large" aria-labelledby="collections-title" data-motion-section>
-    <SectionIndex index="04" title="Collections" meta={`${String(collections.length).padStart(2,'0')} Curated Sets`} headingId="collections-title" />
-    <div class="collections__grid">
-      {collections.map((collection)=><CollectionPreview collection={collection} projectTitles={collectionTitles(collection.data.projects)} />)}
-    </div>
-    <div class="collections__footer"><a class="text-link" href="/collections/">View all collections →</a></div>
-  </section>
+      <div class="project-directory">
+        {projects.map((project) => {
+          const p = project.data;
+          return (
+            <a class="project-directory__item" href={`/project/${p.slug}/`}>
+              <span class="project-directory__code">{p.code}</span>
+              <span class="project-directory__title">{p.title}</span>
+              <span class="project-directory__type">{p.category}</span>
+              <span class="project-directory__arrow" aria-hidden="true">→</span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
 
-  <section id="recent" class="recent page-shell section-space" aria-labelledby="recent-title" data-motion-section>
-    <SectionIndex index="05" title="Recent Activity" meta="Index Log" headingId="recent-title" />
-    <RecentActivity projects={[...projects].reverse()} />
-  </section>
+    <section id="collections" class="hub-section hub-section--compact" aria-labelledby="collections-title" data-motion-section>
+      <header class="hub-section__header">
+        <div>
+          <p class="eyebrow">Collections</p>
+          <h2 id="collections-title">Browse by interest</h2>
+        </div>
+        <a class="text-link" href="/collections/">All collections →</a>
+      </header>
+
+      <div class="collection-links">
+        {collections.map((collection) => (
+          <a class="collection-link" href={`/collection/${collection.data.slug}/`}>
+            <span>{collection.data.code}</span>
+            <strong>{collection.data.title}</strong>
+            <small>{String(collection.data.projects.length).padStart(2,'0')} projects</small>
+            <i aria-hidden="true">→</i>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
 </BaseLayout>
 
 <style>
-  .hero{padding-top:clamp(34px,5vw,66px);padding-bottom:var(--space-8)}.hero__grid{align-items:end;min-height:360px;padding-block:clamp(58px,8vw,118px) var(--space-8)}.hero__copy{grid-column:1/span 8}.hero h1{font-size:var(--text-display-xl);line-height:.8;letter-spacing:-.073em;font-weight:540}.hero__statement{margin-top:var(--space-6);font-size:clamp(1.45rem,2.4vw,2.2rem);line-height:1.05;letter-spacing:-.035em}.hero__description{margin-top:var(--space-4);max-width:39ch;color:var(--ink-secondary);font-size:var(--text-body-l)}.hero__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-6);margin-top:var(--space-7)}.hero__record{grid-column:10/-1;border-top:1px solid var(--line-strong)}.hero__record>div{display:grid;grid-template-columns:1fr auto;gap:var(--space-4);align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line);font:500 .65rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase}.hero__record span{color:var(--ink-muted)}.hero__record strong{font-size:.82rem;font-variant-numeric:tabular-nums}
-  .section-deck{margin-top:var(--space-5);max-width:52ch;color:var(--ink-secondary);font-size:.9rem}.featured__heroes{display:grid;grid-template-columns:7fr 5fr;gap:var(--space-5);align-items:start;margin-top:var(--space-8)}.featured__heroes>:nth-child(2){margin-top:var(--space-9)}.featured__medium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-6)}.featured__editorial{margin-top:var(--space-7);border-top:1px solid var(--line-strong)}
-  .types{padding-top:var(--space-8)}.types :global(.category-index){margin-top:var(--space-6)}
-  .archive__intro{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-8);padding:var(--space-6) 0 var(--space-8)}.archive__intro p{max-width:58ch;color:var(--ink-secondary);font-size:.88rem}
-  .collections__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-7)}.collections__footer{display:flex;justify-content:flex-end;margin-top:var(--space-5)}.recent :global(.recent-activity){margin-top:var(--space-6)}
-  @media(max-width:1100px){.featured__heroes{grid-template-columns:1fr 1fr}.featured__heroes>:nth-child(2){margin-top:var(--space-7)}.featured__medium{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:899px){.hero__copy{grid-column:1/-1}.hero__record{grid-column:5/-1;margin-top:var(--space-8)}}
-  @media(max-width:760px){.featured__heroes,.featured__medium,.collections__grid{grid-template-columns:1fr}.featured__heroes>:nth-child(2){margin-top:0}.archive__intro{display:grid;gap:var(--space-4)}}
-  @media(max-width:599px){.hero{padding-top:var(--space-5)}.hero__grid{min-height:0;padding-block:var(--space-8)}.hero h1{font-size:clamp(4.5rem,25vw,7.2rem)}.hero__record{grid-column:1/-1;margin-top:var(--space-8)}.hero__actions{gap:var(--space-5);margin-top:var(--space-6)}.featured__medium{margin-top:var(--space-5)}.collections__grid{gap:var(--space-4)}}
+  .portfolio-home{padding-top:clamp(42px,5vw,74px);padding-bottom:clamp(64px,8vw,110px)}
+  .eyebrow{font:500 .64rem var(--font-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+  .portfolio-hero__sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  .portfolio-hero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);gap:clamp(40px,8vw,120px);align-items:end;padding-bottom:clamp(54px,7vw,88px);border-bottom:1px solid var(--line-strong)}
+  .portfolio-hero__copy{max-width:760px}
+  .portfolio-hero h1{margin-top:var(--space-3);max-width:12ch;font-size:clamp(2.9rem,6vw,5.8rem);line-height:.94;letter-spacing:-.055em;font-weight:560}
+  .portfolio-hero__intro{margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary);font-size:clamp(1rem,1.3vw,1.18rem);line-height:1.6}
+  .portfolio-hero__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-5);margin-top:var(--space-6)}
+  .portfolio-hero__stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}
+  .portfolio-hero__stats div{display:grid;gap:4px;padding:14px 12px;border-right:1px solid var(--line)}
+  .portfolio-hero__stats div:last-child{border-right:0}
+  .portfolio-hero__stats strong{font-size:1.15rem;font-weight:560;font-variant-numeric:tabular-nums}
+  .portfolio-hero__stats span{font:500 .58rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+
+  .hub-section{padding-top:clamp(58px,7vw,92px)}
+  .hub-section--compact{padding-top:clamp(48px,6vw,72px)}
+  .hub-section__header{display:flex;justify-content:space-between;align-items:end;gap:var(--space-6);padding-bottom:var(--space-5);border-bottom:1px solid var(--line-strong)}
+  .hub-section__header h2{margin-top:5px;font-size:clamp(1.8rem,3vw,2.8rem);line-height:1;letter-spacing:-.045em;font-weight:560}
+  .hub-section__header-actions{display:flex;align-items:center;gap:var(--space-5);font:500 .62rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+
+  .featured-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--space-4);padding-top:var(--space-5)}
+  .featured-card{grid-column:span 4;min-width:0;border:1px solid var(--line);background:var(--surface-1)}
+  .featured-card--wide{grid-column:span 6}
+  .featured-card__preview{display:block;text-decoration:none;border-bottom:1px solid var(--line)}
+  .featured-card__body{padding:var(--space-4)}
+  .featured-card__meta{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);font:500 .6rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+  .featured-card h3{margin-top:var(--space-3);font-size:clamp(1.35rem,2.1vw,2rem);line-height:1.02;letter-spacing:-.04em;font-weight:560}
+  .featured-card h3 a{text-decoration:none}
+  .featured-card__body>p{margin-top:var(--space-3);max-width:52ch;color:var(--ink-secondary);font-size:.86rem;line-height:1.52}
+  .featured-card__actions{display:flex;gap:var(--space-4);margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--line-soft);font:500 .61rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase}
+  .featured-card__actions a{text-decoration:none}
+
+  .project-directory{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-left:1px solid var(--line);border-top:1px solid var(--line);margin-top:var(--space-5)}
+  .project-directory__item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'code type arrow' 'title title arrow';gap:4px 10px;min-height:76px;padding:12px 13px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;background:var(--surface-1)}
+  .project-directory__item:hover{background:var(--surface-2)}
+  .project-directory__code{grid-area:code;font:500 .56rem var(--font-meta);letter-spacing:.06em;color:var(--ink-muted)}
+  .project-directory__title{grid-area:title;align-self:end;font-size:.9rem;line-height:1.2;font-weight:560;letter-spacing:-.018em;overflow-wrap:anywhere}
+  .project-directory__type{grid-area:type;justify-self:end;font:500 .54rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+  .project-directory__arrow{grid-area:arrow;align-self:center;color:var(--ink-muted)}
+
+  .collection-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-left:1px solid var(--line);border-top:1px solid var(--line);margin-top:var(--space-5)}
+  .collection-link{position:relative;display:grid;gap:7px;min-height:128px;padding:14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;background:var(--surface-1)}
+  .collection-link:hover{background:var(--surface-2)}
+  .collection-link>span,.collection-link small{font:500 .56rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+  .collection-link strong{align-self:end;font-size:1rem;line-height:1.18;letter-spacing:-.025em;font-weight:560}
+  .collection-link small{align-self:end}
+  .collection-link i{position:absolute;top:14px;right:14px;font-style:normal;color:var(--ink-muted)}
+
+  @media(max-width:1180px){
+    .project-directory{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .collection-links{grid-template-columns:repeat(3,minmax(0,1fr))}
+  }
+  @media(max-width:900px){
+    .portfolio-hero{grid-template-columns:1fr;gap:var(--space-7)}
+    .portfolio-hero__stats{max-width:520px}
+    .featured-card,.featured-card--wide{grid-column:span 6}
+    .project-directory{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .collection-links{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media(max-width:650px){
+    .portfolio-home{padding-top:var(--space-7)}
+    .portfolio-hero{padding-bottom:var(--space-8)}
+    .portfolio-hero h1{font-size:clamp(2.55rem,13vw,4.2rem)}
+    .portfolio-hero__stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .portfolio-hero__stats div{padding:11px 8px}
+    .portfolio-hero__stats span{font-size:.5rem}
+    .hub-section{padding-top:var(--space-8)}
+    .hub-section__header{align-items:flex-start}
+    .hub-section__header-actions{display:none}
+    .featured-grid{grid-template-columns:1fr}
+    .featured-card,.featured-card--wide{grid-column:1}
+    .featured-card__body>p{font-size:.84rem}
+    .project-directory,.collection-links{grid-template-columns:1fr}
+    .project-directory__item{min-height:68px}
+    .collection-link{min-height:104px}
+  }
 </style>

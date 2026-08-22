@@ -11,7 +11,7 @@ aliases:
 category: learning
 type: study-system
 status: live
-visibility: listed
+visibility: hidden
 summary: Connect definitions, theorems, proofs, exercises, and exam practice in a structured Analysis II study system.
 repo: thiepn/analysis2ss
 liveUrl: https://thiepn.dev/analysis2ss/
@@ -25,8 +25,7 @@ platforms:
 - desktop
 - tablet
 - mobile
-collections:
-- mathematics-cs
+collections: []
 accent:
   light: '#6E52A0'
   dark: '#B79BEA'

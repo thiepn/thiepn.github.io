@@ -50,7 +50,8 @@ const indexPage = read('src/pages/index.astro');
 const projectsPage = read('src/pages/projects/index.astro');
 const collectionPage = read('src/pages/collection/[slug].astro');
 const notFound = read('src/pages/404.astro');
-for (const [name, text] of [['home', indexPage], ['projects', projectsPage], ['collection', collectionPage], ['404', notFound]]) {
+if (!/@media\(max-width:(?:899|900)px\)/.test(indexPage)) failures.push('home page lacks the tablet portfolio correction.');
+for (const [name, text] of [['projects', projectsPage], ['collection', collectionPage], ['404', notFound]]) {
   if (!text.includes('@media(max-width:899px)')) failures.push(`${name} page lacks the 8-column tablet correction.`);
 }
 

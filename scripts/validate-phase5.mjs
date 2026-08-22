@@ -19,13 +19,8 @@ if (missing.length) {
   console.error('Phase 5 missing files:', missing);
   process.exit(1);
 }
-if (fs.existsSync(path.join(root, 'src/components/index/StaticIndexField.astro'))) {
-  console.error('StaticIndexField should be replaced by LivingIndexField in Phase 5.');
-  process.exit(1);
-}
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const index = read('src/pages/index.astro');
-const field = read('src/components/index/LivingIndexField.astro');
 const controller = read('src/scripts/living-index-controller.ts');
 const hero = read('src/motion/heroEntrance.ts');
 const reveal = read('src/motion/sectionReveal.ts');
@@ -33,16 +28,15 @@ const archive = read('src/scripts/archive-controller.ts');
 const reflow = read('src/motion/archiveReflow.ts');
 const reduced = read('src/motion/reducedMotion.ts');
 const checks = [
-  [index.includes('LivingIndexField') && index.includes('data-index-hero'), 'Homepage must use the Living Index hero.'],
-  [(index.match(/data-motion-section/g) ?? []).length >= 5, 'Homepage sections must opt into measured reveals.'],
-  [field.includes('data-living-index') && field.includes('data-index-scanner'), 'Living Index field/scanner hooks are missing.'],
-  [field.includes('--proximity') && field.includes('--field-resolve'), 'Living Index visual state variables are missing.'],
-  [controller.includes('requestAnimationFrame') && controller.includes('ACTIVATION_RADIUS = 220'), 'Pointer proximity must be rAF-throttled with the locked radius.'],
-  [controller.includes('MOBILE_INTERVAL = 3600') && controller.includes('IntersectionObserver'), 'Mobile periodic wake behavior is missing.'],
-  [controller.includes('visibilitychange') && controller.includes("import { scroll } from 'motion'"), 'Visibility/scroll-aware Living Index behavior is missing.'],
-  [hero.includes("from 'motion'") && hero.includes('stagger'), 'Hero choreography must use Motion sequencing.'],
+  [index.includes('data-index-hero'), 'Homepage must keep the restrained hero motion hook.'],
+  [(index.match(/data-motion-section/g) ?? []).length >= 3, 'Homepage hub sections must opt into measured reveals.'],
+  [index.includes('data-project-directory'), 'Homepage must expose the compact project-directory hook.'],
+  [!index.includes('LivingIndexField'), 'Homepage must not render the decorative Living Index field.'],
+  [!index.includes('<ProjectArchive'), 'Homepage must not duplicate the full interactive project archive.'],
+  [controller.includes('requestAnimationFrame') && controller.includes('ACTIVATION_RADIUS = 220'), 'Legacy proximity infrastructure must remain bounded and rAF-throttled.'],
+  [hero.includes("from 'motion'") && hero.includes('stagger'), 'Hero choreography must use restrained Motion sequencing.'],
   [reveal.includes('inView') && reveal.includes('stagger(.04)'), 'Section reveals must use restrained in-view stagger.'],
-  [archive.includes('captureArchivePositions') && archive.includes('animateArchiveReflow'), 'Archive filtering must coordinate measured layout motion.'],
+  [archive.includes('captureArchivePositions') && archive.includes('animateArchiveReflow'), 'Dedicated archive filtering must coordinate measured layout motion.'],
   [reflow.includes('duration: .34') && reflow.includes('scale: [.985, 1]'), 'Archive reflow timing/entry motion is missing.'],
   [reduced.includes('prefers-reduced-motion: reduce'), 'Reduced-motion detection is missing.'],
 ];
@@ -58,4 +52,4 @@ if (/addEventListener\(['"](?:wheel|touchmove)['"][\s\S]{0,300}preventDefault/i.
   console.error('Phase 5 must not hijack native scrolling.');
   process.exit(1);
 }
-console.log(`Phase 5 Living Index validation passed (${required.length} required files).`);
+console.log(`Phase 5 compact portfolio-home validation passed (${required.length} motion/accessibility support files retained).`);

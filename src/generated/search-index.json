@@ -3,25 +3,27 @@
   "projects": [
     {
       "kind": "project",
-      "code": "L-006",
-      "slug": "algodat-study-system",
-      "title": "AlgoDat Study System",
-      "subtitle": "Algorithms study environment",
-      "summary": "Learn algorithms and data structures through structured theory, visual steps, exercises, and exam-oriented review.",
+      "code": "L-901",
+      "slug": "biblical-greek",
+      "title": "Koinē Path",
+      "subtitle": "Interactive Biblical Greek learning",
+      "summary": "Learn Biblical Greek through structured grammar, parsing drills, progressive hints, guided New Testament reading, review, and meaningful progress tracking.",
       "aliases": [
-        "algodat",
-        "algorithms and data structures",
-        "algorithms study"
+        "biblical greek",
+        "koine greek",
+        "greek new testament",
+        "koine path"
       ],
       "category": "learning",
-      "status": "live",
+      "status": "beta",
       "tags": [
-        "algorithms",
-        "computer-science",
-        "exam-prep"
+        "bible",
+        "grammar",
+        "study",
+        "vocabulary"
       ],
       "collections": [
-        "Mathematics & Computer Science"
+        "Bible & Faith"
       ],
       "capabilityTags": [
         "local-first"
@@ -31,122 +33,11 @@
         "tablet",
         "mobile"
       ],
-      "repo": "thiepn/algodat",
-      "liveUrl": "https://thiepn.dev/algodat/",
-      "accentLight": "#A0522A",
-      "accentDark": "#F39662",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
-      "code": "G-009",
-      "slug": "analysis-idle",
-      "title": "Analysis Idle",
-      "subtitle": "Mathematical incremental experiment",
-      "summary": "Explore mathematical progression through an experimental incremental-game structure inspired by Analysis.",
-      "aliases": [
-        "analysis idle",
-        "math idle",
-        "incremental analysis"
-      ],
-      "category": "games",
-      "status": "experiment",
-      "tags": [
-        "mathematics",
-        "incremental",
-        "game"
-      ],
-      "collections": [
-        "Browser Games",
-        "Mathematics & Computer Science"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/Analysis-Idle",
-      "liveUrl": "https://thiepn.dev/Analysis-Idle/",
-      "accentLight": "#684D87",
-      "accentDark": "#B78CE4",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
-      "code": "L-004",
-      "slug": "analysis-ii-klausurlabor",
-      "title": "Analysis II Klausurlabor",
-      "subtitle": "Analysis II exam laboratory",
-      "summary": "Study Analysis II through exam-style problems, interactive mathematics, and targeted practice.",
-      "aliases": [
-        "analysis2",
-        "analysis ii",
-        "klausurlabor",
-        "analysis exam"
-      ],
-      "category": "learning",
-      "status": "live",
-      "tags": [
-        "mathematics",
-        "analysis",
-        "exam-prep"
-      ],
-      "collections": [
-        "Mathematics & Computer Science"
-      ],
-      "capabilityTags": [
-        "local-first",
-        "offline"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/analysis2",
-      "liveUrl": "https://thiepn.dev/analysis2/",
-      "accentLight": "#245D8A",
-      "accentDark": "#68B4EF",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
-      "code": "L-005",
-      "slug": "analysis-ii-lernsystem",
-      "title": "Analysis II Lernsystem",
-      "subtitle": "Comprehensive Analysis II study system",
-      "summary": "Connect definitions, theorems, proofs, exercises, and exam practice in a structured Analysis II study system.",
-      "aliases": [
-        "analysis2ss",
-        "analysis study system",
-        "analysis ii lernsystem"
-      ],
-      "category": "learning",
-      "status": "live",
-      "tags": [
-        "mathematics",
-        "analysis",
-        "study"
-      ],
-      "collections": [
-        "Mathematics & Computer Science"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/analysis2ss",
-      "liveUrl": "https://thiepn.dev/analysis2ss/",
-      "accentLight": "#6E52A0",
-      "accentDark": "#B79BEA",
-      "updatedAt": "2026-08-18"
+      "repo": "thiepn/greek",
+      "liveUrl": "https://thiepn.dev/greek/",
+      "accentLight": "#8A5B20",
+      "accentDark": "#D5B075",
+      "updatedAt": "2026-08-21"
     },
     {
       "kind": "project",
@@ -256,42 +147,6 @@
     },
     {
       "kind": "project",
-      "code": "L-003",
-      "slug": "franzosisch-flashcards",
-      "title": "Französisch Flashcards",
-      "subtitle": "Focused vocabulary flashcards",
-      "summary": "A lightweight French flashcard trainer for direct vocabulary review and recall practice.",
-      "aliases": [
-        "french2.2",
-        "french flashcards",
-        "franzosisch flashcards"
-      ],
-      "category": "learning",
-      "status": "live",
-      "tags": [
-        "french",
-        "vocabulary",
-        "study"
-      ],
-      "collections": [
-        "French Learning"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/french2.2",
-      "liveUrl": "https://thiepn.dev/french2.2/",
-      "accentLight": "#39689C",
-      "accentDark": "#79B5F8",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -328,6 +183,39 @@
       "accentLight": "#B63C3C",
       "accentDark": "#FF7777",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-010",
+      "slug": "impossible-transit",
+      "title": "Impossible Transit",
+      "subtitle": "Surreal first-person transit game",
+      "summary": "Travel through a surreal browser transit network where architecture, scale, gravity, recursion, and space stop obeying normal rules.",
+      "aliases": [
+        "service 00",
+        "surreal transit"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "game",
+        "action",
+        "strategy"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop"
+      ],
+      "repo": "thiepn/impossible-transit",
+      "liveUrl": "https://thiepn.dev/impossible-transit/",
+      "accentLight": "#5A6372",
+      "accentDark": "#AFC5DE",
+      "updatedAt": "2026-08-22"
     },
     {
       "kind": "project",
@@ -439,6 +327,41 @@
       "accentLight": "#765328",
       "accentDark": "#D5AF6C",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "T-004",
+      "slug": "mathlab",
+      "title": "MathLab",
+      "subtitle": "University mathematics workbench",
+      "summary": "Work with symbolic algebra, calculus, linear algebra, probability, discrete math, numerical methods, proofs, visualization, and practice in one local-first math environment.",
+      "aliases": [
+        "math lab",
+        "mathematics workbench"
+      ],
+      "category": "tools",
+      "status": "beta",
+      "tags": [
+        "mathematics",
+        "study",
+        "reference"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/mathlab",
+      "liveUrl": "https://thiepn.dev/mathlab/",
+      "accentLight": "#315F8C",
+      "accentDark": "#8DBAE3",
+      "updatedAt": "2026-08-22"
     },
     {
       "kind": "project",
@@ -626,6 +549,78 @@
     },
     {
       "kind": "project",
+      "code": "V-001",
+      "slug": "unreached",
+      "title": "Unreached",
+      "subtitle": "Christian world mission atlas",
+      "summary": "Explore unreached peoples, countries, languages, Scripture access, and prayer context through a browser-based Christian world mission atlas.",
+      "aliases": [
+        "unreached peoples",
+        "mission atlas",
+        "people groups"
+      ],
+      "category": "visualizations",
+      "status": "beta",
+      "tags": [
+        "bible",
+        "reference",
+        "study"
+      ],
+      "collections": [
+        "Bible & Faith"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/unreached",
+      "liveUrl": "https://thiepn.dev/unreached/",
+      "accentLight": "#356E60",
+      "accentDark": "#8BC8B7",
+      "updatedAt": "2026-08-22"
+    },
+    {
+      "kind": "project",
+      "code": "G-011",
+      "slug": "voidcut",
+      "title": "VOIDCUT",
+      "subtitle": "Precision space-cutting arcade game",
+      "summary": "Cut away space with precise swipes, protect moving nodes, master stages, and race deterministic runs in a fast browser arcade game.",
+      "aliases": [
+        "void cut"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "game",
+        "arcade",
+        "action"
+      ],
+      "collections": [
+        "Browser Games"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/voidcut",
+      "liveUrl": "https://thiepn.dev/voidcut/",
+      "accentLight": "#006E82",
+      "accentDark": "#2DE2FF",
+      "updatedAt": "2026-08-22"
+    },
+    {
+      "kind": "project",
       "code": "G-002",
       "slug": "wordfall",
       "title": "Wordfall",
@@ -688,8 +683,8 @@
       "platforms": [
         "desktop"
       ],
-      "repo": "thiepn/WORDSTRIKE",
-      "liveUrl": "https://thiepn.dev/WORDSTRIKE/",
+      "repo": "thiepn/wordstrike",
+      "liveUrl": "https://thiepn.dev/wordstrike/",
       "accentLight": "#006977",
       "accentDark": "#00F5FF",
       "updatedAt": "2026-08-18"
@@ -701,27 +696,38 @@
       "code": "C-004",
       "slug": "bible-faith",
       "title": "Bible & Faith",
-      "summary": "Interactive projects centered on Scripture knowledge, memorization, and Christian learning.",
-      "editorialNote": "Two different ways of returning to Scripture repeatedly: TMS60 concentrates on exact long-term verse recall, while The Bible Challenge turns biblical knowledge into active quiz play. Memorization and retrieval practice reinforce each other without becoming the same product.",
+      "summary": "Interactive projects centered on Scripture knowledge, memorization, Biblical Greek, global mission, and informed prayer.",
+      "editorialNote": "A collection spanning repeated engagement with Scripture and outward-looking Christian mission: memorize the text, retrieve biblical knowledge, learn to read the Greek New Testament, and explore peoples and languages in order to pray with greater understanding.",
       "projects": [
         "tms60",
-        "the-bible-challenge"
+        "the-bible-challenge",
+        "biblical-greek",
+        "unreached"
       ],
       "projectTitles": [
         "TMS60",
-        "The Bible Challenge"
+        "The Bible Challenge",
+        "Koinē Path",
+        "Unreached"
       ],
       "keywords": [
         "Bible",
         "Scripture",
         "memorization",
         "quiz",
-        "Christian learning",
-        "retrieval"
+        "Biblical Greek",
+        "mission",
+        "prayer"
       ],
       "relationshipLabels": [
         "Memorization ↔ retrieval play",
-        "TMS60 develops exact verse recall; The Bible Challenge exercises broader Scripture knowledge under playful retrieval pressure."
+        "TMS60 develops exact verse recall; The Bible Challenge exercises broader Scripture knowledge under playful retrieval pressure.",
+        "Scripture recall ↔ original language",
+        "Both return repeatedly to biblical text, with one emphasizing exact memorization and the other building the grammar needed to read Greek directly.",
+        "Scripture study ↔ mission",
+        "Koinē Path deepens engagement with the New Testament text while Unreached turns biblical mission concern outward toward peoples, languages, and prayer.",
+        "Knowledge ↔ global context",
+        "Bible knowledge becomes broader Christian context when paired with exploration of peoples, gospel access, languages, and prayer needs."
       ]
     },
     {
@@ -729,8 +735,8 @@
       "code": "C-003",
       "slug": "browser-games",
       "title": "Browser Games",
-      "summary": "Games and hosted play experiences that run directly in the browser, from arcade typing to long-form systems.",
-      "editorialNote": "A cross-section of how far a static browser can be pushed: arcade reflex games, social quiz formats, long-form incremental systems, atmospheric experiments, and progression-heavy action. The collection is organized by play pattern rather than by a single genre.",
+      "summary": "Games and hosted play experiences that run directly in the browser, from precision arcade play to surreal 3D worlds and long-form systems.",
+      "editorialNote": "A cross-section of how far browser play can be pushed: precision arcade games, social quiz formats, long-form incremental systems, atmospheric action, and a complete first-person 3D journey. The collection is organized by play pattern rather than by a single genre.",
       "projects": [
         "wordstrike",
         "wordfall",
@@ -740,7 +746,8 @@
         "ligo-quizabend",
         "echoframe-last-signal",
         "skyspire",
-        "analysis-idle"
+        "impossible-transit",
+        "voidcut"
       ],
       "projectTitles": [
         "WORDSTRIKE",
@@ -751,7 +758,8 @@
         "LiGo Quizabend",
         "ECHOFRAME: LAST SIGNAL",
         "Skyspire",
-        "Analysis Idle"
+        "Impossible Transit",
+        "VOIDCUT"
       ],
       "keywords": [
         "browser games",
@@ -760,23 +768,21 @@
         "incremental",
         "strategy",
         "typing",
-        "progression"
+        "3D"
       ],
       "relationshipLabels": [
         "Typing as the core mechanic",
         "Both transform keyboard accuracy into immediate game action, but use different spatial pressure models.",
+        "Precision under pressure",
+        "Both reward fast, exact input and immediate correction, with one centered on typing and the other on spatial cuts.",
         "Systems & progression",
         "Both ask the player to read systems, make trade-offs, and build value over repeated decisions.",
         "Social quiz play",
         "Both turn questions into group-friendly play, with one centered on Bible knowledge and the other on flexible quiz-night hosting.",
-        "Atmosphere & movement",
-        "These projects use audiovisual atmosphere and continuous movement to make browser play feel more spatial and game-like.",
+        "Atmosphere & space",
+        "Both use audiovisual atmosphere and unusual spatial rules to make browser play feel more like a fully authored game world.",
         "Long-run progression",
-        "Both support sessions where accumulating progression changes how later play feels.",
-        "Incremental systems",
-        "Analysis Idle and Nebula Foundry both use compounding progression loops, with different themes and pacing.",
-        "High-pressure interaction",
-        "Fast input and immediate feedback create pressure in both projects, despite very different mechanics."
+        "Both support sessions where accumulating progression changes how later play feels."
       ]
     },
     {
@@ -784,17 +790,15 @@
       "code": "C-001",
       "slug": "french-learning",
       "title": "French Learning",
-      "summary": "Vocabulary, structured practice, and complementary systems for learning French.",
-      "editorialNote": "Three complementary layers of language acquisition: a broad spaced-repetition vocabulary base, a guided course-like notebook, and a lightweight flashcard set for focused review. The collection moves from exposure to structured practice to rapid retrieval.",
+      "summary": "Vocabulary and structured course practice for learning French across complementary browser-based systems.",
+      "editorialNote": "Two complementary layers of language acquisition: a broad spaced-repetition vocabulary system and a guided course-like environment for grammar, reading, and structured practice.",
       "projects": [
         "french-3000",
-        "le-carnet-francais",
-        "franzosisch-flashcards"
+        "le-carnet-francais"
       ],
       "projectTitles": [
         "French 3000",
-        "Le Carnet Français",
-        "Französisch Flashcards"
+        "Le Carnet Français"
       ],
       "keywords": [
         "vocabulary",
@@ -806,49 +810,7 @@
       ],
       "relationshipLabels": [
         "Vocabulary → guided practice",
-        "French 3000 supplies breadth; Le Carnet places that vocabulary inside structured grammar, reading, and course practice.",
-        "Course practice → rapid review",
-        "The notebook builds context while the flashcards isolate weak items for quick retrieval practice.",
-        "Focused review → wider SRS",
-        "Small targeted review feeds back into the larger vocabulary system when broader retention work is needed."
-      ]
-    },
-    {
-      "kind": "collection",
-      "code": "C-002",
-      "slug": "mathematics-cs",
-      "title": "Mathematics & Computer Science",
-      "summary": "Study systems and experiments spanning university mathematics, algorithms, and exam preparation.",
-      "editorialNote": "A study-system cluster built around understanding difficult university material from different angles: exam simulation, structured theory, algorithm practice, and an experimental game-like interpretation of analysis. Together they form a loop from comprehension to retrieval to timed application.",
-      "projects": [
-        "analysis-ii-klausurlabor",
-        "analysis-ii-lernsystem",
-        "algodat-study-system",
-        "analysis-idle"
-      ],
-      "projectTitles": [
-        "Analysis II Klausurlabor",
-        "Analysis II Lernsystem",
-        "AlgoDat Study System",
-        "Analysis Idle"
-      ],
-      "keywords": [
-        "mathematics",
-        "algorithms",
-        "exam preparation",
-        "analysis",
-        "computer science",
-        "study systems"
-      ],
-      "relationshipLabels": [
-        "Timed application ↔ theory",
-        "Klausurlabor stresses exam execution; Lernsystem supplies the underlying definitions, theorems, and conceptual structure.",
-        "Exam craft across subjects",
-        "Both systems convert university material into deliberate exam-style practice, but for different technical domains.",
-        "Formal concepts → playful systems",
-        "Analysis Idle reinterprets mathematical progression in a game-like form after the formal learning system establishes the concepts.",
-        "Algorithms ↔ systems thinking",
-        "Both reward recognizing structures and progression rules, one academically and one experimentally."
+        "French 3000 supplies breadth; Le Carnet places that vocabulary inside structured grammar, reading, and course practice."
       ]
     },
     {
@@ -915,12 +877,10 @@
     }
   ],
   "featured": [
+    "the-bible-challenge",
     "pdf-studio",
-    "manuscript",
-    "clean30",
     "wordstrike",
-    "french-3000",
-    "ligo-quizabend",
-    "analysis-ii-klausurlabor"
+    "manuscript",
+    "voidcut"
   ]
 }

@@ -11,7 +11,7 @@ aliases:
 category: learning
 type: study-system
 status: live
-visibility: listed
+visibility: hidden
 summary: Learn algorithms and data structures through structured theory, visual steps, exercises, and exam-oriented review.
 repo: thiepn/algodat
 liveUrl: https://thiepn.dev/algodat/
@@ -25,8 +25,7 @@ platforms:
 - desktop
 - tablet
 - mobile
-collections:
-- mathematics-cs
+collections: []
 accent:
   light: '#A0522A'
   dark: '#F39662'

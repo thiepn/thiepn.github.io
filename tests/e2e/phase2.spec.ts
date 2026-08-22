@@ -1,20 +1,20 @@
 import { expect, test } from '@playwright/test';
 
-test('homepage exposes the complete static THE INDEX hierarchy', async ({ page }) => {
+test('homepage exposes the compact portfolio hub hierarchy', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'THIEPN.' })).toBeVisible();
-  await expect(page.getByText('01 / Featured Work')).toBeVisible();
-  await expect(page.getByText('02 / Browse by Type')).toBeVisible();
-  await expect(page.getByText('03 / Project Archive')).toBeVisible();
-  await expect(page.getByText('04 / Collections')).toBeVisible();
-  await expect(page.getByText('05 / Recent Activity')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Projects, tools & experiments.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Selected projects' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'All projects' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browse by interest' })).toBeVisible();
+  await expect(page.locator('#featured .featured-card')).toHaveCount(5);
+  await expect(page.locator('[data-project-directory] .project-directory__item')).toHaveCount(19);
 });
 
-test('featured work uses project-specific static apertures', async ({ page }) => {
+test('featured work renders the selected project previews', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('REORDER / REDACT / EXPORT')).toBeVisible();
-  await expect(page.getByText('# Project title')).toBeVisible();
-  await expect(page.getByText('KITCHEN RESET')).toBeVisible();
+  for (const slug of ['the-bible-challenge','pdf-studio','wordstrike','manuscript','voidcut']) {
+    await expect(page.locator(`#featured [data-preview-slug="${slug}"]`)).toBeVisible();
+  }
 });
 
 test('dedicated archive is catalogue-first and category anchored', async ({ page }) => {

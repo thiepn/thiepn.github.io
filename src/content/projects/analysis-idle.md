@@ -11,7 +11,7 @@ aliases:
 category: games
 type: game
 status: experiment
-visibility: listed
+visibility: hidden
 summary: Explore mathematical progression through an experimental incremental-game structure inspired by Analysis.
 repo: thiepn/Analysis-Idle
 liveUrl: https://thiepn.dev/Analysis-Idle/
@@ -28,9 +28,7 @@ platforms:
 controls:
 - mouse
 - touch
-collections:
-- browser-games
-- mathematics-cs
+collections: []
 accent:
   light: '#684D87'
   dark: '#B78CE4'
