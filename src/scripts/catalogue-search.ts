@@ -8,6 +8,7 @@ interface SearchPayload {
 
 interface SearchOpenDetail {
   query?: string;
+  returnFocus?: HTMLElement | null;
 }
 
 interface SearchController {
@@ -156,7 +157,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   }
 
   async function open(detail: SearchOpenDetail = {}) {
-    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    returnFocus = detail.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     document.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach((other) => { if (other !== dialogEl) other.close(); });
     if (!dialogEl.open) {
       if (typeof dialogEl.showModal === 'function') dialogEl.showModal();
