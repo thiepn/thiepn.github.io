@@ -249,8 +249,9 @@ test.describe('@mobile-cert mobile certification', () => {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:4321/');
-    await expect(page.getByRole('navigation', { name: 'Mobile navigation without JavaScript' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
+    const fallbackNav = page.getByRole('navigation', { name: 'Mobile navigation without JavaScript' });
+    await expect(fallbackNav).toBeVisible();
+    await expect(fallbackNav.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
     await context.close();
   });
 });
