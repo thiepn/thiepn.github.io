@@ -1,25 +1,77 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CollectionPreview from '../../components/collections/CollectionPreview.astro';
 import { getCollections,getPublicProjects } from '../../lib/catalogue';
-const collections=await getCollections();collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));const projects=await getPublicProjects();const bySlug=new Map(projects.map((p)=>[p.data.slug,p]));const titles=(slugs:string[])=>slugs.map((s)=>bySlug.get(s)?.data.title).filter((v):v is string=>Boolean(v));
+const collections=await getCollections();
+collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));
+const projects=await getPublicProjects();
+const bySlug=new Map(projects.map((p)=>[p.data.slug,p]));
+const titles=(slugs:string[])=>slugs.map((s)=>bySlug.get(s)?.data.title).filter((v):v is string=>Boolean(v));
 ---
 <BaseLayout title="Collections — THIEPN" description="Browse related THIEPN projects grouped by interest and theme.">
   <section class="collections-page page-shell" aria-labelledby="collections-title">
     <header class="collections-page__hero">
-      <p class="meta">Browse by interest</p>
-      <h1 id="collections-title">Collections</h1>
-      <p>Groups of related projects that make it easier to explore a topic, format, or kind of work.</p>
+      <div>
+        <p class="meta">Browse by interest</p>
+        <h1 id="collections-title">Collections</h1>
+        <p>Related projects grouped by what they are for: games, Bible and faith, language learning, productivity, and typing.</p>
+      </div>
+      <div class="collections-page__count" aria-label={`${collections.length} collections`}>
+        <span class="meta">Collections</span>
+        <strong>{String(collections.length).padStart(2,'0')}</strong>
+      </div>
     </header>
+
     <section class="collections-page__index" aria-labelledby="collection-index-title">
-      <header class="collections-page__section-head"><div><p class="meta">Explore</p><h2 id="collection-index-title">Project collections</h2></div><span class="meta">{String(collections.length).padStart(2,'0')} collections</span></header>
-      <div class="collections-page__grid">{collections.map((collection)=><CollectionPreview collection={collection} projectTitles={titles(collection.data.projects)} />)}</div>
+      <header class="collections-page__section-head">
+        <div><p class="meta">Explore</p><h2 id="collection-index-title">Project collections</h2></div>
+        <span class="meta">Open a collection to see its projects and connections</span>
+      </header>
+
+      <div class="collections-page__grid">
+        {collections.map((collection)=>{
+          const c=collection.data;
+          const memberTitles=titles(c.projects);
+          return (
+            <article class="collection-card">
+              <a class="collection-card__link" href={`/collection/${c.slug}/`} aria-label={`View ${c.title} collection`}>
+                <div class="collection-card__meta"><span>{c.code}</span><span>{String(c.projects.length).padStart(2,'0')} projects</span></div>
+                <h3>{c.title}</h3>
+                <p>{c.summary}</p>
+                <ul aria-label="Example projects">
+                  {memberTitles.slice(0,3).map((title)=><li>{title}</li>)}
+                  {memberTitles.length>3&&<li>+ {memberTitles.length-3} more</li>}
+                </ul>
+                <span class="collection-card__open">View collection <i aria-hidden="true">→</i></span>
+              </a>
+            </article>
+          );
+        })}
+      </div>
     </section>
   </section>
 </BaseLayout>
 <style>
-  .collections-page{padding-top:clamp(40px,5vw,72px);padding-bottom:var(--space-9)}
-  .collections-page__hero{padding:var(--space-7) 0 var(--space-8);border-bottom:1px solid var(--line-strong)}.collections-page__hero .meta{color:var(--ink-muted)}.collections-page__hero h1{margin-top:var(--space-3);font-size:var(--text-display-l);line-height:.88;letter-spacing:-.06em}.collections-page__hero p:not(.meta){margin-top:var(--space-5);max-width:58ch;color:var(--ink-secondary);font-size:var(--text-body-l)}
-  .collections-page__index{padding-top:var(--space-8)}.collections-page__section-head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:var(--space-4);border-bottom:1px solid var(--line-strong)}.collections-page__section-head .meta{color:var(--ink-muted)}.collections-page__section-head h2{margin-top:4px;font-size:var(--text-h2);letter-spacing:-.04em}.collections-page__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-6)}
-  @media(max-width:760px){.collections-page__grid{grid-template-columns:1fr}.collections-page__section-head>span{display:none}}
+  .collections-page{padding-top:clamp(26px,4vw,52px);padding-bottom:clamp(64px,8vw,104px)}
+  .collections-page__hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(32px,8vw,110px);align-items:end;padding:clamp(28px,4vw,50px) 0 clamp(34px,5vw,58px);border-bottom:1px solid var(--line-strong)}
+  .collections-page__hero>div:first-child{max-width:760px}.collections-page__hero .meta{color:var(--ink-muted)}
+  .collections-page__hero h1{margin-top:8px;font-size:clamp(2.8rem,5.2vw,5rem);line-height:.93;letter-spacing:-.055em;font-weight:560}
+  .collections-page__hero p:not(.meta){margin-top:var(--space-4);max-width:60ch;color:var(--ink-secondary);font-size:clamp(.96rem,1.2vw,1.08rem);line-height:1.55}
+  .collections-page__count{display:grid;gap:5px;min-width:120px;padding:12px;border:1px solid var(--line);border-top-color:var(--line-strong)}
+  .collections-page__count strong{font:600 1.05rem var(--font-meta);font-variant-numeric:tabular-nums}
+  .collections-page__index{padding-top:clamp(44px,6vw,68px)}
+  .collections-page__section-head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:12px;border-bottom:1px solid var(--line-strong)}
+  .collections-page__section-head .meta{color:var(--ink-muted)}.collections-page__section-head h2{margin-top:3px;font-size:clamp(1.45rem,2.4vw,2.15rem);line-height:1;letter-spacing:-.035em;font-weight:560}.collections-page__section-head>span{max-width:44ch;text-align:right}
+  .collections-page__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:var(--space-5)}
+  .collection-card{min-width:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface-1)}
+  .collection-card__link{display:grid;grid-template-rows:auto auto minmax(3.9em,auto) 1fr auto;min-height:278px;padding:15px;text-decoration:none}
+  .collection-card__link:hover{background:var(--surface-2)}
+  .collection-card__meta{display:flex;justify-content:space-between;gap:var(--space-3);font:500 .57rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+  .collection-card h3{margin-top:var(--space-5);font-size:clamp(1.35rem,2vw,1.85rem);line-height:1;letter-spacing:-.04em;font-weight:560}
+  .collection-card p{margin-top:var(--space-3);max-width:44ch;color:var(--ink-secondary);font-size:.8rem;line-height:1.48}
+  .collection-card ul{align-self:end;display:flex;flex-wrap:wrap;gap:5px 12px;list-style:none;margin:var(--space-5) 0 0;padding:var(--space-3) 0 0;border-top:1px solid var(--line-soft);font:500 .55rem var(--font-meta);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted)}
+  .collection-card li{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-card li::before{content:'+';margin-right:4px;color:var(--ink-disabled)}
+  .collection-card__open{display:flex;justify-content:space-between;gap:var(--space-4);align-items:center;margin-top:var(--space-4);font:500 .61rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase}.collection-card__open i{font-style:normal;color:var(--ink-muted)}
+  @media(max-width:1050px){.collections-page__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:760px){.collections-page__hero{grid-template-columns:1fr;gap:var(--space-6)}.collections-page__count{width:120px}.collections-page__section-head>span{display:none}}
+  @media(max-width:599px){.collections-page{padding-top:var(--space-5)}.collections-page__hero{padding-top:var(--space-5)}.collections-page__hero h1{font-size:clamp(2.7rem,14vw,4rem)}.collections-page__grid{grid-template-columns:1fr}.collection-card__link{min-height:230px}}
 </style>
