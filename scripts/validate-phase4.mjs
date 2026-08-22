@@ -16,13 +16,13 @@ const search=fs.readFileSync(path.join(root,'src/components/search/CatalogueSear
 const controller=fs.readFileSync(path.join(root,'src/scripts/archive-controller.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'src/lib/search-core.ts'),'utf8');
 const checks=[
-  [projects.includes('<ProjectArchive'), 'Project Archive must use the shared interactive archive component.'],
-  [base.includes('<CatalogueSearch'), 'Catalogue Search must be available site-wide.'],
-  [search.includes('role="combobox"')&&search.includes('role="listbox"'), 'Catalogue Search must expose combobox/listbox semantics.'],
-  [controller.includes('pushState')&&controller.includes('popstate'), 'Archive state must integrate browser history.'],
-  [controller.includes('localStorage')&&controller.includes('sessionStorage'), 'Archive preferences/restoration storage is missing.'],
+  [projects.includes('<ProjectArchive'), 'Projects page must use the shared interactive project-browser component.'],
+  [base.includes('<CatalogueSearch'), 'Project Search must be available site-wide.'],
+  [search.includes('role="combobox"')&&search.includes('role="listbox"'), 'Project Search must expose combobox/listbox semantics.'],
+  [controller.includes('pushState')&&controller.includes('popstate'), 'Project-browser state must integrate browser history.'],
+  [controller.includes('localStorage')&&controller.includes('sessionStorage'), 'Project-browser preferences/restoration storage is missing.'],
   [core.includes('scoreSearchItem')&&core.includes('tokenDistance'), 'Weighted/fuzzy search core is missing.'],
-  [search.includes('Random Access')&&!search.includes('auto-launch'), 'Random Access presentation missing.'],
+  [search.includes('Random project')&&!search.includes('auto-launch'), 'Random project presentation missing.'],
 ];
 for(const [pass,message] of checks){if(!pass){console.error(message);process.exit(1)}}
-console.log(`Phase 4 archive/search validation passed (${required.length} required files, ${fixture.length} scale fixtures).`);
+console.log(`Phase 4 project-browser/search validation passed (${required.length} required files, ${fixture.length} scale fixtures).`);
