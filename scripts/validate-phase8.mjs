@@ -27,12 +27,12 @@ for(const file of files){
   const capabilityCount=(text.match(/^- title:/gm)||[]).length;
   if(capabilityCount<3){console.error(`${slug}: expected >=3 capabilities, got ${capabilityCount}.`);process.exit(1);}
   const body=text.split('---').slice(2).join('---').trim();
-  if(body.split(/\n\s*\n/).filter(Boolean).length<2){console.error(`${slug}: Overview must contain at least two paragraphs.`);process.exit(1);}
+  if(body.split(/\n\s*\n/).filter(Boolean).length<2){console.error(`${slug}: About copy must contain at least two paragraphs.`);process.exit(1);}
   if(featured.has(slug)){
-    if(!text.includes('\ngallery:\n')){console.error(`${slug}: Featured record gallery missing.`);process.exit(1);}
+    if(!text.includes('\ngallery:\n')){console.error(`${slug}: Featured project gallery missing.`);process.exit(1);}
     const galleryBlock=text.split('\ngallery:\n')[1]?.split('\n---')[0]||'';
     const figures=(galleryBlock.match(/^- label:/gm)||[]).length;
-    if(figures<3){console.error(`${slug}: expected >=3 gallery figures, got ${figures}.`);process.exit(1);}
+    if(figures<3){console.error(`${slug}: expected >=3 gallery views, got ${figures}.`);process.exit(1);}
   }
 }
 const schema=read('src/content.config.ts');
@@ -40,8 +40,8 @@ for(const needle of ['capabilities: z.array','previewState: z.string','gallery: 
   if(!schema.includes(needle)){console.error(`Phase 8 content schema missing ${needle}`);process.exit(1);}
 }
 const page=read('src/pages/project/[slug].astro');
-for(const needle of ['CapabilityList','ArtifactGallery','RecordMetadata','RecordNavigation','getProjectNeighbors','index="01" title="Overview"','index="04" title="Record"','index="05" title="Related Artifacts"']){
-  if(!page.includes(needle)){console.error(`Artifact Record missing ${needle}`);process.exit(1);}
+for(const needle of ['CapabilityList','ArtifactGallery','RecordMetadata','RecordNavigation','getProjectNeighbors','About this project','Project details','Related projects']){
+  if(!page.includes(needle)){console.error(`Project page missing ${needle}`);process.exit(1);}
 }
 const gallery=read('src/components/records/ArtifactGallery.astro');
 const galleryController=exists('src/scripts/gallery-controller.ts') ? read('src/scripts/gallery-controller.ts') : '';
@@ -54,8 +54,8 @@ if(!gallery.includes('showModal()') && !galleryController.includes('showModal()'
 const controller=read('src/scripts/record-preview-controller.ts');
 if(!controller.includes('recordPreviewVariant')||!controller.includes('data-capability-preview')){console.error('Capability-driven preview controller missing.');process.exit(1);}
 const catalogue=read('src/lib/catalogue.ts');
-if(!catalogue.includes('getProjectNeighbors')||!catalogue.includes('sharedCollections * 8')||!catalogue.includes('Last-resort catalogue neighbors')){console.error('Record navigation or inferred related-artifact fallback missing.');process.exit(1);}
+if(!catalogue.includes('getProjectNeighbors')||!catalogue.includes('sharedCollections * 8')||!catalogue.includes('Last-resort catalogue neighbors')){console.error('Project navigation or inferred related-project fallback missing.');process.exit(1);}
 const site=read('src/data/site.ts');
 const phaseMatch=/phase:\s*(\d+)/.exec(site);
 if(!phaseMatch||Number(phaseMatch[1])<8){console.error('SITE.phase must be at least 8.');process.exit(1);}
-console.log(`Phase 8 Artifact-Record validation passed (${files.length} capability records, related fallback + curated navigation).`);
+console.log(`Phase 8 project-detail validation passed (${files.length} capability records, related fallback + curated navigation).`);
