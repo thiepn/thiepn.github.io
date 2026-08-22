@@ -23,6 +23,7 @@ const payload = JSON.stringify({ projects:data, curatedOrder:CURATED_PROJECT_ORD
   <div class="project-archive__grid" data-archive-grid>
     {projects.map((project, index) => <div class="project-archive__item" data-archive-item data-slug={project.data.slug} data-curated-index={index}><ArtifactPlate project={project} /></div>)}
   </div>
+  <!-- List rows are created only if the visitor selects List view; this avoids duplicate initial DOM. -->
   <div class="project-archive__list" hidden data-archive-list></div>
 </div>
 <style>
