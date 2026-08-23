@@ -1,6 +1,6 @@
 interface SearchOpenDetail {
   query?: string;
-  random?: boolean;
+  returnFocus?: HTMLElement | null;
 }
 
 let modulePromise: Promise<typeof import('./catalogue-search')> | null = null;
@@ -32,9 +32,11 @@ document.addEventListener('click', (event) => {
     : null;
   if (!target) return;
   event.preventDefault();
+  const mobileMenu = target.closest<HTMLElement>('[data-mobile-menu]');
+  const mobileTrigger = mobileMenu?.querySelector<HTMLElement>('[data-mobile-menu-open]') ?? null;
   void open({
     query: target.dataset.catalogueSearchQuery || '',
-    random: target.hasAttribute('data-catalogue-search-random'),
+    returnFocus: mobileTrigger ?? target,
   });
 });
 
@@ -76,7 +78,7 @@ document.addEventListener('keydown', (event) => {
   const slash = event.key === '/' && !editable;
   if (!command && !slash) return;
   event.preventDefault();
-  void open();
+  void open({ returnFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null });
 });
 
 window.addEventListener('thiepn:search-open', ((event: CustomEvent<SearchOpenDetail>) => {

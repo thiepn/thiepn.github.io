@@ -1,5 +1,4 @@
-import { searchCatalogue, type SearchableCollection, type SearchableItem, type SearchableProject } from '../lib/search-core';
-import { pickRandomProject } from '../lib/random-access';
+import { searchCatalogue, type RankedSearchResult, type SearchableCollection, type SearchableItem, type SearchableProject } from '../lib/search-core';
 
 interface SearchPayload {
   projects: SearchableProject[];
@@ -9,7 +8,7 @@ interface SearchPayload {
 
 interface SearchOpenDetail {
   query?: string;
-  random?: boolean;
+  returnFocus?: HTMLElement | null;
 }
 
 interface SearchController {
@@ -38,30 +37,21 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   const dialog = root.querySelector<HTMLDialogElement>('[data-catalogue-search-dialog]');
   const input = root.querySelector<HTMLInputElement>('[data-catalogue-search-input]');
   const results = root.querySelector<HTMLElement>('[data-catalogue-search-results]');
-  const preview = root.querySelector<HTMLElement>('[data-catalogue-search-preview]');
   const status = root.querySelector<HTMLElement>('[data-catalogue-search-status]');
   const close = root.querySelector<HTMLButtonElement>('[data-catalogue-search-close]');
-  const randomPanel = root.querySelector<HTMLElement>('[data-catalogue-search-random]');
-  const randomTrigger = root.querySelector<HTMLButtonElement>('[data-catalogue-search-random-trigger]');
-  const randomCard = root.querySelector<HTMLElement>('[data-catalogue-search-random-card]');
-  if (!dialog || !input || !results || !preview || !status || !close || !randomPanel || !randomCard || !randomTrigger) return null;
+  if (!dialog || !input || !results || !status || !close) return null;
 
   const dialogEl = dialog;
   const inputEl = input;
   const resultsEl = results;
-  const previewEl = preview;
   const statusEl = status;
   const closeEl = close;
-  const randomPanelEl = randomPanel;
-  const randomCardEl = randomCard;
-  const randomTriggerEl = randomTrigger;
 
   let payload: SearchPayload | null = null;
   let items: SearchableItem[] = [];
-  let ranked = [] as ReturnType<typeof searchCatalogue>;
+  let ranked: RankedSearchResult[] = [];
   let selectedIndex = -1;
   let returnFocus: HTMLElement | null = null;
-  let previewTimer = 0;
 
   const itemUrl = (item: SearchableItem) => item.kind === 'project' ? `/project/${item.slug}/` : `/collection/${item.slug}/`;
   const selectedItem = () => ranked[selectedIndex]?.item;
@@ -74,23 +64,14 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     return payload;
   }
 
-  function setPreview(item?: SearchableItem) {
-    window.clearTimeout(previewTimer);
-    previewTimer = window.setTimeout(() => {
-      if (!item) {
-        previewEl.style.removeProperty('--preview-accent-light');
-        previewEl.style.removeProperty('--preview-accent-dark');
-        previewEl.innerHTML = '<span class="meta">Search ready</span><strong>Search projects and collections.</strong><p>Try “French”, “typing”, “PDF”, “G-003”, or a project title.</p>';
-        return;
-      }
-      previewEl.style.setProperty('--preview-accent-light', item.kind === 'project' ? item.accentLight : 'var(--line-strong)');
-      previewEl.style.setProperty('--preview-accent-dark', item.kind === 'project' ? item.accentDark : 'var(--line-strong)');
-      previewEl.replaceChildren();
-      const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = `${item.code} / ${item.kind === 'project' ? item.category : 'collection'}`;
-      const title = document.createElement('strong'); title.textContent = item.title;
-      const copy = document.createElement('p'); copy.textContent = item.summary;
-      previewEl.append(meta, title, copy);
-    }, item ? 160 : 0);
+  function featuredResults(currentPayload: SearchPayload): RankedSearchResult[] {
+    const bySlug = new Map(currentPayload.projects.map((project) => [project.slug, project]));
+    return currentPayload.featured
+      .map((slug, index) => {
+        const item = bySlug.get(slug);
+        return item ? { item, score: 100 - index } : null;
+      })
+      .filter((result): result is RankedSearchResult<SearchableProject> => Boolean(result));
   }
 
   function syncSelection() {
@@ -101,9 +82,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       option.setAttribute('aria-selected', String(selected));
       option.tabIndex = -1;
     });
-    const item = selectedItem();
-    setPreview(item);
-    if (item) inputEl.setAttribute('aria-activedescendant', `catalogue-result-${selectedIndex}`);
+    if (selectedItem()) inputEl.setAttribute('aria-activedescendant', `catalogue-result-${selectedIndex}`);
     else inputEl.removeAttribute('aria-activedescendant');
   }
 
@@ -132,17 +111,35 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     return option;
   }
 
+  function buildEmpty(query: string) {
+    const empty = document.createElement('div');
+    empty.className = 'catalogue-search__empty';
+    const title = document.createElement('strong'); title.textContent = 'No matching projects.';
+    const copy = document.createElement('p'); copy.textContent = query
+      ? `Nothing matched “${query}”. Try a broader topic, a project code, or browse the full project directory.`
+      : 'Search by title, topic, or project code.';
+    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse all projects →';
+    empty.append(title, copy, browse);
+    return empty;
+  }
+
   function render() {
-    randomPanelEl.hidden = true;
+    if (!payload) return;
     const query = inputEl.value.trim();
-    ranked = searchCatalogue(items, query, 20);
+    ranked = query ? searchCatalogue(items, query, 16) : featuredResults(payload);
     selectedIndex = ranked.length ? 0 : -1;
-    resultsEl.replaceChildren(...ranked.map(({ item }, index) => buildResult(item, index)));
-    const projectCount = ranked.filter(({ item }) => item.kind === 'project').length;
-    const collectionCount = ranked.length - projectCount;
-    if (!query) statusEl.textContent = 'Type a project, topic, or project code.';
-    else if (!ranked.length) statusEl.textContent = '0 matches / try another term or a random project.';
-    else statusEl.textContent = `${String(ranked.length).padStart(2, '0')} matches / ${projectCount} projects / ${collectionCount} collections`;
+    if (ranked.length) resultsEl.replaceChildren(...ranked.map(({ item }, index) => buildResult(item, index)));
+    else resultsEl.replaceChildren(buildEmpty(query));
+
+    if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} featured projects`;
+    else if (!ranked.length) statusEl.textContent = '0 matches';
+    else {
+      const projectCount = ranked.filter(({ item }) => item.kind === 'project').length;
+      const collectionCount = ranked.length - projectCount;
+      statusEl.textContent = collectionCount
+        ? `${String(ranked.length).padStart(2, '0')} matches / ${projectCount} projects / ${collectionCount} collections`
+        : `${String(ranked.length).padStart(2, '0')} project matches`;
+    }
     syncSelection();
   }
 
@@ -153,73 +150,58 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     else { dialogEl.removeAttribute('open'); dialogEl.dispatchEvent(new Event('close')); }
   }
 
-  function activateSelected(external: boolean) {
+  function activateSelected() {
     const item = selectedItem();
     if (!item) return;
-    if (external && item.kind === 'project' && item.liveUrl) {
-      window.location.href = item.liveUrl;
-      return;
-    }
     window.location.href = itemUrl(item);
   }
 
-  async function renderRandom() {
-    const currentPayload = await ensurePayload();
-    const project = pickRandomProject(currentPayload.projects, Math.random, currentPayload.featured);
-    if (!project) return;
-    ranked = [];
-    selectedIndex = -1;
-    resultsEl.replaceChildren();
-    randomPanelEl.hidden = false;
-    randomCardEl.replaceChildren();
-    const code = document.createElement('span'); code.className = 'meta'; code.textContent = project.code;
-    const title = document.createElement('strong'); title.textContent = project.title;
-    const details = document.createElement('a'); details.href = `/project/${project.slug}/`; details.textContent = 'Open details →';
-    const reroll = document.createElement('button'); reroll.type = 'button'; reroll.textContent = 'Another project'; reroll.addEventListener('click', () => void renderRandom());
-    randomCardEl.className = 'catalogue-search__random-card';
-    randomCardEl.append(code, title, details, reroll);
-    statusEl.textContent = `Random project / ${project.code}`;
-    setPreview(project);
-  }
-
   async function open(detail: SearchOpenDetail = {}) {
-    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    returnFocus = detail.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     document.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach((other) => { if (other !== dialogEl) other.close(); });
     if (!dialogEl.open) {
       if (typeof dialogEl.showModal === 'function') dialogEl.showModal();
       else dialogEl.setAttribute('open', '');
     }
     inputEl.setAttribute('aria-expanded', 'true');
-    if (detail.query) inputEl.value = detail.query;
+    inputEl.value = detail.query ?? '';
     try {
       await ensurePayload();
-      if (detail.random) await renderRandom();
-      else render();
+      render();
     } catch {
-      statusEl.textContent = 'Project search is unavailable. Project navigation remains available.';
-      resultsEl.replaceChildren();
-      randomPanelEl.hidden = true;
+      statusEl.textContent = 'Project search is unavailable.';
+      resultsEl.replaceChildren(buildEmpty(inputEl.value.trim()));
     }
     requestAnimationFrame(() => inputEl.focus());
   }
 
   document.addEventListener('keydown', (event) => {
-    if (!dialogEl.open) return;
-    const comboboxActive = document.activeElement === inputEl;
-    if (comboboxActive && event.key === 'ArrowDown' && ranked.length) { event.preventDefault(); selectedIndex = Math.min(ranked.length - 1, selectedIndex + 1); syncSelection(); resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' }); }
-    else if (comboboxActive && event.key === 'ArrowUp' && ranked.length) { event.preventDefault(); selectedIndex = Math.max(0, selectedIndex - 1); syncSelection(); resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' }); }
-    else if (comboboxActive && event.key === 'Enter') { event.preventDefault(); activateSelected(event.metaKey || event.ctrlKey); }
-    else if (event.key.toLowerCase() === 'r' && !inputEl.value.trim() && !comboboxActive) { event.preventDefault(); void renderRandom(); }
+    if (!dialogEl.open || document.activeElement !== inputEl) return;
+    if (event.key === 'ArrowDown' && ranked.length) {
+      event.preventDefault();
+      selectedIndex = Math.min(ranked.length - 1, selectedIndex + 1);
+      syncSelection();
+      resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'ArrowUp' && ranked.length) {
+      event.preventDefault();
+      selectedIndex = Math.max(0, selectedIndex - 1);
+      syncSelection();
+      resultsEl.querySelector<HTMLElement>(`[data-search-result="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      activateSelected();
+    }
   });
 
   inputEl.addEventListener('input', render);
-  inputEl.addEventListener('keydown', (event) => {
-    if (event.key === 'R' && !inputEl.value.trim()) { event.preventDefault(); void renderRandom(); }
-  });
-  randomTriggerEl.addEventListener('click', () => void renderRandom());
+  root.querySelectorAll<HTMLButtonElement>('[data-search-suggestion]').forEach((button) => button.addEventListener('click', () => {
+    inputEl.value = button.dataset.searchSuggestion ?? '';
+    render();
+    inputEl.focus();
+  }));
   closeEl.addEventListener('click', closeSearch);
   dialogEl.addEventListener('click', (event) => { if (event.target === dialogEl) closeSearch(); });
-  dialogEl.addEventListener('close', () => { inputEl.setAttribute('aria-expanded', 'false'); window.clearTimeout(previewTimer); returnFocus?.focus(); });
+  dialogEl.addEventListener('close', () => { inputEl.setAttribute('aria-expanded', 'false'); returnFocus?.focus(); });
 
   return { open };
 }
