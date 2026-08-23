@@ -39,7 +39,7 @@ test('leaving viewport resets an animated preview', async ({ page }) => {
   const root = page.locator('[data-preview-slug="manuscript"]').first();
   await root.hover(); await page.waitForTimeout(230);
   await expect(root).toHaveAttribute('data-preview-state', 'active');
-  await page.locator('footer').scrollIntoViewIfNeeded();
+  await page.getByRole('contentinfo').scrollIntoViewIfNeeded();
   await page.waitForTimeout(120);
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
 });
