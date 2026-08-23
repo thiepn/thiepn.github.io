@@ -16,8 +16,8 @@ export function animateArchiveReflow(container: HTMLElement, before: ArchivePosi
     if (!previous) {
       const nearViewport = current.bottom >= -window.innerHeight * .2 && current.top <= window.innerHeight * 1.2;
       if (nearViewport) {
-        void animate(item, { opacity: [0, 1], scale: [.985, 1] }, {
-          duration: .24,
+        void animate(item, { opacity: [.64, 1], y: [4, 0] }, {
+          duration: .22,
           ease: motionEasing.enter,
         });
       }
@@ -28,7 +28,7 @@ export function animateArchiveReflow(container: HTMLElement, before: ArchivePosi
     if (Math.abs(x) < .5 && Math.abs(y) < .5) return;
 
     void animate(item, { x: [x, 0], y: [y, 0] }, {
-      duration: .34,
+      duration: .30,
       ease: motionEasing.standard,
     });
   });
