@@ -20,7 +20,8 @@ test('generates collection routes from collection records', async ({ page }) => 
   const response = await page.goto('/collection/french-learning/');
   expect(response?.ok()).toBe(true);
   await expect(page.getByRole('heading', { name: 'French Learning' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'French 3000' })).toBeVisible();
+  const directory = page.locator('.collection-record__index');
+  await expect(directory.getByRole('link', { name: 'French 3000', exact: true })).toBeVisible();
 });
 
 test('theme preference persists', async ({ page }) => {
