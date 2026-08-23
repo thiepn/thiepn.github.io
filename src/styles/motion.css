@@ -1,3 +1,171 @@
+:root {
+  --motion-nudge: 3px;
+  --motion-reveal-distance: 6px;
+}
+
+/*
+ * P3 — Measured Mechanics
+ *
+ * Motion communicates state and hierarchy. Hub chrome never lifts, bounces,
+ * tilts, glows, or follows the pointer. Stronger behavior remains confined to
+ * explicit preview apertures.
+ */
+
+:where(
+  .structural-button,
+  .text-link,
+  .site-wordmark,
+  .site-nav a,
+  .site-header__search,
+  .artifact-actions a,
+  .archive-row,
+  .archive-row a,
+  .catalogue-search__header button,
+  .catalogue-search__shortcuts button,
+  .catalogue-search__shortcuts a,
+  .catalogue-search__result,
+  .catalogue-search__footer a,
+  .mobile-menu__trigger,
+  .mobile-menu__close,
+  .mobile-menu__search,
+  .mobile-menu__index nav a,
+  .mobile-menu__footer > a
+) {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+.structural-button {
+  transition-property: background-color, border-color, color;
+}
+
+.text-link,
+.site-wordmark,
+.site-nav a,
+.site-header__search,
+.artifact-actions a,
+.archive-row a,
+.catalogue-search__header button,
+.catalogue-search__shortcuts button,
+.catalogue-search__shortcuts a,
+.catalogue-search__footer a,
+.mobile-menu__trigger,
+.mobile-menu__close,
+.mobile-menu__search,
+.mobile-menu__index nav a,
+.mobile-menu__footer > a {
+  transition-property: color, background-color, border-color, text-decoration-color;
+}
+
+.artifact-plate {
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-standard) var(--ease-standard);
+}
+
+.artifact-plate::after {
+  transform-origin: top center;
+  transition:
+    height var(--motion-standard) var(--ease-enter),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.artifact-plate__preview {
+  transition: filter var(--motion-standard) var(--ease-standard);
+}
+
+.archive-row {
+  transition-property: background-color, border-color;
+}
+
+.catalogue-search__result {
+  transition-property: background-color, color;
+}
+
+.catalogue-search__result::before {
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition:
+    transform var(--motion-fast) var(--ease-enter),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.catalogue-search__result.is-selected::before {
+  transform: scaleY(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .artifact-plate:has(.artifact-plate__preview:hover),
+  .artifact-plate:has(h3 a:hover),
+  .artifact-plate:has(.artifact-actions a:hover),
+  .artifact-plate:has(:focus-visible) {
+    border-color: var(--line-strong);
+  }
+
+  .artifact-plate:has(.artifact-plate__preview:hover)::after,
+  .artifact-plate:has(h3 a:hover)::after,
+  .artifact-plate:has(.artifact-actions a:hover)::after,
+  .artifact-plate:has(:focus-visible)::after {
+    height: 42px;
+  }
+
+  .archive-row:has(a:hover),
+  .archive-row:has(a:focus-visible) {
+    background: var(--selection);
+  }
+
+  .catalogue-search__result:hover:not(.is-selected) {
+    background: var(--surface-1);
+  }
+
+  .mobile-menu__index nav a:hover i,
+  .mobile-menu__index nav a:focus-visible i,
+  .mobile-menu__search:hover i,
+  .mobile-menu__search:focus-visible i {
+    transform: translateX(var(--motion-nudge));
+  }
+}
+
+.mobile-menu__index nav i,
+.mobile-menu__search i {
+  transition:
+    transform var(--motion-fast) var(--ease-enter),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+/* Native dialogs enter as structural plates. Closing stays immediate so focus
+   restoration and Escape behavior remain deterministic across engines. */
+.catalogue-search__dialog[open] {
+  animation: index-dialog-in var(--motion-standard) var(--ease-enter) both;
+}
+
+.catalogue-search__dialog[open]::backdrop {
+  animation: index-backdrop-in var(--motion-standard) var(--ease-standard) both;
+}
+
+.mobile-menu__dialog[open] .mobile-menu__surface {
+  animation: index-plate-in var(--motion-standard) var(--ease-enter) both;
+}
+
+.mobile-menu__dialog[open]::backdrop {
+  animation: index-backdrop-in var(--motion-standard) var(--ease-standard) both;
+}
+
+@keyframes index-dialog-in {
+  from { opacity: 0; transform: translateY(var(--motion-reveal-distance)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes index-plate-in {
+  from { opacity: .72; transform: translateX(var(--motion-reveal-distance)); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes index-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto !important; }
   *,
@@ -9,4 +177,9 @@
     transition-duration: .01ms !important;
     transition-delay: 0ms !important;
   }
+}
+
+@media (forced-colors: active) {
+  .artifact-plate:has(:focus-visible) { border-color: Highlight; }
+  .archive-row:has(a:focus-visible) { background: Highlight; color: HighlightText; }
 }
