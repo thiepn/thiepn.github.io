@@ -81,7 +81,12 @@ class PreviewInstance {
   }
 
   arm() {
-    if (!this.visible || prefersReducedMotion() || this.kind === 'static' || this.mediaFailed) return;
+    // A real pointer/focus interaction is stronger evidence of visibility than a
+    // potentially stale IntersectionObserver callback. Playwright and fast users
+    // can scroll an off-screen card into view and interact before the observer's
+    // next delivery; accepting the interaction here removes that timing race.
+    this.visible = true;
+    if (prefersReducedMotion() || this.kind === 'static' || this.mediaFailed) return;
     window.clearTimeout(this.armTimer);
     window.clearTimeout(this.settleTimer);
     this.setState('armed');
