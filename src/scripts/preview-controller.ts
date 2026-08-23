@@ -147,6 +147,24 @@ function rootFromEventTarget(target: EventTarget | null): PreviewElement | null 
   return target.closest<PreviewElement>('[data-preview-root]');
 }
 
+function getCurrentPreviewIntersectionRatio(root: PreviewElement) {
+  const rect = root.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return 0;
+
+  // Match the observer's vertical root margin, but calculate from the element's
+  // current geometry. Some engines can deliver an observer entry captured just
+  // before hover() scrolls a preview into view; trusting that stale snapshot can
+  // cancel a legitimate arm before its 180ms activation timer fires.
+  const marginY = 240;
+  const left = Math.max(rect.left, 0);
+  const right = Math.min(rect.right, window.innerWidth);
+  const top = Math.max(rect.top, -marginY);
+  const bottom = Math.min(rect.bottom, window.innerHeight + marginY);
+  const width = Math.max(0, right - left);
+  const height = Math.max(0, bottom - top);
+  return (width * height) / (rect.width * rect.height);
+}
+
 export function armPreviewFromTarget(target: EventTarget | null, source: PreviewIntentSource = 'pointer') {
   if (source === 'pointer' && coarsePointer) return;
   const root = rootFromEventTarget(target);
@@ -184,7 +202,9 @@ let observer: IntersectionObserver | null = null;
 if ('IntersectionObserver' in window) {
   observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      instanceByRoot.get(entry.target as PreviewElement)?.setVisible(entry.isIntersecting && entry.intersectionRatio > 0.04);
+      const root = entry.target as PreviewElement;
+      const currentRatio = getCurrentPreviewIntersectionRatio(root);
+      instanceByRoot.get(root)?.setVisible(currentRatio > 0.04);
     }
   }, { rootMargin: '240px 0px', threshold: [0, .05] });
   roots.forEach((root) => observer?.observe(root));
