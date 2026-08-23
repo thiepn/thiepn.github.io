@@ -100,13 +100,14 @@ if (document.querySelector('[data-preview-root]')) {
   idle('previews', () => loadPreviews(), 1000);
 }
 
-// Record inspection is secondary, but the first hover/focus must still work when
-// it beats the idle import. Preserve the active capability until the controller
-// is attached, then replay it directly rather than synthesizing browser events.
+// Project-record inspection remains lazy, but P4 makes click/touch a persistent
+// selection rather than an ephemeral hover state. Preserve that first click if it
+// arrives while the controller chunk is still loading, just as we preserve hover
+// and focus intent.
 if (document.querySelector('[data-record-preview]')) {
   type RecordIntent = {
     button: HTMLButtonElement;
-    source: 'pointer' | 'focus';
+    source: 'pointer' | 'focus' | 'select';
     token: number;
   };
 
@@ -145,8 +146,24 @@ if (document.querySelector('[data-record-preview]')) {
     });
   };
 
+  const queueRecordSelection = (event: MouseEvent) => {
+    if (recordReady) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest<HTMLButtonElement>('[data-capability-preview]');
+    if (!button) return;
+    const token = ++recordIntentToken;
+    recordIntent = { button, source: 'select', token };
+    void loadRecordPreview().then((module) => {
+      const intent = recordIntent;
+      if (!intent || intent.token !== token || intent.source !== 'select') return;
+      recordIntent = null;
+      module.selectRecordPreviewFromTarget(intent.button);
+    });
+  };
+
   const clearRecordIntent = (event: PointerEvent | FocusEvent) => {
-    if (recordReady || !recordIntent) return;
+    if (recordReady || !recordIntent || recordIntent.source === 'select') return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const button = target.closest<HTMLButtonElement>('[data-capability-preview]');
@@ -161,6 +178,7 @@ if (document.querySelector('[data-record-preview]')) {
   document.addEventListener('pointerout', clearRecordIntent, { passive: true });
   document.addEventListener('focusin', queueRecordIntent);
   document.addEventListener('focusout', clearRecordIntent);
+  document.addEventListener('click', queueRecordSelection);
   idle('record-preview', () => loadRecordPreview(), 750);
 }
 
