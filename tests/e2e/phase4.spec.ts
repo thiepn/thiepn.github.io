@@ -54,7 +54,9 @@ test('mobile Project Search is full screen and usable with touch viewport', asyn
   await page.goto('/');
   const menu = page.getByRole('button',{name:'Menu'});
   await menu.click();
-  await page.getByRole('link',{name:/Search projects/}).click();
+  const navigation = page.getByRole('dialog',{name:'Navigation'});
+  await expect(navigation).toBeVisible();
+  await navigation.getByRole('link',{name:/Search projects/}).click();
   const search = page.getByRole('dialog',{name:'Find a project'});
   await expect(search).toBeVisible();
   await page.locator('[data-catalogue-search-input]').fill('french');
