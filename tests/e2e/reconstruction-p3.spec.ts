@@ -12,23 +12,35 @@ test('directional artifact actions move only their arrow cue', async ({ page }) 
   const action = page.locator('.artifact-actions__details').first();
   const arrow = action.locator('span[aria-hidden="true"]');
 
-  // Position the real archive action before measuring it. Playwright's hover()
-  // scrolls off-screen elements into view, so measuring first would compare two
-  // different viewport positions rather than the hover interaction itself.
   await action.scrollIntoViewIfNeeded();
   await expect(action).toBeVisible();
   await expect(arrow).toHaveText('→');
   await page.waitForTimeout(80);
 
-  const actionBefore = await action.evaluate((element) => element.getBoundingClientRect().toJSON());
+  const measureAction = () => action.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      documentX: rect.x + window.scrollX,
+      documentY: rect.y + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+      transform: getComputedStyle(element).transform,
+    };
+  });
+
+  const actionBefore = await measureAction();
   await action.hover();
   await page.waitForTimeout(180);
-  const transform = await arrow.evaluate((element) => getComputedStyle(element).transform);
-  const actionAfter = await action.evaluate((element) => element.getBoundingClientRect().toJSON());
+  const arrowTransform = await arrow.evaluate((element) => getComputedStyle(element).transform);
+  const actionAfter = await measureAction();
 
-  expect(transform).not.toBe('none');
-  expect(actionAfter.x).toBeCloseTo(actionBefore.x, 1);
-  expect(actionAfter.y).toBeCloseTo(actionBefore.y, 1);
+  // WebKit may adjust viewport scroll while Playwright positions the pointer.
+  // Document coordinates distinguish that browser scrolling from real element movement.
+  expect(arrowTransform).not.toBe('none');
+  expect(actionBefore.transform).toBe('none');
+  expect(actionAfter.transform).toBe('none');
+  expect(actionAfter.documentX).toBeCloseTo(actionBefore.documentX, 1);
+  expect(actionAfter.documentY).toBeCloseTo(actionBefore.documentY, 1);
   expect(actionAfter.width).toBeCloseTo(actionBefore.width, 1);
   expect(actionAfter.height).toBeCloseTo(actionBefore.height, 1);
 });
