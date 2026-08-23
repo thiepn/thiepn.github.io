@@ -9,6 +9,7 @@ import { prefersReducedMotion } from '../motion/reducedMotion';
 import { FEATURES } from '../data/features';
 
 type PreviewElement = HTMLElement & { dataset: DOMStringMap & { previewState?: PreviewState } };
+type PreviewIntentSource = 'pointer' | 'focus';
 
 const roots = FEATURES.animatedPreviews ? Array.from(document.querySelectorAll<PreviewElement>('[data-preview-root]')) : [];
 const coarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
@@ -141,13 +142,19 @@ function rootFromEventTarget(target: EventTarget | null): PreviewElement | null 
   return target.closest<PreviewElement>('[data-preview-root]');
 }
 
+export function armPreviewFromTarget(target: EventTarget | null, source: PreviewIntentSource = 'pointer') {
+  if (source === 'pointer' && coarsePointer) return;
+  const root = rootFromEventTarget(target);
+  if (!root) return;
+  instanceByRoot.get(root)?.arm();
+}
+
 // Event delegation avoids four listeners per preview when the archive grows to
 // hundreds of artifacts. Pointer/focus transitions inside the same preview are ignored.
 const onPointerOver = (event: PointerEvent) => {
-  if (coarsePointer) return;
   const root = rootFromEventTarget(event.target);
   if (!root || root.contains(event.relatedTarget as Node | null)) return;
-  instanceByRoot.get(root)?.arm();
+  armPreviewFromTarget(event.target, 'pointer');
 };
 const onPointerOut = (event: PointerEvent) => {
   const root = rootFromEventTarget(event.target);
@@ -155,9 +162,7 @@ const onPointerOut = (event: PointerEvent) => {
   instanceByRoot.get(root)?.reset();
 };
 const onFocusIn = (event: FocusEvent) => {
-  const root = rootFromEventTarget(event.target);
-  if (!root) return;
-  instanceByRoot.get(root)?.arm();
+  armPreviewFromTarget(event.target, 'focus');
 };
 const onFocusOut = (event: FocusEvent) => {
   const root = rootFromEventTarget(event.target);
