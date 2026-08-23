@@ -5,11 +5,14 @@ const { project } = Astro.props;
 const p = project.data;
 const sectionTitle = p.category === 'learning' ? 'Learning modes' : p.category === 'games' ? 'Core systems' : 'Key features';
 ---
-<section class="record-capabilities" aria-labelledby="capabilities-title">
+<section class="record-capabilities" aria-labelledby="capabilities-title" data-record-capabilities>
   <header class="record-subhead">
     <div><p class="meta">Features</p><h2 id="capabilities-title">{sectionTitle}</h2></div>
     <span class="record-subhead__meta">{String(p.capabilities.length).padStart(2,'0')} items</span>
   </header>
+  <p class="record-capabilities__instruction">
+    Select an inspectable row to hold that state in the project preview. Hover and keyboard focus provide a temporary inspection.
+  </p>
   <ol class="capability-list">
     {p.capabilities.map((capability, index) => (
       <li>
@@ -18,19 +21,21 @@ const sectionTitle = p.category === 'learning' ? 'Learning modes' : p.category =
             type="button"
             class="capability-row"
             data-capability-preview={capability.previewState}
-            aria-label={`Show ${capability.title} preview state`}
+            data-capability-title={capability.title}
+            aria-label={`Inspect ${capability.title} in the project preview`}
+            aria-pressed="false"
           >
             <span class="capability-row__number">{String(index + 1).padStart(2,'0')}</span>
             <strong>{capability.title}</strong>
             <span class="capability-row__description">{capability.description}</span>
-            <span class="capability-row__signal" aria-hidden="true">Preview ↗</span>
+            <span class="capability-row__signal" data-capability-signal aria-hidden="true">Inspect →</span>
           </button>
         ) : (
           <div class="capability-row capability-row--static">
             <span class="capability-row__number">{String(index + 1).padStart(2,'0')}</span>
             <strong>{capability.title}</strong>
             <span class="capability-row__description">{capability.description}</span>
-            <span class="capability-row__signal" aria-hidden="true">—</span>
+            <span class="capability-row__signal" aria-hidden="true">Reference</span>
           </div>
         )}
       </li>
@@ -42,15 +47,24 @@ const sectionTitle = p.category === 'learning' ? 'Learning modes' : p.category =
   .record-subhead{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:12px;border-bottom:1px solid var(--line-strong)}
   .record-subhead .meta,.record-subhead__meta{font:500 .6rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
   .record-subhead h2{margin-top:3px;font-size:clamp(1.45rem,2.4vw,2.15rem);line-height:1;letter-spacing:-.035em;font-weight:560}
-  .capability-list{list-style:none;margin:0;padding:0}
-  .capability-row{width:100%;display:grid;grid-template-columns:42px minmax(150px,1.7fr) minmax(240px,4fr) auto;gap:var(--space-3);align-items:start;padding:13px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;font:inherit;border-radius:0}
+  .record-capabilities__instruction{max-width:72ch;margin:12px 0 0;color:var(--ink-muted);font-size:.72rem;line-height:1.5}
+  .capability-list{list-style:none;margin:var(--space-3) 0 0;padding:0;border-top:1px solid var(--line)}
+  .capability-row{position:relative;width:100%;display:grid;grid-template-columns:42px minmax(150px,1.7fr) minmax(240px,4fr) auto;gap:var(--space-3);align-items:start;padding:13px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;font:inherit;border-radius:0}
   .capability-row:not(:disabled){cursor:pointer}
-  .capability-row:not(:disabled):hover,.capability-row:not(:disabled):focus-visible{background:color-mix(in srgb,var(--project-accent) 5%,transparent)}
+  .capability-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--project-accent);transform:scaleY(0);transform-origin:top;transition:transform var(--motion-fast) var(--ease-standard)}
+  .capability-row:not(:disabled):hover,.capability-row:not(:disabled):focus-visible,.capability-row.is-selected{background:color-mix(in srgb,var(--project-accent) 5%,transparent)}
+  .capability-row:not(:disabled):hover::before,.capability-row:not(:disabled):focus-visible::before,.capability-row.is-selected::before{transform:scaleY(1)}
+  .capability-row.is-selected{padding-left:10px;padding-right:10px}
   .capability-row__number,.capability-row__signal{font:500 .58rem var(--font-meta);letter-spacing:.055em;color:var(--ink-muted)}
   .capability-row strong{font-size:clamp(.92rem,1.15vw,1.08rem);font-weight:560;letter-spacing:-.015em}
   .capability-row__description{max-width:68ch;color:var(--ink-secondary);font-size:.82rem;line-height:1.48}
-  .capability-row__signal{justify-self:end;white-space:nowrap}
-  .capability-row:not(:disabled):hover .capability-row__signal,.capability-row:not(:disabled):focus-visible .capability-row__signal{color:var(--project-accent)}
+  .capability-row__signal{justify-self:end;white-space:nowrap;transition:color var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-standard)}
+  .capability-row:not(:disabled):hover .capability-row__signal,.capability-row:not(:disabled):focus-visible .capability-row__signal,.capability-row.is-selected .capability-row__signal{color:var(--project-accent)}
+  .capability-row:not(:disabled):hover .capability-row__signal,.capability-row:not(:disabled):focus-visible .capability-row__signal{transform:translateX(2px)}
+  .capability-row.is-selected .capability-row__signal{transform:none}
+  .capability-row--static::before{display:none}
   @media(max-width:760px){.capability-row{grid-template-columns:34px minmax(0,1fr) auto}.capability-row__description{grid-column:2/-1}.capability-row__signal{grid-column:3;grid-row:1}}
-  @media(max-width:480px){.record-subhead{align-items:flex-start}.record-subhead__meta{display:none}.capability-row{grid-template-columns:28px minmax(0,1fr)}.capability-row__signal{display:none}.capability-row__description{grid-column:2}}
+  @media(max-width:480px){.record-subhead{align-items:flex-start}.record-subhead__meta{display:none}.record-capabilities__instruction{font-size:.7rem}.capability-row{grid-template-columns:28px minmax(0,1fr)}.capability-row__signal{display:block;grid-column:2;grid-row:auto;justify-self:start;margin-top:2px}.capability-row__description{grid-column:2}.capability-row.is-selected{padding-left:8px;padding-right:8px}}
+  @media(prefers-reduced-motion:reduce){.capability-row::before,.capability-row__signal{transition:none!important}.capability-row__signal{transform:none!important}}
+  @media(forced-colors:active){.capability-row.is-selected{outline:2px solid Highlight;outline-offset:-2px}.capability-row::before{background:Highlight}}
 </style>
