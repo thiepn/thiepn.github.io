@@ -40,22 +40,33 @@ for(const needle of ['capabilities: z.array','previewState: z.string','gallery: 
   if(!schema.includes(needle)){console.error(`Phase 8 content schema missing ${needle}`);process.exit(1);}
 }
 const page=read('src/pages/project/[slug].astro');
-for(const needle of ['CapabilityList','ArtifactGallery','RecordMetadata','RecordNavigation','getProjectNeighbors','About this project','Project details','Related projects']){
+for(const needle of ['CapabilityList','ArtifactGallery','RecordMetadata','RecordNavigation','getProjectNeighbors','About this project','Project details','Related projects','record__index','data-record-preview-default']){
   if(!page.includes(needle)){console.error(`Project page missing ${needle}`);process.exit(1);}
+}
+const capabilities=read('src/components/records/CapabilityList.astro');
+for(const needle of ['aria-pressed="false"','data-capability-signal','Inspect →','id="capabilities"']){
+  if(!capabilities.includes(needle)){console.error(`P4 capability inspection contract missing ${needle}`);process.exit(1);}
 }
 const gallery=read('src/components/records/ArtifactGallery.astro');
 const galleryController=exists('src/scripts/gallery-controller.ts') ? read('src/scripts/gallery-controller.ts') : '';
-for(const needle of ['<dialog','data-gallery-close','data-gallery-dialog-visual']){
+for(const needle of ['<dialog','data-gallery-close','data-gallery-dialog-visual','data-gallery-previous','data-gallery-next','id="views"']){
   if(!gallery.includes(needle)){console.error(`Gallery inspection behavior missing ${needle}`);process.exit(1);}
 }
 if(!gallery.includes('showModal()') && !galleryController.includes('showModal()')){
   console.error('Gallery inspection behavior missing showModal()');process.exit(1);
 }
+for(const needle of ['renderView','ArrowLeft','ArrowRight']){
+  if(!galleryController.includes(needle)){console.error(`P4 sequential gallery inspection missing ${needle}`);process.exit(1);}
+}
 const controller=read('src/scripts/record-preview-controller.ts');
-if(!controller.includes('recordPreviewVariant')||!controller.includes('data-capability-preview')){console.error('Capability-driven preview controller missing.');process.exit(1);}
+for(const needle of ['recordPreviewVariant','data-capability-preview','selectRecordPreviewFromTarget','setSelection','aria-pressed']){
+  if(!controller.includes(needle)){console.error(`Capability-driven preview controller missing ${needle}.`);process.exit(1);}
+}
+const runtime=read('src/scripts/runtime-loader.ts');
+if(!runtime.includes('queueRecordSelection')||!runtime.includes("source: 'select'")){console.error('P4 first-click lazy selection handoff missing.');process.exit(1);}
 const catalogue=read('src/lib/catalogue.ts');
 if(!catalogue.includes('getProjectNeighbors')||!catalogue.includes('sharedCollections * 8')||!catalogue.includes('Last-resort catalogue neighbors')){console.error('Project navigation or inferred related-project fallback missing.');process.exit(1);}
 const site=read('src/data/site.ts');
 const phaseMatch=/phase:\s*(\d+)/.exec(site);
 if(!phaseMatch||Number(phaseMatch[1])<8){console.error('SITE.phase must be at least 8.');process.exit(1);}
-console.log(`Phase 8 project-detail validation passed (${files.length} capability records, related fallback + curated navigation).`);
+console.log(`Phase 8/P4 project-detail validation passed (${files.length} capability records, persistent inspection + sequential gallery).`);
