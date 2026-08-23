@@ -25,19 +25,52 @@ if (document.querySelector('[data-project-archive]')) {
   requestAnimationFrame(() => once('archive', () => import('./archive-controller')));
 }
 
-// Motion is expressive rather than required. It starts after first paint and is
-// skipped completely on pages without the Living Index.
+// Homepage motion remains independent from the retired Living Index. The scanner
+// may disappear or be feature-gated without silently disabling the hero entrance
+// and section reveals that belong to the portfolio homepage itself.
+if (document.querySelector('[data-index-hero]')) {
+  requestAnimationFrame(() => once('index-motion', () => import('./index-motion')));
+}
 if (document.querySelector('[data-living-index]')) {
-  requestAnimationFrame(() => window.setTimeout(() => {
-    once('living-index', () => import('./living-index-controller'));
-    once('index-motion', () => import('./index-motion'));
-  }, 0));
+  requestAnimationFrame(() => once('living-index', () => import('./living-index-controller')));
 }
 
-// Preview behavior is deliberately lower priority than navigation/search. Static
-// project-specific posters are already present in the HTML.
+// Animated previews stay lazy, but first interaction must never be lost while the
+// controller chunk is still loading. Capture the initial pointer/focus intent,
+// import the controller, then replay that intent only if it is still relevant.
 if (document.querySelector('[data-preview-root]')) {
-  idle('previews', () => import('./preview-controller'), 1000);
+  let previewModulePromise: Promise<typeof import('./preview-controller')> | null = null;
+  let previewReady = false;
+  const loadPreviews = () => {
+    previewModulePromise ??= import('./preview-controller')
+      .then((module) => {
+        previewReady = true;
+        return module;
+      })
+      .catch((error) => {
+        previewModulePromise = null;
+        throw error;
+      });
+    return previewModulePromise;
+  };
+
+  const replayPreviewIntent = (event: PointerEvent | FocusEvent) => {
+    if (previewReady) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const root = target.closest<HTMLElement>('[data-preview-root]');
+    if (!root) return;
+    const source = event.type === 'focusin' ? 'focus' : 'pointer';
+    void loadPreviews().then((module) => {
+      if (source === 'pointer' && !root.matches(':hover')) return;
+      if (source === 'focus' && !root.contains(document.activeElement)) return;
+      module.armPreviewFromTarget(target, source);
+    });
+  };
+
+  document.addEventListener('pointerover', replayPreviewIntent, { passive: true });
+  document.addEventListener('focusin', replayPreviewIntent);
+  idle('previews', () => loadPreviews(), 1000);
 }
 
 // Record inspection is a secondary interaction below the record hero.
