@@ -63,6 +63,9 @@ jobs:
       - name: Install certification browsers
         run: npx playwright install --with-deps chromium firefox webkit
 
+      - name: P2 discovery and archive regression smoke
+        run: npx playwright test tests/e2e/phase4.spec.ts
+
       - name: Cross-browser and accessibility certification
         run: npm run test:e2e
 
