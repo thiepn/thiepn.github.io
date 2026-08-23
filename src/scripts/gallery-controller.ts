@@ -30,8 +30,17 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
     if (label) label.textContent = button.getAttribute('data-gallery-label') || 'FIGURE';
     if (caption) caption.textContent = button.getAttribute('data-gallery-caption') || '';
     if (position) position.textContent = `${String(index + 1).padStart(2, '0')} / ${String(openers.length).padStart(2, '0')}`;
+
+    const previousWasFocused = document.activeElement === previousButton;
+    const nextWasFocused = document.activeElement === nextButton;
     if (previousButton) previousButton.disabled = index === 0;
     if (nextButton) nextButton.disabled = index === openers.length - 1;
+
+    // Chromium may drop focus when the currently focused navigation button becomes
+    // disabled at a boundary. Hand focus to the still-enabled opposite control so
+    // subsequent ArrowLeft/ArrowRight input remains inside the modal inspector.
+    if (previousWasFocused && previousButton?.disabled && nextButton && !nextButton.disabled) nextButton.focus();
+    if (nextWasFocused && nextButton?.disabled && previousButton && !previousButton.disabled) previousButton.focus();
   };
 
   const openView = (button: HTMLButtonElement, index: number) => {
