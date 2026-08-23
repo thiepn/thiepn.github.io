@@ -12,7 +12,14 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   ...(isCI ? { workers: 1 } : {}),
-  reporter: isCI ? 'github' : 'list',
+  reporter: isCI
+    ? [
+        ['github'],
+        ['list'],
+        ['junit', { outputFile: 'test-results/playwright-junit.xml' }],
+        ['html', { outputFolder: 'playwright-report', open: 'never' }],
+      ]
+    : 'list',
   expect: { timeout: 7_500 },
   use: {
     baseURL: 'http://127.0.0.1:4321',
