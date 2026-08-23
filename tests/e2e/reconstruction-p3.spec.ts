@@ -8,7 +8,7 @@ test('homepage entrance uses the restrained reconstructed motion path', async ({
 });
 
 test('directional artifact actions move only their arrow cue', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/projects/');
   const action = page.locator('.artifact-actions__details').first();
   const arrow = action.locator('span[aria-hidden="true"]');
   await expect(action).toBeVisible();
