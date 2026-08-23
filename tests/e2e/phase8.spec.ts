@@ -11,14 +11,18 @@ test('flagship project page exposes the complete product-oriented detail sequenc
   await expect(page.locator('.record__related > *')).toHaveCount(4);
 });
 
-test('capability focus drives the hero into a named preview state', async ({ page }) => {
+test('capability focus drives the hero through named preview states', async ({ page }) => {
   await page.goto('/project/pdf-studio/');
-  const row=page.getByRole('button',{name:/Show Permanent redaction preview state/i});
-  await row.focus();
+  const redaction=page.getByRole('button',{name:/Show Permanent redaction preview state/i});
+  await redaction.focus();
   await expect(page.locator('[data-record-preview]')).toHaveAttribute('data-record-preview-variant','redact');
   await expect(page.locator('[data-record-preview-label]')).toContainText('PERMANENT REDACTION');
+
   await page.keyboard.press('Tab');
-  await expect(page.locator('[data-record-preview]')).not.toHaveAttribute('data-record-preview-variant');
+  const exportRow=page.getByRole('button',{name:/Show Local export preview state/i});
+  await expect(exportRow).toBeFocused();
+  await expect(page.locator('[data-record-preview]')).toHaveAttribute('data-record-preview-variant','export');
+  await expect(page.locator('[data-record-preview-label]')).toContainText('LOCAL EXPORT');
 });
 
 test('gallery inspection opens a native dialog and restores focus on close', async ({ page }) => {
@@ -44,8 +48,8 @@ test('non-featured projects still have rich capabilities without fake galleries'
 test('curated previous and next navigation follows project order', async ({ page }) => {
   await page.goto('/project/french-3000/');
   const nav=page.getByRole('navigation',{name:'Adjacent projects'});
-  await expect(nav).toContainText('WORDFALL');
-  await expect(nav).toContainText('CURIO');
+  await expect(nav).toContainText('Wordfall');
+  await expect(nav).toContainText('Curio');
 });
 
 test('project detail page remains reflow-safe on a compact phone', async ({ page }) => {

@@ -9,6 +9,7 @@ import { prefersReducedMotion } from '../motion/reducedMotion';
 import { FEATURES } from '../data/features';
 
 type PreviewElement = HTMLElement & { dataset: DOMStringMap & { previewState?: PreviewState } };
+type PreviewIntentSource = 'pointer' | 'focus';
 
 const roots = FEATURES.animatedPreviews ? Array.from(document.querySelectorAll<PreviewElement>('[data-preview-root]')) : [];
 const coarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
@@ -80,7 +81,12 @@ class PreviewInstance {
   }
 
   arm() {
-    if (!this.visible || prefersReducedMotion() || this.kind === 'static' || this.mediaFailed) return;
+    // A real pointer/focus interaction is stronger evidence of visibility than a
+    // potentially stale IntersectionObserver callback. Playwright and fast users
+    // can scroll an off-screen card into view and interact before the observer's
+    // next delivery; accepting the interaction here removes that timing race.
+    this.visible = true;
+    if (prefersReducedMotion() || this.kind === 'static' || this.mediaFailed) return;
     window.clearTimeout(this.armTimer);
     window.clearTimeout(this.settleTimer);
     this.setState('armed');
@@ -141,13 +147,37 @@ function rootFromEventTarget(target: EventTarget | null): PreviewElement | null 
   return target.closest<PreviewElement>('[data-preview-root]');
 }
 
+function getCurrentPreviewIntersectionRatio(root: PreviewElement) {
+  const rect = root.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return 0;
+
+  // Match the observer's vertical root margin, but calculate from the element's
+  // current geometry. Some engines can deliver an observer entry captured just
+  // before hover() scrolls a preview into view; trusting that stale snapshot can
+  // cancel a legitimate arm before its 180ms activation timer fires.
+  const marginY = 240;
+  const left = Math.max(rect.left, 0);
+  const right = Math.min(rect.right, window.innerWidth);
+  const top = Math.max(rect.top, -marginY);
+  const bottom = Math.min(rect.bottom, window.innerHeight + marginY);
+  const width = Math.max(0, right - left);
+  const height = Math.max(0, bottom - top);
+  return (width * height) / (rect.width * rect.height);
+}
+
+export function armPreviewFromTarget(target: EventTarget | null, source: PreviewIntentSource = 'pointer') {
+  if (source === 'pointer' && coarsePointer) return;
+  const root = rootFromEventTarget(target);
+  if (!root) return;
+  instanceByRoot.get(root)?.arm();
+}
+
 // Event delegation avoids four listeners per preview when the archive grows to
 // hundreds of artifacts. Pointer/focus transitions inside the same preview are ignored.
 const onPointerOver = (event: PointerEvent) => {
-  if (coarsePointer) return;
   const root = rootFromEventTarget(event.target);
   if (!root || root.contains(event.relatedTarget as Node | null)) return;
-  instanceByRoot.get(root)?.arm();
+  armPreviewFromTarget(event.target, 'pointer');
 };
 const onPointerOut = (event: PointerEvent) => {
   const root = rootFromEventTarget(event.target);
@@ -155,9 +185,7 @@ const onPointerOut = (event: PointerEvent) => {
   instanceByRoot.get(root)?.reset();
 };
 const onFocusIn = (event: FocusEvent) => {
-  const root = rootFromEventTarget(event.target);
-  if (!root) return;
-  instanceByRoot.get(root)?.arm();
+  armPreviewFromTarget(event.target, 'focus');
 };
 const onFocusOut = (event: FocusEvent) => {
   const root = rootFromEventTarget(event.target);
@@ -174,7 +202,9 @@ let observer: IntersectionObserver | null = null;
 if ('IntersectionObserver' in window) {
   observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      instanceByRoot.get(entry.target as PreviewElement)?.setVisible(entry.isIntersecting && entry.intersectionRatio > 0.04);
+      const root = entry.target as PreviewElement;
+      const currentRatio = getCurrentPreviewIntersectionRatio(root);
+      instanceByRoot.get(root)?.setVisible(currentRatio > 0.04);
     }
   }, { rootMargin: '240px 0px', threshold: [0, .05] });
   roots.forEach((root) => observer?.observe(root));
