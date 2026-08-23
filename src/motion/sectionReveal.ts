@@ -13,9 +13,9 @@ export function initSectionReveals(root: ParentNode = document): () => void {
     const stop = inView(section, () => {
       if (section.dataset.motionRevealed === 'true') return;
       section.dataset.motionRevealed = 'true';
-      void animate(targets, { opacity: [.35, 1], y: [12, 0] }, {
-        duration: .34,
-        delay: stagger(.04),
+      void animate(targets, { opacity: [.68, 1], y: [6, 0] }, {
+        duration: .30,
+        delay: stagger(.025),
         ease: motionEasing.enter,
       });
     }, { amount: .12, margin: '0px 0px -8% 0px' });
