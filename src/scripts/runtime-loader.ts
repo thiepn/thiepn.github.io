@@ -35,12 +35,22 @@ if (document.querySelector('[data-living-index]')) {
   requestAnimationFrame(() => once('living-index', () => import('./living-index-controller')));
 }
 
-// Animated previews stay lazy, but first interaction must never be lost while the
-// controller chunk is still loading. Capture the initial pointer/focus intent,
-// import the controller, then replay that intent only if it is still relevant.
+// Animated previews stay lazy, but a first interaction can arrive while the
+// controller chunk is loading. Track that intent explicitly instead of querying
+// :hover after import; WebKit does not make that a reliable replay signal.
 if (document.querySelector('[data-preview-root]')) {
+  type PreviewIntent = {
+    root: HTMLElement;
+    target: Element;
+    source: 'pointer' | 'focus';
+    token: number;
+  };
+
   let previewModulePromise: Promise<typeof import('./preview-controller')> | null = null;
   let previewReady = false;
+  let previewIntent: PreviewIntent | null = null;
+  let previewIntentToken = 0;
+
   const loadPreviews = () => {
     previewModulePromise ??= import('./preview-controller')
       .then((module) => {
@@ -54,28 +64,104 @@ if (document.querySelector('[data-preview-root]')) {
     return previewModulePromise;
   };
 
-  const replayPreviewIntent = (event: PointerEvent | FocusEvent) => {
+  const queuePreviewIntent = (event: PointerEvent | FocusEvent) => {
     if (previewReady) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const root = target.closest<HTMLElement>('[data-preview-root]');
     if (!root) return;
     const source = event.type === 'focusin' ? 'focus' : 'pointer';
+    const token = ++previewIntentToken;
+    previewIntent = { root, target, source, token };
     void loadPreviews().then((module) => {
-      if (source === 'pointer' && !root.matches(':hover')) return;
-      if (source === 'focus' && !root.contains(document.activeElement)) return;
-      module.armPreviewFromTarget(target, source);
+      const intent = previewIntent;
+      if (!intent || intent.token !== token) return;
+      previewIntent = null;
+      module.armPreviewFromTarget(intent.target, intent.source);
     });
   };
 
-  document.addEventListener('pointerover', replayPreviewIntent, { passive: true });
-  document.addEventListener('focusin', replayPreviewIntent);
+  const clearPreviewIntent = (event: PointerEvent | FocusEvent) => {
+    if (previewReady || !previewIntent) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const root = target.closest<HTMLElement>('[data-preview-root]');
+    if (!root || root !== previewIntent.root) return;
+    const related = event.relatedTarget;
+    if (related instanceof Node && root.contains(related)) return;
+    previewIntent = null;
+    previewIntentToken += 1;
+  };
+
+  document.addEventListener('pointerover', queuePreviewIntent, { passive: true });
+  document.addEventListener('pointerout', clearPreviewIntent, { passive: true });
+  document.addEventListener('focusin', queuePreviewIntent);
+  document.addEventListener('focusout', clearPreviewIntent);
   idle('previews', () => loadPreviews(), 1000);
 }
 
-// Record inspection is a secondary interaction below the record hero.
+// Record inspection is secondary, but the first hover/focus must still work when
+// it beats the idle import. Preserve the active capability until the controller
+// is attached, then replay it directly rather than synthesizing browser events.
 if (document.querySelector('[data-record-preview]')) {
-  idle('record-preview', () => import('./record-preview-controller'), 750);
+  type RecordIntent = {
+    button: HTMLButtonElement;
+    source: 'pointer' | 'focus';
+    token: number;
+  };
+
+  let recordModulePromise: Promise<typeof import('./record-preview-controller')> | null = null;
+  let recordReady = false;
+  let recordIntent: RecordIntent | null = null;
+  let recordIntentToken = 0;
+
+  const loadRecordPreview = () => {
+    recordModulePromise ??= import('./record-preview-controller')
+      .then((module) => {
+        recordReady = true;
+        return module;
+      })
+      .catch((error) => {
+        recordModulePromise = null;
+        throw error;
+      });
+    return recordModulePromise;
+  };
+
+  const queueRecordIntent = (event: PointerEvent | FocusEvent) => {
+    if (recordReady) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest<HTMLButtonElement>('[data-capability-preview]');
+    if (!button) return;
+    const source = event.type === 'focusin' ? 'focus' : 'pointer';
+    const token = ++recordIntentToken;
+    recordIntent = { button, source, token };
+    void loadRecordPreview().then((module) => {
+      const intent = recordIntent;
+      if (!intent || intent.token !== token) return;
+      recordIntent = null;
+      module.activateRecordPreviewFromTarget(intent.button);
+    });
+  };
+
+  const clearRecordIntent = (event: PointerEvent | FocusEvent) => {
+    if (recordReady || !recordIntent) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest<HTMLButtonElement>('[data-capability-preview]');
+    if (!button || button !== recordIntent.button) return;
+    const related = event.relatedTarget;
+    if (related instanceof Node && button.contains(related)) return;
+    recordIntent = null;
+    recordIntentToken += 1;
+  };
+
+  document.addEventListener('pointerover', queueRecordIntent, { passive: true });
+  document.addEventListener('pointerout', clearRecordIntent, { passive: true });
+  document.addEventListener('focusin', queueRecordIntent);
+  document.addEventListener('focusout', clearRecordIntent);
+  idle('record-preview', () => loadRecordPreview(), 750);
 }
 
 // Collection map JS is normally loaded only as the secondary relationship view
