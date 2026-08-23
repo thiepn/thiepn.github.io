@@ -46,6 +46,15 @@ export async function getCollectionBySlug(slug: string) {
   return collections.find((entry) => entry.data.slug === slug);
 }
 
+export async function getCollectionsForProject(slug: string) {
+  const project = await getProjectBySlug(slug);
+  if (!project) return [];
+  const memberships = new Set(project.data.collections);
+  return (await getCollections())
+    .filter((collection) => memberships.has(collection.data.slug))
+    .sort((a, b) => a.data.code.localeCompare(b.data.code));
+}
+
 export async function getCatalogueStats() {
   const projects = await getAllProjects();
   return computeCatalogueStats(projects.map((entry) => entry.data));
