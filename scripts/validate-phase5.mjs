@@ -34,10 +34,10 @@ const checks = [
   [!index.includes('LivingIndexField'), 'Homepage must not render the decorative Living Index field.'],
   [!index.includes('<ProjectArchive'), 'Homepage must not duplicate the full interactive project archive.'],
   [controller.includes('requestAnimationFrame') && controller.includes('ACTIVATION_RADIUS = 220'), 'Legacy proximity infrastructure must remain bounded and rAF-throttled.'],
-  [hero.includes("from 'motion'") && hero.includes('stagger'), 'Hero choreography must use restrained Motion sequencing.'],
-  [reveal.includes('inView') && reveal.includes('stagger(.04)'), 'Section reveals must use restrained in-view stagger.'],
+  [hero.includes("from 'motion'") && hero.includes('stagger') && !hero.includes('scale: [.97, 1]'), 'Hero choreography must use restrained Motion sequencing without fragment scaling.'],
+  [reveal.includes('inView') && reveal.includes('stagger(.025)') && reveal.includes('y: [6, 0]'), 'Section reveals must use the reconstructed restrained in-view stagger.'],
   [archive.includes('captureArchivePositions') && archive.includes('animateArchiveReflow'), 'Dedicated archive filtering must coordinate measured layout motion.'],
-  [reflow.includes('duration: .34') && reflow.includes('scale: [.985, 1]'), 'Archive reflow timing/entry motion is missing.'],
+  [reflow.includes('duration: .30') && reflow.includes('y: [4, 0]') && !reflow.includes('scale:'), 'Archive reflow must use mechanical translation without entry scaling.'],
   [reduced.includes('prefers-reduced-motion: reduce'), 'Reduced-motion detection is missing.'],
 ];
 for (const [pass, message] of checks) {
@@ -52,4 +52,4 @@ if (/addEventListener\(['"](?:wheel|touchmove)['"][\s\S]{0,300}preventDefault/i.
   console.error('Phase 5 must not hijack native scrolling.');
   process.exit(1);
 }
-console.log(`Phase 5 compact portfolio-home validation passed (${required.length} motion/accessibility support files retained).`);
+console.log(`Phase 5/P3 compact portfolio motion validation passed (${required.length} motion/accessibility support files retained).`);
