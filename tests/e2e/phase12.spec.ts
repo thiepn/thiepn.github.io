@@ -114,7 +114,8 @@ test('gallery dialog closes with Escape and restores the exact opener', async ({
   await page.goto('/project/pdf-studio/');
   const gallery = page.locator('[data-artifact-gallery]');
   await gallery.scrollIntoViewIfNeeded();
-  const opener = gallery.getByRole('button', { name: /Open view 1:/ });
+  const opener = gallery.locator('[data-gallery-open]').first();
+  await expect(opener).toBeVisible();
   await opener.focus();
   await opener.press('Enter');
   const dialog = page.locator('[data-gallery-dialog]');
@@ -139,7 +140,8 @@ test('collection relationship selection is announced without misusing aria-curre
 test('keyboard-focused controls are not obscured by the sticky header', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 700 });
   await page.goto('/project/pdf-studio/');
-  const target = page.getByRole('button', { name: /Open view 1:/ });
+  const target = page.locator('[data-gallery-open]').first();
+  await expect(target).toBeVisible();
   await target.scrollIntoViewIfNeeded();
   await target.focus();
   const geometry = await page.evaluate(() => {

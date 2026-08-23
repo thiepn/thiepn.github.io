@@ -13,13 +13,13 @@ test('flagship project page exposes the complete product-oriented detail sequenc
 
 test('capability focus drives the hero through named preview states', async ({ page }) => {
   await page.goto('/project/pdf-studio/');
-  const redaction=page.getByRole('button',{name:/Show Permanent redaction preview state/i});
+  const redaction=page.getByRole('button',{name:/Inspect Permanent redaction in the project preview/i});
   await redaction.focus();
   await expect(page.locator('[data-record-preview]')).toHaveAttribute('data-record-preview-variant','redact');
   await expect(page.locator('[data-record-preview-label]')).toContainText('PERMANENT REDACTION');
 
   await page.keyboard.press('Tab');
-  const exportRow=page.getByRole('button',{name:/Show Local export preview state/i});
+  const exportRow=page.getByRole('button',{name:/Inspect Local export in the project preview/i});
   await expect(exportRow).toBeFocused();
   await expect(page.locator('[data-record-preview]')).toHaveAttribute('data-record-preview-variant','export');
   await expect(page.locator('[data-record-preview-label]')).toContainText('LOCAL EXPORT');
@@ -27,7 +27,7 @@ test('capability focus drives the hero through named preview states', async ({ p
 
 test('gallery inspection opens a native dialog and restores focus on close', async ({ page }) => {
   await page.goto('/project/manuscript/');
-  const opener=page.getByRole('button',{name:/Open view 1/i});
+  const opener=page.getByRole('button',{name:/Inspect view 1/i});
   await opener.click();
   const dialog=page.locator('[data-gallery-dialog]');
   await expect(dialog).toBeVisible();
