@@ -141,6 +141,7 @@ class PreviewInstance {
 const instanceByRoot = new Map<PreviewElement, PreviewInstance>();
 roots.forEach((root) => instanceByRoot.set(root, new PreviewInstance(root)));
 const instances = Array.from(instanceByRoot.values());
+const pointerExitTokens = new WeakMap<PreviewElement, number>();
 
 function rootFromEventTarget(target: EventTarget | null): PreviewElement | null {
   if (!(target instanceof Element)) return null;
@@ -165,10 +166,22 @@ function getCurrentPreviewIntersectionRatio(root: PreviewElement) {
   return (width * height) / (rect.width * rect.height);
 }
 
+function nextPointerToken(root: PreviewElement) {
+  const token = (pointerExitTokens.get(root) ?? 0) + 1;
+  pointerExitTokens.set(root, token);
+  return token;
+}
+
+function pointStillHitsRoot(root: PreviewElement, x: number, y: number) {
+  const hit = document.elementFromPoint(x, y);
+  return hit instanceof Node && root.contains(hit);
+}
+
 export function armPreviewFromTarget(target: EventTarget | null, source: PreviewIntentSource = 'pointer') {
   if (source === 'pointer' && coarsePointer) return;
   const root = rootFromEventTarget(target);
   if (!root) return;
+  if (source === 'pointer') nextPointerToken(root);
   instanceByRoot.get(root)?.arm();
 }
 
@@ -182,7 +195,19 @@ const onPointerOver = (event: PointerEvent) => {
 const onPointerOut = (event: PointerEvent) => {
   const root = rootFromEventTarget(event.target);
   if (!root || root.contains(event.relatedTarget as Node | null)) return;
-  instanceByRoot.get(root)?.reset();
+
+  // WebKit can emit a transient pointerout with relatedTarget=null while lazy
+  // preview setup or nearby measured motion causes a style/layout update. Reset
+  // only after the next frame confirms that the pointer truly left the preview.
+  // A subsequent pointerover invalidates this token; genuine departures still
+  // reset immediately on the following frame and preserve offscreen behavior.
+  const token = nextPointerToken(root);
+  const { clientX, clientY } = event;
+  requestAnimationFrame(() => {
+    if (pointerExitTokens.get(root) !== token) return;
+    if (pointStillHitsRoot(root, clientX, clientY)) return;
+    instanceByRoot.get(root)?.reset();
+  });
 };
 const onFocusIn = (event: FocusEvent) => {
   armPreviewFromTarget(event.target, 'focus');
