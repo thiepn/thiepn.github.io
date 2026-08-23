@@ -11,8 +11,14 @@ test('directional artifact actions move only their arrow cue', async ({ page }) 
   await page.goto('/projects/');
   const action = page.locator('.artifact-actions__details').first();
   const arrow = action.locator('span[aria-hidden="true"]');
+
+  // Position the real archive action before measuring it. Playwright's hover()
+  // scrolls off-screen elements into view, so measuring first would compare two
+  // different viewport positions rather than the hover interaction itself.
+  await action.scrollIntoViewIfNeeded();
   await expect(action).toBeVisible();
   await expect(arrow).toHaveText('→');
+  await page.waitForTimeout(80);
 
   const actionBefore = await action.evaluate((element) => element.getBoundingClientRect().toJSON());
   await action.hover();
