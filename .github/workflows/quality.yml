@@ -78,6 +78,9 @@ jobs:
       - name: P4 project pages and preview experience smoke
         run: npx playwright test tests/e2e/reconstruction-p4.spec.ts --project=chromium --project=webkit
 
+      - name: P5 collections, categories, and portfolio structure smoke
+        run: npx playwright test tests/e2e/reconstruction-p5.spec.ts --project=chromium --project=webkit
+
       - name: Cross-browser and accessibility certification
         run: npm run test:e2e
 
