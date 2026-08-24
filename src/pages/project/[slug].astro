@@ -8,7 +8,8 @@ import CapabilityList from '../../components/records/CapabilityList.astro';
 import ArtifactGallery from '../../components/records/ArtifactGallery.astro';
 import RecordMetadata from '../../components/records/RecordMetadata.astro';
 import RecordNavigation from '../../components/records/RecordNavigation.astro';
-import { getPublicProjects, getRelatedProjects, getProjectNeighbors } from '../../lib/catalogue';
+import PortfolioClassification from '../../components/records/PortfolioClassification.astro';
+import { getPublicProjects, getRelatedProjects, getProjectNeighbors, getCollectionsForProject } from '../../lib/catalogue';
 
 export async function getStaticPaths(){
   const projects=await getPublicProjects();
@@ -19,6 +20,7 @@ interface Props{project:ProjectEntry}
 const { project }=Astro.props;
 const p=project.data;
 const related=await getRelatedProjects(p.slug,4);
+const collections=await getCollectionsForProject(p.slug);
 const { previous, next }=await getProjectNeighbors(p.slug);
 const { Content }=await render(project);
 const accentStyle=`--project-accent-light:${p.accent.light};--project-accent-dark:${p.accent.dark};`;
@@ -27,6 +29,7 @@ const previewLabel = p.preview.type === 'video' ? 'Demo video' : p.preview.type 
 const defaultPreviewState = `PRIMARY / ${previewLabel.toUpperCase()}`;
 const recordIndex = [
   { href: '#overview', label: 'Overview' },
+  { href: '#classification', label: 'Classification' },
   { href: '#capabilities', label: sectionTitle },
   { href: '#details', label: 'Details' },
   ...(p.gallery?.length ? [{ href: '#views', label: 'Views' }] : []),
@@ -72,6 +75,8 @@ const recordIndex = [
         <aside><span class="meta">Focus</span><p>{p.type === 'game' ? 'Gameplay loop, controls, and progression.' : p.category === 'learning' ? 'What the learner practices, recalls, or understands.' : 'Workflow, capabilities, and practical result.'}</p></aside>
       </div>
     </section>
+
+    <PortfolioClassification project={project} collections={collections} />
 
     <CapabilityList project={project} />
 

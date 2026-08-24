@@ -1,0 +1,60 @@
+---
+import type { ProjectCategory } from '../../data/taxonomy';
+import type { getCollections, getPublicProjects } from '../../lib/catalogue';
+
+type ProjectEntry = Awaited<ReturnType<typeof getPublicProjects>>[number];
+type CollectionEntry = Awaited<ReturnType<typeof getCollections>>[number];
+interface Props { project: ProjectEntry; collections: CollectionEntry[]; }
+const { project, collections } = Astro.props;
+const categoryLabels: Record<ProjectCategory, string> = {
+  tools: 'Tools',
+  learning: 'Learning',
+  games: 'Games',
+  resources: 'Resources',
+  visualizations: 'Visualizations',
+  experiments: 'Experiments',
+};
+const categoryLabel = categoryLabels[project.data.category];
+---
+<section id="classification" class="portfolio-classification record__section" aria-labelledby="classification-title" data-portfolio-classification>
+  <header class="portfolio-classification__head">
+    <div><p class="meta">Portfolio position</p><h2 id="classification-title">Classification</h2></div>
+    <span class="meta">Type is singular · themes may overlap</span>
+  </header>
+
+  <div class="portfolio-classification__grid">
+    <div class="portfolio-classification__group" data-project-category={project.data.category}>
+      <div class="portfolio-classification__label"><span>Category</span><small>One project type</small></div>
+      <a class="portfolio-classification__primary" href={`/projects/?category=${project.data.category}`}>
+        <strong>{categoryLabel}</strong><span aria-hidden="true">→</span>
+      </a>
+      <p>Every project belongs to exactly one category. Use categories when you want to browse by what a project is.</p>
+    </div>
+
+    <div class="portfolio-classification__group" data-project-collections>
+      <div class="portfolio-classification__label"><span>Collections</span><small>Overlapping editorial themes</small></div>
+      {collections.length ? (
+        <nav class="portfolio-classification__links" aria-label={`Collections containing ${project.data.title}`}>
+          {collections.map((collection)=><a href={`/collection/${collection.data.slug}/`}><span>{collection.data.code}</span><strong>{collection.data.title}</strong><i aria-hidden="true">→</i></a>)}
+        </nav>
+      ) : (
+        <p class="portfolio-classification__empty">No editorial collection assigned.</p>
+      )}
+      <p>A project may appear in several collections when its subject, audience, or use overlaps multiple themes.</p>
+    </div>
+  </div>
+
+  <div class="portfolio-classification__footer">
+    <a class="text-link" href="/projects/">Browse all project types →</a>
+    <a class="text-link" href="/collections/">Browse editorial collections →</a>
+  </div>
+</section>
+<style>
+  .portfolio-classification{scroll-margin-top:90px}.portfolio-classification__head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:12px;border-bottom:1px solid var(--line-strong)}.portfolio-classification__head .meta{color:var(--ink-muted)}.portfolio-classification__head h2{margin-top:3px;font-size:clamp(1.45rem,2.4vw,2.15rem);line-height:1;letter-spacing:-.035em;font-weight:560}.portfolio-classification__head>span{max-width:34ch;text-align:right}
+  .portfolio-classification__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-left:1px solid var(--line);margin-top:var(--space-5)}.portfolio-classification__group{min-width:0;padding:15px;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.portfolio-classification__label{display:flex;justify-content:space-between;gap:var(--space-3);font:500 .56rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.portfolio-classification__label small{font:inherit;color:var(--ink-disabled);text-align:right}
+  .portfolio-classification__primary{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-top:var(--space-5);padding:10px 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);text-decoration:none}.portfolio-classification__primary strong{font-size:1.15rem;letter-spacing:-.025em;font-weight:560}.portfolio-classification__primary span{font:500 .75rem var(--font-meta);color:var(--project-accent)}.portfolio-classification__primary:hover strong,.portfolio-classification__primary:focus-visible strong{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+  .portfolio-classification__links{margin-top:var(--space-5);border-top:1px solid var(--line-soft)}.portfolio-classification__links a{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:var(--space-3);align-items:center;min-height:44px;padding:7px 0;border-bottom:1px solid var(--line-soft);text-decoration:none}.portfolio-classification__links span{font:500 .55rem var(--font-meta);letter-spacing:.055em;color:var(--ink-muted)}.portfolio-classification__links strong{font-size:.78rem;font-weight:520}.portfolio-classification__links i{font-style:normal;color:var(--project-accent)}.portfolio-classification__links a:hover strong,.portfolio-classification__links a:focus-visible strong{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+  .portfolio-classification__group>p{margin-top:var(--space-4);max-width:54ch;color:var(--ink-muted);font-size:.72rem;line-height:1.5}.portfolio-classification__empty{padding:10px 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);color:var(--ink-secondary)!important}.portfolio-classification__footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--space-4);padding-top:var(--space-4)}
+  @media(max-width:760px){.portfolio-classification__head>span{display:none}.portfolio-classification__grid{grid-template-columns:1fr}.portfolio-classification__footer{display:grid;justify-content:start}}
+  @media(max-width:599px){.portfolio-classification__label{align-items:flex-start}.portfolio-classification__label small{max-width:18ch}.portfolio-classification__links a{grid-template-columns:45px minmax(0,1fr) auto}}
+</style>
