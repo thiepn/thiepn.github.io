@@ -1,13 +1,16 @@
 import type { SearchableProject } from './search-core';
 import { matchesProjectQuery } from './search-core';
+import { PROJECT_INTENT_KEYS, matchesProjectIntent, type ProjectIntent } from '../data/discovery';
 
 export type ArchiveSort = 'curated' | 'recent' | 'az';
 export type ArchiveView = 'grid' | 'list';
 export type ArchiveCategory = 'all' | 'tools' | 'learning' | 'games' | 'resources' | 'visualizations' | 'experiments';
+export type ArchiveIntent = 'all' | ProjectIntent;
 
 export interface ArchiveState {
   query: string;
   category: ArchiveCategory;
+  intent: ArchiveIntent;
   sort: ArchiveSort;
   view: ArchiveView;
 }
@@ -15,21 +18,25 @@ export interface ArchiveState {
 export const DEFAULT_ARCHIVE_STATE: ArchiveState = {
   query: '',
   category: 'all',
+  intent: 'all',
   sort: 'curated',
   view: 'grid',
 };
 
 const categories = new Set<ArchiveCategory>(['all', 'tools', 'learning', 'games', 'resources', 'visualizations', 'experiments']);
+const intents = new Set<ArchiveIntent>(['all', ...PROJECT_INTENT_KEYS]);
 const sorts = new Set<ArchiveSort>(['curated', 'recent', 'az']);
 const views = new Set<ArchiveView>(['grid', 'list']);
 
 export function parseArchiveState(url: URL, storedView?: string | null): ArchiveState {
   const category = url.searchParams.get('category') as ArchiveCategory | null;
+  const intent = url.searchParams.get('intent') as ArchiveIntent | null;
   const sort = url.searchParams.get('sort') as ArchiveSort | null;
   const view = url.searchParams.get('view') as ArchiveView | null;
   return {
     query: url.searchParams.get('q')?.trim() ?? '',
     category: category && categories.has(category) ? category : 'all',
+    intent: intent && intents.has(intent) ? intent : 'all',
     sort: sort && sorts.has(sort) ? sort : 'curated',
     view: view && views.has(view) ? view : (storedView && views.has(storedView as ArchiveView) ? storedView as ArchiveView : 'grid'),
   };
@@ -40,6 +47,7 @@ export function serializeArchiveState(state: ArchiveState, url: URL): URL {
   const setOrDelete = (key: string, value: string, defaultValue: string) => value && value !== defaultValue ? next.searchParams.set(key, value) : next.searchParams.delete(key);
   setOrDelete('q', state.query.trim(), '');
   setOrDelete('category', state.category, 'all');
+  setOrDelete('intent', state.intent, 'all');
   setOrDelete('sort', state.sort, 'curated');
   setOrDelete('view', state.view, 'grid');
   return next;
@@ -49,6 +57,7 @@ export function filterAndSortProjects(projects: readonly SearchableProject[], st
   const curatedIndex = new Map(curatedOrder.map((slug, index) => [slug, index]));
   const filtered = projects.filter((project) => {
     if (state.category !== 'all' && project.category !== state.category) return false;
+    if (state.intent !== 'all' && !matchesProjectIntent(project.category, state.intent)) return false;
     return matchesProjectQuery(project, state.query);
   });
 

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectPreview from '../components/artifacts/ProjectPreview.astro';
 import StatusLabel from '../components/artifacts/StatusLabel.astro';
+import { PROJECT_INTENTS, getIntentCounts } from '../data/discovery';
 import { getCatalogueStats, getCollections, getFeaturedProjects, getPublicProjects } from '../lib/catalogue';
 
 const stats = await getCatalogueStats();
@@ -13,14 +14,7 @@ collections.sort((a,b)=>a.data.code.localeCompare(b.data.code));
 const flagship = featured[0];
 const supportingFeatured = featured.slice(1, 5);
 const directoryPreview = projects.slice(0, 8);
-const categories = [
-  { label: 'Games', key: 'games', description: 'Arcade, typing, strategy and interactive projects.' },
-  { label: 'Tools', key: 'tools', description: 'Practical software built to solve specific problems.' },
-  { label: 'Learning', key: 'learning', description: 'Study systems, language tools and educational projects.' },
-  { label: 'Resources', key: 'resources', description: 'Reference material, guides and reusable resources.' },
-  { label: 'Visualizations', key: 'visualizations', description: 'Visual ways to explore information and ideas.' },
-  { label: 'Experiments', key: 'experiments', description: 'Prototypes, concepts and things worth trying.' },
-] as const;
+const intentCounts = getIntentCounts(projects.map(({ data }) => data));
 ---
 <BaseLayout title="THIEPN — Projects, Games & Experiments" description="THIEPN is a project universe of games, tools, learning systems, resources and experiments.">
   <div class="universe page-shell" data-index-hero>
@@ -103,28 +97,29 @@ const categories = [
       </section>
     )}
 
-    <section class="universe-section" aria-labelledby="explore-title" data-motion-section>
+    <section class="universe-section" aria-labelledby="intent-title" data-motion-section data-intent-discovery>
       <header class="section-heading">
         <div>
-          <p class="eyebrow">Explore</p>
-          <h2 id="explore-title">Choose a direction.</h2>
+          <p class="eyebrow">Start by intent</p>
+          <h2 id="intent-title">What do you want to do?</h2>
         </div>
-        <span class="section-heading__note">Six ways into the catalogue</span>
+        <span class="section-heading__note">Five ways into the project universe</span>
       </header>
 
-      <nav class="category-universe" aria-label="Explore projects by category">
-        {categories.map((category, index) => (
-          <a class="category-node" href={`/projects/?category=${category.key}`}>
-            <span class="category-node__number">0{index + 1}</span>
+      <nav class="intent-universe" aria-label="Explore projects by intent">
+        {PROJECT_INTENTS.map((intent, index) => (
+          <a class="intent-node" href={`/projects/?intent=${intent.key}#archive-catalogue`} data-project-intent={intent.key}>
+            <span class="intent-node__number">0{index + 1}</span>
             <div>
-              <strong>{category.label}</strong>
-              <p>{category.description}</p>
+              <strong>{intent.label}</strong>
+              <p>{intent.description}</p>
             </div>
-            <span class="category-node__count">{String(stats.categories[category.key]).padStart(2,'0')}</span>
+            <span class="intent-node__count">{String(intentCounts[intent.key]).padStart(2,'0')}</span>
             <i aria-hidden="true">↗</i>
           </a>
         ))}
       </nav>
+      <p class="intent-universe__note">Prefer technical classification? <a href="/projects/#category-title">Browse all six project categories →</a></p>
     </section>
 
     <section class="universe-section" aria-labelledby="directory-title" data-motion-section>
@@ -219,15 +214,16 @@ const categories = [
   .support-card__actions a{text-decoration:none}.support-card__launch{min-width:82px;justify-content:center}.support-card__details{min-height:44px;display:inline-flex;align-items:center;gap:.42em;color:var(--ink-muted)}.support-card__details:hover,.support-card__details:focus-visible{text-decoration:underline;text-underline-offset:5px}
   .flagship-card:hover,.support-card:hover{border-color:var(--line-strong)}
 
-  .category-universe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:var(--space-5)}
-  .category-node{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'number count' 'content content';gap:22px 12px;min-height:205px;padding:16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;background:var(--surface-1)}
-  .category-node:hover{background:var(--surface-2)}
-  .category-node__number{grid-area:number;font:500 .62rem var(--font-meta);letter-spacing:.08em;color:var(--ink-muted)}
-  .category-node__count{grid-area:count;font:500 .64rem var(--font-meta);letter-spacing:.08em;color:var(--ink-muted);font-variant-numeric:tabular-nums}
-  .category-node>div{grid-area:content;align-self:end;padding-right:24px}
-  .category-node strong{font-size:clamp(1.45rem,2.5vw,2.15rem);line-height:1;letter-spacing:-.045em;font-weight:560}
-  .category-node p{margin-top:10px;max-width:34ch;color:var(--ink-secondary);font-size:.78rem;line-height:1.48}
-  .category-node i{position:absolute;right:16px;bottom:16px;font-style:normal;color:var(--ink-muted)}
+  .intent-universe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:var(--space-5)}
+  .intent-node{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'number count' 'content content';gap:22px 12px;min-height:205px;padding:16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;background:var(--surface-1)}
+  .intent-node:hover,.intent-node:focus-visible{background:var(--surface-2)}
+  .intent-node__number{grid-area:number;font:500 .62rem var(--font-meta);letter-spacing:.08em;color:var(--ink-muted)}
+  .intent-node__count{grid-area:count;font:500 .64rem var(--font-meta);letter-spacing:.08em;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+  .intent-node>div{grid-area:content;align-self:end;padding-right:24px}
+  .intent-node strong{font-size:clamp(1.45rem,2.5vw,2.15rem);line-height:1;letter-spacing:-.045em;font-weight:560}
+  .intent-node p{margin-top:10px;max-width:34ch;color:var(--ink-secondary);font-size:.78rem;line-height:1.48}
+  .intent-node i{position:absolute;right:16px;bottom:16px;font-style:normal;color:var(--ink-muted)}
+  .intent-universe__note{margin-top:14px;color:var(--ink-muted);font-size:.75rem;line-height:1.5}.intent-universe__note a{color:var(--ink-secondary);text-underline-offset:4px}
 
   .project-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:var(--space-5)}
   .project-strip__item{display:grid;grid-template-columns:42px minmax(0,1fr) auto 22px;align-items:center;gap:12px;min-height:68px;padding:10px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;background:var(--surface-1)}
@@ -245,7 +241,7 @@ const categories = [
   @media(max-width:1080px){
     .universe-grid{grid-template-columns:1fr}
     .supporting-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-    .category-universe{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .intent-universe{grid-template-columns:repeat(2,minmax(0,1fr))}
     .collection-ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}
   }
   @media(max-width:820px){
@@ -263,8 +259,8 @@ const categories = [
     .section-heading{align-items:flex-start}.section-heading__note{display:none}
     .universe-section{padding-top:var(--space-8)}
     .flagship-card__copy{grid-template-columns:1fr}.flagship-card__actions{align-items:flex-start;text-align:left}
-    .supporting-grid,.category-universe,.collection-ribbon{grid-template-columns:1fr}
-    .category-node{min-height:150px}
+    .supporting-grid,.intent-universe,.collection-ribbon{grid-template-columns:1fr}
+    .intent-node{min-height:150px}
     .project-strip__item{grid-template-columns:32px minmax(0,1fr) 18px}.project-strip__type{display:none}
     .collection-chip{min-height:82px}
   }

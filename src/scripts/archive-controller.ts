@@ -1,4 +1,4 @@
-import { DEFAULT_ARCHIVE_STATE, filterAndSortProjects, parseArchiveState, serializeArchiveState, type ArchiveCategory, type ArchiveSort, type ArchiveState, type ArchiveView } from '../lib/archive-state';
+import { DEFAULT_ARCHIVE_STATE, filterAndSortProjects, parseArchiveState, serializeArchiveState, type ArchiveCategory, type ArchiveIntent, type ArchiveSort, type ArchiveState, type ArchiveView } from '../lib/archive-state';
 import type { SearchableProject } from '../lib/search-core';
 import { captureArchivePositions, shouldAnimateArchiveReflow } from '../lib/archive-performance';
 import { FEATURES } from '../data/features';
@@ -68,12 +68,13 @@ function initArchive(root: HTMLElement) {
   }
 
   function hasActiveFilters() {
-    return state.category !== DEFAULT_ARCHIVE_STATE.category || Boolean(state.query.trim()) || state.sort !== DEFAULT_ARCHIVE_STATE.sort;
+    return state.category !== DEFAULT_ARCHIVE_STATE.category || state.intent !== DEFAULT_ARCHIVE_STATE.intent || Boolean(state.query.trim()) || state.sort !== DEFAULT_ARCHIVE_STATE.sort;
   }
 
   function syncControls() {
     queryEl.value = state.query;
     sortEl.value = state.sort;
+    root.querySelectorAll<HTMLButtonElement>('[data-archive-intent]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.archiveIntent === state.intent)));
     root.querySelectorAll<HTMLButtonElement>('[data-archive-category]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.archiveCategory === state.category)));
     root.querySelectorAll<HTMLButtonElement>('[data-archive-view]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.archiveView === state.view)));
     gridEl.hidden = state.view !== 'grid';
@@ -135,8 +136,12 @@ function initArchive(root: HTMLElement) {
     queryEl.focus();
   }
 
+  root.querySelectorAll<HTMLButtonElement>('[data-archive-intent]').forEach((button) => button.addEventListener('click', () => {
+    state = { ...state, intent: (button.dataset.archiveIntent || 'all') as ArchiveIntent, category: 'all' };
+    apply({ url: true, historyMode: 'push' });
+  }));
   root.querySelectorAll<HTMLButtonElement>('[data-archive-category]').forEach((button) => button.addEventListener('click', () => {
-    state = { ...state, category: (button.dataset.archiveCategory || 'all') as ArchiveCategory };
+    state = { ...state, category: (button.dataset.archiveCategory || 'all') as ArchiveCategory, intent: 'all' };
     apply({ url: true, historyMode: 'push' });
   }));
   root.querySelectorAll<HTMLButtonElement>('[data-archive-view]').forEach((button) => button.addEventListener('click', () => {
@@ -148,11 +153,20 @@ function initArchive(root: HTMLElement) {
   emptyResetEl.addEventListener('click', resetFilters);
   clearEl.addEventListener('click', resetFilters);
 
+  document.querySelectorAll<HTMLAnchorElement>('[data-archive-intent-link]').forEach((link) => link.addEventListener('click', (event) => {
+    const intent = link.dataset.archiveIntentLink as ArchiveIntent | undefined;
+    if (!intent) return;
+    event.preventDefault();
+    state = { ...state, intent, category: 'all' };
+    apply({ url: true, historyMode: 'push' });
+    root.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }));
+
   document.querySelectorAll<HTMLAnchorElement>('[data-archive-filter-link]').forEach((link) => link.addEventListener('click', (event) => {
     const category = link.dataset.archiveFilterLink as ArchiveCategory | undefined;
     if (!category) return;
     event.preventDefault();
-    state = { ...state, category };
+    state = { ...state, category, intent: 'all' };
     apply({ url: true, historyMode: 'push' });
     root.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }));

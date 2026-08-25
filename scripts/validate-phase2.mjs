@@ -17,7 +17,10 @@ const count=(text,re)=>[...text.matchAll(re)].length;
 // and presentation without weakening the important structural guarantees.
 const home=read('src/pages/index.astro');
 const layout=read('src/layouts/BaseLayout.astro');
-const taxonomy=read('src/data/taxonomy.ts');
+const projectsPage=read('src/pages/projects/index.astro');
+const categoryIndex=read('src/components/archive/CategoryIndex.astro');
+if(!fs.existsSync(path.join(root,'src/data/discovery.ts')))fail.push('missing src/data/discovery.ts');
+const discovery=fs.existsSync(path.join(root,'src/data/discovery.ts'))?read('src/data/discovery.ts'):'';
 
 if(!home.includes('THIEPN'))fail.push('homepage missing THIEPN brand identity');
 if(home.includes('LivingIndexField'))fail.push('homepage must not render the decorative Living Index field');
@@ -69,16 +72,17 @@ const labelledPreviewLinks=count(home,/<a\b[^>]*\baria-label=[^>]*>\s*<ProjectPr
 if(previewCount===0)fail.push('homepage must render at least one project preview');
 else if(labelledPreviewLinks<previewCount)fail.push('every homepage ProjectPreview must be wrapped by an accessible labelled link');
 
-// Category discovery is checked against the canonical taxonomy, not visible labels.
-const categoryBlock=/PROJECT_CATEGORIES\s*=\s*\[([\s\S]*?)\]\s*as const/.exec(taxonomy)?.[1]??'';
-const canonicalCategories=[...categoryBlock.matchAll(/["']([^"']+)["']/g)].map((match)=>match[1]);
-if(canonicalCategories.length===0)fail.push('unable to read canonical project categories from taxonomy');
-for(const category of canonicalCategories){
-  const escaped=category.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  if(!new RegExp(`\\bkey:\\s*["']${escaped}["']`).test(home))fail.push(`homepage category discovery missing canonical category: ${category}`);
+// P1D visitor-intent discovery is a derived browsing layer, not a replacement taxonomy.
+for(const intent of ['play','use','learn','read','explore']){
+  const escaped=intent.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  if(!new RegExp(`\\bkey:\\s*["']${escaped}["']`).test(discovery))fail.push(`visitor-intent discovery missing: ${intent}`);
 }
-if(!home.includes('/projects/?category=${category.key}'))fail.push('homepage category discovery must link through the category query route');
-if(!home.includes('stats.categories[category.key]'))fail.push('homepage category discovery must expose catalogue counts');
+if(!home.includes('PROJECT_INTENTS.map'))fail.push('homepage must render visitor-intent discovery from the shared intent model');
+if(!home.includes('/projects/?intent=${intent.key}#archive-catalogue'))fail.push('homepage intent discovery must link through the intent query route');
+if(!home.includes('intentCounts[intent.key]'))fail.push('homepage intent discovery must expose derived catalogue counts');
+if(!projectsPage.includes('PROJECT_INTENTS.map'))fail.push('Projects page must expose the shared visitor-intent discovery model');
+if(!projectsPage.includes('<CategoryIndex'))fail.push('Projects page must retain canonical category discovery');
+if(!categoryIndex.includes('PROJECT_CATEGORIES'))fail.push('CategoryIndex must remain driven by the canonical project taxonomy');
 
 // Collections should remain navigable without constraining their visible wording or layout.
 if(!/collections\.map\s*\(/.test(home))fail.push('homepage must render collection discovery from collection data');
