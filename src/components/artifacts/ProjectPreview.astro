@@ -1,0 +1,59 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import InteractivePreview from './InteractivePreview.astro';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  size?: 'hero' | 'feature' | 'standard';
+  focusable?: boolean;
+}
+
+const { project, size = 'standard', focusable = false } = Astro.props;
+const p = project.data;
+const poster = p.preview.poster;
+const captured = p.preview.provenance === 'captured' && Boolean(poster);
+const focalPoint = p.preview.focalPoint ?? '50% 50%';
+const eager = size === 'hero' || size === 'feature';
+---
+{captured && poster ? (
+  <div
+    class:list={['project-preview', `project-preview--${size}`]}
+    data-preview-slug={p.slug}
+    data-preview-kind="static"
+    data-preview-source={poster}
+    data-preview-provenance="captured"
+    data-preview-state="static"
+    data-preview-focusable={focusable ? 'true' : 'false'}
+  >
+    <div class="captured-preview" aria-hidden="true">
+      <img
+        src={poster}
+        alt=""
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+        style={`object-position:${focalPoint};`}
+      />
+      <div class="captured-preview__chrome captured-preview__chrome--top">
+        <span>CAPTURED / LIVE UI</span>
+        <span>{p.code}</span>
+      </div>
+      <div class="captured-preview__chrome captured-preview__chrome--bottom">
+        <span>{p.preview.tier}</span>
+        <span>CAPTURED UI</span>
+      </div>
+    </div>
+  </div>
+) : (
+  <InteractivePreview project={project} size={size} focusable={focusable} />
+)}
+
+<style>
+  .project-preview{position:relative;min-width:0;isolation:isolate}
+  .captured-preview{position:relative;overflow:hidden;aspect-ratio:16/10;background:#090a0c;color:#f5f2eb;border-block:1px solid rgb(245 242 235 / .16)}
+  .captured-preview::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(to bottom,rgb(0 0 0 / .28),transparent 16%,transparent 82%,rgb(0 0 0 / .34))}
+  .captured-preview img{display:block;width:100%;height:100%;object-fit:cover;background:#090a0c}
+  .captured-preview__chrome{position:absolute;z-index:3;left:12px;right:12px;display:flex;justify-content:space-between;gap:12px;font:500 .6rem var(--font-meta);letter-spacing:.08em;text-transform:uppercase;color:rgb(245 242 235 / .76);text-shadow:0 1px 8px rgb(0 0 0 / .7)}
+  .captured-preview__chrome--top{top:9px}.captured-preview__chrome--bottom{bottom:8px}
+  @media(max-width:620px){.captured-preview__chrome{font-size:.56rem}}
+  @media(forced-colors:active){.captured-preview{border:1px solid CanvasText}.captured-preview::after{display:none}}
+</style>
