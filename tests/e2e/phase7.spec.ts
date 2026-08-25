@@ -7,7 +7,7 @@ const interactiveFeatured = ['the-bible-challenge','pdf-studio','wordstrike','ma
 
 test('homepage renders the intentional five-project featured set in order', async ({ page }) => {
   await page.goto('/');
-  const cards = page.locator('#featured .featured-card');
+  const cards = page.locator('#featured article');
   await expect(cards).toHaveCount(5);
   for (let index = 0; index < featured.length; index += 1) {
     await expect(cards.nth(index).locator(`[data-preview-slug="${featured[index]}"]`)).toBeVisible();
