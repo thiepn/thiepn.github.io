@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const featured = [
   'the-bible-challenge','pdf-studio','wordstrike','manuscript','voidcut',
 ];
-const interactiveFeatured = ['the-bible-challenge','pdf-studio','wordstrike','manuscript'];
+const interactiveFeatured = ['pdf-studio','wordstrike','manuscript'];
 
 test('homepage renders the intentional five-project featured set in order', async ({ page }) => {
   await page.goto('/');
@@ -12,6 +12,17 @@ test('homepage renders the intentional five-project featured set in order', asyn
   for (let index = 0; index < featured.length; index += 1) {
     await expect(cards.nth(index).locator(`[data-preview-slug="${featured[index]}"]`)).toBeVisible();
   }
+});
+
+test('The Bible Challenge uses real captured interface media', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('#featured [data-preview-slug="the-bible-challenge"]').first();
+  await expect(root).toBeVisible();
+  await expect(root).toHaveAttribute('data-preview-kind', 'static');
+  await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
+  await expect(root).toHaveAttribute('data-preview-state', 'static');
+  await expect(root.locator('img')).toHaveAttribute('src', '/projects/the-bible-challenge/screenshot-desktop.png');
+  await expect(root.locator('.scene--bible-quiz')).toHaveCount(0);
 });
 
 test('interactive Featured projects keep dedicated non-generic preview scenes while VOIDCUT uses the honest static fallback', async ({ page }) => {
