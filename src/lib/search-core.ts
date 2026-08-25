@@ -14,6 +14,7 @@ export interface SearchableProject {
   platforms?: readonly string[];
   repo?: string | null;
   liveUrl?: string | null;
+  primaryLabel?: string | null;
   accentLight: string;
   accentDark: string;
   updatedAt?: string | null;
