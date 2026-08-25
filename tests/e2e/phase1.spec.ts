@@ -35,6 +35,19 @@ test('generates public project routes but not hold records', async ({ page }) =>
   expect(holdResponse?.status()).toBe(404);
 });
 
+test('P1F released products are first-class public projects', async ({ page }) => {
+  const expected = [
+    ['/project/pflegelern/', 'PflegeLern'],
+    ['/project/thiepn-library/', 'THIEPN Library'],
+  ] as const;
+
+  for (const [route, title] of expected) {
+    const response = await page.goto(route);
+    expect(response?.ok()).toBe(true);
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+  }
+});
+
 test('generates collection routes from collection records', async ({ page }) => {
   const response = await page.goto('/collection/french-learning/');
   expect(response?.ok()).toBe(true);

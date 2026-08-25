@@ -10,7 +10,7 @@ aliases:
 - algorithms study
 category: learning
 type: study-system
-status: live
+status: beta
 visibility: hidden
 summary: Learn algorithms and data structures through structured theory, visual steps, exercises, and exam-oriented review.
 repo: thiepn/algodat
