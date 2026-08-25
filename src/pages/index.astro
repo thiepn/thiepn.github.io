@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import InteractivePreview from '../components/artifacts/InteractivePreview.astro';
+import ProjectPreview from '../components/artifacts/ProjectPreview.astro';
 import StatusLabel from '../components/artifacts/StatusLabel.astro';
 import { getCatalogueStats, getCollections, getFeaturedProjects, getPublicProjects } from '../lib/catalogue';
 
@@ -58,7 +58,7 @@ const categories = [
         <div class="universe-grid">
           <article class="flagship-card">
             <a class="flagship-card__preview" href={`/project/${flagship.data.slug}/`} aria-label={`View ${flagship.data.title}`}>
-              <InteractivePreview project={flagship} size="feature" />
+              <ProjectPreview project={flagship} size="feature" />
             </a>
             <div class="flagship-card__body">
               <div class="flagship-card__topline">
@@ -85,7 +85,7 @@ const categories = [
               return (
                 <article class="support-card">
                   <a class="support-card__preview" href={`/project/${p.slug}/`} aria-label={`View ${p.title}`}>
-                    <InteractivePreview project={project} size="standard" />
+                    <ProjectPreview project={project} size="standard" />
                   </a>
                   <div class="support-card__body">
                     <div class="support-card__meta"><span>{p.category}</span><StatusLabel status={p.status} /></div>

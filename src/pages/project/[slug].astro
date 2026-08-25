@@ -1,7 +1,7 @@
 ---
 import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import InteractivePreview from '../../components/artifacts/InteractivePreview.astro';
+import ProjectPreview from '../../components/artifacts/ProjectPreview.astro';
 import StatusLabel from '../../components/artifacts/StatusLabel.astro';
 import CompactArtifact from '../../components/artifacts/CompactArtifact.astro';
 import CapabilityList from '../../components/records/CapabilityList.astro';
@@ -25,7 +25,7 @@ const { previous, next }=await getProjectNeighbors(p.slug);
 const { Content }=await render(project);
 const accentStyle=`--project-accent-light:${p.accent.light};--project-accent-dark:${p.accent.dark};`;
 const sectionTitle = p.category === 'learning' ? 'Learning Modes' : p.category === 'games' ? 'Core Systems' : 'Capabilities';
-const previewLabel = p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';
+const previewLabel = p.preview.provenance === 'captured' ? 'Captured interface' : p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';
 const defaultPreviewState = `PRIMARY / ${previewLabel.toUpperCase()}`;
 const recordIndex = [
   { href: '#overview', label: 'Overview' },
@@ -57,7 +57,7 @@ const recordIndex = [
           <span id="record-preview-heading">Inspection window</span>
           <strong data-record-preview-label data-record-preview-default={defaultPreviewState} aria-live="polite">{defaultPreviewState}</strong>
         </div>
-        <InteractivePreview project={project} size="hero" focusable={true} />
+        <ProjectPreview project={project} size="hero" focusable={true} />
       </div>
     </header>
 
