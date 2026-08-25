@@ -1,0 +1,51 @@
+name: Capture project media
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/capture-project-media.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: capture-project-media
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout portfolio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright capture runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture The Bible Challenge
+        run: node scripts/capture-project-media.mjs the-bible-challenge https://thiepn.dev/tbc/
+
+      - name: Commit captured media
+        run: |
+          if [ -z "$(git status --porcelain -- public/projects/the-bible-challenge)" ]; then
+            echo "Captured media is unchanged."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/projects/the-bible-challenge
+          git commit -m "Capture real TBC portfolio media"
+          git pull --rebase origin main
+          git push origin HEAD:main
