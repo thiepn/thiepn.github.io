@@ -3,7 +3,7 @@ import path from 'node:path';
 const root=process.cwd();
 const required=[
   'src/components/index/SectionIndex.astro',
-  'src/components/artifacts/PreviewAperture.astro','src/components/artifacts/ArtifactPlate.astro','src/components/artifacts/HeroArtifact.astro','src/components/artifacts/FeatureArtifact.astro','src/components/artifacts/CompactArtifact.astro','src/components/artifacts/ArchiveRow.astro','src/components/artifacts/StatusLabel.astro',
+  'src/components/artifacts/PreviewAperture.astro','src/components/artifacts/InteractivePreview.astro','src/components/artifacts/ProjectPreview.astro','src/components/artifacts/ArtifactPlate.astro','src/components/artifacts/HeroArtifact.astro','src/components/artifacts/FeatureArtifact.astro','src/components/artifacts/CompactArtifact.astro','src/components/artifacts/ArchiveRow.astro','src/components/artifacts/StatusLabel.astro',
   'src/components/archive/CategoryIndex.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/collections/CollectionPreview.astro','src/components/activity/RecentActivity.astro','src/components/shell/SiteFooter.astro','src/components/shell/SiteHeader.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro',
   'src/pages/index.astro','src/pages/projects/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro','src/layouts/BaseLayout.astro'
 ];
@@ -48,20 +48,26 @@ for(const nav of home.matchAll(/<nav\b([^>]*)>/gs)){
   if(!/\baria-(?:label|labelledby)=/.test(nav[1]))fail.push('homepage nav landmark missing aria-label/aria-labelledby');
 }
 
-// Featured-project contract: use the curated featured data, render a preview, provide
-// a project-detail route, and preserve a direct live action when one exists.
+// Featured-project contract: use curated featured data, route all project media through
+// ProjectPreview (captured media when available, InteractivePreview fallback otherwise),
+// provide a project-detail route, and preserve a direct live action when one exists.
 if(!/getFeaturedProjects\s*\(\s*\)/.test(home))fail.push('homepage must load curated featured projects');
 if(!/const\s+flagship\s*=\s*featured\s*\[\s*0\s*\]/.test(home))fail.push('homepage must derive a flagship from curated featured projects');
-if(!/<InteractivePreview\b[^>]*\bproject=\{flagship\}/s.test(home))fail.push('homepage flagship must render an InteractivePreview');
+if(!/<ProjectPreview\b[^>]*\bproject=\{flagship\}/s.test(home))fail.push('homepage flagship must render a ProjectPreview');
 if(!home.includes('/project/${flagship.data.slug}/'))fail.push('homepage flagship must link to its project detail route');
 if(!home.includes('flagship.data.liveUrl'))fail.push('homepage flagship must expose its live action when available');
 
+const mediaPreview=read('src/components/artifacts/ProjectPreview.astro');
+if(!mediaPreview.includes("p.preview.provenance === 'captured'"))fail.push('ProjectPreview must recognize captured preview provenance');
+if(!mediaPreview.includes('p.preview.poster'))fail.push('ProjectPreview must render captured poster media when available');
+if(!mediaPreview.includes('<InteractivePreview'))fail.push('ProjectPreview must retain InteractivePreview fallback behavior');
+
 // Preview links must have accessible names. Dynamic maps count once in source, which
 // is sufficient because the label is generated from each mapped project title.
-const previewCount=count(home,/<InteractivePreview\b/g);
-const labelledPreviewLinks=count(home,/<a\b[^>]*\baria-label=[^>]*>\s*<InteractivePreview\b/gs);
+const previewCount=count(home,/<ProjectPreview\b/g);
+const labelledPreviewLinks=count(home,/<a\b[^>]*\baria-label=[^>]*>\s*<ProjectPreview\b/gs);
 if(previewCount===0)fail.push('homepage must render at least one project preview');
-else if(labelledPreviewLinks<previewCount)fail.push('every homepage InteractivePreview must be wrapped by an accessible labelled link');
+else if(labelledPreviewLinks<previewCount)fail.push('every homepage ProjectPreview must be wrapped by an accessible labelled link');
 
 // Category discovery is checked against the canonical taxonomy, not visible labels.
 const categoryBlock=/PROJECT_CATEGORIES\s*=\s*\[([\s\S]*?)\]\s*as const/.exec(taxonomy)?.[1]??'';
@@ -85,6 +91,7 @@ const preview=read('src/components/artifacts/PreviewAperture.astro');
 for(const slug of ['pdf-studio','manuscript','clean30','wordstrike','french-3000','ligo-quizabend','analysis-ii-klausurlabor','curio','wordfall','nebula-foundry']){if(!preview.includes(slug))fail.push(`static preview missing treatment for ${slug}`)}
 const projectPage=read('src/pages/project/[slug].astro');
 for(const marker of ['render(project)','About this project','Project details','Related projects']){if(!projectPage.includes(marker))fail.push(`project page missing ${marker}`)}
+if(!projectPage.includes('<ProjectPreview'))fail.push('project page must route primary media through ProjectPreview');
 const header=read('src/components/shell/SiteHeader.astro');
 for(const marker of ['THIEPN','Home','Projects','Collections','Search projects']){if(!header.includes(marker))fail.push(`header missing ${marker}`)}
 const site=read('src/data/site.ts');const phaseMatch=/phase:\s*(\d+)/.exec(site);if(!phaseMatch||Number(phaseMatch[1])<16)fail.push('SITE.phase must be at least 16 for P0 identity cleanup');
