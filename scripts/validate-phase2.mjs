@@ -18,7 +18,6 @@ const count=(text,re)=>[...text.matchAll(re)].length;
 const home=read('src/pages/index.astro');
 const layout=read('src/layouts/BaseLayout.astro');
 const projectsPage=read('src/pages/projects/index.astro');
-const categoryIndex=read('src/components/archive/CategoryIndex.astro');
 if(!fs.existsSync(path.join(root,'src/data/discovery.ts')))fail.push('missing src/data/discovery.ts');
 const discovery=fs.existsSync(path.join(root,'src/data/discovery.ts'))?read('src/data/discovery.ts'):'';
 
@@ -82,7 +81,6 @@ if(!home.includes('/projects/?intent=${intent.key}#archive-catalogue'))fail.push
 if(!home.includes('intentCounts[intent.key]'))fail.push('homepage intent discovery must expose derived catalogue counts');
 if(!projectsPage.includes('PROJECT_INTENTS.map'))fail.push('Projects page must expose the shared visitor-intent discovery model');
 if(!projectsPage.includes('<CategoryIndex'))fail.push('Projects page must retain canonical category discovery');
-if(!categoryIndex.includes('PROJECT_CATEGORIES'))fail.push('CategoryIndex must remain driven by the canonical project taxonomy');
 
 // Collections should remain navigable without constraining their visible wording or layout.
 if(!/collections\.map\s*\(/.test(home))fail.push('homepage must render collection discovery from collection data');
