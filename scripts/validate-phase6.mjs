@@ -3,6 +3,7 @@ import path from 'node:path';
 const root = process.cwd();
 const required = [
   'src/components/artifacts/InteractivePreview.astro',
+  'src/components/artifacts/ProjectPreview.astro',
   'src/scripts/preview-controller.ts',
   'src/lib/preview-core.ts',
   'tests/unit/preview-core.test.ts',
@@ -13,6 +14,7 @@ const missing = required.filter((file) => !fs.existsSync(path.join(root, file)))
 if (missing.length) { console.error('Phase 6 missing files:', missing); process.exit(1); }
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const component = read('src/components/artifacts/InteractivePreview.astro');
+const projectPreview = read('src/components/artifacts/ProjectPreview.astro');
 const controller = read('src/scripts/preview-controller.ts');
 const core = read('src/lib/preview-core.ts');
 const layout = read('src/layouts/BaseLayout.astro');
@@ -31,7 +33,9 @@ const checks = [
   [controller.includes('prefersReducedMotion()'), 'Reduced-motion guard is missing.'],
   [controller.includes('video.src = source') && controller.includes('video.load()'), 'Video source must be assigned only during prepare/interaction.'],
   [plate.includes('InteractivePreview'), 'Artifact Plates must use the shared interactive preview wrapper.'],
-  [record.includes('InteractivePreview') && record.includes('focusable={true}'), 'Artifact Records must expose a keyboard-focusable preview.'],
+  [record.includes('ProjectPreview') && record.includes('focusable={true}'), 'Artifact Records must route primary media through ProjectPreview with interactive fallback focus enabled.'],
+  [projectPreview.includes('<InteractivePreview') && projectPreview.includes('focusable={focusable}'), 'ProjectPreview must pass record focusability through to interactive fallback previews.'],
+  [projectPreview.includes("p.preview.provenance === 'captured'") && projectPreview.includes('poster'), 'ProjectPreview must support non-interactive captured poster media without adding an unnecessary focus stop.'],
   [(layout.includes("import '../scripts/preview-controller'") || (layout.includes("import '../scripts/runtime-loader'") && runtimeLoader.includes("import('./preview-controller')"))), 'PreviewController must initialize from the shared layout/runtime loader.'],
   [pdf.includes('type: synthetic') && pdf.includes('duration: 3800'), 'PDF Studio proof preview configuration is missing.'],
   [strike.includes('type: video') && strike.includes('/projects/wordstrike/preview.webm') && strike.includes('duration: 3400'), 'WORDSTRIKE video proof configuration is missing.'],
