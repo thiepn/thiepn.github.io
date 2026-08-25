@@ -4,8 +4,9 @@ const root=process.cwd();
 const required=[
   'src/components/index/SectionIndex.astro',
   'src/components/artifacts/PreviewAperture.astro','src/components/artifacts/InteractivePreview.astro','src/components/artifacts/ProjectPreview.astro','src/components/artifacts/ArtifactPlate.astro','src/components/artifacts/HeroArtifact.astro','src/components/artifacts/FeatureArtifact.astro','src/components/artifacts/CompactArtifact.astro','src/components/artifacts/ArchiveRow.astro','src/components/artifacts/StatusLabel.astro',
-  'src/components/archive/CategoryIndex.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/collections/CollectionPreview.astro','src/components/activity/RecentActivity.astro','src/components/shell/SiteFooter.astro','src/components/shell/SiteHeader.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro',
-  'src/pages/index.astro','src/pages/projects/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro','src/layouts/BaseLayout.astro'
+  'src/components/archive/CategoryIndex.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/books/BookCard.astro','src/components/collections/CollectionPreview.astro','src/components/activity/RecentActivity.astro','src/components/shell/SiteFooter.astro','src/components/shell/SiteHeader.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro',
+  'src/content/books/ai-for-the-kingdom.md','src/content/books/how-to-love-god.md','src/content/books/the-unfinished-mission.md',
+  'src/pages/index.astro','src/pages/projects/index.astro','src/pages/books/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro','src/layouts/BaseLayout.astro'
 ];
 const fail=[];
 for(const file of required){if(!fs.existsSync(path.join(root,file)))fail.push(`missing ${file}`)}
@@ -18,6 +19,9 @@ const count=(text,re)=>[...text.matchAll(re)].length;
 const home=read('src/pages/index.astro');
 const layout=read('src/layouts/BaseLayout.astro');
 const projectsPage=read('src/pages/projects/index.astro');
+const booksPage=read('src/pages/books/index.astro');
+const taxonomy=read('src/data/taxonomy.ts');
+const contentConfig=read('src/content.config.ts');
 if(!fs.existsSync(path.join(root,'src/data/discovery.ts')))fail.push('missing src/data/discovery.ts');
 const discovery=fs.existsSync(path.join(root,'src/data/discovery.ts'))?read('src/data/discovery.ts'):'';
 
@@ -77,10 +81,22 @@ for(const intent of ['play','use','learn','read','explore']){
   if(!new RegExp(`\\bkey:\\s*["']${escaped}["']`).test(discovery))fail.push(`visitor-intent discovery missing: ${intent}`);
 }
 if(!home.includes('PROJECT_INTENTS.map'))fail.push('homepage must render visitor-intent discovery from the shared intent model');
-if(!home.includes('/projects/?intent=${intent.key}#archive-catalogue'))fail.push('homepage intent discovery must link through the intent query route');
-if(!home.includes('intentCounts[intent.key]'))fail.push('homepage intent discovery must expose derived catalogue counts');
+if(!home.includes('intentHref(intent)'))fail.push('homepage intent discovery must use the shared destination resolver');
+if(!home.includes('intentCount(intent)'))fail.push('homepage intent discovery must expose derived item counts');
 if(!projectsPage.includes('PROJECT_INTENTS.map'))fail.push('Projects page must expose the shared visitor-intent discovery model');
 if(!projectsPage.includes('<CategoryIndex'))fail.push('Projects page must retain canonical category discovery');
+
+// P1E books are a first-class publication surface while Library remains the reading source of truth.
+const projectTypeBlock=/PROJECT_TYPES\s*=\s*\[([\s\S]*?)\]\s*as const/.exec(taxonomy)?.[1]??'';
+if(!/["']book["']/.test(projectTypeBlock))fail.push('canonical project type vocabulary must include book');
+if(!contentConfig.includes("base: './src/content/books'"))fail.push('content config must define the books collection');
+if(!contentConfig.includes('books: projectCollections') && !/collections\s*=\s*\{[^}]*\bbooks\b/s.test(contentConfig))fail.push('content config must export the books collection');
+if(!/getCollection\s*\(\s*["']books["']\s*\)/.test(booksPage))fail.push('Books page must load the books collection');
+if(!booksPage.includes('<BookCard'))fail.push('Books page must render first-class book cards');
+if(!booksPage.includes('https://thiepn.dev/library/'))fail.push('Books page must hand reading off to the THIEPN Library');
+if(!home.includes('data-books-discovery'))fail.push('homepage must expose book discovery');
+if(!home.includes("intent.key === 'read' ? '/books/'"))fail.push('homepage Read intent must route to Books');
+if(!projectsPage.includes("intent.key === 'read' ? '/books/'"))fail.push('Projects Read intent must route to Books');
 
 // Collections should remain navigable without constraining their visible wording or layout.
 if(!/collections\.map\s*\(/.test(home))fail.push('homepage must render collection discovery from collection data');
@@ -95,15 +111,19 @@ const projectPage=read('src/pages/project/[slug].astro');
 for(const marker of ['render(project)','About this project','Project details','Related projects']){if(!projectPage.includes(marker))fail.push(`project page missing ${marker}`)}
 if(!projectPage.includes('<ProjectPreview'))fail.push('project page must route primary media through ProjectPreview');
 const header=read('src/components/shell/SiteHeader.astro');
-for(const marker of ['THIEPN','Home','Projects','Collections','Search projects']){if(!header.includes(marker))fail.push(`header missing ${marker}`)}
+const mobile=read('src/components/shell/MobileMenu.astro');
+const footer=read('src/components/shell/SiteFooter.astro');
+for(const marker of ['THIEPN','Home','Projects','Books','Collections','Search projects']){if(!header.includes(marker))fail.push(`header missing ${marker}`)}
+if(!mobile.includes("['Books', '/books/']"))fail.push('mobile navigation must expose Books');
+if(!footer.includes('href="/books/"'))fail.push('footer navigation must expose Books');
 const site=read('src/data/site.ts');const phaseMatch=/phase:\s*(\d+)/.exec(site);if(!phaseMatch||Number(phaseMatch[1])<16)fail.push('SITE.phase must be at least 16 for P0 identity cleanup');
 const banned=[/border-radius:\s*(?:2[4-9]|[3-9]\d)px/i,/linear-gradient\([^\n]*(?:purple|violet)/i,/glassmorphism/i,/backdrop-filter:\s*blur\((?:2[0-9]|[3-9]\d)px\)/i];
 const uiFiles=required.filter((f)=>f.endsWith('.astro')).concat(['src/styles/primitives.css','src/styles/tokens.css','src/styles/themes.css']);
 for(const f of uiFiles){const text=read(f);for(const re of banned){if(re.test(text))fail.push(`generic-pattern check failed in ${f}: ${re}`)}}
-for(const f of ['src/pages/index.astro','src/pages/projects/index.astro','src/pages/collections/index.astro']){if(/Phase\s+1|Phase\s+01|proof view|catalogue-proof|phase-one/i.test(read(f)))fail.push(`legacy proof language remains in ${f}`)}
+for(const f of ['src/pages/index.astro','src/pages/projects/index.astro','src/pages/books/index.astro','src/pages/collections/index.astro']){if(/Phase\s+1|Phase\s+01|proof view|catalogue-proof|phase-one/i.test(read(f)))fail.push(`legacy proof language remains in ${f}`)}
 
 const identityFiles=[
-  'src/data/site.ts','src/layouts/BaseLayout.astro','src/components/shell/SiteHeader.astro','src/components/shell/SiteFooter.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/archive/CategoryIndex.astro','src/components/collections/CollectionPreview.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro','src/pages/projects/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro'
+  'src/data/site.ts','src/layouts/BaseLayout.astro','src/components/shell/SiteHeader.astro','src/components/shell/SiteFooter.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/archive/CategoryIndex.astro','src/components/books/BookCard.astro','src/components/collections/CollectionPreview.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro','src/pages/projects/index.astro','src/pages/books/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro'
 ];
 const legacyPhrases=['THIEPN.','THE INDEX','Project Archive','Artifact Record','Related Artifacts','Anchor Artifacts','Search / The Index','Random Access','This artifact does not exist','Return to index','Project archive','No listed artifacts'];
 for(const file of identityFiles){const text=read(file);for(const phrase of legacyPhrases){if(text.includes(phrase))fail.push(`${file} retains legacy public identity phrase: ${phrase}`)}}

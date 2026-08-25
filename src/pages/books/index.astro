@@ -1,0 +1,56 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BookCard from '../../components/books/BookCard.astro';
+
+const books = (await getCollection('books')).sort((a, b) => b.data.lastUpdated.getTime() - a.data.lastUpdated.getTime());
+---
+<BaseLayout title="Books — THIEPN" description="Published THIEPN books available to read through the THIEPN Library.">
+  <section class="books-page page-shell" aria-labelledby="books-title" data-books-index>
+    <header class="books-hero">
+      <div class="books-hero__copy">
+        <p class="meta">Published works</p>
+        <h1 id="books-title">Books</h1>
+        <p>Long-form works published through the THIEPN Library. Read the web edition when available, or access the published PDF and EPUB formats from each Library record.</p>
+      </div>
+      <aside class="books-hero__index" aria-label="Books overview">
+        <div><strong>{String(books.length).padStart(2, '0')}</strong><span>Published works</span></div>
+        <a href="https://thiepn.dev/library/">Open full Library <span aria-hidden="true">↗</span></a>
+      </aside>
+    </header>
+
+    <section class="books-catalogue" aria-labelledby="published-books-title">
+      <header class="books-section-head">
+        <div><p class="meta">Library catalogue</p><h2 id="published-books-title">Published books</h2></div>
+        <a href="/projects/?intent=read#archive-catalogue">Browse resource projects →</a>
+      </header>
+      <div class="books-grid">
+        {books.map((book, index) => <BookCard book={book} heading="h3" priority={index === 0} />)}
+      </div>
+    </section>
+
+    <aside class="books-library-note" aria-label="About the THIEPN Library">
+      <p class="meta">Source of truth</p>
+      <div>
+        <h2>Reading lives in the Library.</h2>
+        <p>This portfolio presents the published catalogue. Editions, web reading, downloads, release metadata, and future book updates remain owned by the dedicated THIEPN Library.</p>
+      </div>
+      <a class="structural-button" href="https://thiepn.dev/library/">Visit Library ↗</a>
+    </aside>
+  </section>
+</BaseLayout>
+<style>
+  .books-page{padding-top:clamp(30px,5vw,66px);padding-bottom:clamp(72px,9vw,120px)}
+  .books-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.34fr);gap:clamp(36px,8vw,112px);align-items:end;padding:clamp(28px,4vw,52px) 0 clamp(42px,6vw,72px);border-bottom:1px solid var(--line-strong)}
+  .books-hero__copy{max-width:800px}.books-hero__copy>.meta{color:var(--ink-muted)}
+  .books-hero h1{margin-top:8px;font-size:clamp(3.6rem,8vw,8.5rem);line-height:.82;letter-spacing:-.07em;font-weight:590}
+  .books-hero__copy>p:not(.meta){margin-top:var(--space-5);max-width:62ch;color:var(--ink-secondary);font-size:clamp(.98rem,1.3vw,1.12rem);line-height:1.6}
+  .books-hero__index{border-top:1px solid var(--line-strong)}.books-hero__index div{display:grid;grid-template-columns:72px 1fr;align-items:baseline;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.books-hero__index strong{font:600 1.25rem var(--font-meta)}.books-hero__index span{font:500 .62rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase;color:var(--ink-muted)}.books-hero__index>a{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);font:500 .62rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;text-decoration:none}
+  .books-catalogue{padding-top:clamp(54px,7vw,88px)}
+  .books-section-head{display:flex;align-items:end;justify-content:space-between;gap:var(--space-5);padding-bottom:14px;border-bottom:1px solid var(--line-strong)}.books-section-head h2{margin-top:4px;font-size:clamp(1.8rem,3vw,2.8rem);line-height:.96;letter-spacing:-.045em;font-weight:560}.books-section-head>a{min-height:44px;display:flex;align-items:center;font:500 .62rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+  .books-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);margin-top:var(--space-5);align-items:start}
+  .books-library-note{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:clamp(20px,4vw,54px);align-items:center;margin-top:clamp(58px,8vw,96px);padding:clamp(22px,3vw,34px) 0;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}.books-library-note>.meta{color:var(--ink-muted)}.books-library-note h2{font-size:clamp(1.4rem,2.2vw,2.1rem);line-height:1;letter-spacing:-.04em;font-weight:560}.books-library-note div p{margin-top:8px;max-width:64ch;color:var(--ink-secondary);font-size:.82rem;line-height:1.55}.books-library-note>.structural-button{min-width:120px;justify-content:center}
+  @media(max-width:900px){.books-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.books-library-note{grid-template-columns:1fr auto}.books-library-note>.meta{grid-column:1/-1}}
+  @media(max-width:700px){.books-hero{grid-template-columns:1fr;gap:var(--space-7)}.books-hero__index{width:min(100%,420px)}.books-section-head{align-items:flex-start;flex-direction:column;gap:var(--space-2)}}
+  @media(max-width:599px){.books-page{padding-top:var(--space-5)}.books-grid{grid-template-columns:1fr}.books-library-note{grid-template-columns:1fr;align-items:start}.books-library-note>.structural-button{width:100%}}
+</style>

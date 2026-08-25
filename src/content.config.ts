@@ -99,4 +99,25 @@ const projectCollections = defineCollection({
   }),
 });
 
-export const collections = { projects, collections: projectCollections };
+const books = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/books' }),
+  schema: z.object({
+    schemaVersion: z.literal(1),
+    slug,
+    type: z.literal('book'),
+    title: z.string().min(2),
+    subtitle: z.string().min(2),
+    summary: z.string().min(20).max(300),
+    status: z.literal('published'),
+    version: z.string().min(1),
+    editionLabel: z.string().min(2),
+    firstPublished: z.coerce.date(),
+    lastUpdated: z.coerce.date(),
+    libraryUrl: z.string().url(),
+    coverUrl: z.string().url(),
+    formats: z.array(z.enum(['web', 'pdf', 'epub'])).min(1),
+    subjects: z.array(z.string().min(2)).min(1).max(6),
+  }),
+});
+
+export const collections = { projects, collections: projectCollections, books };

@@ -5,6 +5,7 @@ const path = Astro.url.pathname;
 const active = (href: string) => {
   if (href === '/') return path === '/';
   if (href === '/projects/') return path.startsWith('/projects/') || path.startsWith('/project/');
+  if (href === '/books/') return path.startsWith('/books/');
   if (href === '/collections/') return path.startsWith('/collections/') || path.startsWith('/collection/');
   return path.startsWith(href);
 };
@@ -15,6 +16,7 @@ const active = (href: string) => {
     <nav class="site-nav" aria-label="Primary navigation">
       <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Home</a>
       <a class:list={[active('/projects/') && 'is-active']} href="/projects/" aria-current={active('/projects/') ? 'page' : undefined}>Projects</a>
+      <a class:list={[active('/books/') && 'is-active']} href="/books/" aria-current={active('/books/') ? 'page' : undefined}>Books</a>
       <a class:list={[active('/collections/') && 'is-active']} href="/collections/" aria-current={active('/collections/') ? 'page' : undefined}>Collections</a>
     </nav>
     <div class="site-header__tools">

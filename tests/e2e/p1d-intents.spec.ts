@@ -17,7 +17,8 @@ test('homepage exposes five visitor-intent discovery routes', async ({ page }) =
     const link = discovery.locator(`[data-project-intent="${intent}"]`);
     await expect(link).toBeVisible();
     await expect(link.getByText(label, { exact: true })).toBeVisible();
-    await expect(link).toHaveAttribute('href', `/projects/?intent=${intent}#archive-catalogue`);
+    const expectedHref = intent === 'read' ? '/books/' : `/projects/?intent=${intent}#archive-catalogue`;
+    await expect(link).toHaveAttribute('href', expectedHref);
   }
 });
 
@@ -52,8 +53,8 @@ test('choosing a canonical category clears visitor intent state', async ({ page 
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await expect(page).toHaveURL(/category=tools/);
   await expect(page).not.toHaveURL(/intent=/);
-  await expect(page.getByRole('button', { name: 'Tools', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Everything', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Tools', exact: true })).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('button', { name: 'Everything', exact: true })).toHaveAttribute('aria-pressed','true');
 });
 
 test('intent discovery reflows without page-level overflow at 320px', async ({ page }) => {

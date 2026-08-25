@@ -16,6 +16,7 @@ export const PROJECT_TYPES = [
   'quiz',
   'resource',
   'guide',
+  'book',
   'visualization',
   'prototype',
 ] as const;

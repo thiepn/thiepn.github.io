@@ -4,12 +4,14 @@ const path = Astro.url.pathname;
 const active = (href: string) => {
   if (href === '/') return path === '/';
   if (href === '/projects/') return path.startsWith('/projects/') || path.startsWith('/project/');
+  if (href === '/books/') return path.startsWith('/books/');
   if (href === '/collections/') return path.startsWith('/collections/') || path.startsWith('/collection/');
   return path.startsWith(href);
 };
 const items = [
   ['Home', '/'],
   ['Projects', '/projects/'],
+  ['Books', '/books/'],
   ['Collections', '/collections/'],
 ] as const;
 ---
@@ -43,7 +45,7 @@ const items = [
   </dialog>
   <noscript>
     <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
-      <a href="/">Home</a><a href="/projects/">Projects</a><a href="/collections/">Collections</a>
+      <a href="/">Home</a><a href="/projects/">Projects</a><a href="/books/">Books</a><a href="/collections/">Collections</a>
     </nav>
   </noscript>
 </div>
