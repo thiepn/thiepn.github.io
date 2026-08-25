@@ -42,11 +42,21 @@ try { searchEndpoint = await fs.readFile(searchEndpointPath, 'utf8'); } catch {}
 if (!(searchComponent.includes('search-index.json') || searchRuntime.includes('/search-index.json') || searchEndpoint.includes('search-index.json'))) {
   throw new Error('Catalogue Search must consume generated search-index.json directly or through the Phase 11 static endpoint.');
 }
+
 const homepage = await fs.readFile(path.join(ROOT, 'src/pages/index.astro'), 'utf8');
-if (!homepage.includes('getPublicProjects') || !homepage.includes('data-project-directory') || !homepage.includes('projects.map')) {
-  throw new Error('Homepage project directory must remain driven by the public project collection.');
+// Validate catalogue data flow instead of historical homepage markup. The homepage
+// may use cards, strips, bento layouts, or any future presentation as long as it
+// derives project discovery from getPublicProjects().
+const publicBinding = /const\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+getPublicProjects\s*\(\s*\)/.exec(homepage);
+if (!publicBinding) {
+  throw new Error('Homepage must obtain the public project collection through getPublicProjects().');
+}
+const publicVariable = publicBinding[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+if (!new RegExp(`\\b${publicVariable}\\s*\\.\\s*(?:map|slice|filter|find|some)\\s*\\(`).test(homepage)) {
+  throw new Error('Homepage must derive visible project discovery from the public project collection.');
 }
 if (homepage.includes('<ProjectArchive')) throw new Error('Homepage must not duplicate the full interactive archive; /projects/ owns that workflow.');
+
 const projectArchive = await fs.readFile(path.join(ROOT, 'src/pages/projects/index.astro'), 'utf8');
 if (!projectArchive.includes('getPublicProjects')) throw new Error('Dedicated project archive must remain data-driven.');
 const packageText = await fs.readFile(path.join(ROOT, 'package.json'), 'utf8');
