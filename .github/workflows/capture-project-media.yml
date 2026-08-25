@@ -27,11 +27,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Install Playwright capture runtime
-        run: |
-          npm install --no-save --package-lock=false playwright@1.55.0
-          npx playwright install --with-deps chromium
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Capture The Bible Challenge
         run: node scripts/capture-project-media.mjs the-bible-challenge https://thiepn.dev/tbc/
