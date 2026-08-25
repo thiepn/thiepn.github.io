@@ -11,14 +11,19 @@ test('renders catalogue-derived Project Universe counts', async ({ page }) => {
   const projects = catalogue.projects ?? catalogue;
 
   const stats = page.locator('.universe-hero__stat');
-  await expect(stats).toHaveCount(3);
-  await expect(stats.locator('span')).toHaveText(['Projects', 'Featured', 'Collections']);
+  await expect(stats).toHaveCount(4);
+  await expect(stats.locator('span')).toHaveText(['Projects', 'Books', 'Featured', 'Collections']);
   await expect(stats.locator('strong').nth(0)).toHaveText(String(projects.length).padStart(2, '0'));
 
+  const bookStat = (await stats.locator('strong').nth(1).textContent())?.trim();
   const featuredCount = await page.locator('#featured article').count();
   const collectionCount = await page.locator('.collection-ribbon > a').count();
-  await expect(stats.locator('strong').nth(1)).toHaveText(String(featuredCount).padStart(2, '0'));
-  await expect(stats.locator('strong').nth(2)).toHaveText(String(collectionCount).padStart(2, '0'));
+  await expect(stats.locator('strong').nth(2)).toHaveText(String(featuredCount).padStart(2, '0'));
+  await expect(stats.locator('strong').nth(3)).toHaveText(String(collectionCount).padStart(2, '0'));
+
+  await page.goto('/books/');
+  const bookCount = await page.locator('[data-book-record]').count();
+  expect(bookStat).toBe(String(bookCount).padStart(2, '0'));
 });
 
 test('generates public project routes but not hold records', async ({ page }) => {
