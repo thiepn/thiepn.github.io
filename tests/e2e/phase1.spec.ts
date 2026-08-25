@@ -1,10 +1,24 @@
 import { expect, test } from '@playwright/test';
 
-test('renders catalogue-derived portfolio hub counts', async ({ page }) => {
+test('renders catalogue-derived Project Universe counts', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/THIEPN/);
-  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
-  await expect(page.locator('.portfolio-hero__stats strong')).toHaveText(['19', '05', '05']);
+  await expect(page.getByRole('heading', { level: 1, name: 'THIEPN' })).toBeVisible();
+
+  const catalogueResponse = await page.request.get('/catalogue.json');
+  expect(catalogueResponse.ok()).toBe(true);
+  const catalogue = await catalogueResponse.json();
+  const projects = catalogue.projects ?? catalogue;
+
+  const stats = page.locator('.universe-hero__stat');
+  await expect(stats).toHaveCount(3);
+  await expect(stats.locator('span')).toHaveText(['Projects', 'Featured', 'Collections']);
+  await expect(stats.locator('strong').nth(0)).toHaveText(String(projects.length).padStart(2, '0'));
+
+  const featuredCount = await page.locator('#featured article').count();
+  const collectionCount = await page.locator('.collection-ribbon > a').count();
+  await expect(stats.locator('strong').nth(1)).toHaveText(String(featuredCount).padStart(2, '0'));
+  await expect(stats.locator('strong').nth(2)).toHaveText(String(collectionCount).padStart(2, '0'));
 });
 
 test('generates public project routes but not hold records', async ({ page }) => {
