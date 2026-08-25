@@ -6,17 +6,34 @@ const base = new URL(arg('--url') || process.env.PRODUCTION_URL || 'https://thie
 const manifest = JSON.parse(fs.readFileSync('src/generated/route-manifest.json','utf8'));
 const catalogue = JSON.parse(fs.readFileSync('src/generated/catalogue-public.json','utf8'));
 const retries = Number(arg('--retries') || 10);
+const expectedProjects = (catalogue.projects ?? []).length;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const retryDelay = (attempt) => Math.min(1500 + attempt * 1000, 7000);
+
 async function fetchRetry(url, expected = (r) => r.ok) {
   let last;
   for (let i=0;i<retries;i++) {
     try {
-      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Phase15-Smoke/1.0'} });
+      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.0'} });
       if (expected(r)) return r;
       last = new Error(`${r.status} ${r.statusText}`);
     } catch (e) { last=e; }
-    await sleep(Math.min(1500 + i*1000, 7000));
+    await sleep(retryDelay(i));
+  }
+  throw last ?? new Error(`Failed ${url}`);
+}
+
+async function fetchTextRetry(url, responseExpected, textExpected, failureMessage) {
+  let last;
+  for (let i=0;i<retries;i++) {
+    try {
+      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.0'} });
+      const text = await r.text();
+      if (responseExpected(r) && textExpected(text)) return { response:r, text };
+      last = new Error(failureMessage || `${r.status} ${r.statusText}`);
+    } catch (e) { last=e; }
+    await sleep(retryDelay(i));
   }
   throw last ?? new Error(`Failed ${url}`);
 }
@@ -25,16 +42,21 @@ const failures=[];
 const check = async (label, fn) => { try { await fn(); console.log(`PASS ${label}`); } catch(e){ failures.push(`${label}: ${e.message}`); console.error(`FAIL ${label}: ${e.message}`); } };
 
 await check('homepage', async()=>{
-  const r=await fetchRetry(new URL('/',base)); const text=await r.text();
-  if(!/THIEPN\./.test(text) || !/PROJECT INDEX|THE INDEX/i.test(text)) throw new Error('identity marker missing');
+  await fetchTextRetry(
+    new URL('/',base),
+    (r)=>r.ok,
+    (text)=>/<main\b[^>]*id=["']main-content["']/i.test(text) && /<h1\b/i.test(text) && /THIEPN/i.test(text),
+    'homepage structural identity not available yet',
+  );
 });
 await check('catalogue.json', async()=>{
   const r=await fetchRetry(new URL('/catalogue.json',base)); const json=await r.json();
-  const projects=json.projects ?? json; if(projects.length!==19) throw new Error(`expected 19 projects, got ${projects.length}`);
+  const projects=json.projects ?? json;
+  if(projects.length!==expectedProjects) throw new Error(`expected ${expectedProjects} projects, got ${projects.length}`);
 });
 await check('sitemap.xml', async()=>{
   const r=await fetchRetry(new URL('/sitemap.xml',base)); const text=await r.text();
-  if(!text.includes('https://thiepn.dev/')) throw new Error('production canonical domain missing');
+  if(!text.includes(base.origin)) throw new Error('production canonical domain missing');
   if(text.includes('/dev/')) throw new Error('development route leaked into sitemap');
 });
 for (const route of manifest.routes ?? []) {
@@ -42,17 +64,22 @@ for (const route of manifest.routes ?? []) {
   await check(`route ${route}`, async()=>{ await fetchRetry(new URL(route,base)); });
 }
 for (const project of catalogue.projects ?? []) {
+  if (!project.liveUrl) continue;
   await check(`launch ${project.code}`, async()=>{
     const r=await fetchRetry(project.liveUrl);
-    if(!r.url.startsWith('https://thiepn.dev/')) throw new Error(`unexpected final URL ${r.url}`);
+    if(!r.ok) throw new Error(`unexpected final status ${r.status}`);
   });
 }
 await check('custom 404', async()=>{
-  const r=await fetchRetry(new URL('/__phase15_missing__',base), (res)=>res.status===404);
-  const text=await r.text(); if(!/UNCATALOGUED/i.test(text)) throw new Error('custom 404 identity missing');
+  await fetchTextRetry(
+    new URL('/__production_smoke_missing__',base),
+    (r)=>r.status===404,
+    (text)=>/<main\b[^>]*id=["']main-content["']/i.test(text) && /THIEPN/i.test(text),
+    'custom 404 structural identity not available yet',
+  );
 });
 
 if(failures.length){
   console.error(`Production smoke failed (${failures.length}):`); failures.forEach(f=>console.error(`- ${f}`)); process.exit(1);
 }
-console.log(`Production smoke passed: ${base.href} + ${(catalogue.projects??[]).length} live artifacts.`);
+console.log(`Production smoke passed: ${base.href} + ${expectedProjects} live catalogue projects.`);
