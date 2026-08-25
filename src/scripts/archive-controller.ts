@@ -22,7 +22,8 @@ function makeListItem(project: SearchableProject): HTMLElement {
   const status = document.createElement('span'); status.className = 'archive-runtime-row__status'; status.dataset.status = project.status; status.textContent = project.status;
   article.append(code, title, type, status);
   if (project.liveUrl) {
-    const open = document.createElement('a'); open.className = 'archive-runtime-row__open'; open.href = project.liveUrl; open.textContent = '↗'; open.setAttribute('aria-label', `Open ${project.title}`); article.append(open);
+    const primaryLabel = project.primaryLabel || 'Open';
+    const open = document.createElement('a'); open.className = 'archive-runtime-row__open'; open.href = project.liveUrl; open.textContent = `${primaryLabel} ↗`; open.setAttribute('aria-label', `${primaryLabel}: ${project.title}`); article.append(open);
   } else {
     const spacer = document.createElement('span'); spacer.setAttribute('aria-hidden', 'true'); article.append(spacer);
   }
