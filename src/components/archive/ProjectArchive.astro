@@ -7,7 +7,7 @@ interface Props { projects: CollectionEntry<'projects'>[]; id?: string; }
 const { projects, id = 'archive-catalogue' } = Astro.props;
 const data = projects.map(({ data: p }) => ({
   kind:'project' as const, code:p.code, slug:p.slug, title:p.title, subtitle:p.subtitle, summary:p.summary,
-  aliases:p.aliases, category:p.category, status:p.status, tags:p.tags, collections:p.collections, capabilityTags:p.capabilityTags, platforms:p.platforms, repo:p.repo ?? null, liveUrl:p.liveUrl ?? null,
+  aliases:p.aliases, category:p.category, status:p.status, tags:p.tags, collections:p.collections, capabilityTags:p.capabilityTags, platforms:p.platforms, repo:p.repo ?? null, liveUrl:p.liveUrl ?? null, primaryLabel:p.actions.primaryLabel,
   accentLight:p.accent.light, accentDark:p.accent.dark, updatedAt:(p.lastMajorUpdate ?? p.dateAdded).toISOString(),
 }));
 const payload = JSON.stringify({ projects:data, curatedOrder:CURATED_PROJECT_ORDER }).replace(/</g,'\\u003c');
