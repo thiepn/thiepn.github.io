@@ -72,6 +72,7 @@ const projects = defineCollection({
       label: z.string().min(2).max(60),
       caption: z.string().min(12).max(180),
       variant: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      source: z.string().optional(),
     })).min(2).max(5).optional(),
   }),
 });
