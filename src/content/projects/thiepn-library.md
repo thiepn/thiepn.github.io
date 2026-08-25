@@ -35,8 +35,9 @@ accent:
   light: '#665235'
   dark: '#D8B77D'
 preview:
-  tier: P1
-  type: auto
+  tier: P0
+  type: static
+  provenance: static
 actions:
   primaryLabel: Open library
   source: true

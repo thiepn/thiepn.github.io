@@ -37,8 +37,9 @@ accent:
   light: '#246B78'
   dark: '#72D3DF'
 preview:
-  tier: P1
-  type: auto
+  tier: P0
+  type: static
+  provenance: static
 actions:
   primaryLabel: Start studying
   source: true
