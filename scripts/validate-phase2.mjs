@@ -11,7 +11,8 @@ const fail=[];
 for(const file of required){if(!fs.existsSync(path.join(root,file)))fail.push(`missing ${file}`)}
 const read=(f)=>fs.readFileSync(path.join(root,f),'utf8');
 const home=read('src/pages/index.astro');
-for(const marker of ['Projects, tools & experiments.','Selected projects','All projects','Browse by interest','featured-grid','project-directory','collection-links']){if(!home.includes(marker))fail.push(`homepage missing ${marker}`)}
+for(const marker of ['Project universe','Start here.','Choose a direction.','More to explore.','universe-grid','category-universe','project-strip','collection-ribbon']){if(!home.includes(marker))fail.push(`homepage missing ${marker}`)}
+if(!home.includes('THIEPN'))fail.push('homepage missing THIEPN brand identity');
 if(home.includes('LivingIndexField'))fail.push('homepage must not render the decorative Living Index field');
 if(home.includes('<ProjectArchive'))fail.push('homepage must not duplicate the full project browser');
 const artifact=read('src/components/artifacts/ArtifactPlate.astro');
