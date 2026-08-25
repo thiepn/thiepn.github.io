@@ -462,8 +462,8 @@
         "bible-faith"
       ],
       "previewTier": "P3",
-      "previewType": "synthetic",
-      "previewProvenance": null,
+      "previewType": "static",
+      "previewProvenance": "captured",
       "updatedAt": "2026-08-18"
     },
     {
