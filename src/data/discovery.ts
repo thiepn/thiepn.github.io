@@ -44,7 +44,7 @@ export const PROJECT_INTENT_KEYS = PROJECT_INTENTS.map((intent) => intent.key) a
 
 export function matchesProjectIntent(category: string, intent: ProjectIntent): boolean {
   const definition = PROJECT_INTENTS.find((candidate) => candidate.key === intent);
-  return Boolean(definition?.categories.includes(category as ProjectCategory));
+  return Boolean(definition && (definition.categories as readonly string[]).includes(category));
 }
 
 export function getIntentCounts(projects: readonly { category: string }[]): Record<ProjectIntent, number> {
