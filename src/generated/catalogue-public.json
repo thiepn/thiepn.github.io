@@ -428,9 +428,9 @@
         "mobile"
       ],
       "collections": [],
-      "previewTier": "P1",
-      "previewType": "auto",
-      "previewProvenance": null,
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
       "updatedAt": "2026-08-25"
     },
     {
@@ -525,9 +525,9 @@
         "mobile"
       ],
       "collections": [],
-      "previewTier": "P1",
-      "previewType": "auto",
-      "previewProvenance": null,
+      "previewTier": "P0",
+      "previewType": "static",
+      "previewProvenance": "static",
       "updatedAt": "2026-08-25"
     },
     {
