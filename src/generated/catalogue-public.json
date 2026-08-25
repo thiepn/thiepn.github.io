@@ -401,6 +401,39 @@
       "updatedAt": "2026-08-18"
     },
     {
+      "code": "L-008",
+      "slug": "pflegelern",
+      "title": "PflegeLern",
+      "subtitle": "Offline nursing study system",
+      "summary": "Study nursing with structured concepts, flashcards, adaptive review, exam practice, clinical cases, progress tracking, and offline access.",
+      "category": "learning",
+      "type": "study-system",
+      "status": "live",
+      "route": "/project/pflegelern/",
+      "liveUrl": "https://thiepn.dev/pflegelern/",
+      "repo": "thiepn/pflegelern",
+      "tags": [
+        "study",
+        "exam-prep",
+        "memorization"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-08-25"
+    },
+    {
       "code": "G-008",
       "slug": "skyspire",
       "title": "Skyspire",
@@ -465,6 +498,37 @@
       "previewType": "static",
       "previewProvenance": "captured",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "T-005",
+      "slug": "thiepn-library",
+      "title": "THIEPN Library",
+      "subtitle": "Static-first publishing and reading platform",
+      "summary": "Publish, browse, search, and read books and research editions through a static-first multi-work library with native web reading and verified releases.",
+      "category": "tools",
+      "type": "app",
+      "status": "live",
+      "route": "/project/thiepn-library/",
+      "liveUrl": "https://thiepn.dev/library",
+      "repo": "thiepn/library",
+      "tags": [
+        "documents",
+        "reference",
+        "productivity"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-08-25"
     },
     {
       "code": "L-007",

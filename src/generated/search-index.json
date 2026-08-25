@@ -439,6 +439,43 @@
     },
     {
       "kind": "project",
+      "code": "L-008",
+      "slug": "pflegelern",
+      "title": "PflegeLern",
+      "subtitle": "Offline nursing study system",
+      "summary": "Study nursing with structured concepts, flashcards, adaptive review, exam practice, clinical cases, progress tracking, and offline access.",
+      "aliases": [
+        "pflege lern",
+        "nursing study",
+        "nursing flashcards",
+        "pflegeprüfung"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "study",
+        "exam-prep",
+        "memorization"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/pflegelern",
+      "liveUrl": "https://thiepn.dev/pflegelern/",
+      "accentLight": "#246B78",
+      "accentDark": "#72D3DF",
+      "updatedAt": "2026-08-25"
+    },
+    {
+      "kind": "project",
       "code": "G-008",
       "slug": "skyspire",
       "title": "Skyspire",
@@ -508,6 +545,41 @@
       "accentLight": "#806128",
       "accentDark": "#DFC26A",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "T-005",
+      "slug": "thiepn-library",
+      "title": "THIEPN Library",
+      "subtitle": "Static-first publishing and reading platform",
+      "summary": "Publish, browse, search, and read books and research editions through a static-first multi-work library with native web reading and verified releases.",
+      "aliases": [
+        "thiepn library",
+        "library",
+        "ebook reader",
+        "publishing library"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "documents",
+        "reference",
+        "productivity"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/library",
+      "liveUrl": "https://thiepn.dev/library",
+      "accentLight": "#665235",
+      "accentDark": "#D8B77D",
+      "updatedAt": "2026-08-25"
     },
     {
       "kind": "project",

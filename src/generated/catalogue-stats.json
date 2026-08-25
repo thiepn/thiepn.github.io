@@ -1,15 +1,15 @@
 {
-  "totalRegistered": 25,
-  "totalListed": 19,
+  "totalRegistered": 27,
+  "totalListed": 21,
   "status": {
-    "live": 14,
+    "live": 16,
     "beta": 5,
     "experiment": 0,
     "archived": 0
   },
   "categories": {
-    "tools": 4,
-    "learning": 4,
+    "tools": 5,
+    "learning": 5,
     "games": 10,
     "resources": 0,
     "visualizations": 1,
