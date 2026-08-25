@@ -1,0 +1,54 @@
+name: Apply P1B captured preview integration
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-p1b-preview.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout portfolio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Route homepage and project pages through captured media
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          changes = {
+              Path('src/pages/index.astro'): [
+                  ("import InteractivePreview from '../components/artifacts/InteractivePreview.astro';", "import ProjectPreview from '../components/artifacts/ProjectPreview.astro';"),
+                  ('<InteractivePreview project=', '<ProjectPreview project='),
+              ],
+              Path('src/pages/project/[slug].astro'): [
+                  ("import InteractivePreview from '../../components/artifacts/InteractivePreview.astro';", "import ProjectPreview from '../../components/artifacts/ProjectPreview.astro';"),
+                  ('<InteractivePreview project=', '<ProjectPreview project='),
+                  ("const previewLabel = p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';", "const previewLabel = p.preview.provenance === 'captured' ? 'Captured interface' : p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';"),
+              ],
+          }
+
+          for file, replacements in changes.items():
+              text = file.read_text()
+              for old, new in replacements:
+                  if old not in text:
+                      raise SystemExit(f'Expected P1B source marker missing in {file}: {old}')
+                  text = text.replace(old, new)
+              file.write_text(text)
+          PY
+
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/index.astro 'src/pages/project/[slug].astro'
+          git commit -m "Route project previews through captured media"
+          git pull --rebase origin main
+          git push origin HEAD:main
