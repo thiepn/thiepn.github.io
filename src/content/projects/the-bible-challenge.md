@@ -36,8 +36,10 @@ accent:
   dark: '#DFC26A'
 preview:
   tier: P3
-  type: synthetic
-  component: BibleChallengePreview
+  type: static
+  provenance: captured
+  poster: /projects/the-bible-challenge/screenshot-desktop.png
+  focalPoint: 50% 50%
 actions:
   primaryLabel: Play
   source: true
@@ -52,6 +54,15 @@ capabilities:
   description: Move cleanly from question to answer and next action.
 - title: Local browser play
   description: Keep the quiz functional without an account or server dependency.
+gallery:
+- label: Desktop interface
+  caption: A captured 1440×900 view of the live browser game on desktop.
+  variant: desktop
+  source: /projects/the-bible-challenge/screenshot-desktop.png
+- label: Mobile interface
+  caption: A captured 390×844 view of the same live game in its mobile layout.
+  variant: mobile
+  source: /projects/the-bible-challenge/screenshot-mobile.png
 ---
 
 A Bible quiz game with selectable collections and multiple modes designed for direct browser play on desktop and mobile.
