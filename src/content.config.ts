@@ -39,6 +39,7 @@ const projects = defineCollection({
     unavailable: z.boolean().default(false),
     dateAdded: z.coerce.date(),
     yearAdded: z.number().int().min(2020).max(2100),
+    dateUpdated: z.coerce.date().optional(),
     lastMajorUpdate: z.coerce.date().optional(),
     platforms: z.array(z.enum(PLATFORMS)).default([]),
     controls: z.array(z.enum(CONTROLS)).default([]),
