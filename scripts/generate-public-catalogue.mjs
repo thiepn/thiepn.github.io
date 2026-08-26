@@ -26,7 +26,7 @@ const payload = {
     previewTier: project.data.preview.tier,
     previewType: project.data.preview.type,
     previewProvenance: project.data.preview.provenance ?? null,
-    updatedAt: normalizeDate(project.data.lastMajorUpdate ?? project.data.dateAdded),
+    updatedAt: normalizeDate(project.data.dateUpdated ?? project.data.lastMajorUpdate ?? project.data.dateAdded),
   })),
   collections: collections.map((collection) => ({
     code: collection.data.code,
