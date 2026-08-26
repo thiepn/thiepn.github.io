@@ -37,6 +37,12 @@ preview:
   provenance: synthetic
   component: PdfStudioPreview
   duration: 3800
+showcase:
+  purpose: Keep consequential PDF work inside a browser-first local workflow so organizing, annotation, redaction, conversion, and export do not require a mandatory cloud round trip.
+  release: v7.0.0
+  stack:
+  - TypeScript
+  - Vite
 actions:
   primaryLabel: Open tool
   source: true
