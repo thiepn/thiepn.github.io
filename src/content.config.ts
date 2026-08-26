@@ -59,6 +59,16 @@ const projects = defineCollection({
       duration: z.number().int().positive().optional(),
       focalPoint: z.string().optional(),
     }),
+    showcase: z.object({
+      purpose: z.string().min(40).max(600).optional(),
+      release: z.string().min(1).max(40).optional(),
+      stack: z.array(z.string().min(2).max(40)).max(8).default([]),
+      highlights: z.array(z.object({
+        value: z.string().min(1).max(24),
+        label: z.string().min(2).max(60),
+        note: z.string().min(10).max(160).optional(),
+      })).max(4).default([]),
+    }).optional(),
     actions: z.object({
       primaryLabel: z.string().min(2),
       source: z.boolean().default(true),
