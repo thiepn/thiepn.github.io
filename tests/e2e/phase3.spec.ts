@@ -94,7 +94,7 @@ test('no-hover/touch context keeps featured project cards readable without hover
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(browserName === 'firefox' ? {} : { isMobile: true }) });
   const page = await context.newPage();
   await page.goto('/');
-  const card = page.locator('.featured-card').first();
+  const card = page.locator('#featured article').first();
   await expect(card).toBeVisible();
   const opacity = await card.evaluate((element) => Number.parseFloat(getComputedStyle(element).opacity));
   expect(opacity).toBeGreaterThanOrEqual(.85);
