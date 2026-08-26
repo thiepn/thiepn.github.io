@@ -1,13 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-test('homepage exposes the compact portfolio hub hierarchy', async ({ page }) => {
+test('homepage exposes the Project Universe hierarchy', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Selected projects' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'All projects' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Browse by interest' })).toBeVisible();
-  await expect(page.locator('#featured .featured-card')).toHaveCount(5);
-  await expect(page.locator('[data-project-directory] .project-directory__item')).toHaveCount(19);
+  await expect(page.getByRole('heading', { name: 'THIEPN', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with the flagship.', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What do you want to do?', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Long-form published works.', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'More to explore.', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Follow an interest.', level: 2 })).toBeVisible();
+  await expect(page.locator('#featured article')).toHaveCount(5);
+  await expect(page.locator('[data-project-intent]')).toHaveCount(5);
+  await expect(page.locator('.project-strip__item')).toHaveCount(8);
 });
 
 test('featured work renders the selected project previews', async ({ page }) => {
