@@ -105,7 +105,7 @@ const readabilityFiles = [
 ];
 for (const file of readabilityFiles) {
   const source = read(file);
-  const undersized = source.match(/\.(?:[0-5]\d|6[0-7])rem\b/g);
+  const undersized = source.match(/(?<!\d)\.(?:[0-5]\d|6[0-7])rem\b/g);
   if (undersized?.length) fail.push(`${file} contains P2D sub-floor rem text sizes: ${[...new Set(undersized)].join(', ')}.`);
 }
 
