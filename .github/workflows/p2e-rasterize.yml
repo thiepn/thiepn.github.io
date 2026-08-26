@@ -1,0 +1,44 @@
+name: P2E Rasterize Social Cards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p2e-rasterize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rasterize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Rasterize canonical social cards
+        run: node scripts/rasterize-og.mjs
+
+      - name: Commit raster derivatives
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/og src/generated/og-raster-manifest.json
+          if git diff --cached --quiet; then
+            echo "Raster social cards are already current."
+          else
+            git commit -m "Generate P2E raster social cards"
+            git push
+          fi

@@ -1,17 +1,50 @@
 ---
+import { getCollection } from 'astro:content';
 import SiteHeader from '../components/shell/SiteHeader.astro';
 import SiteFooter from '../components/shell/SiteFooter.astro';
 import CatalogueSearch from '../components/search/CatalogueSearch.astro';
 import { SITE } from '../data/site';
-import { getCatalogueStats } from '../lib/catalogue';
+import { getCatalogueStats, getPublicProjects } from '../lib/catalogue';
+import { buildStructuredGraph, serializeStructuredData } from '../lib/structured-data';
 import '@fontsource-variable/instrument-sans/wght.css';
 import '@fontsource/ibm-plex-mono/latin-500.css';
 import '@fontsource/ibm-plex-mono/latin-600.css';
 import '../styles/global.css';
-interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; noindex?: boolean; }
-const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage = '/og/index.svg', noindex = false } = Astro.props;
+interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; ogImageAlt?: string; noindex?: boolean; }
+const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage, ogImageAlt, noindex = false } = Astro.props;
 const stats = await getCatalogueStats();
-const absoluteOgImage = new URL(ogImage, SITE.url).href;
+const pathname = Astro.url.pathname;
+const canonicalUrl = new URL(pathname, SITE.url).href;
+const sectionOgImage = pathname === '/projects/' ? '/og/projects.png'
+  : pathname === '/books/' ? '/og/books.png'
+  : pathname === '/collections/' ? '/og/collections.png'
+  : '/og/index.png';
+const requestedOgImage = ogImage ?? sectionOgImage;
+const socialOgImage = requestedOgImage.replace(/\.svg$/i, '.png');
+const absoluteOgImage = new URL(socialOgImage, SITE.url).href;
+const socialImageAlt = ogImageAlt ?? `${title} social card`;
+
+let structuredProject;
+let structuredProjects;
+let structuredBooks;
+if (!noindex && pathname.startsWith('/project/')) {
+  const slug = pathname.split('/').filter(Boolean)[1];
+  structuredProject = (await getPublicProjects()).find((entry) => entry.data.slug === slug)?.data;
+} else if (!noindex && pathname === '/projects/') {
+  structuredProjects = (await getPublicProjects()).map((entry) => entry.data);
+} else if (!noindex && pathname === '/books/') {
+  structuredBooks = (await getCollection('books'))
+    .sort((a, b) => b.data.lastUpdated.getTime() - a.data.lastUpdated.getTime())
+    .map((entry) => entry.data);
+}
+const structuredData = noindex ? null : serializeStructuredData(buildStructuredGraph({
+  url: canonicalUrl,
+  title,
+  description,
+  project: structuredProject,
+  projects: structuredProjects,
+  books: structuredBooks,
+}));
 ---
 <!doctype html>
 <html lang="en">
@@ -28,21 +61,27 @@ const absoluteOgImage = new URL(ogImage, SITE.url).href;
     <meta property="og:site_name" content="THIEPN" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={new URL(Astro.url.pathname, SITE.url)} />
+    <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={absoluteOgImage} />
-    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:secure_url" content={absoluteOgImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={socialImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={absoluteOgImage} />
+    <meta name="twitter:image:alt" content={socialImageAlt} />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="mask-icon" href="/mask-icon.svg" color="#0B0C0C" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="canonical" href={new URL(Astro.url.pathname, SITE.url)} />
+    <link rel="canonical" href={canonicalUrl} />
     <title>{title}</title>
+    {structuredData && <script is:inline type="application/ld+json" set:html={structuredData}></script>}
     <script is:inline>
       (() => {
         const key = 'thiepn:index-theme'; let preference = 'system';

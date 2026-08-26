@@ -23,7 +23,7 @@ test('catalogue diagnostics are noindex and render the ledger', async ({ page })
   await page.goto('/dev/catalogue/');
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex,nofollow');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('CATALOGUE');
-  await expect(page.getByText('T-001', { exact: true })).toBeVisible();
+  await expect(page.getByText('T-001', { exact: true }).first()).toBeVisible();
 });
 
 test('design-system diagnostics are noindex', async ({ page }) => {
@@ -32,7 +32,10 @@ test('design-system diagnostics are noindex', async ({ page }) => {
   await expect(page.locator('h1')).toBeVisible();
 });
 
-test('project pages expose generated OG artwork', async ({ page }) => {
+test('project pages expose generated raster OG artwork', async ({ page }) => {
   await page.goto('/project/pdf-studio/');
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/og\/pdf-studio\.svg$/);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/og\/pdf-studio\.png$/);
+  await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute('content', 'image/png');
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
 });
