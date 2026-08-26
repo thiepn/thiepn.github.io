@@ -26,6 +26,7 @@ platforms:
 - tablet
 - mobile
 controls:
+- keyboard
 - mouse
 - touch
 collections:
@@ -40,6 +41,21 @@ preview:
   provenance: captured
   poster: /projects/the-bible-challenge/screenshot-desktop.png
   focalPoint: 50% 50%
+showcase:
+  purpose: Turn whole-Bible knowledge into structured, replayable recall practice that works immediately in the browser without requiring an account or installation.
+  release: v4.1.0
+  highlights:
+  - value: '5,799'
+    label: Canonical questions
+    note: Playable question bank after redundant aliases are excluded.
+  - value: '66'
+    label: Bible books covered
+  - value: '5'
+    label: Difficulty tiers
+    note: Beginner through Expert.
+  - value: '22'
+    label: Curated collections
+    note: Reusable question collections across multiple play modes.
 actions:
   primaryLabel: Play
   source: true
