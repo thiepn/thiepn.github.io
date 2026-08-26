@@ -36,13 +36,13 @@ const updated = new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short',
   .book-card__cover{display:block;aspect-ratio:2/3;overflow:hidden;border-bottom:1px solid var(--line);background:var(--surface-2)}
   .book-card__cover img{display:block;width:100%;height:100%;object-fit:cover}
   .book-card__body{padding:clamp(16px,2vw,22px)}
-  .book-card__meta{display:flex;justify-content:space-between;gap:var(--space-3);font:500 .61rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+  .book-card__meta{display:flex;justify-content:space-between;gap:var(--space-3);font:500 .7rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
   .book-card h2,.book-card h3{margin-top:var(--space-5);font-size:clamp(1.45rem,2.25vw,2.15rem);line-height:.98;letter-spacing:-.045em;font-weight:560}
   .book-card h2 a,.book-card h3 a{text-decoration:none}
-  .book-card__subtitle{margin-top:12px;color:var(--ink);font-size:.78rem;line-height:1.42;font-weight:550}
-  .book-card__summary{margin-top:9px;color:var(--ink-secondary);font-size:.8rem;line-height:1.55}
+  .book-card__subtitle{margin-top:12px;color:var(--ink);font-size:.85rem;line-height:1.48;font-weight:550}
+  .book-card__summary{margin-top:9px;color:var(--ink-secondary);font-size:.875rem;line-height:1.58}
   .book-card__foot{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--line-soft)}
-  .book-card__formats{display:flex;flex-wrap:wrap;gap:6px}.book-card__formats span{padding:4px 6px;border:1px solid var(--line);font:500 .56rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
+  .book-card__formats{display:flex;flex-wrap:wrap;gap:6px}.book-card__formats span{min-height:28px;display:inline-flex;align-items:center;padding:4px 7px;border:1px solid var(--line);font:500 .7rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--ink-muted)}
   .book-card__read{min-width:82px;justify-content:center}
   @media(max-width:420px){.book-card__foot{align-items:flex-start;flex-direction:column}.book-card__read{width:100%}}
 </style>
