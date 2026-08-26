@@ -36,5 +36,7 @@ test('project records retain direct action plus secondary detail/source navigati
   const primary = page.locator('.record__actions .structural-button');
   await expect(primary).toContainText('Play');
   await expect(primary).toHaveAttribute('href', 'https://thiepn.dev/tbc/');
-  await expect(page.locator('.record__actions').getByRole('link', { name: /GitHub/ })).toBeVisible();
+  const source = page.locator('.record__actions').getByRole('link', { name: /Source/ });
+  await expect(source).toBeVisible();
+  await expect(source).toHaveAttribute('href', 'https://github.com/thiepn/tbc');
 });
