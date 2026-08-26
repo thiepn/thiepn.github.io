@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readFrontmatterDirectory, computeStats } from './lib/catalogue-files.mjs';
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const failures = [];
@@ -15,6 +16,8 @@ const searchIndex = readJson('src/generated/search-index.json');
 const routeManifest = readJson('src/generated/route-manifest.json');
 const stats = readJson('src/generated/catalogue-stats.json');
 const curation = readJson('src/data/curation.json');
+const sourceProjectFiles = await readFrontmatterDirectory(path.resolve('src/content/projects'));
+const sourceStats = computeStats(sourceProjectFiles.map(({ data }) => data));
 
 const siteSource = fs.readFileSync('src/data/site.ts', 'utf8');
 const baseLayout = fs.readFileSync('src/layouts/BaseLayout.astro', 'utf8');
@@ -31,8 +34,11 @@ if (rc.severityGate?.critical !== 0 || rc.severityGate?.high !== 0) fail('RC sev
 
 const projects = publicCatalogue.projects ?? [];
 const collections = searchIndex.collections ?? [];
-if (stats.totalRegistered !== rc.expected.registeredProjects) fail(`registered project count ${stats.totalRegistered} != ${rc.expected.registeredProjects}`);
-if (projects.length !== rc.expected.listedProjects) fail(`listed project count ${projects.length} != ${rc.expected.listedProjects}`);
+const indexedProjects = searchIndex.projects ?? [];
+if (stats.totalRegistered !== sourceStats.totalRegistered) fail(`generated registered project count ${stats.totalRegistered} != source count ${sourceStats.totalRegistered}`);
+if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed project count ${stats.totalListed} != source count ${sourceStats.totalListed}`);
+if (projects.length !== sourceStats.totalListed) fail(`public catalogue project count ${projects.length} != source listed count ${sourceStats.totalListed}`);
+if (indexedProjects.length !== sourceStats.totalListed) fail(`search index project count ${indexedProjects.length} != source listed count ${sourceStats.totalListed}`);
 if (collections.length !== rc.expected.collections) fail(`collection count ${collections.length} != ${rc.expected.collections}`);
 if ((curation.featured ?? []).length !== rc.expected.featuredProjects) fail(`featured count ${(curation.featured ?? []).length} != ${rc.expected.featuredProjects}`);
 
@@ -113,4 +119,4 @@ if (failures.length) {
   failures.forEach((message) => console.error(`- ${message}`));
   process.exit(1);
 }
-console.log(`Release-candidate source audit passed: ${projects.length} launchable projects, ${collections.length} collections, ${routes.size} generated routes, zero source-level critical/high blockers.`);
+console.log(`Release-candidate source audit passed: ${sourceStats.totalRegistered} registered / ${projects.length} launchable projects, ${collections.length} collections, ${routes.size} generated routes, zero source-level critical/high blockers.`);
