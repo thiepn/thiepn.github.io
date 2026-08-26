@@ -10,14 +10,14 @@ interface StructuredProject {
   category: string;
   type: string;
   status: string;
-  repo?: string | null;
-  liveUrl?: string | null;
+  repo?: string | null | undefined;
+  liveUrl?: string | null | undefined;
   dateAdded: Date;
-  dateUpdated?: Date;
-  lastMajorUpdate?: Date;
+  dateUpdated?: Date | undefined;
+  lastMajorUpdate?: Date | undefined;
   platforms: string[];
   tags: string[];
-  showcase?: { release?: string };
+  showcase?: { release?: string | undefined } | undefined;
 }
 
 interface StructuredBook {
@@ -39,16 +39,16 @@ interface StructuredGraphInput {
   url: string;
   title: string;
   description: string;
-  project?: StructuredProject;
-  projects?: StructuredProject[];
-  books?: StructuredBook[];
+  project?: StructuredProject | undefined;
+  projects?: StructuredProject[] | undefined;
+  books?: StructuredBook[] | undefined;
 }
 
 const websiteId = `${SITE.url}/#website`;
 const isoDate = (value: Date) => value.toISOString().slice(0, 10);
 const titleCase = (value: string) => value.replace(/(^|-)([a-z])/g, (_, separator, letter) => `${separator ? ' ' : ''}${letter.toUpperCase()}`);
 const projectUrl = (slug: string) => `${SITE.url}/project/${slug}/`;
-const githubUrl = (repo?: string | null) => repo ? `https://github.com/${repo}` : null;
+const githubUrl = (repo?: string | null | undefined) => repo ? `https://github.com/${repo}` : null;
 const formatMime = (format: string) => ({ web: 'text/html', pdf: 'application/pdf', epub: 'application/epub+zip' }[format] ?? format);
 
 function websiteNode(): JsonLdNode {
