@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-const dates = async (locator: ReturnType<Parameters<typeof test>[0] extends never ? never : never>) => locator;
-
 test('homepage exposes data-driven currently-building and recently-updated project activity', async ({ page }) => {
   await page.goto('/');
 
@@ -39,8 +37,7 @@ test('activity lists sort newest first and do not duplicate current builds in th
 
 test('canonical dateUpdated metadata flows through project snapshot and activity UI', async ({ page }) => {
   await page.goto('/project/pflegelern/');
-  const snapshot = page.locator('[data-project-showcase]');
-  const updatedFact = snapshot.locator('div').filter({ has: page.locator('dt', { hasText: 'Updated' }) }).first();
+  const updatedFact = page.locator('[data-project-showcase] .showcase-facts > div').filter({ hasText: 'Updated' }).first();
   await expect(updatedFact).toContainText('25 Aug 2026');
 
   await page.goto('/');
