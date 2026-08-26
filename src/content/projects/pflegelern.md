@@ -45,7 +45,7 @@ actions:
   source: true
 dateAdded: '2026-08-25'
 yearAdded: 2026
-lastMajorUpdate: '2026-08-25'
+dateUpdated: '2026-08-25'
 capabilities:
 - title: Structured nursing study
   description: Move from textbook structure into concepts, searchable learning material, bookmarks, and unrestricted focused study.
