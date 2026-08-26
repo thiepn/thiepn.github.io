@@ -1,4 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="THIEPN mark">
-  <rect width="32" height="32" fill="#0B0C0C"/>
-  <path d="M7 8.5h18M16 8.5V24M11.5 19.5h9M16 15v9" fill="none" stroke="#F0EEE8" stroke-width="1.5" stroke-linecap="square"/>
+  <rect width="32" height="32" rx="4" fill="#0B0C0C"/>
+  <g fill="#F0EEE8">
+    <rect x="7.36" y="8.48" width="17.28" height="2.24"/>
+    <rect x="14.88" y="9.44" width="2.24" height="15.52"/>
+    <rect x="10.88" y="18.4" width="10.24" height="1.92"/>
+    <rect x="5.68" y="7.44" width="3.36" height="3.36"/>
+    <rect x="22.96" y="7.44" width="3.36" height="3.36"/>
+    <rect x="14.32" y="23.28" width="3.36" height="3.36"/>
+  </g>
+  <rect x="15.44" y="18.88" width="1.12" height="1.12" fill="#0B0C0C"/>
 </svg>
