@@ -26,7 +26,7 @@ const facts = [
   { label: 'Updated', value: updated },
 ];
 ---
-<section id="snapshot" class="project-showcase record__section" aria-labelledby="snapshot-title" data-project-showcase>
+<section id="snapshot" class="project-showcase" aria-labelledby="snapshot-title" data-project-showcase>
   <header class="showcase-head">
     <div><p class="meta">At a glance</p><h2 id="snapshot-title">Project snapshot</h2></div>
     {showcase?.release && <span class="showcase-head__release">Release {showcase.release}</span>}
@@ -71,7 +71,7 @@ const facts = [
 </section>
 
 <style>
-  .project-showcase{scroll-margin-top:90px}
+  .project-showcase{padding-top:clamp(46px,6vw,70px);scroll-margin-top:90px}
   .showcase-head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:12px;border-bottom:1px solid var(--line-strong)}
   .showcase-head .meta,.showcase-head__release{font:500 .68rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase;color:var(--ink-muted)}
   .showcase-head h2{margin-top:3px;font-size:clamp(1.55rem,2.6vw,2.35rem);line-height:1;letter-spacing:-.04em;font-weight:560}
