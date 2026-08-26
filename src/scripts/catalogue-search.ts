@@ -59,9 +59,14 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   async function ensurePayload() {
     if (payload) return payload;
     statusEl.textContent = 'Loading project search…';
-    payload = await getPayload();
-    items = [...payload.projects, ...payload.collections];
-    return payload;
+    resultsEl.setAttribute('aria-busy', 'true');
+    try {
+      payload = await getPayload();
+      items = [...payload.projects, ...payload.collections];
+      return payload;
+    } finally {
+      resultsEl.setAttribute('aria-busy', 'false');
+    }
   }
 
   function featuredResults(currentPayload: SearchPayload): RankedSearchResult[] {
@@ -169,6 +174,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       await ensurePayload();
       render();
     } catch {
+      resultsEl.setAttribute('aria-busy', 'false');
       statusEl.textContent = 'Project search is unavailable.';
       resultsEl.replaceChildren(buildEmpty(inputEl.value.trim()));
     }
