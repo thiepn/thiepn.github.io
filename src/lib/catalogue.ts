@@ -11,6 +11,27 @@ export async function getAllProjects() {
   return getCollection('projects');
 }
 
+export type ProjectEntry = Awaited<ReturnType<typeof getAllProjects>>[number];
+
+export function getProjectUpdatedAt(data: ProjectEntry['data']) {
+  return data.dateUpdated ?? data.lastMajorUpdate ?? data.dateAdded;
+}
+
+export function selectCurrentlyBuildingProjects(projects: ProjectEntry[], limit = 4) {
+  return [...projects]
+    .filter((entry) => entry.data.status === 'beta')
+    .sort((a, b) => getProjectUpdatedAt(b.data).getTime() - getProjectUpdatedAt(a.data).getTime() || a.data.title.localeCompare(b.data.title))
+    .slice(0, Math.max(0, limit));
+}
+
+export function selectRecentlyUpdatedProjects(projects: ProjectEntry[], limit = 5, excludeSlugs: readonly string[] = []) {
+  const excluded = new Set(excludeSlugs);
+  return [...projects]
+    .filter((entry) => !excluded.has(entry.data.slug))
+    .sort((a, b) => getProjectUpdatedAt(b.data).getTime() - getProjectUpdatedAt(a.data).getTime() || a.data.title.localeCompare(b.data.title))
+    .slice(0, Math.max(0, limit));
+}
+
 export async function getPublicProjects() {
   const projects = await getAllProjects();
   return projects
