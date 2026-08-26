@@ -197,7 +197,7 @@ test('reduced motion leaves project content usable and suppresses preview activa
     await page.waitForTimeout(350);
     await expect(preview).toHaveAttribute('data-preview-state', 'poster');
   }
-  await expect(page.getByRole('heading', { name: /Projects, tools & experiments\./ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'THIEPN', level: 1 })).toBeVisible();
 });
 
 test('forced-colors mode preserves focus, borders, and selected states', async ({ page, browserName }) => {
@@ -214,12 +214,17 @@ test('forced-colors mode preserves focus, borders, and selected states', async (
   expect(styles.color).not.toBe('rgba(0, 0, 0, 0)');
 });
 
-test('no-JavaScript desktop keeps the complete project set and direct navigation', async ({ browser }) => {
+test('no-JavaScript desktop keeps the complete project set and direct navigation', async ({ browser, request }) => {
+  const catalogueResponse = await request.get('/catalogue.json');
+  expect(catalogueResponse.ok()).toBeTruthy();
+  const catalogue = await catalogueResponse.json();
+  const expectedProjectCount = catalogue.projects.length;
+
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-controls]')).toBeHidden();
-  await expect(page.locator('[data-archive-grid] [data-archive-item]')).toHaveCount(19);
+  await expect(page.locator('[data-archive-grid] [data-archive-item]')).toHaveCount(expectedProjectCount);
   await expect(page.getByRole('link', { name: 'Search projects' }).first()).toHaveAttribute('href', '/projects/');
   await expect(page.getByRole('link', { name: /PDF Studio/ }).first()).toBeVisible();
   await context.close();
