@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { getProjectUpdatedAt } from '../../lib/catalogue';
 
 interface Props { project: CollectionEntry<'projects'>; }
 const { project } = Astro.props;
@@ -17,7 +18,7 @@ const platform = p.platforms.length ? p.platforms.map(labelize).join(' · ') : '
 const controls = p.controls.length ? p.controls.map(labelize).join(' · ') : 'Standard web controls';
 const offline = p.capabilityTags.includes('offline') ? 'Offline capable' : p.capabilityTags.includes('local-first') ? 'Local-first' : 'Online';
 const source = p.repo && p.actions.source ? 'Public source' : p.repo ? 'Repository linked' : 'Source not listed';
-const updated = p.lastMajorUpdate ? fmt(p.lastMajorUpdate) : fmt(p.dateAdded);
+const updated = fmt(getProjectUpdatedAt(p));
 const facts = [
   { label: 'Lifecycle', value: lifecycle },
   { label: 'Platforms', value: platform },
