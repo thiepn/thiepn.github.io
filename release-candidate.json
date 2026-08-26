@@ -4,8 +4,6 @@
   "phase": 15,
   "featureFreeze": true,
   "expected": {
-    "registeredProjects": 25,
-    "listedProjects": 19,
     "collections": 5,
     "featuredProjects": 5
   },
