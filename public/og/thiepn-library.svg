@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="THIEPN Library">
   <rect width="1200" height="630" fill="#ECEAE3"/>
-  <path d="M54 54H1146M54 576H1146" stroke="#AAA79E" stroke-width="1"/>
+  <path d="M54 54H1146M54 576H1146M112 54V576M1088 54V576" stroke="#D0CDC4" stroke-width="1"/>
   <rect x="54" y="54" width="6" height="522" fill="#665235"/>
-  <text x="86" y="104" fill="#555650" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">T-005 / PROJECT</text>
-  <text x="86" y="320" fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="600" letter-spacing="-4">THIEPN Library</text>
-  <text x="88" y="378" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="28">Static-first publishing and reading platform</text>
-  <text x="86" y="536" fill="#151613" font-family="ui-monospace, monospace" font-size="18" letter-spacing="3">THIEPN / PROJECTS</text>
+  <g fill="none" stroke="#AAA79E" stroke-width="1.5" opacity=".9">
+    <path d="M985 92H1100M1042 74V132"/>
+    <circle cx="985" cy="92" r="5" fill="#ECEAE3"/>
+    <circle cx="1100" cy="92" r="5" fill="#665235" stroke="#665235"/>
+    <circle cx="1042" cy="132" r="5" fill="#ECEAE3"/>
+  </g>
+  <text x="88" y="108" fill="#555650" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="2">T-005 / PROJECT</text>
+  <text fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="600" letter-spacing="-3.5"><tspan x="88" y="330">THIEPN Library</tspan></text>
+  <text x="90" y="405" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="27">Static-first publishing and reading platform</text>
+  <text x="88" y="538" fill="#151613" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="3">THIEPN / PROJECT UNIVERSE</text>
 </svg>

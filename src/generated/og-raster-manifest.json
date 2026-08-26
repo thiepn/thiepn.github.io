@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "width": 1200,
+  "height": 630,
+  "entries": {
+    "algodat-study-system.svg": {
+      "png": "algodat-study-system.png",
+      "sha256": "19d85fd68e3d0f9731971fd443d9a889858f0ce27255190ebfaa5c694dba2a09"
+    },
+    "analysis-idle.svg": {
+      "png": "analysis-idle.png",
+      "sha256": "15a2f1e87490cd63aeb3da595847c2189686f5da150143fcec9a53930c1ddf44"
+    },
+    "analysis-ii-klausurlabor.svg": {
+      "png": "analysis-ii-klausurlabor.png",
+      "sha256": "bf4ab420872797bd31913d8b4e63b1d6930e4c1f92d162a924ee641cb4a505cf"
+    },
+    "analysis-ii-lernsystem.svg": {
+      "png": "analysis-ii-lernsystem.png",
+      "sha256": "eb3bc84120a24fb4d100c19fe782dde7e4c4be5bec4f254cbd64e4e2d6b9075c"
+    },
+    "biblical-greek.svg": {
+      "png": "biblical-greek.png",
+      "sha256": "6789624ce8b28a069e9f30b9c2385b69bceb14ff5df983410e103911540e073a"
+    },
+    "books.svg": {
+      "png": "books.png",
+      "sha256": "b33a9ad69f34a3c2cefb92ed28e9d17661e81b526940eb14279662ca11b9370b"
+    },
+    "clean30.svg": {
+      "png": "clean30.png",
+      "sha256": "865f10d97bdf96713cba0f64cec042d2c3fc011366b3ddd66914881a660e3ea9"
+    },
+    "collection-bible-faith.svg": {
+      "png": "collection-bible-faith.png",
+      "sha256": "e7cad984fd208c05f653d6b84ef6d57f1f5277d362eb52c9c63c5516df8bc845"
+    },
+    "collection-browser-games.svg": {
+      "png": "collection-browser-games.png",
+      "sha256": "21dba0d7fea5b8948f0b114b65d6bf8e6942d942fadcd8014353f696e2b1f731"
+    },
+    "collection-french-learning.svg": {
+      "png": "collection-french-learning.png",
+      "sha256": "83e86dc2ba02944e3b8131bbb274de1aa298062dcf252f49a52ae2f5ff4cb787"
+    },
+    "collection-mathematics-cs.svg": {
+      "png": "collection-mathematics-cs.png",
+      "sha256": "9e77077e09dba7de39879a1486825b7a44e6d73941b5b0c6907bcd3adfa16660"
+    },
+    "collection-productivity-creation.svg": {
+      "png": "collection-productivity-creation.png",
+      "sha256": "21eb4398b4e31b7eba71722b92c167d4da149d7bdc575eaf351968d6871014c8"
+    },
+    "collection-typing-games.svg": {
+      "png": "collection-typing-games.png",
+      "sha256": "1d15436c16e6ced3f8fa8070b24395c6f6c95775d1d94b3300bf52448dc0feef"
+    },
+    "collections.svg": {
+      "png": "collections.png",
+      "sha256": "d77ecde862f9bca8e2d5af94e7563f802b291730c5bad5f78265ab96fdd0d1c7"
+    },
+    "curio.svg": {
+      "png": "curio.png",
+      "sha256": "890aaab1bd4b4fe8ee60fb199b7760f43ca675ad48980dacb4386d8766ec3b9d"
+    },
+    "echoframe-last-signal.svg": {
+      "png": "echoframe-last-signal.png",
+      "sha256": "afe99f67ffd3e11047dd3112ddc911cfd063608ec46f14881984a87a72bcc1fa"
+    },
+    "franzosisch-flashcards.svg": {
+      "png": "franzosisch-flashcards.png",
+      "sha256": "e0eac28afb8909c16a79cc78166e20ee67f9fd74d30bdab1b0cdaceb1c3ecaf1"
+    },
+    "french-3000.svg": {
+      "png": "french-3000.png",
+      "sha256": "2124fd644a28d334ecac9585265f31d6a8f4b34f86afb1868527b2dde4ca6437"
+    },
+    "impossible-transit.svg": {
+      "png": "impossible-transit.png",
+      "sha256": "204be2f5403e60ccf1f7d8733cbb3337fbbb835078c7544ebbfb7977c1cae360"
+    },
+    "index.svg": {
+      "png": "index.png",
+      "sha256": "81e3b7254735508e5607905ed50b6fcd189fb978e0762ad8f933805bec331c49"
+    },
+    "le-carnet-francais.svg": {
+      "png": "le-carnet-francais.png",
+      "sha256": "b1e7628f6a47fbd830b59ab93f0fd713ae9c7c01015a703d023e6e03efbb4eaa"
+    },
+    "ligo-quizabend.svg": {
+      "png": "ligo-quizabend.png",
+      "sha256": "eed63ba232a66c4563aebb71f6cdb4866c4b440bf04b98d98bbd3f519611f90d"
+    },
+    "manuscript.svg": {
+      "png": "manuscript.png",
+      "sha256": "00d6aced0d0ef1078f9dd89797a9474412656fdbe0f9334a91a8f6cb99db29f7"
+    },
+    "mathlab.svg": {
+      "png": "mathlab.png",
+      "sha256": "5caf499c15ab630cb37b7658175009a0da1969e42d8e46d980305e7722832f34"
+    },
+    "nebula-foundry.svg": {
+      "png": "nebula-foundry.png",
+      "sha256": "4cf367e8c7dc6737af8ceca0d34afbb6898d307a548a42bbfbbfc379a403721b"
+    },
+    "pdf-studio.svg": {
+      "png": "pdf-studio.png",
+      "sha256": "c0bf758fc493b8a18d45fb2d180967bc0888a2ff25c37fe027fbe79e36fd9f57"
+    },
+    "pflegelern.svg": {
+      "png": "pflegelern.png",
+      "sha256": "fba45d9cda93b912313d83a083fe0160b93827b00c63776296f519da95bf2946"
+    },
+    "projects.svg": {
+      "png": "projects.png",
+      "sha256": "967361c6312303096f5afc0068b63df7529f1db1848c3ce883cb246ba041002c"
+    },
+    "skyspire.svg": {
+      "png": "skyspire.png",
+      "sha256": "5c5f88b12df0b12d10d3fb251682ae14d0a76b855d39b9f94e19a90eb25177ec"
+    },
+    "the-bible-challenge.svg": {
+      "png": "the-bible-challenge.png",
+      "sha256": "0424d0a54421f790b7eb02616ad7a2a08009d2e280654a26735f17816b02edf1"
+    },
+    "thiepn-library.svg": {
+      "png": "thiepn-library.png",
+      "sha256": "fff8cd731de2bbc25b679dd8d12520086a4b1346b16ee80707f2d09248864fe3"
+    },
+    "tms60.svg": {
+      "png": "tms60.png",
+      "sha256": "d5c27da918c1648f9f245e56eb3be885ef39aa6e4e2424f9ba444b26be36eb0b"
+    },
+    "unreached.svg": {
+      "png": "unreached.png",
+      "sha256": "6e9f0674b5b3d5d1518e0eae0e156f1f60e8b269f1351e2389bb4050cbf41c59"
+    },
+    "voidcut.svg": {
+      "png": "voidcut.png",
+      "sha256": "5632e91e5b935de5c135f76efdff300ec8ead0f811a4ef8d77aac381685d1db7"
+    },
+    "wordfall.svg": {
+      "png": "wordfall.png",
+      "sha256": "b9641bbc7f6f1a8dbffe7c84585b00b60fec9340ea756f1728d70b9b1a9660b0"
+    },
+    "wordstrike.svg": {
+      "png": "wordstrike.png",
+      "sha256": "33b51fc9b08bffe8105c437e212964ce6bbd413d0ade96a1ae42fedbd6c29633"
+    }
+  }
+}
