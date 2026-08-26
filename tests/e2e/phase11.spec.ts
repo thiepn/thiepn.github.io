@@ -11,13 +11,18 @@ test('search index is lazy and loads only when Project Search opens', async ({ p
   await expect.poll(() => searchRequests.length).toBe(1);
 });
 
-test('project list DOM is materialized only on demand', async ({ page }) => {
+test('project list DOM is materialized only on demand', async ({ page, request }) => {
+  const catalogueResponse = await request.get('/catalogue.json');
+  expect(catalogueResponse.ok()).toBeTruthy();
+  const catalogue = await catalogueResponse.json();
+  const expectedProjectCount = catalogue.projects.length;
+
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(0);
   const listButton = page.locator('[data-archive-view="list"]');
   await expect(listButton).toBeVisible();
   await listButton.click();
-  await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(19);
+  await expect(page.locator('[data-archive-list] [data-archive-item]')).toHaveCount(expectedProjectCount);
 });
 
 test('250-project harness remains contained and has no horizontal overflow', async ({ page }) => {
