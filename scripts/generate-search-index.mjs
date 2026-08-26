@@ -16,7 +16,7 @@ const payload = {
     tags: data.tags ?? [], collections: (data.collections ?? []).map((slug) => collectionTitleBySlug.get(slug) ?? slug),
     capabilityTags: data.capabilityTags ?? [], platforms: data.platforms ?? [], repo: data.repo ?? null,
     liveUrl: data.liveUrl ?? null, accentLight: data.accent.light, accentDark: data.accent.dark,
-    updatedAt: normalizeDate(data.lastMajorUpdate ?? data.dateAdded),
+    updatedAt: normalizeDate(data.dateUpdated ?? data.lastMajorUpdate ?? data.dateAdded),
   })),
   collections: collections.map(({ data }) => ({
     kind: 'collection', code: data.code, slug: data.slug, title: data.title, summary: data.summary,
