@@ -4,6 +4,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectPreview from '../components/artifacts/ProjectPreview.astro';
 import StatusLabel from '../components/artifacts/StatusLabel.astro';
 import BookCard from '../components/books/BookCard.astro';
+import ProjectActivity from '../components/home/ProjectActivity.astro';
 import { PROJECT_INTENTS, getIntentCounts } from '../data/discovery';
 import { getCatalogueStats, getCollections, getFeaturedProjects, getPublicProjects } from '../lib/catalogue';
 
@@ -103,6 +104,8 @@ const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 
         </div>
       </section>
     )}
+
+    <ProjectActivity projects={projects} />
 
     <section class="universe-section" aria-labelledby="intent-title" data-motion-section data-intent-discovery>
       <header class="section-heading">
