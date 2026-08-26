@@ -57,20 +57,57 @@ if (!base.includes('Skip to main content')) fail.push('Skip link missing.');
 
 const primitives = read('src/styles/primitives.css');
 if (!primitives.includes(':focus-visible')) fail.push('Global focus-visible treatment missing.');
+if (!primitives.includes('outline:3px solid currentColor')) fail.push('Global focus-visible indicator is weaker than the P2D 3px contract.');
 if (!primitives.includes('scroll-margin-block')) fail.push('Focusable controls lack sticky-header focus clearance.');
 
 const motion = read('src/styles/motion.css');
 if (!motion.includes('prefers-reduced-motion: reduce')) fail.push('Reduced-motion CSS guard missing.');
 const responsive = read('src/styles/responsive.css');
 if (!responsive.includes('forced-colors: active')) fail.push('Forced-colors CSS guard missing.');
+if (/--text-meta:\s*\.(?:[0-6]\d)rem/.test(responsive)) fail.push('Responsive CSS shrinks the canonical metadata token below the P2D floor.');
+
+const searchComponent = read('src/components/search/CatalogueSearch.astro');
+if (!searchComponent.includes('aria-describedby="catalogue-search-help"')) fail.push('Project search input lacks keyboard/combobox help text.');
+if (!searchComponent.includes('aria-busy="false"')) fail.push('Project search results lack an initial aria-busy state.');
+if (!/catalogue-search__shortcuts button,[\s\S]*?min-height:44px/.test(searchComponent)) fail.push('Project search suggestions are below the 44px target contract.');
 
 const searchController = read('src/scripts/catalogue-search.ts');
 if (/createElement\(['"]button['"]\)[\s\S]{0,500}role['"],\s*['"]option/.test(searchController)) fail.push('Search listbox options are implemented as buttons with overridden option roles.');
 if (!searchController.includes("option.setAttribute('role', 'option')")) fail.push('Search options do not expose role=option.');
+if (!searchController.includes("resultsEl.setAttribute('aria-busy', 'true')")) fail.push('Search loading is not announced with aria-busy.');
+
+const galleryComponent = read('src/components/records/ArtifactGallery.astro');
+if (!galleryComponent.includes('aria-describedby="gallery-dialog-caption"')) fail.push('Gallery inspector is not described by its active caption.');
+if (!galleryComponent.includes('data-gallery-dialog-status')) fail.push('Gallery inspector lacks a live announcement region.');
+if (!/gallery-inspector button\{min-height:44px/.test(galleryComponent)) fail.push('Gallery inspector controls are below the 44px target contract.');
+const galleryController = read('src/scripts/gallery-controller.ts');
+if (!galleryController.includes('data-gallery-dialog-status')) fail.push('Gallery controller does not announce view changes.');
+if (!galleryController.includes('closeButton?.focus()')) fail.push('Gallery inspector does not establish a deterministic initial focus target.');
+
+const statusLabel = read('src/components/artifacts/StatusLabel.astro');
+if (!statusLabel.includes('Project status: ')) fail.push('Project status labels lack screen-reader context.');
 
 const collectionController = read('src/scripts/collection-map-controller.ts');
 if (collectionController.includes("setAttribute('aria-current'")) fail.push('Collection preview selection misuses aria-current.');
 if (!collectionController.includes("setAttribute('aria-pressed'")) fail.push('Collection relationship buttons do not expose pressed state.');
+
+const readabilityFiles = [
+  'src/components/shell/SiteHeader.astro',
+  'src/components/shell/MobileMenu.astro',
+  'src/components/shell/ThemeControl.astro',
+  'src/components/shell/SiteFooter.astro',
+  'src/components/search/CatalogueSearch.astro',
+  'src/components/archive/ArchiveControls.astro',
+  'src/components/archive/ProjectArchive.astro',
+  'src/components/records/ArtifactGallery.astro',
+  'src/components/artifacts/StatusLabel.astro',
+  'src/components/books/BookCard.astro',
+];
+for (const file of readabilityFiles) {
+  const source = read(file);
+  const undersized = source.match(/\.(?:[0-5]\d|6[0-7])rem\b/g);
+  if (undersized?.length) fail.push(`${file} contains P2D sub-floor rem text sizes: ${[...new Set(undersized)].join(', ')}.`);
+}
 
 const allSourceFiles = [];
 for (const root of ['src/components', 'src/pages', 'src/scripts']) {
@@ -85,6 +122,11 @@ for (const root of ['src/components', 'src/pages', 'src/scripts']) {
 }
 const source = allSourceFiles.map(read).join('\n');
 if (/ondrag|dragstart|draggable\s*=\s*["']true/i.test(source)) fail.push('A dragging-only interaction remains in first-party UI source.');
+
+const imageWithoutAlt = /<img\b(?![^>]*\balt=)[^>]*>/gis.exec(source);
+if (imageWithoutAlt) fail.push('A first-party img element is missing an explicit alt attribute.');
+const unsafeBlankTarget = /<a\b(?=[^>]*target=["']_blank["'])(?![^>]*rel=["'][^"']*noopener)[^>]*>/gis.exec(source);
+if (unsafeBlankTarget) fail.push('A target=_blank link is missing rel=noopener.');
 
 if (fail.length) {
   console.error('Phase 12 accessibility source audit failed:');
