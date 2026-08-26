@@ -15,21 +15,26 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
   const label = dialog.querySelector('[data-gallery-dialog-label]');
   const caption = dialog.querySelector('[data-gallery-dialog-caption]');
   const position = dialog.querySelector('[data-gallery-dialog-position]');
+  const status = dialog.querySelector<HTMLElement>('[data-gallery-dialog-status]');
+  const closeButton = dialog.querySelector<HTMLButtonElement>('[data-gallery-close]');
   const previousButton = dialog.querySelector<HTMLButtonElement>('[data-gallery-previous]');
   const nextButton = dialog.querySelector<HTMLButtonElement>('[data-gallery-next]');
   const openers = Array.from(gallery.querySelectorAll<HTMLButtonElement>('[data-gallery-open]'));
   let opener: HTMLElement | null = null;
   let currentIndex = 0;
 
-  const renderView = (index: number) => {
+  const renderView = (index: number, announce = true) => {
     const button = openers[index];
     if (!button) return;
     currentIndex = index;
     const source = button.querySelector('.gallery-figure__visual');
+    const viewLabel = button.getAttribute('data-gallery-label') || 'Project view';
+    const viewCaption = button.getAttribute('data-gallery-caption') || '';
     if (visual && source) visual.replaceChildren(source.cloneNode(true));
-    if (label) label.textContent = button.getAttribute('data-gallery-label') || 'FIGURE';
-    if (caption) caption.textContent = button.getAttribute('data-gallery-caption') || '';
+    if (label) label.textContent = viewLabel;
+    if (caption) caption.textContent = viewCaption;
     if (position) position.textContent = `${String(index + 1).padStart(2, '0')} / ${String(openers.length).padStart(2, '0')}`;
+    if (announce && status) status.textContent = `View ${index + 1} of ${openers.length}: ${viewLabel}. ${viewCaption}`.trim();
 
     const previousWasFocused = document.activeElement === previousButton;
     const nextWasFocused = document.activeElement === nextButton;
@@ -45,9 +50,10 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
 
   const openView = (button: HTMLButtonElement, index: number) => {
     opener = button;
-    renderView(index);
+    renderView(index, false);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
+    requestAnimationFrame(() => closeButton?.focus());
   };
 
   openers.forEach((button, index) => {
@@ -66,7 +72,7 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
 
   previousButton?.addEventListener('click', () => renderView(Math.max(0, currentIndex - 1)));
   nextButton?.addEventListener('click', () => renderView(Math.min(openers.length - 1, currentIndex + 1)));
-  dialog.querySelector('[data-gallery-close]')?.addEventListener('click', closeDialog);
+  closeButton?.addEventListener('click', closeDialog);
   dialog.addEventListener('click', (event) => { if (event.target === dialog) closeDialog(); });
   dialog.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft' && currentIndex > 0) {
@@ -78,7 +84,10 @@ for (const gallery of Array.from(document.querySelectorAll<HTMLElement>('[data-a
       renderView(currentIndex + 1);
     }
   });
-  dialog.addEventListener('close', () => { if (opener instanceof HTMLElement) opener.focus(); });
+  dialog.addEventListener('close', () => {
+    if (status) status.textContent = '';
+    if (opener instanceof HTMLElement) opener.focus();
+  });
 }
 
 export {};
