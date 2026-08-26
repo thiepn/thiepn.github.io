@@ -1,4 +1,5 @@
 ---
+import BrandMark from '../brand/BrandMark.astro';
 import ThemeControl from './ThemeControl.astro';
 import MobileMenu from './MobileMenu.astro';
 const path = Astro.url.pathname;
@@ -12,7 +13,10 @@ const active = (href: string) => {
 ---
 <header class="site-header">
   <div class="page-shell site-header__inner">
-    <a class="site-wordmark" href="/" aria-label="THIEPN portfolio home">THIEPN</a>
+    <a class="site-brand" href="/" aria-label="THIEPN portfolio home" data-site-brand>
+      <span class="site-brand__mark"><BrandMark size={22} /></span>
+      <span class="site-wordmark">THIEPN</span>
+    </a>
     <nav class="site-nav" aria-label="Primary navigation">
       <a class:list={[active('/') && 'is-active']} href="/" aria-current={active('/') ? 'page' : undefined}>Home</a>
       <a class:list={[active('/projects/') && 'is-active']} href="/projects/" aria-current={active('/projects/') ? 'page' : undefined}>Projects</a>
@@ -30,12 +34,15 @@ const active = (href: string) => {
 <style>
   .site-header{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:var(--canvas)}
   .site-header__inner{min-height:58px;display:grid;grid-template-columns:minmax(120px,1fr) auto minmax(240px,1fr);align-items:center;gap:var(--space-5)}
-  .site-wordmark{font-size:1.08rem;font-weight:630;letter-spacing:-.05em;line-height:1;text-decoration:none;justify-self:start}
+  .site-brand{display:inline-flex;align-items:center;gap:9px;min-height:44px;text-decoration:none;justify-self:start;color:var(--ink)}
+  .site-brand__mark{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--line-strong);background:var(--surface-1)}
+  .site-wordmark{font-size:1.08rem;font-weight:630;letter-spacing:-.05em;line-height:1}
+  .site-brand:hover .site-brand__mark,.site-brand:focus-visible .site-brand__mark{background:var(--surface-2)}
   .site-nav{display:flex;align-items:center;gap:var(--space-5);font:500 .65rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase}.site-nav a{position:relative;min-height:44px;display:flex;align-items:center;text-decoration:none;color:var(--ink-muted)}.site-nav a:hover,.site-nav a:focus-visible,.site-nav a.is-active{color:var(--ink)}.site-nav a::after{content:'';position:absolute;left:0;right:0;bottom:7px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left center;transition:transform var(--motion-fast) var(--ease-enter)}.site-nav a:hover::after,.site-nav a:focus-visible::after{transform:scaleX(.36)}.site-nav a.is-active::after{transform:scaleX(1)}
   .site-header__tools{justify-self:end;display:flex;align-items:center;gap:var(--space-5)}.site-header__search{position:relative;min-height:44px;display:flex;align-items:center;font:500 .64rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--ink-muted)}.site-header__search:hover,.site-header__search:focus-visible{color:var(--ink)}.site-header__search::after{content:'';position:absolute;left:0;right:0;bottom:7px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left center;transition:transform var(--motion-fast) var(--ease-enter)}.site-header__search:hover::after,.site-header__search:focus-visible::after{transform:scaleX(1)}
   :global(.mobile-menu){justify-self:end}
   @media(max-width:900px){.site-header__inner{grid-template-columns:auto 1fr auto}.site-nav{justify-self:center;gap:var(--space-4)}.site-header__search{display:none}.site-header__tools{gap:0}}
-  @media(max-width:650px){.site-header{top:0}.site-header__inner{grid-template-columns:1fr auto;min-height:58px;gap:var(--space-3);padding-inline:max(var(--page-padding),env(safe-area-inset-left)) max(var(--page-padding),env(safe-area-inset-right))}.site-nav,.site-header__tools{display:none}.site-wordmark{grid-column:1}}
+  @media(max-width:650px){.site-header{top:0}.site-header__inner{grid-template-columns:1fr auto;min-height:58px;gap:var(--space-3);padding-inline:max(var(--page-padding),env(safe-area-inset-left)) max(var(--page-padding),env(safe-area-inset-right))}.site-nav,.site-header__tools{display:none}.site-brand{grid-column:1}.site-brand__mark{width:26px;height:26px}}
   @media(prefers-reduced-motion:reduce){.site-nav a::after,.site-header__search::after{transition:none}}
-  @media(forced-colors:active){.site-header{background:Canvas;border-color:CanvasText}.site-nav a::after,.site-header__search::after{background:CanvasText}}
+  @media(forced-colors:active){.site-header{background:Canvas;border-color:CanvasText}.site-brand__mark{background:Canvas;border-color:CanvasText}.site-nav a::after,.site-header__search::after{background:CanvasText}}
 </style>
