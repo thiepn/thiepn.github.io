@@ -4,12 +4,13 @@ import curation from '../../src/data/curation.json';
 
 describe('current catalogue contracts', () => {
   it('preserves immutable project-code mappings while allowing catalogue growth', () => {
-    expect(Object.keys(ledger.projects)).toHaveLength(25);
     expect(ledger.projects['T-001']).toBe('pdf-studio');
     expect(ledger.projects['R-001']).toBe('markdown-guide');
     expect(ledger.projects['G-010']).toBe('impossible-transit');
     expect(ledger.projects['G-011']).toBe('voidcut');
     expect(ledger.projects['T-004']).toBe('mathlab');
+    expect(ledger.projects['T-005']).toBe('thiepn-library');
+    expect(ledger.projects['L-008']).toBe('pflegelern');
     expect(ledger.projects['L-901']).toBe('biblical-greek');
     expect(ledger.projects['V-001']).toBe('unreached');
   });
