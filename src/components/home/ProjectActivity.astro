@@ -10,7 +10,7 @@ import {
 interface Props { projects: ProjectEntry[]; }
 const { projects } = Astro.props;
 const building = selectCurrentlyBuildingProjects(projects, 4);
-const buildingSlugs = building.map((entry) => entry.data.slug);
+const buildingSlugs = projects.filter((entry) => entry.data.status === 'beta').map((entry) => entry.data.slug);
 const recent = selectRecentlyUpdatedProjects(projects, 5, buildingSlugs);
 const formatDate = (date: Date) => new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 const dateValue = (entry: ProjectEntry) => getProjectUpdatedAt(entry.data);
