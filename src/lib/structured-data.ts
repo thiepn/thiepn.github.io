@@ -105,7 +105,10 @@ function projectNode(project: StructuredProject, url: string): JsonLdNode {
     ...(sameAs.length ? { sameAs } : {}),
   };
 
-  if (project.type === 'game') {
+  // Category is the canonical, singular portfolio classification. Game records may
+  // use more specific product types such as `quiz`, so category is authoritative
+  // for deciding whether schema.org should expose the work as a VideoGame.
+  if (project.category === 'games') {
     return {
       '@type': 'VideoGame',
       ...common,
