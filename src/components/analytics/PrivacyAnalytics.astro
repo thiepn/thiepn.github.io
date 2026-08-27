@@ -1,0 +1,15 @@
+---
+import { analyticsBuildEligible, analyticsLoaderSource } from '../../lib/analytics-policy';
+
+interface Props { noindex?: boolean; }
+const { noindex = false } = Astro.props;
+const token = import.meta.env.PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN?.trim() ?? '';
+const enabled = analyticsBuildEligible({
+  token,
+  production: import.meta.env.PROD,
+  noindex,
+  pathname: Astro.url.pathname,
+});
+const loader = enabled ? analyticsLoaderSource(token) : null;
+---
+{loader && <script is:inline data-privacy-analytics-loader set:html={loader}></script>}

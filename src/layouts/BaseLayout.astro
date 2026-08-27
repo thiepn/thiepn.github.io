@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import PrivacyAnalytics from '../components/analytics/PrivacyAnalytics.astro';
 import SiteHeader from '../components/shell/SiteHeader.astro';
 import SiteFooter from '../components/shell/SiteFooter.astro';
 import CatalogueSearch from '../components/search/CatalogueSearch.astro';
@@ -53,6 +54,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#ECEAE3" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="strict-origin" />
     <meta name="application-name" content="THIEPN" />
     <meta name="apple-mobile-web-app-title" content="THIEPN" />
     <meta name="description" content={description} />
@@ -100,5 +102,6 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     {!hideFooter && <SiteFooter count={stats.totalListed} />}
     <CatalogueSearch />
     <script>import '../scripts/runtime-loader';</script>
+    <PrivacyAnalytics noindex={noindex} />
   </body>
 </html>

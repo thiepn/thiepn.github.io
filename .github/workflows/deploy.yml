@@ -43,6 +43,7 @@ jobs:
         uses: withastro/action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         with:
           node-version: 24
           package-manager: npm@11
