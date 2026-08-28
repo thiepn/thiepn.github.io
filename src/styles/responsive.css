@@ -33,6 +33,19 @@
 @media (hover: none), (pointer: coarse) {
   a, button { touch-action: manipulation; }
   [data-hover-only] { display:none !important; }
+
+  /* Secondary navigation must remain finger-sized even when it is visually text-only. */
+  .universe-hero__actions .text-link,
+  .flagship-card__actions .text-link,
+  .section-heading .text-link,
+  .record__actions .text-link,
+  .record__index-links a,
+  .record__end .text-link,
+  .collection-preview__action {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 @media (forced-colors: active) {
