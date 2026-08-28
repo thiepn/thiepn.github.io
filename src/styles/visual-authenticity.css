@@ -1,0 +1,43 @@
+/* Visual authenticity layer: real project imagery first, portfolio chrome second. */
+
+/* Synthetic previews remain as fallbacks, but they should look like the project rather than a labelled mockup frame. */
+.aperture__chrome,
+.aperture__footer,
+.preview-shell__status {
+  display: none !important;
+}
+
+.aperture::before {
+  background: none !important;
+}
+
+.aperture .scene {
+  inset: 12px !important;
+}
+
+.aperture--hero .scene {
+  inset: 14px !important;
+}
+
+.aperture,
+.captured-preview {
+  border-color: var(--line) !important;
+}
+
+/* Generic fallback should read as a quiet project identity card, not generated poster art. */
+.aperture .scene--generic {
+  justify-content: flex-end;
+  background: #111317 !important;
+}
+
+.aperture .scene--generic .generic-rule {
+  height: 1px !important;
+  width: 22% !important;
+}
+
+@media (max-width: 599px) {
+  .aperture .scene,
+  .aperture--hero .scene {
+    inset: 9px !important;
+  }
+}
