@@ -19,6 +19,10 @@
       "png": "analysis-ii-lernsystem.png",
       "sha256": "eb3bc84120a24fb4d100c19fe782dde7e4c4be5bec4f254cbd64e4e2d6b9075c"
     },
+    "artikelwerk.svg": {
+      "png": "artikelwerk.png",
+      "sha256": "11d8b29fd04f760aeaad15211c13868aaf2a9878deb29e8a09fcaf80799a4481"
+    },
     "biblical-greek.svg": {
       "png": "biblical-greek.png",
       "sha256": "6789624ce8b28a069e9f30b9c2385b69bceb14ff5df983410e103911540e073a"
@@ -99,6 +103,10 @@
       "png": "mathlab.png",
       "sha256": "5caf499c15ab630cb37b7658175009a0da1969e42d8e46d980305e7722832f34"
     },
+    "micro-arcade.svg": {
+      "png": "micro-arcade.png",
+      "sha256": "f14ec52554f878d9b5a650a89504c03287e936504d0e5d4be211fd2fe7543b72"
+    },
     "nebula-foundry.svg": {
       "png": "nebula-foundry.png",
       "sha256": "4cf367e8c7dc6737af8ceca0d34afbb6898d307a548a42bbfbbfc379a403721b"
@@ -130,6 +138,10 @@
     "tms60.svg": {
       "png": "tms60.png",
       "sha256": "d5c27da918c1648f9f245e56eb3be885ef39aa6e4e2424f9ba444b26be36eb0b"
+    },
+    "ubf-koeln-website.svg": {
+      "png": "ubf-koeln-website.png",
+      "sha256": "24e0d474a749fa20018a0c5ed29fe1f650165d363df6f8cea6f55cc74e1a3898"
     },
     "unreached.svg": {
       "png": "unreached.png",

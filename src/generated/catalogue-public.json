@@ -3,6 +3,37 @@
   "identity": "THIEPN PROJECTS",
   "projects": [
     {
+      "code": "L-009",
+      "slug": "artikelwerk",
+      "title": "Artikelwerk",
+      "subtitle": "C1/C2 German noun-gender trainer",
+      "summary": "A focused German noun-gender trainer for advanced vocabulary, built around rapid article recall, repeated practice, and mobile-friendly study.",
+      "category": "learning",
+      "type": "app",
+      "status": "beta",
+      "route": "/project/artikelwerk/",
+      "liveUrl": "https://thiepn.dev/artikelwerk/",
+      "repo": "thiepn/artikelwerk",
+      "tags": [
+        "grammar",
+        "vocabulary",
+        "study"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-28"
+    },
+    {
       "code": "L-901",
       "slug": "biblical-greek",
       "title": "Koinē Path",
@@ -333,6 +364,42 @@
       "updatedAt": "2026-08-22"
     },
     {
+      "code": "G-012",
+      "slug": "micro-arcade",
+      "title": "Micro Arcade",
+      "subtitle": "31 instant-play browser games",
+      "summary": "A 31-game browser arcade with instant play, offline PWA support, local progression, multi-input controls, achievements, and optional global leaderboards.",
+      "category": "games",
+      "type": "game",
+      "status": "live",
+      "route": "/project/micro-arcade/",
+      "liveUrl": "https://thiepn.dev/arcade/",
+      "repo": "thiepn/arcade",
+      "tags": [
+        "arcade",
+        "game",
+        "action",
+        "strategy"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [
+        "browser-games"
+      ],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-26"
+    },
+    {
       "code": "G-004",
       "slug": "nebula-foundry",
       "title": "Nebula Foundry",
@@ -565,6 +632,33 @@
       "updatedAt": "2026-08-18"
     },
     {
+      "code": "X-001",
+      "slug": "ubf-koeln-website",
+      "title": "UBF Köln Website V2",
+      "subtitle": "Church website stakeholder prototype",
+      "summary": "A stakeholder-ready redesign prototype for UBF Köln focused on clearer service information, navigation, church discovery, events, and responsive access.",
+      "category": "experiments",
+      "type": "prototype",
+      "status": "experiment",
+      "route": "/project/ubf-koeln-website/",
+      "liveUrl": "https://thiepn.dev/ubfkoeln/",
+      "repo": "thiepn/ubfkoeln",
+      "tags": [
+        "community"
+      ],
+      "capabilityTags": [],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": "static",
+      "updatedAt": "2026-08-21"
+    },
+    {
       "code": "V-001",
       "slug": "unreached",
       "title": "Unreached",
@@ -718,6 +812,7 @@
       "summary": "Games and hosted play experiences that run directly in the browser, from precision arcade play to surreal 3D worlds and long-form systems.",
       "route": "/collection/browser-games/",
       "projects": [
+        "micro-arcade",
         "wordstrike",
         "wordfall",
         "curio",
