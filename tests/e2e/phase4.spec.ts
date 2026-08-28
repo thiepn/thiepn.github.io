@@ -41,7 +41,9 @@ test('active project filters expose an explicit clear action', async ({ page }) 
   await page.goto('/projects/?category=games&q=typing&sort=az');
   const clear = page.locator('[data-archive-clear]');
   await expect(clear).toBeVisible();
-  await clear.click();
+  await clear.focus();
+  await expect(clear).toBeFocused();
+  await clear.press('Enter');
   await expect(page).not.toHaveURL(/category=/);
   await expect(page).not.toHaveURL(/q=/);
   await expect(page).not.toHaveURL(/sort=/);

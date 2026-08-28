@@ -55,13 +55,19 @@ test('Manuscript project detail keeps its source-to-publication choreography for
 test('WORDSTRIKE Featured video is deferred and retains demo provenance', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('[data-preview-slug="wordstrike"]').first();
+  const status = root.locator('[data-preview-status]');
   await expect(root).toHaveAttribute('data-preview-provenance','reconstructed');
   const video = root.locator('[data-preview-video]');
   await expect(video).not.toHaveAttribute('src', /.+/);
   await root.hover();
   await expect(video).toHaveAttribute('src', /projects\/wordstrike\/preview\.webm/);
-  await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 2000 });
-  await expect(root.locator('[data-preview-status]')).toHaveText('DEMO', { timeout: 2000 });
+  await expect.poll(async () => {
+    const [state, label] = await Promise.all([
+      root.getAttribute('data-preview-state'),
+      status.textContent(),
+    ]);
+    return `${state}|${label}`;
+  }, { timeout: 2500 }).toBe('active|DEMO');
 });
 
 test('reduced motion keeps animated previews in poster state', async ({ browser }) => {
