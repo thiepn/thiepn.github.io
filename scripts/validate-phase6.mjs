@@ -32,7 +32,7 @@ const checks = [
   [controller.includes('IntersectionObserver') && controller.includes('visibilitychange') && controller.includes('pagehide'), 'Offscreen/hidden-page cleanup is incomplete.'],
   [controller.includes('prefersReducedMotion()'), 'Reduced-motion guard is missing.'],
   [controller.includes('video.src = source') && controller.includes('video.load()'), 'Video source must be assigned only during prepare/interaction.'],
-  [plate.includes('InteractivePreview'), 'Artifact Plates must use the shared interactive preview wrapper.'],
+  [plate.includes('ProjectPreview'), 'Artifact Plates must use the authenticity-aware shared ProjectPreview wrapper.'],
   [record.includes('ProjectPreview') && record.includes('focusable={true}'), 'Artifact Records must route primary media through ProjectPreview with interactive fallback focus enabled.'],
   [projectPreview.includes('<InteractivePreview') && projectPreview.includes('focusable={focusable}'), 'ProjectPreview must pass record focusability through to interactive fallback previews.'],
   [projectPreview.includes("p.preview.provenance === 'captured'") && projectPreview.includes('poster'), 'ProjectPreview must support non-interactive captured poster media without adding an unnecessary focus stop.'],
