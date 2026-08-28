@@ -1,6 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
-import PreviewAperture from '../artifacts/PreviewAperture.astro';
+import ProjectPreview from '../artifacts/ProjectPreview.astro';
 import { chooseCollectionMapSlugs, createCollectionMapEdges, createCollectionMapPoints } from '../../lib/collection-map';
 
 interface Props {
@@ -74,7 +74,7 @@ const largeCollection = c.projects.length > 8;
     <aside class="collection-map-shell__preview" aria-label="Selected collection artifact preview" aria-live="polite" aria-atomic="true">
       {mapProjects.map((project) => (
         <div class="collection-map-shell__preview-item" data-collection-preview={project.data.slug} hidden={project.data.slug !== initial?.data.slug}>
-          <PreviewAperture project={project} size="feature" />
+          <ProjectPreview project={project} size="feature" />
           <div class="collection-map-shell__preview-copy">
             <span class="meta">{project.data.code} / {project.data.category}</span>
             <strong>{project.data.title}</strong>
