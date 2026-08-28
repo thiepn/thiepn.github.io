@@ -32,7 +32,7 @@ accent:
   dark: '#72B9E8'
 preview:
   tier: P1
-  type: auto
+  type: static
   provenance: static
 actions:
   primaryLabel: Open prototype
