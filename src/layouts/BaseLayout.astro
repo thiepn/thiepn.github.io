@@ -52,7 +52,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#ECEAE3" />
+    <meta name="theme-color" content="#F4F1EA" />
     <meta name="color-scheme" content="light dark" />
     <meta name="referrer" content="strict-origin" />
     <meta name="application-name" content="THIEPN" />
@@ -79,7 +79,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
-    <link rel="mask-icon" href="/mask-icon.svg" color="#0B0C0C" />
+    <link rel="mask-icon" href="/mask-icon.svg" color="#10233B" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="canonical" href={canonicalUrl} />
     <title>{title}</title>
@@ -91,7 +91,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
         const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const resolved = preference === 'system' ? (dark ? 'dark' : 'light') : preference;
         const root = document.documentElement; root.classList.add('js'); root.dataset.theme = resolved; root.dataset.themePreference = preference; root.style.colorScheme = resolved;
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#0B0C0C' : '#ECEAE3');
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#0F141A' : '#F4F1EA');
       })();
     </script>
   </head>
