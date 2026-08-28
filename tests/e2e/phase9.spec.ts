@@ -9,11 +9,11 @@ test('collection page explains its purpose before the relationship map', async (
   await expect(page.getByRole('button',{name:/Finished documents ↔ source publishing/})).toBeVisible();
 });
 
-test('large Browser Games collection maps featured anchors while preserving the complete ten-project list', async ({ page }) => {
+test('large Browser Games collection maps five featured anchors while preserving the complete eleven-project list', async ({ page }) => {
   await page.goto('/collection/browser-games/');
-  await expect(page.locator('[data-collection-node]')).toHaveCount(4);
-  await expect(page.locator('[data-collection-map]')).toContainText('04 mapped / 10 total');
-  await expect(page.locator('.collection-record__index .compact-artifact')).toHaveCount(10);
+  await expect(page.locator('[data-collection-node]')).toHaveCount(5);
+  await expect(page.locator('[data-collection-map]')).toContainText('05 mapped / 11 total');
+  await expect(page.locator('.collection-record__index .compact-artifact')).toHaveCount(11);
   await expect(page.getByRole('heading',{name:'Featured projects',level:2})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Everything in this collection',level:2})).toBeVisible();
 });
