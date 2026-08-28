@@ -168,10 +168,11 @@ test('light and dark themes preserve layout geometry', async ({ page, browserNam
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const after = await Promise.all(targets.map(geometry));
 
-  for (let index = 0; index < before.length; index += 1) {
-    expect(Math.abs(before[index].width - after[index].width), `target ${index} width`).toBeLessThanOrEqual(1);
-    expect(Math.abs(before[index].height - after[index].height), `target ${index} height`).toBeLessThanOrEqual(1);
-    expect(Math.abs(before[index].x - after[index].x), `target ${index} x`).toBeLessThanOrEqual(1);
+  for (const [index, beforeBox] of before.entries()) {
+    const afterBox = after[index]!;
+    expect(Math.abs(beforeBox.width - afterBox.width), `target ${index} width`).toBeLessThanOrEqual(1);
+    expect(Math.abs(beforeBox.height - afterBox.height), `target ${index} height`).toBeLessThanOrEqual(1);
+    expect(Math.abs(beforeBox.x - afterBox.x), `target ${index} x`).toBeLessThanOrEqual(1);
   }
 });
 
