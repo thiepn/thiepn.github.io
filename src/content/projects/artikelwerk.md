@@ -35,7 +35,7 @@ accent:
   dark: '#E0A178'
 preview:
   tier: P1
-  type: auto
+  type: static
   provenance: static
 actions:
   primaryLabel: Start learning
