@@ -8,11 +8,14 @@ describe('current catalogue contracts', () => {
     expect(ledger.projects['R-001']).toBe('markdown-guide');
     expect(ledger.projects['G-010']).toBe('impossible-transit');
     expect(ledger.projects['G-011']).toBe('voidcut');
+    expect(ledger.projects['G-012']).toBe('micro-arcade');
     expect(ledger.projects['T-004']).toBe('mathlab');
     expect(ledger.projects['T-005']).toBe('thiepn-library');
     expect(ledger.projects['L-008']).toBe('pflegelern');
+    expect(ledger.projects['L-009']).toBe('artikelwerk');
     expect(ledger.projects['L-901']).toBe('biblical-greek');
     expect(ledger.projects['V-001']).toBe('unreached');
+    expect(ledger.projects['X-001']).toBe('ubf-koeln-website');
   });
 
   it('defines the five current public collections', () => {
@@ -29,7 +32,7 @@ describe('current catalogue contracts', () => {
       'the-bible-challenge',
       'pdf-studio',
       'wordstrike',
-      'manuscript',
+      'micro-arcade',
       'voidcut',
     ]);
   });
