@@ -19,7 +19,7 @@ for (const rel of files) {
   const source = read(rel);
   if (/backdrop-filter\s*:|filter\s*:\s*blur\(/i.test(source)) fail(`${rel}: glass/blur effect is prohibited`);
   if (/background(?:-image)?\s*:[^;]*linear-gradient\([^;]*\btext\b/i.test(source)) fail(`${rel}: gradient text-like treatment detected`);
-  if (/border-radius\s*:\s*(?:2[4-9]|[3-9]\d|\d{3,})px/i.test(source) && !rel.endsWith('PreviewAperture.astro')) fail(`${rel}: radius exceeds THE INDEX geometry contract`);
+  if (/border-radius\s*:\s*(?:2[4-9]|[3-9]\d|\d{3,})px/i.test(source) && !rel.endsWith('PreviewAperture.astro')) fail(`${rel}: radius exceeds Editorial Precision geometry contract`);
   if (/box-shadow\s*:/i.test(source) && !rel.endsWith('PreviewAperture.astro') && !rel.endsWith('InteractivePreview.astro') && !rel.endsWith('[slug].astro')) fail(`${rel}: shadow outside a project aperture/record state`);
 }
 
@@ -59,11 +59,11 @@ if (!artifact.includes('artifact-cut')) fail('Artifact plates lost clipped archi
 
 const fonts = read('src/styles/fonts.css');
 const layout = read('src/layouts/BaseLayout.astro');
-if (!fonts.includes('Instrument Sans Variable') || !fonts.includes('IBM Plex Mono')) fail('Locked typography families are missing');
-if (!layout.includes('@fontsource-variable/instrument-sans/wght.css') || !layout.includes('@fontsource/ibm-plex-mono/latin-500.css')) fail('Locked typography must be self-hosted through build-time Fontsource imports');
+if (!fonts.includes('Instrument Sans Variable') || !fonts.includes('IBM Plex Mono') || !fonts.includes('--font-display')) fail('Editorial Precision typography families are missing');
+if (!layout.includes('@fontsource-variable/instrument-sans/wght.css') || !layout.includes('@fontsource/ibm-plex-mono/latin-500.css')) fail('Locked interface typography must be self-hosted through build-time Fontsource imports');
 
 const tokens = read('src/styles/tokens.css');
-for (const token of ['--radius-lg: 12px','--page-max: 1540px','--text-display-xl']) if (!tokens.includes(token)) fail(`Design token contract missing ${token}`);
+for (const token of ['--radius-lg: 8px','--page-max: 1460px','--text-display-xl','--accent: #2d5fdb']) if (!tokens.includes(token)) fail(`Design token contract missing ${token}`);
 
 const config = JSON.parse(read('visual-regression.config.json'));
 if (!Array.isArray(config.targets) || config.targets.length < 12) fail('Visual regression manifest must cover at least 12 canonical states');
