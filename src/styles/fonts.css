@@ -1,11 +1,12 @@
 /*
-  THE INDEX typography is self-hosted at build time through Fontsource.
-  Astro/Vite emits the WOFF2 assets with the static site; there is no runtime
-  font CDN request. Instrument Sans carries the editorial/UI hierarchy and
-  IBM Plex Mono is reserved for accession codes, metadata, and controls.
+  THIEPN typography stays self-hosted / system-resident at runtime.
+  Instrument Sans carries interface and reading copy, IBM Plex Mono is reserved
+  for accession codes and compact metadata, and the display stack uses proven
+  system book faces so the editorial hierarchy adds no network dependency.
 */
 
 :root {
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
   --font-ui: "Instrument Sans Variable", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-meta: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
