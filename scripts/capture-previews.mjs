@@ -8,8 +8,10 @@ const requested = args.slug ? new Set(String(args.slug).split(',').map((value) =
 const candidates = projects.filter(({ data }) => {
   if (requested && !requested.has(data.slug)) return false;
   if (!requested && !args.all && data.preview?.tier !== 'P1') return false;
+  if (!requested && data.preview?.type === 'video') return false;
   return Boolean(data.liveUrl) && data.visibility !== 'hidden';
 });
+
 if (!candidates.length) {
   console.log('No capture candidates matched.');
   process.exit(0);
@@ -23,22 +25,58 @@ let chromium;
 try { ({ chromium } = await import('@playwright/test')); }
 catch { throw new Error('Preview capture requires installed @playwright/test and Chromium. Run: npx playwright install chromium'); }
 
+const delay = Number(args.delay || 1400);
+const failures = [];
+const captures = [];
 const browser = await chromium.launch({ headless: true });
+
 try {
   for (const { data } of candidates) {
-    const context = await browser.newContext({ viewport: { width: 1200, height: 750 }, colorScheme: 'dark', reducedMotion: 'reduce' });
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: 1,
+      colorScheme: 'no-preference',
+      reducedMotion: 'reduce',
+    });
     const page = await context.newPage();
     const url = data.previewRoute ? new URL(data.previewRoute, data.liveUrl).href : data.liveUrl;
-    console.log(`Capture ${data.slug} ← ${url}`);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' });
-    await page.waitForTimeout(Number(args.delay || 900));
-    const directory = path.join(PATHS.public, 'projects', data.slug);
-    await fs.mkdir(directory, { recursive: true });
-    await page.screenshot({ path: path.join(directory, 'capture-source.png'), type: 'png', fullPage: false });
-    await context.close();
+
+    try {
+      console.log(`Capture ${data.slug} ← ${url}`);
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      if (response && !response.ok()) throw new Error(`HTTP ${response.status()}`);
+
+      await page.addStyleTag({
+        content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}',
+      });
+      await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
+      await page.waitForLoadState('networkidle', { timeout: 4500 }).catch(() => {});
+      await page.waitForTimeout(delay);
+
+      const directory = path.join(PATHS.public, 'projects', data.slug);
+      await fs.mkdir(directory, { recursive: true });
+      const output = path.join(directory, 'capture.jpg');
+      await page.screenshot({
+        path: output,
+        type: 'jpeg',
+        quality: 82,
+        fullPage: false,
+        animations: 'disabled',
+      });
+      captures.push(data.slug);
+    } catch (error) {
+      failures.push({ slug: data.slug, url, error: error instanceof Error ? error.message : String(error) });
+      console.warn(`Capture skipped for ${data.slug}: ${failures.at(-1).error}`);
+    } finally {
+      await context.close();
+    }
   }
 } finally {
   await browser.close();
 }
-console.log(`Captured ${candidates.length} preview source image(s). Run npm run media:optimize -- --write next.`);
+
+console.log(`Captured ${captures.length}/${candidates.length} authentic preview(s).`);
+if (failures.length) {
+  console.warn(`${failures.length} capture(s) failed; existing synthetic/static fallbacks remain available.`);
+  failures.forEach((failure) => console.warn(`- ${failure.slug}: ${failure.error}`));
+}
