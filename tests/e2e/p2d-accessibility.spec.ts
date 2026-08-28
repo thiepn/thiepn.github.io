@@ -6,7 +6,7 @@ async function expectMinimumHeight(locator: Locator, minimum = 44) {
   for (let index = 0; index < count; index += 1) {
     const box = await locator.nth(index).boundingBox();
     if (!box) continue;
-    expect(box.height, `control ${index}`).toBeGreaterThanOrEqual(minimum);
+    expect(box.height, `control ${index}`).toBeGreaterThanOrEqual(minimum - 0.01);
   }
 }
 

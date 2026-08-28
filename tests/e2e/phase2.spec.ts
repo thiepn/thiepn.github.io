@@ -15,7 +15,7 @@ test('homepage exposes the Project Universe hierarchy', async ({ page }) => {
 
 test('featured work renders the selected project previews', async ({ page }) => {
   await page.goto('/');
-  for (const slug of ['the-bible-challenge','pdf-studio','wordstrike','manuscript','voidcut']) {
+  for (const slug of ['the-bible-challenge','pdf-studio','wordstrike','micro-arcade','voidcut']) {
     await expect(page.locator(`#featured [data-preview-slug="${slug}"]`)).toBeVisible();
   }
 });

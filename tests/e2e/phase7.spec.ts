@@ -59,9 +59,9 @@ test('WORDSTRIKE Featured video is deferred and retains demo provenance', async 
   const video = root.locator('[data-preview-video]');
   await expect(video).not.toHaveAttribute('src', /.+/);
   await root.hover();
-  await page.waitForTimeout(340);
   await expect(video).toHaveAttribute('src', /projects\/wordstrike\/preview\.webm/);
-  await expect(root.locator('[data-preview-status]')).toHaveText('DEMO');
+  await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 2000 });
+  await expect(root.locator('[data-preview-status]')).toHaveText('DEMO', { timeout: 2000 });
 });
 
 test('reduced motion keeps animated previews in poster state', async ({ browser }) => {

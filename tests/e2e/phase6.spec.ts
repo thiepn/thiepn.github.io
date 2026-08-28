@@ -16,8 +16,7 @@ test('WORDSTRIKE video is lazy and only receives a source after interaction', as
   await expect(video).not.toHaveAttribute('src', /.+/);
   await root.hover();
   await expect(video).toHaveAttribute('src', /projects\/wordstrike\/preview\.webm/);
-  await page.waitForTimeout(380);
-  await expect(root).toHaveAttribute('data-preview-state', 'active');
+  await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 2000 });
 });
 
 test('project-detail inspector still arms, activates, and resets after hover', async ({ page }) => {
