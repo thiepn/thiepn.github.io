@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 const featured = [
-  'the-bible-challenge','pdf-studio','wordstrike','manuscript','voidcut',
+  'the-bible-challenge','pdf-studio','wordstrike','micro-arcade','voidcut',
 ];
-const interactiveFeatured = ['pdf-studio','wordstrike','manuscript'];
+const automaticCapturedFeatured = ['pdf-studio','micro-arcade','voidcut'];
 
 test('homepage renders the intentional five-project featured set in order', async ({ page }) => {
   await page.goto('/');
@@ -14,7 +14,7 @@ test('homepage renders the intentional five-project featured set in order', asyn
   }
 });
 
-test('The Bible Challenge uses real captured interface media', async ({ page }) => {
+test('The Bible Challenge uses its explicitly captured interface media', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('#featured [data-preview-slug="the-bible-challenge"]').first();
   await expect(root).toBeVisible();
@@ -25,21 +25,25 @@ test('The Bible Challenge uses real captured interface media', async ({ page }) 
   await expect(root.locator('.scene--bible-quiz')).toHaveCount(0);
 });
 
-test('interactive Featured projects keep dedicated non-generic preview scenes while VOIDCUT uses the honest static fallback', async ({ page }) => {
+test('featured projects prefer authentic live captures while WORDSTRIKE keeps its real demo video', async ({ page }) => {
   await page.goto('/');
-  for (const slug of interactiveFeatured) {
+  for (const slug of automaticCapturedFeatured) {
     const root = page.locator(`#featured [data-preview-slug="${slug}"]`).first();
     await expect(root).toBeVisible();
+    await expect(root).toHaveAttribute('data-preview-kind', 'static');
+    await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
+    await expect(root.locator('img')).toHaveAttribute('src', `/projects/${slug}/capture.jpg`);
     await expect(root.locator('.scene--generic')).toHaveCount(0);
   }
-  const voidcut = page.locator('#featured [data-preview-slug="voidcut"]').first();
-  await expect(voidcut).toHaveAttribute('data-preview-kind', 'static');
-  await expect(voidcut.locator('.scene--generic')).toHaveCount(1);
+
+  const strike = page.locator('#featured [data-preview-slug="wordstrike"]').first();
+  await expect(strike).toHaveAttribute('data-preview-kind', 'video');
+  await expect(strike).toHaveAttribute('data-preview-provenance', 'reconstructed');
 });
 
-test('P5 Manuscript preview runs its source-to-publication choreography', async ({ page }) => {
-  await page.goto('/');
-  const root = page.locator('[data-preview-slug="manuscript"]').first();
+test('Manuscript project detail keeps its source-to-publication choreography for inspection', async ({ page }) => {
+  await page.goto('/project/manuscript/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
   await root.hover();
   await page.waitForTimeout(240);
   await expect(root).toHaveAttribute('data-preview-state','active');
@@ -48,7 +52,7 @@ test('P5 Manuscript preview runs its source-to-publication choreography', async 
   expect(animation).toContain('p7-md-line');
 });
 
-test('WORDSTRIKE Featured video is deferred and truthfully labelled as a demo', async ({ page }) => {
+test('WORDSTRIKE Featured video is deferred and retains demo provenance', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('[data-preview-slug="wordstrike"]').first();
   await expect(root).toHaveAttribute('data-preview-provenance','reconstructed');
@@ -60,14 +64,20 @@ test('WORDSTRIKE Featured video is deferred and truthfully labelled as a demo', 
   await expect(root.locator('[data-preview-status]')).toHaveText('DEMO');
 });
 
-test('reduced motion keeps interactive Featured previews in poster state', async ({ browser }) => {
+test('reduced motion keeps animated previews in poster state', async ({ browser }) => {
   const context=await browser.newContext({ reducedMotion:'reduce', viewport:{width:1440,height:900} });
   const page=await context.newPage();
+
   await page.goto('http://127.0.0.1:4321/');
-  for(const slug of interactiveFeatured){
-    const root=page.locator(`[data-preview-slug="${slug}"]`).first();
-    await root.hover(); await page.waitForTimeout(320);
-    await expect(root).toHaveAttribute('data-preview-state','poster');
-  }
+  const strike=page.locator('[data-preview-slug="wordstrike"]').first();
+  await strike.hover();
+  await page.waitForTimeout(320);
+  await expect(strike).toHaveAttribute('data-preview-state','poster');
+
+  await page.goto('http://127.0.0.1:4321/project/manuscript/');
+  const manuscript=page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
+  await manuscript.hover();
+  await page.waitForTimeout(320);
+  await expect(manuscript).toHaveAttribute('data-preview-state','poster');
   await context.close();
 });
