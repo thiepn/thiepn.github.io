@@ -39,7 +39,7 @@ accent:
   dark: '#B7A8FF'
 preview:
   tier: P3
-  type: auto
+  type: static
   provenance: static
 actions:
   primaryLabel: Play
