@@ -14,6 +14,7 @@
     "L-006": "algodat-study-system",
     "L-007": "tms60",
     "L-008": "pflegelern",
+    "L-009": "artikelwerk",
     "L-901": "biblical-greek",
     "G-001": "wordstrike",
     "G-002": "wordfall",
@@ -26,8 +27,10 @@
     "G-009": "analysis-idle",
     "G-010": "impossible-transit",
     "G-011": "voidcut",
+    "G-012": "micro-arcade",
     "R-001": "markdown-guide",
-    "V-001": "unreached"
+    "V-001": "unreached",
+    "X-001": "ubf-koeln-website"
   },
   "collections": {
     "C-001": "french-learning",
