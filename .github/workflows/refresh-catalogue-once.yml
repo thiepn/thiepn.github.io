@@ -26,6 +26,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Regenerate Open Graph raster derivatives
+        run: node scripts/rasterize-og.mjs
+
       - name: Refresh generated catalogue
         run: npm run catalogue:refresh
 
