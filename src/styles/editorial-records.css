@@ -1,0 +1,265 @@
+/*
+  Editorial Precision detail-page refinements.
+  These rules intentionally sit after the phase-era component styles so project
+  and collection records share the same hierarchy as the refined homepage.
+*/
+
+body .record.record {
+  padding-top: clamp(30px, 4vw, 58px);
+  padding-bottom: clamp(72px, 9vw, 120px);
+}
+
+body .record.record .record__breadcrumb,
+body .collection-record.collection-record .collection-record__breadcrumb {
+  font-size: .68rem;
+  color: var(--ink-muted);
+}
+
+body .record.record .record__hero {
+  padding: clamp(38px, 5vw, 68px) 0 clamp(48px, 6vw, 82px);
+  align-items: end;
+}
+
+body .record.record .record__copy {
+  align-self: end;
+}
+
+body .record.record .record__eyebrow {
+  margin-top: var(--space-6);
+  font-size: .68rem;
+  color: var(--ink-muted);
+}
+
+body .record.record h1 {
+  margin-top: 10px;
+  max-width: 12ch;
+  font-family: var(--font-display);
+  font-size: clamp(3.6rem, 7.4vw, 7.7rem);
+  line-height: .84;
+  letter-spacing: -.045em;
+  font-weight: 500;
+}
+
+body .record.record .record__subtitle {
+  margin-top: var(--space-5);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  line-height: 1.18;
+  letter-spacing: -.015em;
+}
+
+body .record.record .record__summary {
+  margin-top: var(--space-4);
+  max-width: 56ch;
+  font-size: clamp(1rem, 1.2vw, 1.1rem);
+  line-height: 1.62;
+}
+
+body .record.record .record__availability {
+  margin-top: var(--space-5);
+  font-size: .68rem;
+}
+
+body .record.record .record__preview-label {
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  font-size: .68rem;
+}
+
+body .record.record .record__index {
+  grid-template-columns: minmax(120px, .7fr) minmax(0, 4.3fr);
+  padding: 15px 0;
+  border-top: 0;
+  border-bottom-color: var(--line-strong);
+  font-size: .68rem;
+}
+
+body .record.record .record__index-links a span {
+  color: var(--project-accent);
+}
+
+body .record.record .record__section,
+body .record.record .portfolio-classification,
+body .record.record .record-capabilities,
+body .record.record .project-showcase {
+  padding-top: clamp(54px, 7vw, 86px);
+}
+
+body .record.record .record__section-head h2 {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 2.8vw, 2.55rem);
+  line-height: 1;
+  letter-spacing: -.02em;
+  font-weight: 500;
+}
+
+body .record.record .record__overview-grid {
+  gap: clamp(34px, 7vw, 104px);
+  margin-top: var(--space-6);
+}
+
+body .record.record .record__prose {
+  font-size: clamp(1.02rem, 1.25vw, 1.12rem);
+  line-height: 1.72;
+}
+
+body .record.record .record__overview-grid aside {
+  padding-left: var(--space-5);
+  border-left-color: var(--line-strong);
+}
+
+body .record.record .record__end-context {
+  font-size: .68rem;
+  color: var(--ink-muted);
+}
+
+body .collection-record.collection-record {
+  padding-top: clamp(30px, 4vw, 58px);
+  padding-bottom: clamp(72px, 9vw, 120px);
+}
+
+body .collection-record.collection-record .collection-record__hero {
+  gap: clamp(42px, 9vw, 132px);
+  padding: clamp(36px, 5vw, 64px) 0 clamp(44px, 6vw, 74px);
+}
+
+body .collection-record.collection-record .collection-record__intro {
+  max-width: 840px;
+}
+
+body .collection-record.collection-record .collection-record__hero h1 {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 7vw, 7.2rem);
+  line-height: .84;
+  letter-spacing: -.045em;
+  font-weight: 500;
+}
+
+body .collection-record.collection-record .collection-record__hero p:not(.meta) {
+  margin-top: var(--space-5);
+  max-width: 66ch;
+  font-size: clamp(.98rem, 1.25vw, 1.1rem);
+  line-height: 1.62;
+}
+
+body .collection-record.collection-record .collection-record__stats {
+  display: flex;
+  gap: clamp(24px, 4vw, 46px);
+  padding-top: 13px;
+  border-top: 1px solid var(--line-strong);
+  border-left: 0;
+}
+
+body .collection-record.collection-record .collection-record__stats div {
+  display: grid;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+}
+
+body .collection-record.collection-record .collection-record__stats dt {
+  font-size: .68rem;
+}
+
+body .collection-record.collection-record .collection-record__stats dd {
+  font: 500 1.3rem var(--font-display);
+  color: var(--accent);
+}
+
+body .collection-record.collection-record .collection-record__record-index {
+  grid-template-columns: minmax(120px, .7fr) minmax(0, 4.3fr);
+  padding: 15px 0;
+  border-bottom-color: var(--line-strong);
+  font-size: .68rem;
+}
+
+body .collection-record.collection-record .collection-record__record-index-links a span {
+  color: var(--accent);
+}
+
+body .collection-record.collection-record .collection-record__position,
+body .collection-record.collection-record .collection-record__logic,
+body .collection-record.collection-record .collection-record__anchors,
+body .collection-record.collection-record .collection-record__index,
+body .collection-record.collection-record .collection-record__map {
+  padding-top: clamp(54px, 7vw, 86px);
+}
+
+body .collection-record.collection-record .collection-record__section-head h2 {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 2.8vw, 2.55rem);
+  line-height: 1;
+  letter-spacing: -.02em;
+  font-weight: 500;
+}
+
+body .collection-record.collection-record .collection-record__position-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, .8fr);
+  gap: clamp(34px, 6vw, 88px);
+  margin-top: var(--space-6);
+  border-left: 0;
+}
+
+body .collection-record.collection-record .collection-record__position-copy,
+body .collection-record.collection-record .collection-record__category-mix {
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line-strong);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+body .collection-record.collection-record .collection-record__position-copy > strong {
+  margin-top: var(--space-5);
+  padding: 12px 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 500;
+  letter-spacing: -.015em;
+}
+
+body .collection-record.collection-record .collection-record__logic-grid {
+  gap: clamp(34px, 7vw, 104px);
+  margin-top: var(--space-6);
+}
+
+body .collection-record.collection-record .collection-record__logic-grid > p {
+  font-size: clamp(1.04rem, 1.5vw, 1.24rem);
+  line-height: 1.62;
+}
+
+@media (max-width: 900px) {
+  body .record.record .record__hero {
+    align-items: start;
+  }
+
+  body .collection-record.collection-record .collection-record__stats {
+    width: min(100%, 440px);
+  }
+
+  body .collection-record.collection-record .collection-record__position-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-7);
+  }
+}
+
+@media (max-width: 599px) {
+  body .record.record h1,
+  body .collection-record.collection-record .collection-record__hero h1 {
+    font-size: clamp(3rem, 18vw, 5rem);
+  }
+
+  body .record.record .record__index,
+  body .collection-record.collection-record .collection-record__record-index {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  body .collection-record.collection-record .collection-record__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+}
