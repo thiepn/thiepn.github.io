@@ -11,9 +11,11 @@ const { project } = Astro.props; const p = project.data;
   {p.liveUrl && <a class="compact-artifact__action" href={p.liveUrl} aria-label={`${p.actions.primaryLabel}: ${p.title}`}>{p.actions.primaryLabel} <span aria-hidden="true">↗</span></a>}
 </article>
 <style>
-  .compact-artifact{display:grid;grid-template-columns:68px minmax(0,1fr) auto minmax(76px,auto);gap:var(--space-4);align-items:center;padding:var(--space-3) 0;border-bottom:1px solid var(--line-soft)}
-  .compact-artifact__code{font:500 .68rem var(--font-meta);letter-spacing:.06em;color:var(--ink-muted)}h3{font-size:1rem;line-height:1.15}h3 a{text-decoration:none}p{margin-top:2px;color:var(--ink-muted);font-size:.78rem}
-  .compact-artifact__action{min-height:44px;display:inline-flex;align-items:center;justify-content:flex-end;gap:.42em;text-decoration:none;font:600 .62rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase}.compact-artifact__action:hover,.compact-artifact__action:focus-visible{text-decoration:underline;text-underline-offset:5px}
+  .compact-artifact{display:grid;grid-template-columns:68px minmax(0,1fr) auto minmax(80px,auto);gap:var(--space-4);align-items:center;min-height:76px;padding:12px 0;border-bottom:1px solid var(--line);transition:padding-inline var(--motion-fast) var(--ease-enter),background-color var(--motion-fast) var(--ease-standard)}
+  .compact-artifact:hover,.compact-artifact:focus-within{padding-inline:10px;background:var(--accent-soft)}
+  .compact-artifact__code{font:500 .68rem var(--font-meta);letter-spacing:.06em;color:var(--accent)}h3{font-family:var(--font-display);font-size:1.08rem;line-height:1.12;font-weight:500;letter-spacing:-.012em}h3 a{text-decoration:none}p{margin-top:3px;color:var(--ink-muted);font-size:.78rem}
+  .compact-artifact__action{min-height:44px;display:inline-flex;align-items:center;justify-content:flex-end;gap:.42em;text-decoration:none;font:600 .68rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;color:var(--accent)}.compact-artifact__action:hover,.compact-artifact__action:focus-visible{text-decoration:underline;text-underline-offset:5px}
   @media(max-width:760px){.compact-artifact{grid-template-columns:54px minmax(0,1fr) auto}.compact-artifact__action{grid-column:2/-1;justify-content:flex-start;min-height:36px}}
-  @media(max-width:599px){.compact-artifact{grid-template-columns:54px minmax(0,1fr)}.compact-artifact>:global(.status-label){grid-column:2}.compact-artifact__action{grid-column:2}}
+  @media(max-width:599px){.compact-artifact{grid-template-columns:54px minmax(0,1fr)}.compact-artifact>:global(.status-label){grid-column:2}.compact-artifact__action{grid-column:2}.compact-artifact:hover,.compact-artifact:focus-within{padding-inline:0}}
+  @media(prefers-reduced-motion:reduce){.compact-artifact{transition:none}}
 </style>
