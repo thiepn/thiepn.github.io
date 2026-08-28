@@ -1,6 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
-import InteractivePreview from './InteractivePreview.astro';
+import ProjectPreview from './ProjectPreview.astro';
 import StatusLabel from './StatusLabel.astro';
 import ArtifactActions from './ArtifactActions.astro';
 interface Props { project: CollectionEntry<'projects'>; variant?: 'hero'|'feature'|'standard'; }
@@ -12,7 +12,7 @@ const tags = [p.category, ...p.tags.slice(0,2)].join(' / ');
 <article class:list={["artifact-plate", `artifact-plate--${variant}`, 'artifact-cut']} style={accentStyle}>
   <div class="artifact-plate__meta"><span>{p.code}</span><StatusLabel status={p.status} /></div>
   <div class="artifact-plate__rule" aria-hidden="true"></div>
-  <a class="artifact-plate__preview" href={`/project/${p.slug}/`} aria-label={`View ${p.title} details`}><InteractivePreview project={project} size={variant === 'hero' ? 'hero' : variant === 'feature' ? 'feature' : 'standard'} /></a>
+  <a class="artifact-plate__preview" href={`/project/${p.slug}/`} aria-label={`View ${p.title} details`}><ProjectPreview project={project} size={variant === 'hero' ? 'hero' : variant === 'feature' ? 'feature' : 'standard'} /></a>
   <div class="artifact-plate__body">
     <p class="artifact-plate__eyebrow">{p.subtitle}</p>
     <h3><a href={`/project/${p.slug}/`}>{p.title}</a></h3>
