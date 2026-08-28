@@ -5,9 +5,15 @@
   "start_url": "/",
   "scope": "/",
   "display": "browser",
-  "background_color": "#ECEAE3",
-  "theme_color": "#ECEAE3",
+  "background_color": "#F4F1EA",
+  "theme_color": "#F4F1EA",
   "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
