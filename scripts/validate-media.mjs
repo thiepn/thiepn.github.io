@@ -19,7 +19,14 @@ for (const { data } of projects) {
       else if (bytes > 1.5 * 1024 * 1024) warnings.push(`${data.slug}: preview video exceeds 1.5 MB target (${(bytes / 1024 / 1024).toFixed(2)} MB).`);
     }
   }
+
   const directory = path.join(PATHS.public, 'projects', data.slug);
+  const captureBytes = await size(path.join(directory, 'capture.jpg'));
+  if (captureBytes != null) {
+    if (captureBytes > 1024 * 1024) failures.push(`${data.slug}: authentic capture.jpg exceeds 1 MB hard limit.`);
+    else if (captureBytes > 350 * 1024) warnings.push(`${data.slug}: authentic capture.jpg exceeds 350 KB target (${(captureBytes / 1024).toFixed(0)} KB).`);
+  }
+
   for (const name of ['poster-960.webp', 'poster-480.webp']) {
     const file = path.join(directory, name);
     const bytes = await size(file);
@@ -27,9 +34,12 @@ for (const { data } of projects) {
     if (bytes > 1024 * 1024) failures.push(`${data.slug}: ${name} exceeds 1 MB hard limit.`);
     else if (bytes > 300 * 1024) warnings.push(`${data.slug}: ${name} exceeds 300 KB target.`);
   }
+
   if (data.visibility === 'listed' && Number(String(data.preview?.tier || 'P0').slice(1)) >= 3) {
-    const hasPoster = Boolean(data.preview.poster) || (await size(path.join(directory, 'poster-960.webp'))) != null;
-    if (!hasPoster && data.preview.type === 'static') warnings.push(`${data.slug}: P3+ static preview has no optimized poster derivative.`);
+    const hasPoster = Boolean(data.preview.poster)
+      || captureBytes != null
+      || (await size(path.join(directory, 'poster-960.webp'))) != null;
+    if (!hasPoster && data.preview.type === 'static') warnings.push(`${data.slug}: P3+ static preview has no authentic or optimized poster media.`);
   }
 }
 
