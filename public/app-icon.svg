@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="THIEPN app icon">
+  <rect width="512" height="512" fill="#F4F1EA"/>
+  <g fill="#10233B">
+    <path d="M112 114h288v18H112z"/>
+    <path d="M142 158h228v25h-94v215h-40V183h-94z"/>
+  </g>
+</svg>
