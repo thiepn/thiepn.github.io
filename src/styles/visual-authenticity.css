@@ -1,4 +1,8 @@
-/* Visual authenticity layer: real project imagery first, portfolio chrome second. */
+/*
+  Visual authenticity layer: real project imagery first, portfolio chrome second.
+  Live captures are generated into public/projects/<slug>/capture.jpg and selected
+  by ProjectPreview; the aperture rules below are intentionally fallback-only.
+*/
 
 /* Synthetic previews remain as fallbacks, but they should look like the project rather than a labelled mockup frame. */
 .aperture__chrome,
