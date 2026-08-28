@@ -29,7 +29,7 @@
       ],
       "collections": [],
       "previewTier": "P1",
-      "previewType": "auto",
+      "previewType": "static",
       "previewProvenance": "static",
       "updatedAt": "2026-08-28"
     },
@@ -395,7 +395,7 @@
         "browser-games"
       ],
       "previewTier": "P3",
-      "previewType": "auto",
+      "previewType": "static",
       "previewProvenance": "static",
       "updatedAt": "2026-08-26"
     },
@@ -654,7 +654,7 @@
       ],
       "collections": [],
       "previewTier": "P1",
-      "previewType": "auto",
+      "previewType": "static",
       "previewProvenance": "static",
       "updatedAt": "2026-08-21"
     },
