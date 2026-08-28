@@ -14,8 +14,10 @@ const { project, size = 'standard', focusable = false } = Astro.props;
 const p = project.data;
 const automaticPoster = `/projects/${p.slug}/capture.jpg`;
 const hasAutomaticCapture = p.preview.type !== 'video' && fs.existsSync(path.join(process.cwd(), 'public', 'projects', p.slug, 'capture.jpg'));
-const poster = p.preview.poster ?? (hasAutomaticCapture ? automaticPoster : undefined);
-const captured = Boolean(poster) && (p.preview.provenance === 'captured' || hasAutomaticCapture);
+const explicitCapturedPoster = p.preview.provenance === 'captured' && Boolean(p.preview.poster);
+const useAutomaticCapture = hasAutomaticCapture && !focusable;
+const poster = p.preview.poster ?? (useAutomaticCapture ? automaticPoster : undefined);
+const captured = explicitCapturedPoster || (Boolean(poster) && useAutomaticCapture);
 const focalPoint = p.preview.focalPoint ?? '50% 50%';
 const eager = size === 'hero' || size === 'feature';
 ---
