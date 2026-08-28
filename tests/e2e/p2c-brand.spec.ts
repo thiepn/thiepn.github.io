@@ -25,7 +25,7 @@ test('document head exposes the complete THIEPN icon contract', async ({ page })
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/apple-touch-icon.png');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('sizes', '180x180');
   await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('href', '/mask-icon.svg');
-  await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('color', '#0B0C0C');
+  await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('color', '#10233B');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
 });
 
