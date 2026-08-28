@@ -3,14 +3,13 @@ name: Refresh Catalogue Once
 on:
   push:
     branches: [main]
-    paths:
-      - .github/workflows/refresh-catalogue-once.yml
 
 permissions:
   contents: write
 
 jobs:
   refresh:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -42,5 +41,3 @@ jobs:
           fi
           git commit -m "Refresh generated catalogue after project update"
           git push
-
-# One-shot maintenance workflow for the August 2026 catalogue update.
