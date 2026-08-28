@@ -104,7 +104,7 @@ if(!home.includes('/collection/${collection.data.slug}/'))fail.push('homepage co
 
 const artifact=read('src/components/artifacts/ArtifactPlate.astro');
 for(const marker of ['artifact-cut','StatusLabel','ArtifactActions']){if(!artifact.includes(marker))fail.push(`ArtifactPlate missing ${marker}`)}
-if(!(artifact.includes('PreviewAperture')||artifact.includes('InteractivePreview')))fail.push('ArtifactPlate missing PreviewAperture/InteractivePreview');
+if(!(artifact.includes('ProjectPreview')||artifact.includes('PreviewAperture')||artifact.includes('InteractivePreview')))fail.push('ArtifactPlate must route project media through ProjectPreview or a supported preview fallback');
 const preview=read('src/components/artifacts/PreviewAperture.astro');
 for(const slug of ['pdf-studio','manuscript','clean30','wordstrike','french-3000','ligo-quizabend','analysis-ii-klausurlabor','curio','wordfall','nebula-foundry']){if(!preview.includes(slug))fail.push(`static preview missing treatment for ${slug}`)}
 const projectPage=read('src/pages/project/[slug].astro');
