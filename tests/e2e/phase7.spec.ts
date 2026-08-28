@@ -59,7 +59,10 @@ test('WORDSTRIKE Featured video is deferred and retains demo provenance', async 
   await expect(root).toHaveAttribute('data-preview-provenance','reconstructed');
   const video = root.locator('[data-preview-video]');
   await expect(video).not.toHaveAttribute('src', /.+/);
-  await root.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+  await root.evaluate((element) => {
+    element.ownerDocument.documentElement.style.scrollBehavior = 'auto';
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+  });
   await expect.poll(async () => root.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return Math.min(rect.top, window.innerHeight - rect.bottom);
