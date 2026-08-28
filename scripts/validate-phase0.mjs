@@ -41,8 +41,8 @@ if (packageJson.dependencies?.astro !== '7.1.6') failures.push('Astro must be pi
 if (packageJson.dependencies?.motion !== '12.43.0') failures.push('Motion must be pinned to 12.43.0 for this Phase 0 snapshot.');
 if (!/site:\s*['"]https:\/\/(?:thiepn\.github\.io|thiepn\.dev)['"]/.test(astroConfig)) failures.push('Astro site URL must target the root Pages site or its production custom domain.');
 if (/\bbase\s*:/.test(astroConfig)) failures.push('Root user Pages repository must not define a project base path.');
-if (!tokenCss.includes('--radius-sm: 4px')) failures.push('THE INDEX small-radius token is missing.');
-if (!tokenCss.includes('--canvas: #eceae3')) failures.push('THE INDEX paper canvas token is missing.');
+if (!tokenCss.includes('--radius-sm: 4px')) failures.push('Editorial Precision small-radius token is missing.');
+if (!tokenCss.includes('--canvas: #f4f1ea')) failures.push('Editorial Precision paper canvas token is missing.');
 if (!designSystem.includes('THE INDEX / DS-01')) failures.push('Authoritative design-system identity is missing.');
 
 const forbiddenPatterns = [
