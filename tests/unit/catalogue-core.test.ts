@@ -46,10 +46,10 @@ describe('catalogue helpers', () => {
 
   it('returns featured projects in intentional featured order', () => {
     const input = [
+      project({ code: 'G-012', slug: 'micro-arcade', title: 'Micro Arcade', category: 'games', status: 'live', visibility: 'listed' }),
       project({ code: 'G-001', slug: 'wordstrike', title: 'WORDSTRIKE', category: 'games', status: 'live', visibility: 'listed' }),
-      project({ code: 'T-002', slug: 'manuscript', title: 'Manuscript', category: 'tools', status: 'live', visibility: 'listed' }),
       project({ code: 'T-001', slug: 'pdf-studio', title: 'PDF Studio', category: 'tools', status: 'live', visibility: 'listed' }),
     ];
-    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['pdf-studio', 'wordstrike', 'manuscript']);
+    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['pdf-studio', 'wordstrike', 'micro-arcade']);
   });
 });
