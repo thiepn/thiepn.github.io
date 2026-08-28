@@ -1,20 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test('synthetic PDF Studio preview arms or activates promptly, then resets after hover', async ({ page }) => {
+test('automatic live capture keeps PDF Studio authentic and static on the homepage', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('[data-preview-slug="pdf-studio"]').first();
-  await expect(root).toHaveAttribute('data-preview-state', 'poster');
-  await root.hover();
-
-  // `armed` intentionally lasts only 180ms. Browser automation may return from
-  // hover after that dwell has elapsed, so certify the interactive handoff and
-  // eventual active state without requiring a transient sample after the fact.
-  await expect.poll(async () => await root.getAttribute('data-preview-state'), { timeout: 1200 })
-    .toMatch(/^(armed|active)$/);
-  await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 1200 });
-
-  await page.mouse.move(0, 0);
-  await expect(root).toHaveAttribute('data-preview-state', 'poster');
+  await expect(root).toHaveAttribute('data-preview-kind', 'static');
+  await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
+  await expect(root).toHaveAttribute('data-preview-state', 'static');
+  await expect(root.locator('img')).toHaveAttribute('src', '/projects/pdf-studio/capture.jpg');
 });
 
 test('WORDSTRIKE video is lazy and only receives a source after interaction', async ({ page }) => {
@@ -28,44 +20,46 @@ test('WORDSTRIKE video is lazy and only receives a source after interaction', as
   await expect(root).toHaveAttribute('data-preview-state', 'active');
 });
 
-test('global desktop controller never leaves more than two previews active', async ({ page }) => {
-  await page.goto('/');
-  const pdf = page.locator('[data-preview-slug="pdf-studio"]').first();
-  const manuscript = page.locator('[data-preview-slug="manuscript"]').first();
-  const strike = page.locator('[data-preview-slug="wordstrike"]').first();
-  await pdf.hover(); await page.waitForTimeout(230);
-  await manuscript.hover(); await page.waitForTimeout(230);
-  await strike.hover(); await page.waitForTimeout(330);
-  expect(await page.locator('[data-preview-state="active"]').count()).toBeLessThanOrEqual(2);
+test('project-detail inspector still arms, activates, and resets after hover', async ({ page }) => {
+  await page.goto('/project/pdf-studio/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
+  await expect(root).toHaveAttribute('data-preview-state', 'poster');
+  await root.hover();
+  await expect.poll(async () => await root.getAttribute('data-preview-state'), { timeout: 1200 })
+    .toMatch(/^(armed|active)$/);
+  await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 1200 });
+  await page.mouse.move(0, 0);
+  await expect(root).toHaveAttribute('data-preview-state', 'poster');
 });
 
-test('leaving viewport resets an animated preview', async ({ page }) => {
-  await page.goto('/');
-  const root = page.locator('[data-preview-slug="manuscript"]').first();
-  await root.hover(); await page.waitForTimeout(230);
+test('leaving viewport resets an animated project-detail preview', async ({ page }) => {
+  await page.goto('/project/manuscript/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
+  await root.hover();
+  await page.waitForTimeout(230);
   await expect(root).toHaveAttribute('data-preview-state', 'active');
   await page.getByRole('contentinfo').scrollIntoViewIfNeeded();
   await page.waitForTimeout(120);
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
 });
 
-test('reduced motion never starts animated previews', async ({ browser }) => {
+test('reduced motion never starts animated project-detail previews', async ({ browser }) => {
   const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/');
-  const root = page.locator('[data-preview-slug="pdf-studio"]').first();
+  await page.goto('http://127.0.0.1:4321/project/pdf-studio/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
   await root.hover();
   await page.waitForTimeout(350);
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
   await context.close();
 });
 
-test('touch/mobile keeps previews poster-first with no hover dependency', async ({ browser, browserName }) => {
+test('touch/mobile keeps the project-detail inspector poster-first with no hover dependency', async ({ browser, browserName }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(browserName === 'firefox' ? {} : { isMobile: true }) });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/');
-  const roots = page.locator('[data-preview-root]');
-  await expect(roots.first()).toHaveAttribute('data-preview-state', 'poster');
+  await page.goto('http://127.0.0.1:4321/project/pdf-studio/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
+  await expect(root).toHaveAttribute('data-preview-state', 'poster');
   expect(await page.locator('[data-preview-state="active"]').count()).toBe(0);
   await context.close();
 });
