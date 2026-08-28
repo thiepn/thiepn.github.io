@@ -14,6 +14,11 @@ test('WORDSTRIKE video is lazy and only receives a source after interaction', as
   const root = page.locator('[data-preview-slug="wordstrike"]').first();
   const video = root.locator('[data-preview-video]');
   await expect(video).not.toHaveAttribute('src', /.+/);
+  await root.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+  await expect.poll(async () => root.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return Math.min(rect.top, window.innerHeight - rect.bottom);
+  }), { timeout: 2000 }).toBeGreaterThan(200);
   await root.hover();
   await expect(video).toHaveAttribute('src', /projects\/wordstrike\/preview\.webm/);
   await expect(root).toHaveAttribute('data-preview-state', 'active', { timeout: 2000 });
