@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const routes = [
@@ -20,6 +22,8 @@ const viewports = [
   { name: 'wide-desktop', width: 1920, height: 1080 },
 ] as const;
 
+const visualEvidenceDir = path.join(process.cwd(), 'test-results', 'final-visual-qa');
+
 async function horizontalOverflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
@@ -36,6 +40,28 @@ async function geometry(locator: Locator) {
   return locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
+}
+
+async function saveViewportEvidence(page: Page, name: string) {
+  await fs.mkdir(visualEvidenceDir, { recursive: true });
+  await page.screenshot({
+    path: path.join(visualEvidenceDir, `${name}.jpg`),
+    type: 'jpeg',
+    quality: 78,
+    fullPage: false,
+    animations: 'disabled',
+  });
+}
+
+async function saveElementEvidence(locator: Locator, name: string) {
+  await fs.mkdir(visualEvidenceDir, { recursive: true });
+  await locator.scrollIntoViewIfNeeded();
+  await locator.screenshot({
+    path: path.join(visualEvidenceDir, `${name}.jpg`),
+    type: 'jpeg',
+    quality: 78,
+    animations: 'disabled',
   });
 }
 
@@ -147,6 +173,37 @@ test('light and dark themes preserve layout geometry', async ({ page, browserNam
     expect(Math.abs(before[index].height - after[index].height), `target ${index} height`).toBeLessThanOrEqual(1);
     expect(Math.abs(before[index].x - after[index].x), `target ${index} x`).toBeLessThanOrEqual(1);
   }
+});
+
+test('records representative visual evidence for final manual inspection', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Visual evidence is captured once from Chromium.');
+  await fs.rm(visualEvidenceDir, { recursive: true, force: true });
+
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto('/');
+  await saveViewportEvidence(page, '01-home-320-light');
+  await saveElementEvidence(page.locator('.flagship-card'), '02-flagship-320-light');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/project/pdf-studio/');
+  await saveElementEvidence(page.locator('.record__hero'), '03-pdf-studio-record-390');
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/');
+  await saveElementEvidence(page.locator('.universe-grid'), '04-featured-768-light');
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/collection/browser-games/');
+  await saveElementEvidence(page.locator('.collection-map-shell__workspace'), '05-browser-games-map-1024');
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const light = page.getByRole('button', { name: 'Light', exact: true }).first();
+  const dark = page.getByRole('button', { name: 'Dark', exact: true }).first();
+  await light.click();
+  await saveViewportEvidence(page, '06-home-1440-light');
+  await dark.click();
+  await saveElementEvidence(page.locator('.universe-grid'), '07-featured-1440-dark');
 });
 
 test('@mobile-cert important text-only navigation keeps 44px touch height', async ({ page }) => {
