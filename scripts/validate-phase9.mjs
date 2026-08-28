@@ -36,7 +36,7 @@ if(projectCount<9||anchorCount<4||anchorCount>=projectCount){console.error('Brow
 const schema=read('src/content.config.ts');
 for(const needle of ['editorialNote: z.string','keywords: z.array','note: z.string']) if(!schema.includes(needle)){console.error(`Collection schema missing ${needle}`);process.exit(1);}
 const map=read('src/components/collections/CollectionMap.astro');
-for(const needle of ['chooseCollectionMapSlugs','data-collection-node','data-collection-edge','data-collection-preview','PreviewAperture','collection-map-shell__relations']) if(!map.includes(needle)){console.error(`Collection map missing ${needle}`);process.exit(1);}
+for(const needle of ['chooseCollectionMapSlugs','data-collection-node','data-collection-edge','data-collection-preview','ProjectPreview','collection-map-shell__relations']) if(!map.includes(needle)){console.error(`Collection map missing ${needle}`);process.exit(1);}
 const page=read('src/pages/collection/[slug].astro');
 for(const needle of ['About this collection','CollectionMap','Featured projects','Everything in this collection','data-collection-classification','Collection, not category','Collection index','Categories represented']) if(!page.includes(needle)){console.error(`Collection page missing ${needle}`);process.exit(1);}
 const search=read('src/lib/search-core.ts');
