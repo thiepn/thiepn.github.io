@@ -115,26 +115,23 @@ async function prepareWordstrike(page) {
 }
 
 async function preparePdfStudio(page, state) {
-  await page.locator('body').waitFor({ state: 'visible', timeout: 12_000 });
-  await page.waitForTimeout(1_000);
-  const bodyText = (await page.locator('body').innerText()).replace(/\s+/g, ' ').trim();
-  console.log(`PDF Studio deployed surface (${state}): ${bodyText.slice(0, 1800)}`);
-  if (!/pdf/i.test(bodyText)) throw new Error('PDF Studio live surface contains no visible PDF product content.');
+  const app = page.locator('#root').first();
+  await app.waitFor({ state: 'visible', timeout: 12_000 });
+  await page.getByText('PRIVATE PDF WORKSPACE', { exact: true }).first().waitFor({ state: 'visible', timeout: 12_000 });
   if (state === 'home') return;
 
-  const sampleControl = page.locator('button, a').filter({ hasText: /sample/i }).first();
-  if (!await sampleControl.isVisible().catch(() => false)) {
-    const controls = await page.locator('button, a').allTextContents();
-    throw new Error(`PDF Studio live surface has no visible sample control. Controls: ${controls.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 40).join(' | ')}`);
-  }
+  const sampleControl = page.getByRole('button', { name: 'Open sample' }).first();
+  await sampleControl.waitFor({ state: 'visible', timeout: 8_000 });
   await sampleControl.click();
+  await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 15_000 });
   await page.waitForTimeout(2_000);
   const hash = await page.evaluate(() => window.location.hash);
-  if (!hash || hash === '#/home') throw new Error(`PDF Studio sample control did not leave Home. Current hash: ${hash || '(empty)'}`);
+  if (!hash.startsWith('#/workspace/')) throw new Error(`PDF Studio sample did not reach a workspace. Current hash: ${hash || '(empty)'}`);
 }
 
 async function prepareMicroArcade(page, state) {
-  await page.locator('#library-section').waitFor({ state: 'visible', timeout: 12_000 });
+  const gameLibrary = page.getByRole('main', { name: 'Game library' });
+  await gameLibrary.waitFor({ state: 'visible', timeout: 12_000 });
   await page.getByText('MICRO ARCADE', { exact: true }).first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {});
   if (state === 'home') {
     await page.evaluate(() => window.scrollTo(0, 0));
