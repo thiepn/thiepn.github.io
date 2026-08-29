@@ -36,7 +36,8 @@ accent:
 preview:
   tier: P3
   type: static
-  provenance: static
+  provenance: captured
+  poster: /projects/voidcut/screenshot-desktop.png
 actions:
   primaryLabel: Play
   source: true
@@ -51,6 +52,15 @@ capabilities:
   description: Replay comparable stage conditions, chase stronger execution, and race runs whose outcomes depend on player decisions rather than random layouts.
 - title: Installable browser game
   description: Run as a mobile-capable PWA with offline support, pointer controls, and a compact portrait-first game presentation.
+gallery:
+- label: Main menu
+  caption: The real VOIDCUT launch surface with its live vector-field presentation, run controls, and progression entry points.
+  variant: home
+  source: /projects/voidcut/screenshot-desktop.png
+- label: Live run
+  caption: A standard VOIDCUT run in progress, showing the portrait arena, chamber HUD, moving cores, and precision-cut objective without tutorial overlays.
+  variant: gameplay
+  source: /projects/voidcut/screenshot-gameplay.png
 ---
 
 VOIDCUT is a precision arcade game about cutting away space while protecting moving nodes.
