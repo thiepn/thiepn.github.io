@@ -40,7 +40,8 @@ accent:
 preview:
   tier: P3
   type: static
-  provenance: static
+  provenance: captured
+  poster: /projects/micro-arcade/screenshot-desktop.png
 actions:
   primaryLabel: Play
   source: true
@@ -55,6 +56,15 @@ capabilities:
   description: Support keyboard, mouse, touch, on-screen controls, and a Gamepad API bridge so the same collection remains playable across device classes.
 - title: Progress and competition
   description: Track achievements, statistics, favorites, and local records while optionally connecting to persistent global and weekly leaderboard services.
+gallery:
+- label: Arcade library
+  caption: The real 31-game library with filters, instant-play cards, and account-free progression entry points.
+  variant: home
+  source: /projects/micro-arcade/screenshot-desktop.png
+- label: Orbit
+  caption: Orbit running inside the shared Micro Arcade game shell.
+  variant: gameplay
+  source: /projects/micro-arcade/screenshot-gameplay.png
 ---
 
 Micro Arcade packages thirty-one small games into a single fast-launch arcade built for desktop and mobile browsers. Each title is code-split and loaded on demand, while the shared shell handles navigation, settings, progression, accessibility, and recovery consistently.
