@@ -5,14 +5,16 @@ const pngDimensions = (body: Buffer) => {
   return { width: body.readUInt32BE(16), height: body.readUInt32BE(20) };
 };
 
-test('header exposes the canonical THIEPN mark and wordmark', async ({ page }) => {
+test('header exposes the canonical Page Pixel mark and lowercase wordmark', async ({ page }) => {
   await page.goto('/');
   const brand = page.locator('[data-site-brand]');
+  const mark = brand.locator('[data-brand-mark]');
   await expect(brand).toBeVisible();
   await expect(brand).toHaveAttribute('href', '/');
-  await expect(brand.locator('[data-brand-mark]')).toBeVisible();
-  await expect(brand.locator('.site-wordmark')).toHaveText('THIEPN');
-  await expect(brand.locator('[data-brand-mark]')).toHaveAttribute('aria-hidden', 'true');
+  await expect(mark).toBeVisible();
+  await expect(mark).toHaveAttribute('viewBox', '0 0 64 64');
+  await expect(brand.locator('.site-wordmark')).toHaveText('thiepn');
+  await expect(mark).toHaveAttribute('aria-hidden', 'true');
 });
 
 test('document head exposes the complete THIEPN icon contract', async ({ page }) => {
@@ -25,7 +27,7 @@ test('document head exposes the complete THIEPN icon contract', async ({ page })
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/apple-touch-icon.png');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('sizes', '180x180');
   await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('href', '/mask-icon.svg');
-  await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('color', '#10233B');
+  await expect(page.locator('link[rel="mask-icon"]')).toHaveAttribute('color', '#0F1725');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
 });
 
@@ -79,7 +81,7 @@ test('brand identity stays compact and overflow-free at 320px', async ({ page })
   const brand = page.locator('[data-site-brand]');
   await expect(brand).toBeVisible();
   await expect(brand.locator('[data-brand-mark]')).toBeVisible();
-  await expect(brand.locator('.site-wordmark')).toHaveText('THIEPN');
+  await expect(brand.locator('.site-wordmark')).toHaveText('thiepn');
   await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
   const headerHeight = await page.locator('.site-header').evaluate((node) => node.getBoundingClientRect().height);
   expect(headerHeight).toBeLessThanOrEqual(64);
