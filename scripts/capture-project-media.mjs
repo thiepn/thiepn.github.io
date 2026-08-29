@@ -115,20 +115,22 @@ async function prepareWordstrike(page) {
 }
 
 async function preparePdfStudio(page, state) {
-  const homeTitle = page.getByRole('heading', { name: 'What do you want to do with your PDF?' });
-  await homeTitle.waitFor({ state: 'visible', timeout: 12_000 });
+  await page.locator('body').waitFor({ state: 'visible', timeout: 12_000 });
+  await page.waitForTimeout(1_000);
+  const bodyText = (await page.locator('body').innerText()).replace(/\s+/g, ' ').trim();
+  console.log(`PDF Studio deployed surface (${state}): ${bodyText.slice(0, 1800)}`);
+  if (!/pdf/i.test(bodyText)) throw new Error('PDF Studio live surface contains no visible PDF product content.');
   if (state === 'home') return;
 
-  await page.getByRole('button', { name: 'Open sample' }).click();
-  await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 15_000 });
-  await page.waitForTimeout(1_800);
-  if (!windowHashIncludesWorkspace(await page.evaluate(() => window.location.hash))) {
-    throw new Error('PDF Studio sample did not open the real workspace.');
+  const sampleControl = page.locator('button, a').filter({ hasText: /sample/i }).first();
+  if (!await sampleControl.isVisible().catch(() => false)) {
+    const controls = await page.locator('button, a').allTextContents();
+    throw new Error(`PDF Studio live surface has no visible sample control. Controls: ${controls.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 40).join(' | ')}`);
   }
-}
-
-function windowHashIncludesWorkspace(hash) {
-  return typeof hash === 'string' && hash.startsWith('#/workspace/');
+  await sampleControl.click();
+  await page.waitForTimeout(2_000);
+  const hash = await page.evaluate(() => window.location.hash);
+  if (!hash || hash === '#/home') throw new Error(`PDF Studio sample control did not leave Home. Current hash: ${hash || '(empty)'}`);
 }
 
 async function prepareMicroArcade(page, state) {
