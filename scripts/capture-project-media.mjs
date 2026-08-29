@@ -48,16 +48,20 @@ async function prepareCanonicalState(page) {
     } else if (await nativeHome.isVisible().catch(() => false)) {
       await nativeHome.click();
     } else {
-      await page.evaluate(() => {
+      const clicked = await page.evaluate(() => {
         const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
           .find((element) => element.textContent?.trim().toLowerCase() === 'home');
-        if (candidate instanceof HTMLElement) candidate.click();
+        if (!(candidate instanceof HTMLElement)) return false;
+        candidate.click();
+        return true;
       });
+      if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
     }
 
-    await page.locator('.pr5-home, [data-pr5-domain="home"], body[data-pr5-domain="home"]').first()
-      .waitFor({ state: 'visible', timeout: 8_000 })
-      .catch(() => {});
+    await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
+    await page.locator('.pr5-home').first().waitFor({ state: 'visible', timeout: 8_000 });
+    const domain = await page.locator('body').getAttribute('data-pr5-domain');
+    if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
     await page.waitForTimeout(500);
   }
 
