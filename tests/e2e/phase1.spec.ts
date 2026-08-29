@@ -3,7 +3,10 @@ import { expect, test } from '@playwright/test';
 test('renders catalogue-derived Project Universe counts', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/THIEPN/);
-  await expect(page.getByRole('heading', { level: 1, name: 'THIEPN' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Things I build.' })).toBeVisible();
+  await expect(page.getByText('Independent software & experiments', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Explore selected work' })).toHaveAttribute('href', '#featured');
+  await expect(page.getByRole('link', { name: /^About/ })).toHaveAttribute('href', '/about/');
 
   const catalogueResponse = await page.request.get('/catalogue.json');
   expect(catalogueResponse.ok()).toBe(true);
