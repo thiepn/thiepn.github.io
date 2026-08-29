@@ -396,7 +396,7 @@
       ],
       "previewTier": "P3",
       "previewType": "static",
-      "previewProvenance": "static",
+      "previewProvenance": "captured",
       "updatedAt": "2026-08-26"
     },
     {
@@ -463,8 +463,8 @@
         "productivity-creation"
       ],
       "previewTier": "P5",
-      "previewType": "synthetic",
-      "previewProvenance": "synthetic",
+      "previewType": "static",
+      "previewProvenance": "captured",
       "updatedAt": "2026-08-18"
     },
     {
@@ -723,7 +723,7 @@
       ],
       "previewTier": "P3",
       "previewType": "static",
-      "previewProvenance": "static",
+      "previewProvenance": "captured",
       "updatedAt": "2026-08-22"
     },
     {
