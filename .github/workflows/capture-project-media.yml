@@ -3,7 +3,9 @@ name: Capture project media
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
+      - 'scripts/capture-project-media.mjs'
       - '.github/workflows/capture-project-media.yml'
 
 permissions:
@@ -11,43 +13,46 @@ permissions:
 
 concurrency:
   group: capture-project-media
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   capture:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout portfolio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: npm
+          node-version: 24
+          package-manager-cache: false
 
       - name: Install repository dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Capture The Bible Challenge
+      - name: Capture The Bible Challenge home
         run: node scripts/capture-project-media.mjs the-bible-challenge https://thiepn.dev/tbc/
 
+      - name: Capture WORDSTRIKE home
+        run: node scripts/capture-project-media.mjs wordstrike https://thiepn.dev/wordstrike/
+
       - name: Commit captured media
+        shell: bash
         run: |
-          if [ -z "$(git status --porcelain -- public/projects/the-bible-challenge)" ]; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/projects/the-bible-challenge public/projects/wordstrike
+          if git diff --cached --quiet; then
             echo "Captured media is unchanged."
             exit 0
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/projects/the-bible-challenge
-          git commit -m "Capture real TBC portfolio media"
+          git commit -m "Refresh canonical project screenshots"
           git pull --rebase origin main
           git push origin HEAD:main
