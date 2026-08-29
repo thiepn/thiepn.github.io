@@ -76,7 +76,6 @@ async function activateTbcHome(page) {
       if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
     }
   }
-
   await page.waitForTimeout(700);
 }
 
@@ -87,17 +86,30 @@ async function prepareCanonicalState(page) {
 
   if (slug === 'the-bible-challenge') {
     await dismissTbcModal(page);
-    await activateTbcHome(page);
-    await dismissTbcModal(page);
+
+    let domain = await page.locator('body').getAttribute('data-pr5-domain');
+    const visibleNativeHome = page.locator('.pr5-native-home').first();
+    if (domain !== 'home' || !await visibleNativeHome.isVisible().catch(() => false)) {
+      await activateTbcHome(page);
+      await dismissTbcModal(page);
+      domain = await page.locator('body').getAttribute('data-pr5-domain');
+    }
 
     await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
-    await page.locator('.pr5-home').first().waitFor({ state: 'visible', timeout: 8_000 });
+    await visibleNativeHome.waitFor({ state: 'visible', timeout: 8_000 });
 
-    const domain = await page.locator('body').getAttribute('data-pr5-domain');
     if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
     if (await page.locator('#modalRoot .modal-backdrop').first().isVisible().catch(() => false)) {
       throw new Error('TBC capture reached Home but a modal still obscures the home menu.');
     }
+
+    const visibleContent = await visibleNativeHome.evaluate((element) => {
+      const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+      const rect = element.getBoundingClientRect();
+      return text.length > 0 && rect.width > 0 && rect.height > 0;
+    });
+    if (!visibleContent) throw new Error('TBC native Home surface is visible but contains no usable home-menu content.');
+
     await page.waitForTimeout(500);
   }
 
