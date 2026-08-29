@@ -37,7 +37,7 @@ const checks = [
   [projectPreview.includes('<InteractivePreview') && projectPreview.includes('focusable={focusable}'), 'ProjectPreview must pass record focusability through to interactive fallback previews.'],
   [projectPreview.includes("p.preview.provenance === 'captured'") && projectPreview.includes('poster'), 'ProjectPreview must support non-interactive captured poster media without adding an unnecessary focus stop.'],
   [(layout.includes("import '../scripts/preview-controller'") || (layout.includes("import '../scripts/runtime-loader'") && runtimeLoader.includes("import('./preview-controller')"))), 'PreviewController must initialize from the shared layout/runtime loader.'],
-  [pdf.includes('type: synthetic') && pdf.includes('duration: 3800'), 'PDF Studio proof preview configuration is missing.'],
+  [pdf.includes('type: static') && pdf.includes('provenance: captured') && pdf.includes('poster: /projects/pdf-studio/screenshot-desktop.png'), 'PDF Studio authentic captured proof configuration is missing.'],
   [strike.includes('type: video') && strike.includes('/projects/wordstrike/preview.webm') && strike.includes('duration: 3400'), 'WORDSTRIKE video proof configuration is missing.'],
   [french.includes('type: synthetic') && french.includes('duration: 3600'), 'French 3000 proof preview configuration is missing.'],
 ];
