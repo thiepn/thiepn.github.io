@@ -37,20 +37,35 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Capture The Bible Challenge home
+      - name: Capture The Bible Challenge
         run: node scripts/capture-project-media.mjs the-bible-challenge https://thiepn.dev/tbc/
 
-      - name: Capture WORDSTRIKE home
+      - name: Capture PDF Studio
+        run: node scripts/capture-project-media.mjs pdf-studio https://thiepn.dev/pdf/
+
+      - name: Capture WORDSTRIKE
         run: node scripts/capture-project-media.mjs wordstrike https://thiepn.dev/wordstrike/
 
-      - name: Upload canonical media review
+      - name: Capture Micro Arcade
+        run: node scripts/capture-project-media.mjs micro-arcade https://thiepn.dev/arcade/
+
+      - name: Capture VOIDCUT
+        run: node scripts/capture-project-media.mjs voidcut https://thiepn.dev/voidcut/
+
+      - name: Upload featured media review
         uses: actions/upload-artifact@v4
         with:
-          name: canonical-project-media-review
+          name: featured-project-media-review
           path: |
             public/projects/the-bible-challenge/screenshot-desktop.png
             public/projects/the-bible-challenge/screenshot-mobile.png
+            public/projects/pdf-studio/screenshot-desktop.png
+            public/projects/pdf-studio/screenshot-workspace.png
             public/projects/wordstrike/screenshot-desktop.png
+            public/projects/micro-arcade/screenshot-desktop.png
+            public/projects/micro-arcade/screenshot-gameplay.png
+            public/projects/voidcut/screenshot-desktop.png
+            public/projects/voidcut/screenshot-gameplay.png
           if-no-files-found: error
           retention-days: 7
 
@@ -59,11 +74,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/projects/the-bible-challenge public/projects/wordstrike
+          git add public/projects/the-bible-challenge public/projects/pdf-studio public/projects/wordstrike public/projects/micro-arcade public/projects/voidcut
           if git diff --cached --quiet; then
             echo "Captured media is unchanged."
             exit 0
           fi
-          git commit -m "Refresh canonical project screenshots"
+          git commit -m "Refresh featured project media"
           git pull --rebase origin main
           git push origin HEAD:main
