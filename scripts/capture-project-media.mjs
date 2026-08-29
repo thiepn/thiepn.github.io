@@ -57,6 +57,29 @@ async function dismissTbcModal(page) {
   }
 }
 
+async function activateTbcHome(page) {
+  const enhancedHome = page.locator('[data-pr5-nav="home"]').first();
+  if (await enhancedHome.isVisible().catch(() => false)) {
+    await enhancedHome.evaluate((element) => element.click());
+  } else {
+    const nativeHome = page.getByRole('button', { name: /^Home$/i }).first();
+    if (await nativeHome.isVisible().catch(() => false)) {
+      await nativeHome.evaluate((element) => element.click());
+    } else {
+      const clicked = await page.evaluate(() => {
+        const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
+          .find((element) => element.textContent?.trim().toLowerCase() === 'home');
+        if (!(candidate instanceof HTMLElement)) return false;
+        candidate.click();
+        return true;
+      });
+      if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
+    }
+  }
+
+  await page.waitForTimeout(700);
+}
+
 async function prepareCanonicalState(page) {
   await page.addStyleTag({
     content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}',
@@ -64,33 +87,11 @@ async function prepareCanonicalState(page) {
 
   if (slug === 'the-bible-challenge') {
     await dismissTbcModal(page);
-
-    const enhancedHome = page.locator('[data-pr5-nav="home"]').first();
-    const alreadyHome = await enhancedHome.getAttribute('aria-current').catch(() => null) === 'page';
-
-    if (!alreadyHome) {
-      if (await enhancedHome.isVisible().catch(() => false)) {
-        await enhancedHome.evaluate((element) => element.click());
-      } else {
-        const nativeHome = page.getByRole('button', { name: /^Home$/i }).first();
-        if (await nativeHome.isVisible().catch(() => false)) {
-          await nativeHome.evaluate((element) => element.click());
-        } else {
-          const clicked = await page.evaluate(() => {
-            const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
-              .find((element) => element.textContent?.trim().toLowerCase() === 'home');
-            if (!(candidate instanceof HTMLElement)) return false;
-            candidate.click();
-            return true;
-          });
-          if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
-        }
-      }
-    }
+    await activateTbcHome(page);
+    await dismissTbcModal(page);
 
     await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
     await page.locator('.pr5-home').first().waitFor({ state: 'visible', timeout: 8_000 });
-    await page.locator('#modalRoot .modal-backdrop').first().waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
 
     const domain = await page.locator('body').getAttribute('data-pr5-domain');
     if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
