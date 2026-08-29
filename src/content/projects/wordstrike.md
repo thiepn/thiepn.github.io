@@ -35,6 +35,7 @@ preview:
   tier: P4
   type: video
   provenance: reconstructed
+  poster: /projects/wordstrike/screenshot-desktop.png
   source: /projects/wordstrike/preview.webm
   duration: 3400
 actions:
@@ -57,8 +58,9 @@ capabilities:
   previewState: daily
 gallery:
 - label: Campaign
-  caption: Incoming words approach the central core.
+  caption: A real captured view of the live WORDSTRIKE home and campaign interface.
   variant: campaign
+  source: /projects/wordstrike/screenshot-desktop.png
 - label: Typing Test
   caption: Speed and accuracy are measured directly.
   variant: typing
