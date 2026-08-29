@@ -153,11 +153,16 @@ async function prepareVoidcut(page, state) {
   await page.locator('.logo-lockup').first().waitFor({ state: 'visible', timeout: 8_000 });
   if (state === 'home') return;
 
-  const play = page.locator('#play').first();
-  await play.waitFor({ state: 'visible', timeout: 8_000 });
-  await play.click();
+  const started = await page.evaluate(() => {
+    const startRun = globalThis.start;
+    if (typeof startRun !== 'function') return false;
+    startRun(null, true);
+    return true;
+  }).catch(() => false);
+  if (!started) throw new Error('VOIDCUT capture could not start a standard run without tutorial mode.');
   await menu.waitFor({ state: 'hidden', timeout: 12_000 });
   await page.locator('#game').waitFor({ state: 'visible', timeout: 8_000 });
+  await page.locator('#tutorial').waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
   await page.waitForTimeout(1_600);
 }
 
