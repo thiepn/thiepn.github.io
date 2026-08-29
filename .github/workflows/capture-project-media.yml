@@ -7,6 +7,11 @@ on:
     paths:
       - 'scripts/capture-project-media.mjs'
       - '.github/workflows/capture-project-media.yml'
+      - 'src/content/projects/the-bible-challenge.md'
+      - 'src/content/projects/pdf-studio.md'
+      - 'src/content/projects/wordstrike.md'
+      - 'src/content/projects/micro-arcade.md'
+      - 'src/content/projects/voidcut.md'
 
 permissions:
   contents: write
@@ -69,16 +74,19 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Commit captured media
+      - name: Refresh generated catalogue outputs
+        run: npm run catalogue:refresh
+
+      - name: Commit canonical media and generated outputs
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/projects/the-bible-challenge public/projects/pdf-studio public/projects/wordstrike public/projects/micro-arcade public/projects/voidcut
+          git add public/projects/the-bible-challenge public/projects/pdf-studio public/projects/wordstrike public/projects/micro-arcade public/projects/voidcut src/generated
           if git diff --cached --quiet; then
-            echo "Captured media is unchanged."
+            echo "Canonical media and generated outputs are unchanged."
             exit 0
           fi
-          git commit -m "Refresh featured project media"
+          git commit -m "Refresh featured project media and catalogue"
           git pull --rebase origin main
           git push origin HEAD:main
