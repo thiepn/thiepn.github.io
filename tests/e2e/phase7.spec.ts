@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+// This suite certifies the canonical media-bearing state after generated catalogue refresh.
 const featured = [
   'the-bible-challenge','pdf-studio','wordstrike','micro-arcade','voidcut',
 ];
