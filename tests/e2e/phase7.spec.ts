@@ -14,7 +14,7 @@ test('homepage renders the intentional five-project featured set in order', asyn
   }
 });
 
-test('The Bible Challenge uses its explicitly captured interface media', async ({ page }) => {
+test('The Bible Challenge uses its explicitly captured Home interface media', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('#featured [data-preview-slug="the-bible-challenge"]').first();
   await expect(root).toBeVisible();
@@ -25,7 +25,7 @@ test('The Bible Challenge uses its explicitly captured interface media', async (
   await expect(root.locator('.scene--bible-quiz')).toHaveCount(0);
 });
 
-test('featured projects prefer authentic live captures while WORDSTRIKE keeps its real demo video', async ({ page }) => {
+test('featured projects prefer authentic live captures while WORDSTRIKE keeps its real screenshot and demo video', async ({ page }) => {
   await page.goto('/');
   for (const slug of automaticCapturedFeatured) {
     const root = page.locator(`#featured [data-preview-slug="${slug}"]`).first();
@@ -39,6 +39,7 @@ test('featured projects prefer authentic live captures while WORDSTRIKE keeps it
   const strike = page.locator('#featured [data-preview-slug="wordstrike"]').first();
   await expect(strike).toHaveAttribute('data-preview-kind', 'video');
   await expect(strike).toHaveAttribute('data-preview-provenance', 'reconstructed');
+  await expect(strike.locator('.preview-shell__poster')).toHaveAttribute('src', '/projects/wordstrike/screenshot-desktop.png');
 });
 
 test('Manuscript project detail keeps its source-to-publication choreography for inspection', async ({ page }) => {
@@ -57,6 +58,7 @@ test('WORDSTRIKE Featured video is deferred and retains demo provenance', async 
   const root = page.locator('[data-preview-slug="wordstrike"]').first();
   const status = root.locator('[data-preview-status]');
   await expect(root).toHaveAttribute('data-preview-provenance','reconstructed');
+  await expect(root.locator('.preview-shell__poster')).toHaveAttribute('src', '/projects/wordstrike/screenshot-desktop.png');
   const video = root.locator('[data-preview-video]');
   await expect(video).not.toHaveAttribute('src', /.+/);
   await root.evaluate((element) => {
