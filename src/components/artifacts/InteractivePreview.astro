@@ -67,14 +67,12 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   .preview-shell[data-preview-state="settled"] .preview-shell__signal{background:currentColor;opacity:.5}
   .preview-shell[data-preview-state="unavailable"] .preview-shell__status{color:rgb(245 242 235 / .54)}
 
-  /* P5 — PDF Studio: organize → redact → export. */
   .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-page--moving){animation:p7-pdf-page 3.8s var(--ease-enter) both}
   .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-thumb--3){animation:p7-pdf-thumb 3.8s var(--ease-standard) both}
   .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-selection){animation:p7-pdf-selection 3.8s var(--ease-standard) both}
   .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-page--moving .redact){animation:p7-pdf-redact 3.8s var(--ease-standard) both}
   .preview-shell--pdf-studio[data-preview-state="active"] :global(.pdf-tool strong){animation:p7-pdf-export 3.8s var(--ease-standard) both}
 
-  /* P5 — Manuscript: source enters → build → publication resolves. */
   .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--1){animation:p7-md-line 4s .12s var(--ease-enter) both}
   .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--2){animation:p7-md-line 4s .36s var(--ease-enter) both}
   .preview-shell--manuscript[data-preview-state="active"] :global(.md-line--3){animation:p7-md-line 4s .62s var(--ease-enter) both}
@@ -85,7 +83,6 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   .preview-shell--manuscript[data-preview-state="active"] :global(.paper-figure){animation:p7-paper-resolve 4s var(--ease-enter) both}
   .preview-shell--manuscript[data-preview-state="active"] :global(.manuscript-progress span){animation:p7-build-progress 4s var(--ease-standard) both}
 
-  /* P4 — Clean30: three concrete tasks, no decorative confetti. */
   .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--1 i){animation:p7-check 3.6s .35s var(--ease-standard) both}
   .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--2 i){animation:p7-check 3.6s 1.05s var(--ease-standard) both}
   .preview-shell--clean30[data-preview-state="active"] :global(.clean-task--3 i){animation:p7-check 3.6s 1.75s var(--ease-standard) both}
@@ -99,13 +96,11 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   .preview-shell--clean30[data-preview-state="active"] :global(.clean-count b:nth-child(4)){animation:p7-count-3 3.6s both}
   .preview-shell--clean30[data-preview-state="active"] :global(.clean-complete){animation:p7-clean-complete 3.6s var(--ease-enter) both}
 
-  /* P4 — French 3000: prompt → reveal → rate → next. */
   .preview-shell--french-3000[data-preview-state="active"] :global(.french-card--one){animation:p7-french-first 3.6s var(--ease-enter) both}
   .preview-shell--french-3000[data-preview-state="active"] :global(.rating .active){animation:p7-french-rate 3.6s var(--ease-standard) both}
   .preview-shell--french-3000[data-preview-state="active"] :global(.french-card--two){animation:p7-french-next 3.6s var(--ease-enter) both}
   .preview-shell--french-3000[data-preview-state="active"] :global(.french-progress span){animation:p7-french-progress 3.6s var(--ease-standard) both}
 
-  /* P4 — LiGo: timer → answer lock → score consequence. */
   .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-top strong i:first-child){animation:p7-quiz-time-a 3.9s both}
   .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-top strong i:nth-child(2)){animation:p7-quiz-time-b 3.9s both}
   .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.answer-correct){animation:p7-quiz-answer 3.9s var(--ease-standard) both}
@@ -113,7 +108,6 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-score strong i:first-child){animation:p7-score-a 3.9s both}
   .preview-shell--ligo-quizabend[data-preview-state="active"] :global(.quiz-score strong i:nth-child(2)){animation:p7-score-b 3.9s both}
 
-  /* P4 — Analysis II: parameter change → graph response → mathematical result. */
   .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-curve--a){animation:p7-curve-a 4s var(--ease-standard) both}
   .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-curve--b){animation:p7-curve-b 4s var(--ease-standard) both}
   .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-head strong i:first-child){animation:p7-lambda-a 4s both}
@@ -121,7 +115,6 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-point){animation:p7-analysis-point 4s var(--ease-enter) both}
   .preview-shell--analysis-ii-klausurlabor[data-preview-state="active"] :global(.analysis-result strong){animation:p7-analysis-result 4s var(--ease-standard) both}
 
-  /* WORDSTRIKE static fallback also performs a faithful word-target sequence when media cannot play. */
   .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--a){animation:p7-strike-a 3.4s linear both}
   .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--k){animation:p7-strike-k 3.4s linear both}
   .preview-shell--wordstrike[data-preview-state="active"] :global(.word-target--x){animation:p7-strike-x 3.4s linear both}
@@ -162,7 +155,7 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   @keyframes p7-md-line{0%,8%{opacity:.12;clip-path:inset(0 100% 0 0)}25%,100%{opacity:.9;clip-path:inset(0 0 0 0)}}
   @keyframes p7-cursor{0%,50%{opacity:1}51%,100%{opacity:0}}
   @keyframes p7-build-arrow{0%,20%{transform:scaleX(.18);transform-origin:left}42%,100%{transform:scaleX(1);transform-origin:left}}
-  @keyframes p7-paper-resolve{0%,38%{opacity:.18;filter:blur(1px)}58%,100%{opacity:1;filter:none}}
+  @keyframes p7-paper-resolve{0%,38%{opacity:.18}58%,100%{opacity:1}}
   @keyframes p7-build-progress{0%,14%{width:18%}68%,100%{width:100%}}
 
   @keyframes p7-check{0%,16%{background:transparent}30%,100%{background:var(--preview-accent);border-color:var(--preview-accent)}}
