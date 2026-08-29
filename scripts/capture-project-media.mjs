@@ -117,11 +117,13 @@ async function prepareWordstrike(page) {
 async function preparePdfStudio(page, state) {
   const app = page.locator('#root').first();
   await app.waitFor({ state: 'visible', timeout: 12_000 });
-  await page.getByText('PRIVATE PDF WORKSPACE', { exact: true }).first().waitFor({ state: 'visible', timeout: 12_000 });
+
+  const openPdf = page.getByRole('button', { name: 'Open PDF' }).first();
+  const sampleControl = page.getByRole('button', { name: 'Open sample' }).first();
+  await openPdf.waitFor({ state: 'visible', timeout: 12_000 });
+  await sampleControl.waitFor({ state: 'visible', timeout: 12_000 });
   if (state === 'home') return;
 
-  const sampleControl = page.getByRole('button', { name: 'Open sample' }).first();
-  await sampleControl.waitFor({ state: 'visible', timeout: 8_000 });
   await sampleControl.click();
   await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 15_000 });
   await page.waitForTimeout(2_000);
