@@ -8,7 +8,7 @@ const { size = 24, label = 'THIEPN', decorative = true } = Astro.props;
 ---
 <svg
   class="brand-mark"
-  viewBox="0 0 32 32"
+  viewBox="0 0 64 64"
   width={size}
   height={size}
   role={decorative ? undefined : 'img'}
@@ -17,9 +17,16 @@ const { size = 24, label = 'THIEPN', decorative = true } = Astro.props;
   focusable="false"
   data-brand-mark
 >
-  <path fill="currentColor" d="M6 5.25h20v1.5H6zM8 8.4h16v2.05h-6.72V27h-2.56V10.45H8z" />
+  <path class="brand-mark__leaf" fill="currentColor" d="M9 8h21l-5 11v33L9 43V8Z" />
+  <path class="brand-mark__page" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter" d="M9 8h27l11 11v17M36 8v11h11" />
+  <g class="brand-mark__pixels" fill="currentColor">
+    <path d="M31 31h5v5h-5zM41 31h5v5h-5zM36 41h5v5h-5zM46 41h5v5h-5zM36 51h5v5h-5z" />
+    <path class="brand-mark__accent" d="M46 51h5v5h-5z" />
+  </g>
 </svg>
 
 <style>
-  .brand-mark{display:block;flex:none;color:inherit}
+  .brand-mark{display:block;flex:none;color:inherit;overflow:visible}
+  .brand-mark__accent{fill:#3d5b8c}
+  :global(html[data-theme="dark"]) .brand-mark__accent{fill:#6e89b0}
 </style>
