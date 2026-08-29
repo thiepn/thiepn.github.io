@@ -1,3 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="THIEPN brand mark">
-  <path fill="#10233B" d="M6 5.25h20v1.5H6zM8 8.4h16v2.05h-6.72V27h-2.56V10.45H8z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="THIEPN Page Pixel brand mark">
+  <path fill="#0F1725" d="M9 8h21l-5 11v33L9 43V8Z"/>
+  <path fill="none" stroke="#0F1725" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter" d="M9 8h27l11 11v17M36 8v11h11"/>
+  <path fill="#0F1725" d="M31 31h5v5h-5zM41 31h5v5h-5zM36 41h5v5h-5zM46 41h5v5h-5zM36 51h5v5h-5z"/>
+  <path fill="#3D5B8C" d="M46 51h5v5h-5z"/>
 </svg>
