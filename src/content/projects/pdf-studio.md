@@ -33,10 +33,9 @@ accent:
   dark: '#55C9FF'
 preview:
   tier: P5
-  type: synthetic
-  provenance: synthetic
-  component: PdfStudioPreview
-  duration: 3800
+  type: static
+  provenance: captured
+  poster: /projects/pdf-studio/screenshot-desktop.png
 showcase:
   purpose: Keep consequential PDF work inside a browser-first local workflow so organizing, annotation, redaction, conversion, and export do not require a mandatory cloud round trip.
   release: v7.0.0
@@ -62,15 +61,14 @@ capabilities:
   description: Finish the workflow locally and produce the resulting PDF without a mandatory cloud round trip.
   previewState: export
 gallery:
-- label: Organization
-  caption: Page ordering and document structure.
-  variant: organize
-- label: Redaction
-  caption: Sensitive content selected for permanent removal.
-  variant: redact
-- label: Export
-  caption: The local workflow resolves into an export-ready document.
-  variant: export
+- label: Home workspace
+  caption: The real local-first PDF Studio entry surface, with local processing status, common tasks, and sample access.
+  variant: home
+  source: /projects/pdf-studio/screenshot-desktop.png
+- label: Open document
+  caption: A real sample PDF opened inside the editing workspace with pages, tools, zoom, and document canvas visible.
+  variant: workspace
+  source: /projects/pdf-studio/screenshot-workspace.png
 ---
 
 A privacy-first PDF workspace for editing, organizing, annotating, converting, and automating documents locally.
