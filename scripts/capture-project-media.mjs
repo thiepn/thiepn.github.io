@@ -22,7 +22,7 @@ const captures = [
       reducedMotion: 'reduce',
     },
   },
-  {
+  ...(slug === 'wordstrike' ? [] : [{
     name: 'screenshot-mobile.png',
     context: {
       viewport: { width: 390, height: 844 },
@@ -31,8 +31,41 @@ const captures = [
       isMobile: true,
       hasTouch: true,
     },
-  },
+  }]),
 ];
+
+async function prepareCanonicalState(page) {
+  await page.addStyleTag({
+    content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}',
+  });
+
+  if (slug === 'the-bible-challenge') {
+    const enhancedHome = page.locator('[data-pr5-nav="home"]').first();
+    const nativeHome = page.getByRole('button', { name: /^Home$/i }).first();
+
+    if (await enhancedHome.isVisible().catch(() => false)) {
+      await enhancedHome.click();
+    } else if (await nativeHome.isVisible().catch(() => false)) {
+      await nativeHome.click();
+    } else {
+      await page.evaluate(() => {
+        const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
+          .find((element) => element.textContent?.trim().toLowerCase() === 'home');
+        if (candidate instanceof HTMLElement) candidate.click();
+      });
+    }
+
+    await page.locator('.pr5-home, [data-pr5-domain="home"], body[data-pr5-domain="home"]').first()
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .catch(() => {});
+    await page.waitForTimeout(500);
+  }
+
+  if (slug === 'wordstrike') {
+    await page.locator('body').waitFor({ state: 'visible' });
+    await page.waitForTimeout(500);
+  }
+}
 
 const browser = await chromium.launch({ headless: true });
 
@@ -47,6 +80,7 @@ try {
       if (document.fonts?.ready) await document.fonts.ready;
     });
     await page.waitForTimeout(1_200);
+    await prepareCanonicalState(page);
 
     await page.screenshot({
       path: path.join(outputDir, capture.name),
@@ -61,4 +95,4 @@ try {
   await browser.close();
 }
 
-console.log(`Captured ${captures.length} real browser screenshots for ${slug} from ${url}`);
+console.log(`Captured ${captures.length} canonical browser screenshot(s) for ${slug} from ${url}`);
