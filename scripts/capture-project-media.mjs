@@ -79,6 +79,22 @@ async function activateTbcHome(page) {
   await page.waitForTimeout(700);
 }
 
+async function dismissWordstrikeOnboarding(page) {
+  const backdrop = page.locator('.onboarding-backdrop').first();
+  if (!await backdrop.isVisible().catch(() => false)) return;
+
+  const skip = page.locator('[data-onboarding-action="skip"]').first();
+  const close = page.locator('[data-onboarding-action="close"]').first();
+  if (await skip.isVisible().catch(() => false)) await skip.click();
+  else if (await close.isVisible().catch(() => false)) await close.click();
+  else await page.keyboard.press('Escape').catch(() => {});
+
+  await backdrop.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+  if (await backdrop.isVisible().catch(() => false)) {
+    throw new Error('WORDSTRIKE capture could not dismiss the first-run Introduction overlay.');
+  }
+}
+
 async function prepareCanonicalState(page) {
   await page.addStyleTag({
     content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}',
@@ -115,7 +131,15 @@ async function prepareCanonicalState(page) {
 
   if (slug === 'wordstrike') {
     await page.locator('body').waitFor({ state: 'visible' });
+    await dismissWordstrikeOnboarding(page);
     await page.waitForTimeout(500);
+
+    const bodyText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+    const expectedMenuLabels = ['Campaign', 'Typing Test', 'Endless', 'Daily Strike'];
+    const visibleMenuLabels = expectedMenuLabels.filter((label) => bodyText.includes(label));
+    if (visibleMenuLabels.length < 2) {
+      throw new Error(`WORDSTRIKE capture expected its mode menu after onboarding; found ${visibleMenuLabels.length} known mode labels.`);
+    }
   }
 }
 
