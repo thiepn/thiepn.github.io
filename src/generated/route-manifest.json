@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "routes": [
     "/",
+    "/about/",
     "/books/",
     "/catalogue.json",
     "/collection/bible-faith/",
