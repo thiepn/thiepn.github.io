@@ -3,7 +3,12 @@ import { test, expect } from '@playwright/test';
 const featured = [
   'the-bible-challenge','pdf-studio','wordstrike','micro-arcade','voidcut',
 ];
-const automaticCapturedFeatured = ['pdf-studio','micro-arcade','voidcut'];
+const capturedFeatured = {
+  'the-bible-challenge': '/projects/the-bible-challenge/screenshot-desktop.png',
+  'pdf-studio': '/projects/pdf-studio/screenshot-desktop.png',
+  'micro-arcade': '/projects/micro-arcade/screenshot-desktop.png',
+  'voidcut': '/projects/voidcut/screenshot-desktop.png',
+} as const;
 
 test('homepage renders the intentional five-project featured set in order', async ({ page }) => {
   await page.goto('/');
@@ -14,32 +19,32 @@ test('homepage renders the intentional five-project featured set in order', asyn
   }
 });
 
-test('The Bible Challenge uses its explicitly captured Home interface media', async ({ page }) => {
+test('static Featured projects use explicit authentic captured posters', async ({ page }) => {
   await page.goto('/');
-  const root = page.locator('#featured [data-preview-slug="the-bible-challenge"]').first();
-  await expect(root).toBeVisible();
-  await expect(root).toHaveAttribute('data-preview-kind', 'static');
-  await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
-  await expect(root).toHaveAttribute('data-preview-state', 'static');
-  await expect(root.locator('img')).toHaveAttribute('src', '/projects/the-bible-challenge/screenshot-desktop.png');
-  await expect(root.locator('.scene--bible-quiz')).toHaveCount(0);
-});
-
-test('featured projects prefer authentic live captures while WORDSTRIKE keeps its real screenshot and demo video', async ({ page }) => {
-  await page.goto('/');
-  for (const slug of automaticCapturedFeatured) {
+  for (const [slug, source] of Object.entries(capturedFeatured)) {
     const root = page.locator(`#featured [data-preview-slug="${slug}"]`).first();
     await expect(root).toBeVisible();
     await expect(root).toHaveAttribute('data-preview-kind', 'static');
     await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
-    await expect(root.locator('img')).toHaveAttribute('src', `/projects/${slug}/capture.jpg`);
+    await expect(root).toHaveAttribute('data-preview-state', 'static');
+    await expect(root.locator('img')).toHaveAttribute('src', source);
     await expect(root.locator('.scene--generic')).toHaveCount(0);
   }
+});
 
-  const strike = page.locator('#featured [data-preview-slug="wordstrike"]').first();
-  await expect(strike).toHaveAttribute('data-preview-kind', 'video');
-  await expect(strike).toHaveAttribute('data-preview-provenance', 'reconstructed');
-  await expect(strike.locator('.preview-shell__poster')).toHaveAttribute('src', '/projects/wordstrike/screenshot-desktop.png');
+test('Featured project records expose real secondary interface views', async ({ page }) => {
+  const records = [
+    ['/project/pdf-studio/', '/projects/pdf-studio/screenshot-desktop.png', '/projects/pdf-studio/screenshot-workspace.png'],
+    ['/project/micro-arcade/', '/projects/micro-arcade/screenshot-desktop.png', '/projects/micro-arcade/screenshot-gameplay.png'],
+    ['/project/voidcut/', '/projects/voidcut/screenshot-desktop.png', '/projects/voidcut/screenshot-gameplay.png'],
+  ] as const;
+
+  for (const [route, poster, secondary] of records) {
+    await page.goto(route);
+    const preview = page.locator('[data-record-preview] [data-preview-slug]').first();
+    await expect(preview.locator('img')).toHaveAttribute('src', poster);
+    await expect(page.locator(`img[src="${secondary}"]`).first()).toBeVisible();
+  }
 });
 
 test('Manuscript project detail keeps its source-to-publication choreography for inspection', async ({ page }) => {
@@ -53,10 +58,11 @@ test('Manuscript project detail keeps its source-to-publication choreography for
   expect(animation).toContain('p7-md-line');
 });
 
-test('WORDSTRIKE Featured video is deferred and retains demo provenance', async ({ page }) => {
+test('WORDSTRIKE Featured video is deferred and retains its real poster', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('[data-preview-slug="wordstrike"]').first();
   const status = root.locator('[data-preview-status]');
+  await expect(root).toHaveAttribute('data-preview-kind', 'video');
   await expect(root).toHaveAttribute('data-preview-provenance','reconstructed');
   await expect(root.locator('.preview-shell__poster')).toHaveAttribute('src', '/projects/wordstrike/screenshot-desktop.png');
   const video = root.locator('[data-preview-video]');
