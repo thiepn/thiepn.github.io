@@ -23,23 +23,23 @@ const intentCounts = getIntentCounts(projects.map(({ data }) => data));
 const intentCount = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 'read' ? intentCounts.read + books.length : intentCounts[intent.key];
 const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 'read' ? '/books/' : `/projects/?intent=${intent.key}#archive-catalogue`;
 ---
-<BaseLayout title="THIEPN — Projects, Games, Books & Experiments" description="THIEPN is a project universe of games, tools, learning systems, books, resources and experiments.">
+<BaseLayout title="THIEPN — Software, Games & Learning Systems" description="Independent software, browser games, learning systems, publishing tools and experiments — designed, built and refined as real products.">
   <div class="universe page-shell" data-index-hero>
     <section class="universe-hero" aria-labelledby="universe-title">
       <div class="universe-hero__copy">
-        <p class="eyebrow">Independent project universe</p>
-        <h1 id="universe-title" data-hero-title>THIEPN</h1>
+        <p class="eyebrow">Independent software & experiments</p>
+        <h1 id="universe-title" data-hero-title>Things I build.</h1>
         <p class="universe-hero__intro" data-hero-copy>
-          Games, tools, learning systems, books and ideas — built to be used, played, read and explored.
+          Software, games, learning systems, publishing tools and experiments — designed, built and refined as real products.
         </p>
         <div class="universe-hero__actions" data-hero-copy>
-          <a class="structural-button" href="#featured">Explore projects</a>
-          <a class="text-link" href="/projects/" data-catalogue-search-open>Search projects →</a>
+          <a class="structural-button" href="#featured">Explore selected work</a>
+          <a class="text-link" href="/about/">About <span aria-hidden="true">→</span></a>
         </div>
       </div>
 
-      <aside class="universe-hero__index" aria-label="THIEPN project universe overview" data-hero-record>
-        <p class="universe-hero__index-label">Universe index</p>
+      <aside class="universe-hero__index" aria-label="Portfolio overview" data-hero-record>
+        <p class="universe-hero__index-label">Portfolio index</p>
         <div class="universe-hero__stat"><strong>{String(stats.totalListed).padStart(2,'0')}</strong><span>Projects</span></div>
         <div class="universe-hero__stat"><strong>{String(books.length).padStart(2,'0')}</strong><span>Books</span></div>
         <div class="universe-hero__stat"><strong>{String(featured.length).padStart(2,'0')}</strong><span>Featured</span></div>
@@ -198,8 +198,8 @@ const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 
 
   .universe-hero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.65fr);gap:clamp(48px,8vw,128px);align-items:end;min-height:min(62vh,650px);padding:clamp(30px,4vw,56px) 0 clamp(58px,7vw,96px);border-bottom:1px solid var(--line-strong)}
   .universe-hero__copy{max-width:940px}
-  .universe-hero h1{margin-top:14px;font-size:clamp(5rem,12.8vw,11.8rem);line-height:.78;letter-spacing:-.055em;font-weight:520}
-  .universe-hero__intro{margin-top:clamp(30px,4vw,48px);max-width:39ch;color:var(--ink-secondary);font-family:var(--font-display);font-size:clamp(1.18rem,1.65vw,1.55rem);line-height:1.48;letter-spacing:-.018em}
+  .universe-hero h1{margin-top:14px;max-width:8.2ch;font-size:clamp(4.7rem,9.8vw,9.4rem);line-height:.82;letter-spacing:-.058em;font-weight:520;text-wrap:balance}
+  .universe-hero__intro{margin-top:clamp(30px,4vw,48px);max-width:46ch;color:var(--ink-secondary);font-family:var(--font-display);font-size:clamp(1.18rem,1.65vw,1.55rem);line-height:1.48;letter-spacing:-.018em}
   .universe-hero__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-5);margin-top:var(--space-6)}
   .universe-hero__actions .structural-button{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
   .universe-hero__actions .structural-button:hover{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -298,7 +298,7 @@ const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 
     .universe{padding-top:var(--space-6)}
     .universe::before{display:none}
     .universe-hero{padding-top:var(--space-4);padding-bottom:var(--space-8)}
-    .universe-hero h1{font-size:clamp(4.35rem,23vw,7.2rem);letter-spacing:-.05em}
+    .universe-hero h1{max-width:9ch;font-size:clamp(3.65rem,18.5vw,5.8rem);line-height:.84;letter-spacing:-.055em}
     .universe-hero__intro{font-size:1.08rem}
     .universe-hero__actions{align-items:flex-start;flex-direction:column;gap:var(--space-4)}
     .universe-hero__index{grid-template-columns:1fr}.universe-hero__index-label{grid-column:1}.universe-hero__stat,.universe-hero__stat:nth-of-type(odd),.universe-hero__stat:nth-of-type(even){min-height:66px;padding:12px 0;border-right:0;border-bottom:1px solid var(--line-soft)}.universe-hero__stat:last-child{border-bottom:0}.universe-hero__stat span{writing-mode:initial;transform:none}
