@@ -10,13 +10,39 @@ if (!slug || !url) {
   process.exit(1);
 }
 
+const desktop = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' };
+const mobile = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce', isMobile: true, hasTouch: true };
+
+const plans = {
+  'the-bible-challenge': [
+    { name: 'screenshot-desktop.png', state: 'home', context: desktop },
+    { name: 'screenshot-mobile.png', state: 'home', context: mobile },
+  ],
+  wordstrike: [
+    { name: 'screenshot-desktop.png', state: 'home', context: desktop },
+  ],
+  'pdf-studio': [
+    { name: 'screenshot-desktop.png', state: 'home', context: desktop },
+    { name: 'screenshot-workspace.png', state: 'workspace', context: desktop },
+  ],
+  'micro-arcade': [
+    { name: 'screenshot-desktop.png', state: 'home', context: desktop },
+    { name: 'screenshot-gameplay.png', state: 'gameplay', context: desktop },
+  ],
+  voidcut: [
+    { name: 'screenshot-desktop.png', state: 'home', context: desktop },
+    { name: 'screenshot-gameplay.png', state: 'gameplay', context: desktop },
+  ],
+};
+
+const captures = plans[slug];
+if (!captures) {
+  console.error(`No canonical media plan is registered for ${slug}.`);
+  process.exit(1);
+}
+
 const outputDir = path.resolve('public', 'projects', slug);
 await mkdir(outputDir, { recursive: true });
-
-const captures = [
-  { name: 'screenshot-desktop.png', context: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' } },
-  ...(slug === 'wordstrike' ? [] : [{ name: 'screenshot-mobile.png', context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce', isMobile: true, hasTouch: true } }]),
-];
 
 async function dismissTbcModal(page) {
   const backdrop = page.locator('#modalRoot .modal-backdrop').first();
@@ -66,44 +92,84 @@ async function dismissWordstrikeOnboarding(page) {
   if (await backdrop.isVisible().catch(() => false)) throw new Error('WORDSTRIKE capture could not dismiss the first-run Introduction overlay.');
 }
 
-async function prepareCanonicalState(page) {
+async function prepareTbc(page) {
+  await dismissTbcModal(page);
+  let domain = await page.locator('body').getAttribute('data-pr5-domain');
+  const visibleNativeHome = page.locator('.pr5-native-home').first();
+  if (domain !== 'home' || !await visibleNativeHome.isVisible().catch(() => false)) {
+    await activateTbcHome(page);
+    await dismissTbcModal(page);
+    domain = await page.locator('body').getAttribute('data-pr5-domain');
+  }
+  await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
+  await visibleNativeHome.waitFor({ state: 'visible', timeout: 8_000 });
+  if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
+  if (await page.locator('#modalRoot .modal-backdrop').first().isVisible().catch(() => false)) throw new Error('TBC capture reached Home but a modal still obscures the home menu.');
+}
+
+async function prepareWordstrike(page) {
+  const app = page.locator('#app').first();
+  await app.waitFor({ state: 'visible', timeout: 8_000 });
+  await dismissWordstrikeOnboarding(page);
+  if (await page.locator('.onboarding-backdrop').first().isVisible().catch(() => false)) throw new Error('WORDSTRIKE onboarding still obscures the app after dismissal.');
+}
+
+async function preparePdfStudio(page, state) {
+  const homeTitle = page.getByRole('heading', { name: 'What do you want to do with your PDF?' });
+  await homeTitle.waitFor({ state: 'visible', timeout: 12_000 });
+  if (state === 'home') return;
+
+  await page.getByRole('button', { name: 'Open sample' }).click();
+  await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 15_000 });
+  await page.waitForTimeout(1_800);
+  if (!windowHashIncludesWorkspace(await page.evaluate(() => window.location.hash))) {
+    throw new Error('PDF Studio sample did not open the real workspace.');
+  }
+}
+
+function windowHashIncludesWorkspace(hash) {
+  return typeof hash === 'string' && hash.startsWith('#/workspace/');
+}
+
+async function prepareMicroArcade(page, state) {
+  await page.locator('#library-section').waitFor({ state: 'visible', timeout: 12_000 });
+  await page.getByText('MICRO ARCADE', { exact: true }).first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {});
+  if (state === 'home') {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    return;
+  }
+
+  await page.locator('#play-btn-orbit').click();
+  const shell = page.locator('.game-shell').first();
+  await shell.waitFor({ state: 'visible', timeout: 12_000 });
+  await shell.getByRole('heading', { name: 'Orbit', exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+  await page.waitForTimeout(1_500);
+}
+
+async function prepareVoidcut(page, state) {
+  const menu = page.locator('#menu').first();
+  await menu.waitFor({ state: 'visible', timeout: 12_000 });
+  await page.locator('.logo-lockup').first().waitFor({ state: 'visible', timeout: 8_000 });
+  if (state === 'home') return;
+
+  const play = page.locator('#play').first();
+  await play.waitFor({ state: 'visible', timeout: 8_000 });
+  await play.click();
+  await menu.waitFor({ state: 'hidden', timeout: 12_000 });
+  await page.locator('#game').waitFor({ state: 'visible', timeout: 8_000 });
+  await page.waitForTimeout(1_600);
+}
+
+async function prepareCanonicalState(page, state) {
   await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}' });
 
-  if (slug === 'the-bible-challenge') {
-    await dismissTbcModal(page);
-    let domain = await page.locator('body').getAttribute('data-pr5-domain');
-    const visibleNativeHome = page.locator('.pr5-native-home').first();
-    if (domain !== 'home' || !await visibleNativeHome.isVisible().catch(() => false)) {
-      await activateTbcHome(page);
-      await dismissTbcModal(page);
-      domain = await page.locator('body').getAttribute('data-pr5-domain');
-    }
-    await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
-    await visibleNativeHome.waitFor({ state: 'visible', timeout: 8_000 });
-    if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
-    if (await page.locator('#modalRoot .modal-backdrop').first().isVisible().catch(() => false)) throw new Error('TBC capture reached Home but a modal still obscures the home menu.');
-    const visibleContent = await visibleNativeHome.evaluate((element) => {
-      const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-      const rect = element.getBoundingClientRect();
-      return text.length > 0 && rect.width > 0 && rect.height > 0;
-    });
-    if (!visibleContent) throw new Error('TBC native Home surface is visible but contains no usable home-menu content.');
-    await page.waitForTimeout(500);
-  }
+  if (slug === 'the-bible-challenge') await prepareTbc(page);
+  else if (slug === 'wordstrike') await prepareWordstrike(page);
+  else if (slug === 'pdf-studio') await preparePdfStudio(page, state);
+  else if (slug === 'micro-arcade') await prepareMicroArcade(page, state);
+  else if (slug === 'voidcut') await prepareVoidcut(page, state);
 
-  if (slug === 'wordstrike') {
-    const app = page.locator('#app').first();
-    await app.waitFor({ state: 'visible', timeout: 8_000 });
-    await dismissWordstrikeOnboarding(page);
-    await page.waitForTimeout(500);
-    if (await page.locator('.onboarding-backdrop').first().isVisible().catch(() => false)) throw new Error('WORDSTRIKE onboarding still obscures the app after dismissal.');
-    const appReady = await app.evaluate((element) => {
-      const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-      const rect = element.getBoundingClientRect();
-      return text.length > 0 && rect.width > 0 && rect.height > 0;
-    });
-    if (!appReady) throw new Error('WORDSTRIKE app surface is not visibly rendered after onboarding dismissal.');
-  }
+  await page.waitForTimeout(500);
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -115,7 +181,7 @@ try {
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
     await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
     await page.waitForTimeout(1_200);
-    await prepareCanonicalState(page);
+    await prepareCanonicalState(page, capture.state);
     await page.screenshot({ path: path.join(outputDir, capture.name), type: 'png', fullPage: false, animations: 'disabled' });
     await context.close();
   }
