@@ -12,6 +12,7 @@ const p = project.data;
 const interactive = isInteractivePreviewType(p.preview.type);
 const duration = p.preview.duration ?? (p.preview.type === 'video' ? 3400 : 3800);
 const source = p.preview.source ?? '';
+const poster = p.preview.poster ?? '';
 const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'synthetic' : p.preview.type === 'video' ? 'captured' : 'static');
 ---
 <div
@@ -29,6 +30,17 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   aria-label={focusable && interactive ? `${p.title} interactive preview` : undefined}
 >
   <PreviewAperture project={project} size={size} />
+  {interactive && p.preview.type === 'video' && poster && (
+    <img
+      class="preview-shell__poster"
+      src={poster}
+      alt=""
+      aria-hidden="true"
+      loading={size === 'hero' || size === 'feature' ? 'eager' : 'lazy'}
+      decoding="async"
+      onerror="this.style.display='none'"
+    />
+  )}
   {interactive && p.preview.type === 'video' && source && (
     <video class="preview-shell__video" data-preview-video muted playsinline preload="none" aria-hidden="true"></video>
   )}
@@ -42,7 +54,10 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
 
 <style>
   .preview-shell{position:relative;min-width:0;isolation:isolate;--preview-accent:var(--project-accent-dark,#fff)}
-  .preview-shell__video{position:absolute;z-index:5;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none;background:#05080e;transition:opacity var(--motion-standard) var(--ease-standard)}
+  .preview-shell__poster,.preview-shell__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:#05080e}
+  .preview-shell__poster{z-index:4;opacity:1;transition:opacity var(--motion-standard) var(--ease-standard)}
+  .preview-shell__video{z-index:5;opacity:0;transition:opacity var(--motion-standard) var(--ease-standard)}
+  .preview-shell[data-preview-media="video"] .preview-shell__poster{opacity:0}
   .preview-shell[data-preview-media="video"] .preview-shell__video{opacity:1}
   .preview-shell__status{position:absolute;z-index:9;right:12px;bottom:7px;display:flex;align-items:center;gap:6px;font:500 .53rem var(--font-meta);letter-spacing:.07em;text-transform:uppercase;color:rgb(245 242 235 / .66);pointer-events:none}
   .preview-shell__signal{width:5px;height:5px;border:1px solid currentColor;background:transparent}
@@ -145,39 +160,48 @@ const provenance = p.preview.provenance ?? (p.preview.type === 'synthetic' ? 'sy
   @keyframes p7-pdf-export{0%,75%{opacity:.25}88%,100%{opacity:1}}
 
   @keyframes p7-md-line{0%,8%{opacity:.12;clip-path:inset(0 100% 0 0)}25%,100%{opacity:.9;clip-path:inset(0 0 0 0)}}
-  @keyframes p7-cursor{0%,48%{opacity:1}49%,100%{opacity:0}}
-  @keyframes p7-build-arrow{0%,42%{transform:scaleX(.25);transform-origin:left;opacity:.35}58%,100%{transform:scaleX(1);transform-origin:left;opacity:1}}
-  @keyframes p7-paper-resolve{0%,48%{opacity:.28;transform:translateY(4px)}68%,100%{opacity:1;transform:translateY(0)}}
-  @keyframes p7-build-progress{0%{width:12%}40%{width:38%}68%{width:74%}100%{width:100%}}
+  @keyframes p7-cursor{0%,50%{opacity:1}51%,100%{opacity:0}}
+  @keyframes p7-build-arrow{0%,20%{transform:scaleX(.18);transform-origin:left}42%,100%{transform:scaleX(1);transform-origin:left}}
+  @keyframes p7-paper-resolve{0%,38%{opacity:.18;filter:blur(1px)}58%,100%{opacity:1;filter:none}}
+  @keyframes p7-build-progress{0%,14%{width:18%}68%,100%{width:100%}}
 
-  @keyframes p7-check{0%,12%{background:transparent;border-color:#777}18%,100%{background:var(--project-accent);border-color:var(--project-accent)}}
-  @keyframes p7-task-done{0%,12%{opacity:1;text-decoration-color:transparent}20%,100%{opacity:.58;text-decoration:line-through;text-decoration-color:currentColor}}
-  @keyframes p7-clean-progress{0%,10%{width:0}30%{width:33%}52%{width:67%}72%,100%{width:100%}}
-  @keyframes p7-count-0{0%,18%{opacity:1}19%,100%{opacity:0}} @keyframes p7-count-1{0%,18%{opacity:0}19%,39%{opacity:1}40%,100%{opacity:0}} @keyframes p7-count-2{0%,39%{opacity:0}40%,61%{opacity:1}62%,100%{opacity:0}} @keyframes p7-count-3{0%,61%{opacity:0}62%,100%{opacity:1}}
-  @keyframes p7-clean-complete{0%,76%{opacity:0;transform:scale(.985)}88%,100%{opacity:1;transform:scale(1)}}
+  @keyframes p7-check{0%,16%{background:transparent}30%,100%{background:var(--preview-accent);border-color:var(--preview-accent)}}
+  @keyframes p7-task-done{0%,18%{opacity:1;text-decoration-color:transparent}34%,100%{opacity:.58;text-decoration-line:line-through;text-decoration-color:currentColor}}
+  @keyframes p7-clean-progress{0%,14%{width:16%}78%,100%{width:100%}}
+  @keyframes p7-count-0{0%,18%{opacity:1}19%,100%{opacity:0}}
+  @keyframes p7-count-1{0%,18%{opacity:0}19%,40%{opacity:1}41%,100%{opacity:0}}
+  @keyframes p7-count-2{0%,40%{opacity:0}41%,63%{opacity:1}64%,100%{opacity:0}}
+  @keyframes p7-count-3{0%,63%{opacity:0}64%,100%{opacity:1}}
+  @keyframes p7-clean-complete{0%,72%{opacity:0;transform:translateY(4px)}86%,100%{opacity:1;transform:none}}
 
-  @keyframes p7-french-first{0%,18%{opacity:1;transform:translateX(0)}66%{opacity:1;transform:translateX(0)}80%,100%{opacity:0;transform:translateX(-10px)}}
-  @keyframes p7-french-rate{0%,38%{background:transparent;transform:scale(1)}52%,64%{background:color-mix(in srgb,var(--project-accent) 15%,transparent);transform:scale(1.03)}72%,100%{background:transparent;transform:scale(1)}}
-  @keyframes p7-french-next{0%,73%{opacity:0;transform:translateX(10px)}86%,100%{opacity:1;transform:translateX(0)}}
-  @keyframes p7-french-progress{0%{width:42%}70%{width:42%}100%{width:46%}}
+  @keyframes p7-french-first{0%,44%{opacity:1;transform:none}58%,100%{opacity:0;transform:translateX(-10px)}}
+  @keyframes p7-french-rate{0%,36%{background:transparent}44%,60%{background:var(--preview-accent);color:#061014}74%,100%{background:transparent;color:inherit}}
+  @keyframes p7-french-next{0%,55%{opacity:0;transform:translateX(12px)}70%,100%{opacity:1;transform:none}}
+  @keyframes p7-french-progress{0%,28%{width:42%}75%,100%{width:46%}}
 
-  @keyframes p7-quiz-time-a{0%,40%{opacity:1}50%,100%{opacity:0}} @keyframes p7-quiz-time-b{0%,40%{opacity:0}50%,100%{opacity:1}}
-  @keyframes p7-quiz-answer{0%,45%{border-color:#444;background:transparent}58%,100%{border-color:var(--project-accent);background:color-mix(in srgb,var(--project-accent) 12%,transparent)}}
-  @keyframes p7-quiz-lock{0%,50%{opacity:0;transform:translateY(3px)}62%,100%{opacity:1;transform:translateY(0)}}
-  @keyframes p7-score-a{0%,67%{opacity:1}74%,100%{opacity:0}} @keyframes p7-score-b{0%,67%{opacity:0}74%,100%{opacity:1}}
+  @keyframes p7-quiz-time-a{0%,50%{opacity:1}51%,100%{opacity:0}}
+  @keyframes p7-quiz-time-b{0%,50%{opacity:0}51%,100%{opacity:1}}
+  @keyframes p7-quiz-answer{0%,48%{border-color:transparent;background:transparent}56%,100%{border-color:var(--preview-accent);background:color-mix(in srgb,var(--preview-accent) 12%,transparent)}}
+  @keyframes p7-quiz-lock{0%,54%{opacity:0;transform:translateY(4px)}68%,100%{opacity:1;transform:none}}
+  @keyframes p7-score-a{0%,66%{opacity:1}67%,100%{opacity:0}}
+  @keyframes p7-score-b{0%,66%{opacity:0}67%,100%{opacity:1}}
 
-  @keyframes p7-curve-a{0%,42%{opacity:1}58%,100%{opacity:.08}} @keyframes p7-curve-b{0%,42%{opacity:0}58%,100%{opacity:1}}
-  @keyframes p7-lambda-a{0%,43%{opacity:1}54%,100%{opacity:0}} @keyframes p7-lambda-b{0%,43%{opacity:0}54%,100%{opacity:1}}
-  @keyframes p7-analysis-point{0%,58%{opacity:0;transform:scale(.5)}68%,100%{opacity:1;transform:scale(1)}}
-  @keyframes p7-analysis-result{0%,68%{opacity:.35}82%,100%{opacity:1;color:var(--project-accent)}}
+  @keyframes p7-curve-a{0%,36%{opacity:1}58%,100%{opacity:.08}}
+  @keyframes p7-curve-b{0%,34%{opacity:.05}56%,100%{opacity:1}}
+  @keyframes p7-lambda-a{0%,38%{opacity:1}55%,100%{opacity:0}}
+  @keyframes p7-lambda-b{0%,38%{opacity:0}55%,100%{opacity:1}}
+  @keyframes p7-analysis-point{0%,55%{opacity:0;transform:scale(.4)}67%,100%{opacity:1;transform:scale(1)}}
+  @keyframes p7-analysis-result{0%,67%{opacity:.22}80%,100%{opacity:1;color:var(--preview-accent)}}
 
-  @keyframes p7-strike-a{0%{transform:translate(0,0);opacity:1}46%{transform:translate(96px,32px);opacity:1}58%,100%{transform:translate(116px,40px);opacity:0}}
-  @keyframes p7-strike-k{0%{transform:translate(0,0)}70%{transform:translate(-63px,48px)}100%{transform:translate(-76px,56px);opacity:.55}}
-  @keyframes p7-strike-x{0%,25%{transform:translate(0,0)}100%{transform:translate(-42px,-31px)}}
-  @keyframes p7-strike-entry{0%{transform:scaleX(.15);transform-origin:left}45%{transform:scaleX(.62);transform-origin:left}68%,100%{transform:scaleX(1);transform-origin:left}}
-  @keyframes p7-strike-core{0%,48%{transform:translate(-50%,-50%) scale(1)}59%{transform:translate(-50%,-50%) scale(1.07);box-shadow:0 0 34px color-mix(in srgb,var(--project-accent) 35%,transparent)}72%,100%{transform:translate(-50%,-50%) scale(1)}}
+  @keyframes p7-strike-a{0%{transform:translate(-10px,-14px)}35%{transform:translate(22px,14px)}46%,100%{transform:translate(22px,14px);opacity:0}}
+  @keyframes p7-strike-k{0%{transform:translate(10px,0)}46%{transform:translate(-20px,18px)}59%,100%{transform:translate(-20px,18px);opacity:0}}
+  @keyframes p7-strike-x{0%{transform:translate(-4px,9px)}62%{transform:translate(8px,-16px)}76%,100%{transform:translate(8px,-16px);opacity:0}}
+  @keyframes p7-strike-entry{0%,14%{width:0}34%{width:54%}51%{width:100%}64%,100%{width:100%}}
+  @keyframes p7-strike-core{0%,44%{box-shadow:0 0 0 1px var(--preview-accent)}56%,70%{box-shadow:0 0 0 5px color-mix(in srgb,var(--preview-accent) 18%,transparent)}82%,100%{box-shadow:0 0 0 1px var(--preview-accent)}}
 
-  @media(prefers-reduced-motion:reduce){.preview-shell__video{display:none}.preview-shell__status{display:none}.preview-shell :global(*){animation:none!important;transition:none!important}}
-  @media(hover:none),(pointer:coarse){.preview-shell__status{display:none}}
-  @media(forced-colors:active){.preview-shell__status{color:CanvasText}.preview-shell__signal{border-color:CanvasText}}
+  @media(prefers-reduced-motion:reduce){
+    .preview-shell__poster,.preview-shell__video{transition:none}
+    .preview-shell[data-preview-state="active"] :global(*){animation:none!important}
+  }
+  @media(forced-colors:active){.preview-shell__status{color:CanvasText}}
 </style>
