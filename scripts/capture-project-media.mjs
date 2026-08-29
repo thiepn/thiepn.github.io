@@ -34,34 +34,69 @@ const captures = [
   }]),
 ];
 
+async function dismissTbcModal(page) {
+  const backdrop = page.locator('#modalRoot .modal-backdrop').first();
+  if (!await backdrop.isVisible().catch(() => false)) return;
+
+  const closedViaApi = await page.evaluate(() => {
+    const closer = globalThis.closeModal;
+    if (typeof closer !== 'function') return false;
+    closer();
+    return true;
+  }).catch(() => false);
+
+  if (!closedViaApi) await page.keyboard.press('Escape').catch(() => {});
+
+  await backdrop.waitFor({ state: 'hidden', timeout: 5_000 }).catch(async () => {
+    const closeControl = page.locator('#modalRoot button').filter({ hasText: /^(close|back|cancel|done|×|✕)$/i }).first();
+    if (await closeControl.isVisible().catch(() => false)) await closeControl.click({ force: true });
+  });
+
+  if (await backdrop.isVisible().catch(() => false)) {
+    throw new Error('TBC capture could not dismiss the open modal before capturing Home.');
+  }
+}
+
 async function prepareCanonicalState(page) {
   await page.addStyleTag({
     content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}',
   });
 
   if (slug === 'the-bible-challenge') {
-    const enhancedHome = page.locator('[data-pr5-nav="home"]').first();
-    const nativeHome = page.getByRole('button', { name: /^Home$/i }).first();
+    await dismissTbcModal(page);
 
-    if (await enhancedHome.isVisible().catch(() => false)) {
-      await enhancedHome.click();
-    } else if (await nativeHome.isVisible().catch(() => false)) {
-      await nativeHome.click();
-    } else {
-      const clicked = await page.evaluate(() => {
-        const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
-          .find((element) => element.textContent?.trim().toLowerCase() === 'home');
-        if (!(candidate instanceof HTMLElement)) return false;
-        candidate.click();
-        return true;
-      });
-      if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
+    const enhancedHome = page.locator('[data-pr5-nav="home"]').first();
+    const alreadyHome = await enhancedHome.getAttribute('aria-current').catch(() => null) === 'page';
+
+    if (!alreadyHome) {
+      if (await enhancedHome.isVisible().catch(() => false)) {
+        await enhancedHome.evaluate((element) => element.click());
+      } else {
+        const nativeHome = page.getByRole('button', { name: /^Home$/i }).first();
+        if (await nativeHome.isVisible().catch(() => false)) {
+          await nativeHome.evaluate((element) => element.click());
+        } else {
+          const clicked = await page.evaluate(() => {
+            const candidate = Array.from(document.querySelectorAll('button,a,[role="button"]'))
+              .find((element) => element.textContent?.trim().toLowerCase() === 'home');
+            if (!(candidate instanceof HTMLElement)) return false;
+            candidate.click();
+            return true;
+          });
+          if (!clicked) throw new Error('TBC capture could not find a Home navigation control.');
+        }
+      }
     }
 
     await page.locator('body[data-pr5-domain="home"]').waitFor({ state: 'attached', timeout: 8_000 });
     await page.locator('.pr5-home').first().waitFor({ state: 'visible', timeout: 8_000 });
+    await page.locator('#modalRoot .modal-backdrop').first().waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+
     const domain = await page.locator('body').getAttribute('data-pr5-domain');
     if (domain !== 'home') throw new Error(`TBC capture expected home domain, received ${domain ?? 'null'}.`);
+    if (await page.locator('#modalRoot .modal-backdrop').first().isVisible().catch(() => false)) {
+      throw new Error('TBC capture reached Home but a modal still obscures the home menu.');
+    }
     await page.waitForTimeout(500);
   }
 
