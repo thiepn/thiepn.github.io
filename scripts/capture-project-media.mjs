@@ -153,16 +153,13 @@ async function prepareVoidcut(page, state) {
   await page.locator('.logo-lockup').first().waitFor({ state: 'visible', timeout: 8_000 });
   if (state === 'home') return;
 
-  const started = await page.evaluate(() => {
-    const startRun = globalThis.start;
-    if (typeof startRun !== 'function') return false;
-    startRun(null, true);
-    return true;
-  }).catch(() => false);
-  if (!started) throw new Error('VOIDCUT capture could not start a standard run without tutorial mode.');
+  const play = page.locator('#play').first();
+  await play.waitFor({ state: 'visible', timeout: 8_000 });
+  await play.click();
   await menu.waitFor({ state: 'hidden', timeout: 12_000 });
   await page.locator('#game').waitFor({ state: 'visible', timeout: 8_000 });
-  await page.locator('#tutorial').waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+  const tutorial = page.locator('#tutorial').first();
+  await tutorial.waitFor({ state: 'hidden', timeout: 5_000 });
   await page.waitForTimeout(1_600);
 }
 
@@ -182,6 +179,15 @@ const browser = await chromium.launch({ headless: true });
 try {
   for (const capture of captures) {
     const context = await browser.newContext(capture.context);
+    if (slug === 'voidcut' && capture.state === 'gameplay') {
+      await context.addInitScript(() => {
+        localStorage.setItem('voidcut.standalone.v1', JSON.stringify({
+          schemaVersion: 17,
+          tutorialSeen: true,
+          dividerTutorialSeen: true,
+        }));
+      });
+    }
     const page = await context.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
