@@ -239,9 +239,9 @@ test('@mobile-cert short mobile viewport keeps navigation and search controls re
   await closeMenu.click();
 
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
-  const search = page.getByRole('dialog', { name: 'Find a project' });
+  const search = page.getByRole('dialog', { name: 'Search the portfolio' });
   await expect(search).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Close project search' })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Search projects and collections' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close portfolio search' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Search projects, collections, and books' })).toBeVisible();
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });
