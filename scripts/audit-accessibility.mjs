@@ -54,6 +54,24 @@ const base = read('src/layouts/BaseLayout.astro');
 if (!/<html\s+lang="en"/.test(base)) fail.push('Document language is missing from BaseLayout.');
 if (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/i.test(base)) fail.push('Viewport disables browser zoom.');
 if (!base.includes('Skip to main content')) fail.push('Skip link missing.');
+if ((base.match(/<main\b/g) ?? []).length !== 1) fail.push('BaseLayout must own exactly one main landmark.');
+
+// BaseLayout owns the document's main landmark. Any route rendered through it must
+// contribute page content inside that landmark rather than nesting another <main>.
+const pageFiles = [];
+const walkPages = (directory) => {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) walkPages(full);
+    else if (entry.name.endsWith('.astro')) pageFiles.push(full);
+  }
+};
+walkPages('src/pages');
+for (const file of pageFiles) {
+  const source = read(file);
+  if (!source.includes('BaseLayout')) continue;
+  if (/<main\b/i.test(source)) fail.push(`${file} nests a main landmark inside BaseLayout.`);
+}
 
 const primitives = read('src/styles/primitives.css');
 if (!primitives.includes(':focus-visible')) fail.push('Global focus-visible treatment missing.');
