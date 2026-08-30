@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('Project Search opens from keyboard and finds aliases/typos', async ({ page }) => {
+test('Portfolio Search opens from keyboard and finds projects, books, aliases, and typos', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
   const dialog=page.locator('[data-catalogue-search-dialog]');
@@ -10,6 +10,11 @@ test('Project Search opens from keyboard and finds aliases/typos', async ({ page
   await expect(page.getByText('Manuscript',{exact:true}).first()).toBeVisible();
   await input.fill('G-003');
   await expect(page.getByText('Curio',{exact:true}).first()).toBeVisible();
+  await input.fill('unfinished mission');
+  await expect(page.getByText('The Unfinished Mission',{exact:true}).first()).toBeVisible();
+  await expect(page.locator('[data-search-result]').filter({hasText:'The Unfinished Mission'})).toContainText('BOOK');
+  await input.fill('world christianity');
+  await expect(page.getByText('The Unfinished Mission',{exact:true}).first()).toBeVisible();
 });
 
 test('project category, search, sort and view persist in URL', async ({ page }) => {
@@ -51,19 +56,21 @@ test('active project filters expose an explicit clear action', async ({ page }) 
   await expect(page.locator('[data-archive-query]')).toHaveValue('');
 });
 
-test('mobile Project Search is full screen and usable with touch viewport', async ({ page }) => {
+test('mobile Portfolio Search is full screen and usable with touch viewport', async ({ page }) => {
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const menu = page.getByRole('button',{name:'Menu'});
   await menu.click();
   const navigation = page.getByRole('dialog',{name:'Navigation'});
   await expect(navigation).toBeVisible();
-  await navigation.getByRole('link',{name:/Search projects/}).click();
-  const search = page.getByRole('dialog',{name:'Find a project'});
+  await navigation.getByRole('link',{name:/Search portfolio/}).click();
+  const search = page.getByRole('dialog',{name:'Search the portfolio'});
   await expect(search).toBeVisible();
   await page.locator('[data-catalogue-search-input]').fill('french');
   await expect(page.getByText('French 3000',{exact:true}).first()).toBeVisible();
-  await page.getByRole('button',{name:'Close project search'}).click();
+  await page.locator('[data-catalogue-search-input]').fill('missions');
+  await expect(page.getByText('The Unfinished Mission',{exact:true}).first()).toBeVisible();
+  await page.getByRole('button',{name:'Close portfolio search'}).click();
   await expect(search).not.toBeVisible();
   await expect(menu).toBeFocused();
 });
