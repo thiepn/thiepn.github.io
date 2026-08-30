@@ -11,10 +11,17 @@ The first tranche is deliberately operational: align repository documentation wi
 ### Production guardrails
 
 - Run `phase15:validate` in the ordinary Quality workflow for every pull request and push to `main`.
+- Make the production validator forward-compatible: the active site phase may advance beyond the frozen Phase 15 launch record, but it may never regress below the production release phase.
 - Run the production-source validator inside the authoritative Pages deployment workflow before the Astro build is published.
 - Keep post-deploy smoke verification against `https://thiepn.dev/` as the final deployment gate.
 
 This creates two independent boundaries: source that violates the production contract fails CI, and source that somehow reaches the deployment workflow still cannot publish before the same invariant check passes.
+
+### CI efficiency
+
+The historical `Release Candidate` workflow was still running its 35-minute full certification automatically on every pull request after launch. That duplicated much of the normal Quality workflow and generated release baselines/review artifacts even for routine maintenance changes.
+
+Phase 16A converts it to **Production Certification**, invoked explicitly with `workflow_dispatch`. Normal pull requests continue to receive the full Quality gate, including cross-browser and accessibility certification. The heavier release audit, visual-baseline generation, canonical-state capture, and online launch health checks remain available when a deliberate production certification is needed.
 
 ### Documentation integrity
 
@@ -56,6 +63,8 @@ The Phase 16A pull request must pass the repository's full Quality workflow, inc
 - responsive/cross-browser Playwright certification.
 
 After merge, the authoritative Pages workflow must complete build, deploy, and production verification successfully.
+
+The manual Production Certification workflow is reserved for deliberate full release recertification and is not a routine pull-request gate.
 
 ## Known repository-administration cleanup
 
