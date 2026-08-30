@@ -58,7 +58,7 @@ test.describe('Phase 14 / release candidate', () => {
     await page.route('**/search-index.json', (route) => route.abort('failed'));
     await page.goto('/');
     await page.locator('[data-catalogue-search-open]').first().click();
-    await expect(page.locator('[data-catalogue-search-status]')).toContainText('Project search is unavailable');
+    await expect(page.locator('[data-catalogue-search-status]')).toContainText('Portfolio search is unavailable');
     await page.locator('[data-catalogue-search-close]').click();
     await expect(page.getByRole('link', { name: /Projects/i }).first()).toBeVisible();
   });
