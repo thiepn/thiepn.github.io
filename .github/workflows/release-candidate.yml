@@ -1,14 +1,17 @@
-name: Release Candidate
+name: Production Certification
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: production-certification-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  rc:
+  certify:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -27,13 +30,15 @@ jobs:
       - name: Install certification browsers
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Release-candidate source gate
-        run: npm run release:source
+      - name: Production source gate
+        run: |
+          npm run phase15:validate
+          npm run release:source
 
       - name: Media audit
         run: npm run media:validate
 
-      - name: Generate candidate visual baselines
+      - name: Generate certification visual baselines
         run: npm run visual:update
 
       - name: Full release audit
@@ -46,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-candidate-visual-review
+          name: production-certification-visual-review
           path: |
             tests/visual/baselines/*.png
             artifacts/visual/current/*.png
@@ -61,7 +66,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: release-candidate-failure-diagnostics
+          name: production-certification-failure-diagnostics
           path: |
             test-results/**
             playwright-report/**

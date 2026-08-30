@@ -34,6 +34,9 @@ jobs:
       - name: Structural validation
         run: npm run validate
 
+      - name: Phase 15 production-source invariants
+        run: npm run phase15:validate
+
       - name: Data-only G-010 automation fixture
         run: npm run test:automation
 
@@ -46,7 +49,7 @@ jobs:
       - name: Phase 13 visual language audit
         run: npm run visual:audit
 
-      - name: Phase 14 release-candidate source gate
+      - name: Release source gate
         run: npm run release:source
 
       - name: 250-artifact scale benchmark
@@ -67,28 +70,7 @@ jobs:
       - name: Install certification browsers
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Responsive final visual QA
-        run: npx playwright test tests/e2e/responsive-final.spec.ts --project=chromium --project=mobile-chromium --project=mobile-webkit
-
-      - name: P2 discovery and archive regression smoke
-        run: npx playwright test tests/e2e/phase4.spec.ts
-
-      - name: Reconstruction regression smoke
-        run: npx playwright test tests/e2e/phase1.spec.ts tests/e2e/phase5.spec.ts tests/e2e/phase6.spec.ts tests/e2e/phase7.spec.ts tests/e2e/phase8.spec.ts tests/e2e/phase9.spec.ts --project=chromium
-
-      - name: WebKit lazy-interaction regression smoke
-        run: npx playwright test tests/e2e/phase6.spec.ts tests/e2e/phase8.spec.ts --project=webkit
-
-      - name: P3 interaction and motion reconstruction smoke
-        run: npx playwright test tests/e2e/reconstruction-p3.spec.ts --project=chromium --project=webkit
-
-      - name: P4 project pages and preview experience smoke
-        run: npx playwright test tests/e2e/reconstruction-p4.spec.ts --project=chromium --project=webkit
-
-      - name: P5 collections, categories, and portfolio structure smoke
-        run: npx playwright test tests/e2e/reconstruction-p5.spec.ts --project=chromium --project=webkit
-
-      - name: Cross-browser and accessibility certification
+      - name: Complete Playwright browser and accessibility certification
         run: npm run test:e2e
 
       - name: Upload Playwright certification report
