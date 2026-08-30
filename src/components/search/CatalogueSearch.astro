@@ -6,21 +6,22 @@
       <header class="catalogue-search__header">
         <div>
           <p class="meta">Portfolio search</p>
-          <strong id="catalogue-search-title">Find a project</strong>
+          <strong id="catalogue-search-title">Search the portfolio</strong>
         </div>
-        <button type="button" data-catalogue-search-close aria-label="Close project search">Close</button>
+        <button type="button" data-catalogue-search-close aria-label="Close portfolio search">Close</button>
       </header>
 
       <label class="catalogue-search__query" for="catalogue-query">
-        <span class="sr-only">Search projects and collections</span>
-        <span class="sr-only" id="catalogue-search-help">Type a title, topic, or project code. Use the up and down arrow keys to move through results, Enter to open a result, and Escape to close search.</span>
-        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search by title, topic, or code" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-describedby="catalogue-search-help" aria-expanded="false" data-catalogue-search-input />
+        <span class="sr-only">Search projects, collections, and books</span>
+        <span class="sr-only" id="catalogue-search-help">Type a title, topic, subject, or project code. Use the up and down arrow keys to move through results, Enter to open a result, and Escape to close search.</span>
+        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search title, topic, subject, or code" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-describedby="catalogue-search-help" aria-expanded="false" data-catalogue-search-input />
       </label>
 
       <div class="catalogue-search__shortcuts" aria-label="Search suggestions">
         <span>Try</span>
         <button type="button" data-search-suggestion="games">Games</button>
         <button type="button" data-search-suggestion="Bible">Bible</button>
+        <button type="button" data-search-suggestion="missions">Missions</button>
         <button type="button" data-search-suggestion="French">French</button>
         <button type="button" data-search-suggestion="PDF">PDF</button>
         <button type="button" data-search-suggestion="typing">Typing</button>
@@ -28,13 +29,14 @@
       </div>
 
       <div class="catalogue-search__status" aria-live="polite" aria-atomic="true" data-catalogue-search-status>Featured projects</div>
-      <div class="catalogue-search__results" id="catalogue-search-results" role="listbox" aria-label="Project search results" aria-busy="false" data-catalogue-search-results></div>
+      <div class="catalogue-search__results" id="catalogue-search-results" role="listbox" aria-label="Portfolio search results" aria-busy="false" data-catalogue-search-results></div>
 
       <footer class="catalogue-search__footer">
         <span aria-hidden="true">↑↓ Select</span>
         <span aria-hidden="true">Enter Open details</span>
         <span aria-hidden="true">Esc Close</span>
-        <a href="/collections/">Browse collections →</a>
+        <a href="/books/">Books →</a>
+        <a href="/collections/">Collections →</a>
       </footer>
     </div>
   </dialog>
@@ -57,10 +59,11 @@
   .catalogue-search__result::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:transparent}.catalogue-search__result.is-selected{background:var(--selection)}.catalogue-search__result.is-selected::before{background:var(--result-accent)}
   .catalogue-search__result-code,.catalogue-search__result-type{font:500 .7rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.catalogue-search__result-copy{min-width:0}.catalogue-search__result-copy strong{display:block;font-size:.98rem;line-height:1.15;letter-spacing:-.022em}.catalogue-search__result-copy small{display:block;margin-top:4px;color:var(--ink-muted);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.catalogue-search__result-type{text-align:right}
   .catalogue-search__empty{display:grid;gap:6px;padding:var(--space-6) var(--space-5);color:var(--ink-secondary)}.catalogue-search__empty strong{font-size:1.15rem;letter-spacing:-.025em}.catalogue-search__empty p{max-width:52ch;font-size:.875rem;line-height:1.5}.catalogue-search__empty a{min-height:44px;display:inline-flex;align-items:center;width:max-content;margin-top:4px;font:500 .7rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase;text-decoration:none}
-  .catalogue-search__footer{min-height:48px;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-5);border-top:1px solid var(--line-strong);font:500 .7rem var(--font-meta);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted)}.catalogue-search__footer a{margin-left:auto;min-height:44px;display:flex;align-items:center;color:var(--ink);text-decoration:none}.catalogue-search__footer a:hover{text-decoration:underline;text-underline-offset:4px}
+  .catalogue-search__footer{min-height:48px;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-5);border-top:1px solid var(--line-strong);font:500 .7rem var(--font-meta);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted)}.catalogue-search__footer a{min-height:44px;display:flex;align-items:center;color:var(--ink);text-decoration:none}.catalogue-search__footer a:first-of-type{margin-left:auto}.catalogue-search__footer a:hover{text-decoration:underline;text-underline-offset:4px}
   html[data-theme="dark"] .catalogue-search__result{--result-accent:var(--result-accent-dark,var(--line-strong))}
   @media(max-width:700px){.catalogue-search__dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);margin:12px auto}.catalogue-search__footer span:nth-child(2){display:none}.catalogue-search__result{grid-template-columns:54px minmax(0,1fr) 82px}.catalogue-search__shortcuts a{margin-left:0}}
   @media(max-width:599px){.catalogue-search__dialog{width:100%;height:100vh;height:100dvh;max-height:none;margin:0;border:0}.catalogue-search__surface{height:100vh;height:100dvh;max-height:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}.catalogue-search__header,.catalogue-search__query,.catalogue-search__shortcuts,.catalogue-search__status,.catalogue-search__footer{padding-inline:max(var(--space-4),env(safe-area-inset-left)) max(var(--space-4),env(safe-area-inset-right))}.catalogue-search__query input{font-size:1.3rem}.catalogue-search__result{grid-template-columns:48px minmax(0,1fr);padding-inline:max(var(--space-4),env(safe-area-inset-left)) max(var(--space-4),env(safe-area-inset-right))}.catalogue-search__result-type{display:none}.catalogue-search__footer span{display:none}.catalogue-search__shortcuts{gap:5px}}
+  @media(max-width:430px){.catalogue-search__footer a:last-of-type{display:none}}
   @media(prefers-reduced-motion:reduce){.catalogue-search__dialog::backdrop{transition:none}}
   @media(forced-colors:active){.catalogue-search__dialog{border:2px solid CanvasText}.catalogue-search__result.is-selected{outline:3px solid Highlight;outline-offset:-3px}.catalogue-search__result.is-selected::before{background:Highlight}}
 </style>
