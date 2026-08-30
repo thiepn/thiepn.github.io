@@ -61,3 +61,9 @@ Source validation confirms:
 - Phase 0/2/3/4/5/6/7 structural regression gates remain intact.
 
 Full Astro/Vitest/Playwright execution still requires dependency installation in a networked runner.
+
+## 2026-08-30 Featured-media certification update
+
+PDF Studio now satisfies the three-view gallery contract using real captured product surfaces rather than synthetic proof media: the deployed Home surface, an opened sample document, and the same sample in the first-class Pages organizer. The Pages capture is taken in the ready state before any page mutation, so it demonstrates real organization controls while preserving the original sample unchanged.
+
+The canonical Featured-media workflow captures these deployed states, includes them in the review artifact, refreshes derived catalogue outputs, and commits media plus generated data together before the normal Quality and deployment gates certify the resulting head.
