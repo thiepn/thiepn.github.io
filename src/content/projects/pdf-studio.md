@@ -69,6 +69,10 @@ gallery:
   caption: A real sample PDF opened inside the editing workspace with pages, tools, zoom, and document canvas visible.
   variant: workspace
   source: /projects/pdf-studio/screenshot-workspace.png
+- label: Page organizer
+  caption: The same real sample opened in Pages mode, showing thumbnail organization, page selection controls, and non-destructive output actions.
+  variant: organize
+  source: /projects/pdf-studio/screenshot-pages.png
 ---
 
 A privacy-first PDF workspace for editing, organizing, annotating, converting, and automating documents locally.

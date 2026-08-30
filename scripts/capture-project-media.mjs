@@ -24,6 +24,7 @@ const plans = {
   'pdf-studio': [
     { name: 'screenshot-desktop.png', state: 'home', context: desktop },
     { name: 'screenshot-workspace.png', state: 'workspace', context: desktop },
+    { name: 'screenshot-pages.png', state: 'pages', context: desktop },
   ],
   'micro-arcade': [
     { name: 'screenshot-desktop.png', state: 'home', context: desktop },
@@ -129,6 +130,16 @@ async function preparePdfStudio(page, state) {
   await page.waitForTimeout(2_000);
   const hash = await page.evaluate(() => window.location.hash);
   if (!hash.startsWith('#/workspace/')) throw new Error(`PDF Studio sample did not reach a workspace. Current hash: ${hash || '(empty)'}`);
+  if (state !== 'pages') return;
+
+  const pagesControl = page.getByRole('button', { name: 'Pages', exact: true }).first();
+  await pagesControl.waitFor({ state: 'visible', timeout: 10_000 });
+  await pagesControl.click();
+  const organizer = page.locator('.organizer-app--r3').first();
+  await organizer.waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByText('No page changes yet', { exact: true }).waitFor({ state: 'visible', timeout: 12_000 });
+  await page.locator('main.organizer-grid').first().waitFor({ state: 'visible', timeout: 12_000 });
+  await page.waitForTimeout(1_000);
 }
 
 async function prepareMicroArcade(page, state) {
