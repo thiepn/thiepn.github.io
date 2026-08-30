@@ -26,7 +26,7 @@ const active = (href: string) => {
       <a class:list={[active('/about/') && 'is-active']} href="/about/" aria-current={active('/about/') ? 'page' : undefined}>About</a>
     </nav>
     <div class="site-header__tools">
-      <a class="site-header__search" href="/projects/" data-catalogue-search-open aria-label="Search portfolio">Search <span aria-hidden="true">⌘/Ctrl K</span></a>
+      <a class="site-header__search" href="/projects/" data-catalogue-search-open aria-label="Search projects, collections, and books">Search <span aria-hidden="true">⌘/Ctrl K</span></a>
       <ThemeControl />
     </div>
     <MobileMenu />
