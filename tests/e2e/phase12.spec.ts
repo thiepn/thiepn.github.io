@@ -15,7 +15,7 @@ async function hasHorizontalOverflow(page: Page) {
 async function openSearch(page: Page) {
   await page.goto('/');
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
-  const dialog = page.getByRole('dialog', { name: 'Find a project' });
+  const dialog = page.getByRole('dialog', { name: 'Search the portfolio' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -41,17 +41,17 @@ test('accessibility tree exposes the project browser hierarchy', async ({ page }
   await expect(browser).toMatchAriaSnapshot(`- heading "Find a project" [level=2]`);
 });
 
-test('search follows combobox/listbox semantics and restores focus', async ({ page }) => {
+test('portfolio search follows combobox/listbox semantics and restores focus', async ({ page }) => {
   await page.goto('/');
-  const opener = page.getByRole('link', { name: 'Search projects' }).first();
+  const opener = page.getByRole('link', { name: 'Search projects, collections, and books' }).first();
   await opener.focus();
   await opener.press('Enter');
 
-  const dialog = page.getByRole('dialog', { name: 'Find a project' });
+  const dialog = page.getByRole('dialog', { name: 'Search the portfolio' });
   await expect(dialog).toBeVisible();
-  const input = page.getByRole('combobox', { name: 'Search projects and collections' });
+  const input = page.getByRole('combobox', { name: 'Search projects, collections, and books' });
   await expect(input).toBeFocused();
-  const listbox = page.getByRole('listbox', { name: 'Project search results' });
+  const listbox = page.getByRole('listbox', { name: 'Portfolio search results' });
   await expect(listbox).toBeVisible();
   await expect(listbox.getByRole('option')).toHaveCount(5);
 
@@ -74,24 +74,24 @@ test('search follows combobox/listbox semantics and restores focus', async ({ pa
 
 test('search suggestions are visible and populate the finder', async ({ page }) => {
   const dialog = await openSearch(page);
-  const input = page.getByRole('combobox', { name: 'Search projects and collections' });
+  const input = page.getByRole('combobox', { name: 'Search projects, collections, and books' });
   await dialog.getByRole('button', { name: 'Games', exact: true }).click();
   await expect(input).toHaveValue('games');
-  await expect(dialog.getByRole('listbox', { name: 'Project search results' }).getByRole('option').first()).toBeVisible();
+  await expect(dialog.getByRole('listbox', { name: 'Portfolio search results' }).getByRole('option').first()).toBeVisible();
 });
 
 test('search close control keeps its native keyboard activation', async ({ page }) => {
   await page.goto('/');
-  const opener = page.getByRole('link', { name: 'Search projects' }).first();
+  const opener = page.getByRole('link', { name: 'Search projects, collections, and books' }).first();
   await opener.focus();
   await opener.press('Enter');
-  const input = page.getByRole('combobox', { name: 'Search projects and collections' });
+  const input = page.getByRole('combobox', { name: 'Search projects, collections, and books' });
   await expect(input).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  const close = page.getByRole('button', { name: 'Close project search' });
+  const close = page.getByRole('button', { name: 'Close portfolio search' });
   await expect(close).toBeFocused();
   await close.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'Find a project' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Search the portfolio' })).not.toBeVisible();
   await expect(opener).toBeFocused();
 });
 
@@ -225,7 +225,7 @@ test('no-JavaScript desktop keeps the complete project set and direct navigation
   await page.goto('/projects/');
   await expect(page.locator('[data-archive-controls]')).toBeHidden();
   await expect(page.locator('[data-archive-grid] [data-archive-item]')).toHaveCount(expectedProjectCount);
-  await expect(page.getByRole('link', { name: 'Search projects' }).first()).toHaveAttribute('href', '/projects/');
+  await expect(page.getByRole('link', { name: 'Search projects, collections, and books' }).first()).toHaveAttribute('href', '/projects/');
   await expect(page.getByRole('link', { name: /PDF Studio/ }).first()).toBeVisible();
   await context.close();
 });

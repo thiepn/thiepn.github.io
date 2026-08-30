@@ -33,7 +33,19 @@ export interface SearchableCollection {
   relationshipLabels?: readonly string[];
 }
 
-export type SearchableItem = SearchableProject | SearchableCollection;
+export interface SearchableBook {
+  kind: 'book';
+  slug: string;
+  title: string;
+  subtitle: string;
+  summary: string;
+  subjects: readonly string[];
+  version: string;
+  libraryUrl: string;
+  lastUpdated?: string | null;
+}
+
+export type SearchableItem = SearchableProject | SearchableCollection | SearchableBook;
 
 export interface RankedSearchResult<T extends SearchableItem = SearchableItem> {
   item: T;
@@ -95,7 +107,7 @@ export function scoreSearchItem(item: SearchableItem, rawQuery: string): number 
 
   let score = 0;
   score = Math.max(score, scoreField(query, item.title, { exact: 100, prefix: 85, token: 70, fuzzy: 28 }));
-  score = Math.max(score, scoreField(query, item.code, { exact: 95, prefix: 82, token: 70, fuzzy: 20 }));
+  if (item.kind !== 'book') score = Math.max(score, scoreField(query, item.code, { exact: 95, prefix: 82, token: 70, fuzzy: 20 }));
 
   if (item.kind === 'project') {
     for (const alias of item.aliases) score = Math.max(score, scoreField(query, alias, { exact: 65, prefix: 58, token: 55, fuzzy: 24 }));
@@ -107,12 +119,17 @@ export function scoreSearchItem(item: SearchableItem, rawQuery: string): number 
     if (item.repo) score = Math.max(score, scoreField(query, item.repo, { exact: 46, prefix: 42, token: 38, fuzzy: 18 }));
     score = Math.max(score, scoreField(query, item.subtitle, { exact: 32, prefix: 30, token: 26, fuzzy: 16 }));
     score = Math.max(score, scoreField(query, item.summary, { exact: 22, prefix: 20, token: 20 }));
-  } else {
+  } else if (item.kind === 'collection') {
     score = Math.max(score, scoreField(query, item.summary, { exact: 32, prefix: 28, token: 22, fuzzy: 14 }));
     if (item.editorialNote) score = Math.max(score, scoreField(query, item.editorialNote, { exact: 28, prefix: 25, token: 20, fuzzy: 12 }));
     for (const keyword of item.keywords ?? []) score = Math.max(score, scoreField(query, keyword, { exact: 50, prefix: 44, token: 40, fuzzy: 20 }));
     for (const title of item.projectTitles ?? []) score = Math.max(score, scoreField(query, title, { exact: 42, prefix: 38, token: 34, fuzzy: 16 }));
     for (const relation of item.relationshipLabels ?? []) score = Math.max(score, scoreField(query, relation, { exact: 46, prefix: 42, token: 36, fuzzy: 18 }));
+  } else {
+    score = Math.max(score, scoreField(query, item.subtitle, { exact: 46, prefix: 42, token: 38, fuzzy: 20 }));
+    score = Math.max(score, scoreField(query, item.summary, { exact: 30, prefix: 27, token: 24, fuzzy: 14 }));
+    for (const subject of item.subjects) score = Math.max(score, scoreField(query, subject, { exact: 54, prefix: 48, token: 44, fuzzy: 20 }));
+    score = Math.max(score, scoreField(query, item.version, { exact: 20, prefix: 18, token: 16 }));
   }
 
   return Math.round(score * 100) / 100;

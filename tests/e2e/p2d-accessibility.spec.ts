@@ -33,19 +33,19 @@ test('project lifecycle status exposes explicit screen-reader context', async ({
   await expect(status).toContainText(/live|beta|experiment|archived/i);
 });
 
-test('project search exposes help, loading semantics, readable controls, and 44px suggestions', async ({ page }) => {
+test('portfolio search exposes help, loading semantics, readable controls, and 44px suggestions', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Control+K');
-  const dialog = page.getByRole('dialog', { name: 'Find a project' });
+  const dialog = page.getByRole('dialog', { name: 'Search the portfolio' });
   await expect(dialog).toBeVisible();
-  const input = page.getByRole('combobox', { name: 'Search projects and collections' });
+  const input = page.getByRole('combobox', { name: 'Search projects, collections, and books' });
   await expect(input).toHaveAttribute('aria-describedby', 'catalogue-search-help');
-  const results = page.getByRole('listbox', { name: 'Project search results' });
+  const results = page.getByRole('listbox', { name: 'Portfolio search results' });
   await expect(results).toHaveAttribute('aria-busy', 'false');
   const suggestions = dialog.locator('[data-search-suggestion]');
   await expectMinimumHeight(suggestions);
   await expectReadableControlText(suggestions);
-  const close = page.getByRole('button', { name: 'Close project search' });
+  const close = page.getByRole('button', { name: 'Close portfolio search' });
   await expectMinimumHeight(close);
 });
 

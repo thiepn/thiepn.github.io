@@ -1,8 +1,9 @@
-import { searchCatalogue, type RankedSearchResult, type SearchableCollection, type SearchableItem, type SearchableProject } from '../lib/search-core';
+import { searchCatalogue, type RankedSearchResult, type SearchableBook, type SearchableCollection, type SearchableItem, type SearchableProject } from '../lib/search-core';
 
 interface SearchPayload {
   projects: SearchableProject[];
   collections: SearchableCollection[];
+  books?: SearchableBook[];
   featured: string[];
 }
 
@@ -53,16 +54,20 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   let selectedIndex = -1;
   let returnFocus: HTMLElement | null = null;
 
-  const itemUrl = (item: SearchableItem) => item.kind === 'project' ? `/project/${item.slug}/` : `/collection/${item.slug}/`;
+  const itemUrl = (item: SearchableItem) => {
+    if (item.kind === 'project') return `/project/${item.slug}/`;
+    if (item.kind === 'collection') return `/collection/${item.slug}/`;
+    return item.libraryUrl;
+  };
   const selectedItem = () => ranked[selectedIndex]?.item;
 
   async function ensurePayload() {
     if (payload) return payload;
-    statusEl.textContent = 'Loading project search…';
+    statusEl.textContent = 'Loading portfolio search…';
     resultsEl.setAttribute('aria-busy', 'true');
     try {
       payload = await getPayload();
-      items = [...payload.projects, ...payload.collections];
+      items = [...payload.projects, ...payload.collections, ...(payload.books ?? [])];
       return payload;
     } finally {
       resultsEl.setAttribute('aria-busy', 'false');
@@ -102,12 +107,17 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     option.style.setProperty('--result-accent-light', item.kind === 'project' ? item.accentLight : 'var(--line-strong)');
     option.style.setProperty('--result-accent-dark', item.kind === 'project' ? item.accentDark : 'var(--line-strong)');
 
-    const code = document.createElement('span'); code.className = 'catalogue-search__result-code'; code.textContent = item.code;
+    const code = document.createElement('span');
+    code.className = 'catalogue-search__result-code';
+    code.textContent = item.kind === 'book' ? 'BOOK' : item.code;
     const copy = document.createElement('span'); copy.className = 'catalogue-search__result-copy';
     const title = document.createElement('strong'); title.textContent = item.title;
-    const descriptor = document.createElement('small'); descriptor.textContent = item.kind === 'project' ? item.subtitle : item.summary;
+    const descriptor = document.createElement('small');
+    descriptor.textContent = item.kind === 'collection' ? item.summary : item.subtitle;
     copy.append(title, descriptor);
-    const type = document.createElement('span'); type.className = 'catalogue-search__result-type'; type.textContent = item.kind === 'project' ? item.category : 'collection';
+    const type = document.createElement('span');
+    type.className = 'catalogue-search__result-type';
+    type.textContent = item.kind === 'project' ? item.category : item.kind;
     option.append(code, copy, type);
     option.addEventListener('pointermove', () => {
       if (selectedIndex !== index) { selectedIndex = index; syncSelection(); }
@@ -119,11 +129,11 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   function buildEmpty(query: string) {
     const empty = document.createElement('div');
     empty.className = 'catalogue-search__empty';
-    const title = document.createElement('strong'); title.textContent = 'No matching projects.';
+    const title = document.createElement('strong'); title.textContent = 'No matching work.';
     const copy = document.createElement('p'); copy.textContent = query
-      ? `Nothing matched “${query}”. Try a broader topic, a project code, or browse the full project directory.`
-      : 'Search by title, topic, or project code.';
-    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse all projects →';
+      ? `Nothing matched “${query}”. Try a broader topic, title, subject, or project code.`
+      : 'Search by title, topic, subject, or project code.';
+    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse project directory →';
     empty.append(title, copy, browse);
     return empty;
   }
@@ -139,11 +149,16 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} featured projects`;
     else if (!ranked.length) statusEl.textContent = '0 matches';
     else {
-      const projectCount = ranked.filter(({ item }) => item.kind === 'project').length;
-      const collectionCount = ranked.length - projectCount;
-      statusEl.textContent = collectionCount
-        ? `${String(ranked.length).padStart(2, '0')} matches / ${projectCount} projects / ${collectionCount} collections`
-        : `${String(ranked.length).padStart(2, '0')} project matches`;
+      const counts = ranked.reduce((current, { item }) => {
+        current[item.kind] += 1;
+        return current;
+      }, { project: 0, collection: 0, book: 0 });
+      const parts = [
+        counts.project ? `${counts.project} ${counts.project === 1 ? 'project' : 'projects'}` : '',
+        counts.collection ? `${counts.collection} ${counts.collection === 1 ? 'collection' : 'collections'}` : '',
+        counts.book ? `${counts.book} ${counts.book === 1 ? 'book' : 'books'}` : '',
+      ].filter(Boolean);
+      statusEl.textContent = `${String(ranked.length).padStart(2, '0')} matches / ${parts.join(' / ')}`;
     }
     syncSelection();
   }
@@ -175,7 +190,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       render();
     } catch {
       resultsEl.setAttribute('aria-busy', 'false');
-      statusEl.textContent = 'Project search is unavailable.';
+      statusEl.textContent = 'Portfolio search is unavailable.';
       resultsEl.replaceChildren(buildEmpty(inputEl.value.trim()));
     }
     requestAnimationFrame(() => inputEl.focus());

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixtures from '../fixtures/catalogue-250.json';
-import { searchCatalogue, scoreSearchItem, type SearchableCollection, type SearchableProject } from '../../src/lib/search-core';
+import { searchCatalogue, scoreSearchItem, type SearchableBook, type SearchableCollection, type SearchableProject } from '../../src/lib/search-core';
 
 const base: SearchableProject = {
   kind:'project', code:'G-003', slug:'curio', title:'Curio', subtitle:'Auction strategy game', summary:'Auction and appraisal strategy game.', aliases:['objects of questionable value'], category:'games', status:'live', tags:['auction','strategy'], collections:['Browser Games'], liveUrl:'https://example.test/', accentLight:'#111111', accentDark:'#eeeeee', updatedAt:'2026-08-18T00:00:00.000Z'
@@ -21,6 +21,13 @@ describe('catalogue search scoring', () => {
     expect(scoreSearchItem(collection,'social quiz play')).toBeGreaterThan(0);
     expect(scoreSearchItem(collection,'WORDSTRIKE')).toBeGreaterThan(0);
     expect(scoreSearchItem(collection,'arcade')).toBeGreaterThan(0);
+  });
+  it('indexes published books by title, subtitle, summary, and subject', () => {
+    const book: SearchableBook = { kind:'book', slug:'the-unfinished-mission', title:'The Unfinished Mission', subtitle:'Why Gospel Access Remains Unequal—and What Faithful Mission Requires Now', summary:'A long-form work about faithful global mission and local ownership.', subjects:['missions','theology','world-christianity'], version:'1.0.0', libraryUrl:'https://example.test/library/works/the-unfinished-mission/', lastUpdated:'2026-08-23' };
+    expect(scoreSearchItem(book,'The Unfinished Mission')).toBe(100);
+    expect(scoreSearchItem(book,'missions')).toBeGreaterThan(0);
+    expect(scoreSearchItem(book,'gospel access')).toBeGreaterThan(0);
+    expect(scoreSearchItem(book,'world christianity')).toBeGreaterThan(0);
   });
   it('keeps 250-project local search within the Phase 4 target on the test runner', () => {
     const projects = fixtures as SearchableProject[];
