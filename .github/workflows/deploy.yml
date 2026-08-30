@@ -21,6 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Validate production source invariants
+        run: node scripts/validate-phase15.mjs
+
       - name: Inspect and migrate Pages publishing mode
         shell: bash
         env:
