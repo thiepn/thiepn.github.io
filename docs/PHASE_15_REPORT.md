@@ -3,83 +3,76 @@
 ## Status
 
 **Production source implementation: COMPLETE**  
-**Production deployment: BLOCKED BY GITHUB APP REPOSITORY AUTHORIZATION**  
+**Production deployment: COMPLETE**  
+**Post-deploy production verification: PASS**  
 **v1.0.0 tag: NOT CREATED**
 
-Phase 15 promotes THE INDEX from the Phase 14 release candidate to the production identity:
+Phase 15 promoted THE INDEX from the Phase 14 release candidate to the production identity:
 
 - Release: `1.0.0`
 - Phase: `15`
 - Repository: `thiepn/thiepn.github.io`
 - Canonical site: `https://thiepn.dev/`
-- Release tag after verified deployment: `v1.0.0`
+- Intended historical release tag: `v1.0.0`
+
+`release-production.json` is the machine-readable launch manifest. The public site is live on the custom domain and the authoritative Astro Pages workflow has completed its build, deploy, and production-verification jobs successfully.
 
 ## Production changes implemented
 
 - Canonical Astro site changed from `https://thiepn.github.io` to `https://thiepn.dev`.
-- All catalogue launch URLs now use `https://thiepn.dev/<repository>/`.
+- Catalogue launch URLs use the `https://thiepn.dev/<repository>/` custom-domain form.
 - Root and public `CNAME` files declare `thiepn.dev`.
 - `robots.txt` points to `https://thiepn.dev/sitemap.xml`.
-- Package/release metadata promotes to `1.0.0` / Phase 15.
-- Reproducible CI switches to `npm ci` after the release lockfile exists.
-- `phase15:validate`, `phase15:smoke`, and Phase 15 promotion tooling were added.
-- The Pages deployment workflow now runs production smoke checks after deployment.
-- `v1.0.0` is created automatically only after the production smoke gate passes.
-- Production smoke covers the homepage, catalogue JSON, sitemap, every generated public route, all 19 launch destinations, and the custom 404.
+- Package/release metadata is promoted to `1.0.0` / Phase 15.
+- Reproducible CI uses the tracked lockfile and `npm ci`.
+- `phase15:validate`, `phase15:smoke`, and Phase 15 promotion tooling are present.
+- The custom Pages workflow builds the Astro artifact and runs production smoke checks after deployment.
+- Production smoke covers the required public routes, machine-readable catalogue and sitemap outputs, generated artifact routes, live project destinations, and custom-domain availability according to the current production manifest and generated catalogue.
 
-GitHub documents that a custom domain configured on a user site becomes the default custom domain for project sites owned by the same account. This is why production catalogue URLs use `thiepn.dev/<repository>/` rather than the default `thiepn.github.io/<repository>/` form.
+GitHub Pages custom-domain routing is therefore treated as a production invariant: the root site and project launch URLs must continue to resolve through `thiepn.dev` rather than drifting back to default `github.io` canonicals.
 
-## Source gates executed locally
+## Verification evidence
 
-- Phase 0 foundation validation — PASS
-- Phase 14 forward-compatible validation — PASS
-- Phase 15 production-source validation — PASS
-- Release source audit — PASS
-- Accessibility source audit — PASS
-- Visual-language source audit — PASS
-- Phase 11 source performance audit — PASS
-- 250-artifact benchmark — PASS
+A production deployment on 2026-08-30 for main commit `1efdd922c9e923c888a030add499ab7d3fe48654` completed all three authoritative workflow jobs successfully:
 
-Latest 250-artifact benchmark during Phase 15:
+1. `build` — Astro source built and the Pages artifact was uploaded.
+2. `deploy` — the artifact was deployed to GitHub Pages.
+3. `verify` — `scripts/smoke-production.mjs` passed against `https://thiepn.dev/`.
 
-- Search average: ~5.0 ms
-- Search p95: ~6.4 ms
-- Archive p95: ~0.08 ms
-- Required ceiling: 50 ms
+This supersedes the earlier Phase 15 state in which deployment was blocked by GitHub App repository authorization.
 
-## Remaining deployment blockers
+## Source gates
 
-### 1. GitHub App write scope
+The production release path includes the following release protections:
 
-The connected GitHub App installation can read the repository publicly, but the installation does not currently include `thiepn/thiepn.github.io` in its selected repository set. Both release-branch creation and an unattached Git blob write returned:
+- foundation and structural validation;
+- production-domain/source invariant validation;
+- generated catalogue freshness and integrity;
+- accessibility source and browser audits;
+- visual-language and visual-regression coverage;
+- source and built-output performance budgets;
+- 250-artifact scale benchmarking;
+- TypeScript and unit tests;
+- cross-browser Chromium, Firefox, and WebKit certification;
+- link and live-destination health checks;
+- post-deploy custom-domain smoke verification.
 
-`403 Resource not accessible by integration`
+Phase 16 additionally requires the ordinary Quality workflow and the deployment workflow itself to run the Phase 15 production-source invariant validator, so later maintenance cannot bypass the canonical production contract.
 
-The app installation currently lists eight accessible repositories and does not include the root Pages repository.
+## Residual release administration
 
-Until the repository is added to the GitHub App installation, ChatGPT cannot create the release branch, commit the source, open the production PR, merge it, or launch Pages.
+### 1. Historical `v1.0.0` tag
 
-### 2. Tracked package lock
+The production manifest records `v1.0.0` as the intended release tag, but the Git ref is not currently present.
 
-This runtime cannot reach the npm registry, so it cannot create the final `package-lock.json`. Phase 15 includes a GitHub Actions candidate-preparation workflow design that generates the lockfile in GitHub's networked runner and validates it before release.
+Do not create that tag automatically on an arbitrary later maintenance commit. Resolve it only after identifying the exact intended launch commit from the release history, then point `v1.0.0` at that commit.
 
-### 3. Approved visual baselines
+### 2. Legacy Pages workflow noise
 
-The 16 Phase 13 canonical states still require a networked Astro/Playwright render and visual review before approval. The launch flow captures and uploads those states first; baselines are only created after explicit visual approval.
+GitHub is still capable of starting its legacy `pages build and deployment` / Jekyll path. On the same 2026-08-30 main commit, that legacy build failed at `Build with Jekyll`, while the repository's authoritative Astro `Deploy to GitHub Pages` workflow succeeded and verified production.
 
-## Intended final release sequence
+The repository workflow attempts to migrate Pages publishing mode to GitHub Actions. If GitHub repository settings still remain on branch/Jekyll publishing, change **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. This is repository administration, not an Astro application defect.
 
-1. Add `thiepn/thiepn.github.io` to the existing GitHub App installation.
-2. Create `agent/phase15-production` from `main`.
-3. Publish the frozen RC source to that branch.
-4. GitHub Actions installs dependencies, creates the lockfile, runs RC/browser/link checks, and captures all 16 canonical states.
-5. Review the uploaded visual contact sheet.
-6. Approve the visual gate.
-7. The Phase 15 promotion workflow generates baselines, promotes the source to `1.0.0` / `thiepn.dev`, and runs `audit:release`.
-8. Open the final PR and require all CI checks to pass.
-9. Merge to `main`.
-10. GitHub Pages deploys the Astro build.
-11. Post-deploy production smoke verifies every public route and all 19 project destinations on `thiepn.dev`.
-12. Only after that smoke passes, create `v1.0.0`.
+## Phase 15 closeout
 
-Phase 15 intentionally does not bypass any of these gates.
+Phase 15 is closed for source promotion and production deployment. Future work belongs to post-launch maintenance and product improvement phases and must preserve the `1.0.0` production invariants, THE INDEX design system, accessibility guarantees, performance budgets, catalogue integrity, and custom-domain deployment path.
