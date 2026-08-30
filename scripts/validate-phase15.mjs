@@ -11,9 +11,16 @@ const astro = fs.readFileSync('astro.config.mjs','utf8');
 const robots = fs.readFileSync('public/robots.txt','utf8');
 
 if (pkg.version !== '1.0.0') fail(`package version must be 1.0.0, got ${pkg.version}`);
-if (rc.release !== '1.0.0' || rc.phase !== 15) fail('release-candidate.json must be promoted to 1.0.0 / Phase 15');
-if (prod.release !== '1.0.0' || prod.productionUrl !== 'https://thiepn.dev/') fail('release-production.json is invalid');
-if (!/phase:\s*15\b/.test(site)) fail('SITE.phase must be 15');
+if (rc.release !== '1.0.0' || rc.phase !== 15) fail('release-candidate.json must preserve the promoted 1.0.0 / Phase 15 release record');
+if (prod.release !== rc.release || prod.phase !== rc.phase || prod.productionUrl !== 'https://thiepn.dev/') fail('release-production.json must match the frozen promoted release record');
+
+const sitePhaseMatch = /phase:\s*(\d+)\b/.exec(site);
+if (!sitePhaseMatch) {
+  fail('SITE.phase must be present and numeric');
+} else if (Number(sitePhaseMatch[1]) < Number(prod.phase)) {
+  fail(`SITE.phase must not regress below production Phase ${prod.phase}; got ${sitePhaseMatch[1]}`);
+}
+
 if (!site.includes("url: 'https://thiepn.dev'")) fail('SITE.url must be https://thiepn.dev');
 if (!astro.includes("site: 'https://thiepn.dev'")) fail('Astro canonical site must be https://thiepn.dev');
 if (!robots.includes('https://thiepn.dev/sitemap.xml')) fail('robots.txt sitemap must use production domain');
@@ -33,8 +40,8 @@ if (fs.existsSync('src/generated/catalogue-public.json')) {
   }
 }
 if (failures.length) {
-  console.error(`Phase 15 validation failed (${failures.length}):`);
+  console.error(`Phase 15 production-source validation failed (${failures.length}):`);
   failures.forEach((m) => console.error(`- ${m}`));
   process.exit(1);
 }
-console.log('Phase 15 production-source validation passed: v1.0.0 / thiepn.dev / canonical project URLs.');
+console.log(`Production-source validation passed: v${prod.release} baseline / Phase ${prod.phase}+ / thiepn.dev / canonical project URLs.`);
