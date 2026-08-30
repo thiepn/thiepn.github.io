@@ -12,10 +12,12 @@ test('directional artifact actions move only their arrow cue', async ({ page }) 
   const action = page.locator('.artifact-actions__details').first();
   const arrow = action.locator('span[aria-hidden="true"]');
 
-  await action.scrollIntoViewIfNeeded();
+  await action.evaluate((element) => {
+    element.ownerDocument.documentElement.style.scrollBehavior = 'auto';
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+  });
   await expect(action).toBeVisible();
   await expect(arrow).toHaveText('→');
-  await page.waitForTimeout(80);
 
   const measureAction = () => action.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -30,13 +32,11 @@ test('directional artifact actions move only their arrow cue', async ({ page }) 
 
   const actionBefore = await measureAction();
   await action.hover();
-  await page.waitForTimeout(180);
-  const arrowTransform = await arrow.evaluate((element) => getComputedStyle(element).transform);
+  await expect.poll(async () => await action.evaluate((element) => element.matches(':hover'))).toBe(true);
+  await expect.poll(async () => await arrow.evaluate((element) => getComputedStyle(element).transform)).not.toBe('none');
   const actionAfter = await measureAction();
 
-  // WebKit may adjust viewport scroll while Playwright positions the pointer.
-  // Document coordinates distinguish that browser scrolling from real element movement.
-  expect(arrowTransform).not.toBe('none');
+  // Document coordinates distinguish browser viewport scrolling from real element movement.
   expect(actionBefore.transform).toBe('none');
   expect(actionAfter.transform).toBe('none');
   expect(actionAfter.documentX).toBeCloseTo(actionBefore.documentX, 1);

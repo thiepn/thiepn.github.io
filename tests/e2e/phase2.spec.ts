@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('homepage exposes the Project Universe hierarchy', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'THIEPN', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Things I build.', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Start with the flagship.', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What do you want to do?', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Long-form published works.', level: 2 })).toBeVisible();

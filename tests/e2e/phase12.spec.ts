@@ -197,7 +197,7 @@ test('reduced motion leaves project content usable and suppresses preview activa
     await page.waitForTimeout(350);
     await expect(preview).toHaveAttribute('data-preview-state', 'poster');
   }
-  await expect(page.getByRole('heading', { name: 'THIEPN', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Things I build.', level: 1 })).toBeVisible();
 });
 
 test('forced-colors mode preserves focus, borders, and selected states', async ({ page, browserName }) => {
