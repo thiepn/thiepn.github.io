@@ -4,7 +4,7 @@ test('homepage initializes restrained hero motion without the decorative Living 
   await page.goto('/');
   await expect(page.locator('[data-index-hero]')).toHaveAttribute('data-hero-motion', 'active');
   await expect(page.locator('[data-living-index]')).toHaveCount(0);
-  await expect(page.getByRole('heading', { level: 1, name: 'THIEPN' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Things I build.' })).toBeVisible();
 });
 
 test('homepage exposes a curated project index instead of duplicating the full archive controls', async ({ page }) => {
