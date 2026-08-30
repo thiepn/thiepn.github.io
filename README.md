@@ -6,18 +6,18 @@ This repository is governed by **THE INDEX / DS-01**. The design language is int
 
 ## Current state
 
-**Phase 14 — Release Candidate**
+**Phase 16 — Post-launch hardening**
 
-The product is feature-frozen at `1.0.0-rc.1`. Phase 14 adds release-only hardening and certification gates:
+The production site is live at `https://thiepn.dev/` on the `1.0.0` production source. Phase 15 completed the custom-domain promotion and production deployment; Phase 16 keeps the public experience stable while tightening maintenance, documentation, and deployment guardrails.
 
-- every listed project must be searchable and expose its canonical live launch destination;
-- archive Back-state, theme persistence, no-JS operation, 404 navigation, search failure, and preview-media failure are release-tested;
-- Chromium, Firefox, WebKit, mobile, accessibility, scale/performance, and Phase 13 visual regression remain mandatory gates;
-- online repository/live-destination health is checked separately;
-- RC certification requires **0 Critical / 0 High defects**;
-- a committed `package-lock.json` and approved canonical visual baselines are mandatory before Phase 15.
+Current production invariants:
 
-No new product features are permitted during Phase 14.
+- `release-production.json` is the machine-readable production release contract;
+- `thiepn.dev` is the canonical domain for the root site and public project launch URLs;
+- the custom GitHub Pages workflow builds the Astro site and runs post-deploy production smoke checks;
+- source validation, cross-browser tests, accessibility checks, scale/performance budgets, and visual-regression coverage remain release gates;
+- the frozen `1.0.0` production manifest remains the historical launch record while subsequent work continues on top of it;
+- the historical `v1.0.0` Git tag is still an administrative cleanup item and must not be inferred from the production manifest alone.
 
 ## Stack
 
@@ -38,23 +38,26 @@ No new product features are permitted during Phase 14.
 ## Local development
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-The first networked `npm install` generates `package-lock.json`; commit that lockfile before switching CI to `npm ci` during hardening.
+`package-lock.json` is tracked. Use `npm ci` for reproducible local and CI installs unless dependency metadata is intentionally being changed.
 
 ## Validation
 
+Core source and production-invariant checks:
+
 ```bash
+npm run generated:check
 npm run validate
-npm run catalogue:generate
+npm run phase15:validate
 npm run typecheck
 npm run test
 npm run build
 ```
 
-Complete release-candidate gate:
+Complete release gate:
 
 ```bash
 npm run audit:release
@@ -66,6 +69,12 @@ End-to-end/browser certification:
 ```bash
 npx playwright install chromium firefox webkit
 npm run test:e2e
+```
+
+Production smoke can be run explicitly against the custom domain:
+
+```bash
+npm run phase15:smoke -- --url https://thiepn.dev/
 ```
 
 ## Catalogue source of truth
@@ -129,12 +138,12 @@ Internal diagnostics are marked `noindex` and excluded from the sitemap:
 ## Motion and preview architecture
 
 ```text
-src/data/features.ts                 optional expressive feature flags
-src/motion/heroEntrance.ts           homepage entrance choreography
-src/motion/sectionReveal.ts          one-shot in-view section reveals
-src/motion/proximity.ts              pure Living Index proximity model
-src/motion/archiveReflow.ts          archive FLIP/reflow animation
-src/motion/reducedMotion.ts          media-query capabilities
+src/data/features.ts                     optional expressive feature flags
+src/motion/heroEntrance.ts               homepage entrance choreography
+src/motion/sectionReveal.ts              one-shot in-view section reveals
+src/motion/proximity.ts                  pure Living Index proximity model
+src/motion/archiveReflow.ts              archive FLIP/reflow animation
+src/motion/reducedMotion.ts              media-query capabilities
 src/scripts/living-index-controller.ts
 src/scripts/index-motion.ts
 src/lib/preview-core.ts                  pure preview limits/timing/lifecycle helpers
@@ -152,7 +161,7 @@ Production target:
 https://thiepn.dev/
 ```
 
-Because the repository is named `thiepn.github.io`, Astro intentionally has no project `base` path. Deployment is handled by `.github/workflows/deploy.yml`.
+Because the repository is named `thiepn.github.io`, Astro intentionally has no project `base` path. Deployment is handled by `.github/workflows/deploy.yml`, which must validate the production source before publishing and smoke-test the deployed custom domain afterward.
 
 ## Authoritative documentation
 
@@ -162,7 +171,9 @@ Because the repository is named `thiepn.github.io`, Astro intentionally has no p
 - [`docs/MASTER_IMPLEMENTATION_PROMPT.md`](docs/MASTER_IMPLEMENTATION_PROMPT.md)
 - [`docs/AUTOMATION.md`](docs/AUTOMATION.md)
 - [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
-- [`docs/PHASE_11_REPORT.md`](docs/PHASE_11_REPORT.md)
+- [`docs/RELEASE_CANDIDATE.md`](docs/RELEASE_CANDIDATE.md)
+- [`docs/PHASE_15_REPORT.md`](docs/PHASE_15_REPORT.md)
+- [`docs/PHASE_16_REPORT.md`](docs/PHASE_16_REPORT.md)
 
 These documents are authoritative. Future implementation phases must preserve completed behavior and pass their phase-specific acceptance gates before progressing.
 
