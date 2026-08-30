@@ -147,7 +147,7 @@ test('collection relationship inspector uses authentic project media and reflows
     await expect(selected).toBeVisible();
     const preview = selected.locator('[data-preview-slug="micro-arcade"]');
     await expect(preview).toHaveAttribute('data-preview-provenance', 'captured');
-    await expect(preview.locator('img')).toHaveAttribute('src', '/projects/micro-arcade/capture.jpg');
+    await expect(preview.locator('img')).toHaveAttribute('src', '/projects/micro-arcade/screenshot-desktop.png');
     expect(await horizontalOverflow(page), `${width}px collection`).toBeLessThanOrEqual(1);
   }
 });
