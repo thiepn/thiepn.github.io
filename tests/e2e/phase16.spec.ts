@@ -64,3 +64,34 @@ test('compact tablet switches to the mobile navigation without losing search', a
   await page.locator('[data-catalogue-search-input]').fill('missions');
   await expect(page.getByText('The Unfinished Mission', { exact: true }).first()).toBeVisible();
 });
+
+test('collection records present projects before editorial taxonomy explanation', async ({ page }) => {
+  await page.goto('/collection/productivity-creation/');
+
+  const order = await page.evaluate(() => {
+    const featured = document.querySelector('#featured');
+    const directory = document.querySelector('#directory');
+    const about = document.querySelector('#about');
+    const position = document.querySelector('#position');
+    if (!directory || !about || !position) return null;
+    const before = (first: Element, second: Element) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return {
+      featuredBeforeAbout: featured ? before(featured, about) : true,
+      directoryBeforeAbout: before(directory, about),
+      directoryBeforePosition: before(directory, position),
+    };
+  });
+
+  expect(order).toEqual({
+    featuredBeforeAbout: true,
+    directoryBeforeAbout: true,
+    directoryBeforePosition: true,
+  });
+
+  const index = page.getByRole('navigation', { name: 'On this collection' });
+  const links = index.getByRole('link');
+  await expect(links.first()).toHaveAttribute('href', '#featured');
+  await expect(links.nth(1)).toHaveAttribute('href', '#directory');
+  await expect(page.getByRole('heading', { name: 'Everything in this collection', level: 2 })).toBeVisible();
+  await expect(page.locator('[data-collection-classification]')).toBeVisible();
+});
