@@ -4,6 +4,8 @@ import path from 'node:path';
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const failures = [];
+const maxWidthBreakpoints = (source) => [...source.matchAll(/@media\s*\(\s*max-width\s*:\s*(\d+)px\s*\)/g)].map((match) => Number(match[1]));
+const hasCompactBreakpoint = (source, threshold = 900) => maxWidthBreakpoints(source).some((value) => value <= threshold);
 const required = [
   'src/components/shell/MobileMenu.astro',
   'src/components/shell/SiteHeader.astro',
@@ -25,7 +27,7 @@ const header = read('src/components/shell/SiteHeader.astro');
 if (!header.includes('MobileMenu')) failures.push('SiteHeader does not use MobileMenu.');
 if (!header.includes('aria-current')) failures.push('desktop navigation does not expose aria-current.');
 if (!/position:sticky/.test(header)) failures.push('header is no longer sticky.');
-if (!/@media\(max-width:650px\)/.test(header)) failures.push('mobile header breakpoint is missing.');
+if (!hasCompactBreakpoint(header)) failures.push('header lacks a compact responsive breakpoint at or below 900px.');
 
 const base = read('src/layouts/BaseLayout.astro');
 if (!base.includes('Skip to main content')) failures.push('general skip-link wording is missing.');
@@ -54,8 +56,6 @@ const notFound = read('src/pages/404.astro');
 // Page-level responsive checks validate the behavior contract rather than exact
 // historical breakpoint values. Any compact breakpoint at or below the threshold
 // satisfies the requirement, allowing layouts to be retuned without rewriting CI.
-const maxWidthBreakpoints = (source) => [...source.matchAll(/@media\s*\(\s*max-width\s*:\s*(\d+)px\s*\)/g)].map((match) => Number(match[1]));
-const hasCompactBreakpoint = (source, threshold = 900) => maxWidthBreakpoints(source).some((value) => value <= threshold);
 if (!hasCompactBreakpoint(indexPage)) failures.push('home page lacks a compact responsive breakpoint at or below 900px.');
 if (!hasCompactBreakpoint(projectsPage)) failures.push('projects page lacks a compact responsive breakpoint at or below 900px.');
 if (!hasCompactBreakpoint(collectionPage)) failures.push('collection page lacks a compact responsive breakpoint at or below 900px.');

@@ -36,29 +36,50 @@ Phase 16A passed the complete Quality workflow and, after merge, the authoritati
 
 ## Phase 16B — Portfolio usefulness and discovery
 
-Phase 16B begins with targeted user-visible improvements rather than a visual redesign. The first finding is a discovery inconsistency: Books are a first-class navigation destination and content collection, but the global search palette only indexed projects and collections.
+Phase 16B uses targeted user-visible improvements rather than a visual redesign. Changes should reduce discovery friction while preserving THE INDEX visual language, catalogue semantics, accessibility, and performance budgets.
 
 ### 16B-1 — Unified portfolio search
 
-The search palette now treats published books as first-class searchable items:
+The search palette treats published books as first-class searchable items:
 
 - `/search-index.json` enriches the existing generated project/collection payload with book records directly from Astro Content Collections at build time;
 - book search uses the canonical title, subtitle, summary, subjects, version, Library URL, and last-updated metadata without duplicating source content;
 - ranking supports exact/fuzzy title matching plus subtitle, summary, and subject discovery;
 - result rendering distinguishes `BOOK` entries and opens the canonical THIEPN Library record;
 - result counts distinguish projects, collections, and books;
-- desktop and mobile language changes from project-only wording to portfolio-wide wording;
-- the visible keyboard hint is platform-neutral (`⌘/Ctrl K`) rather than implying macOS only;
-- the palette adds direct Books and Collections browse exits while retaining the project-directory path;
-- unit tests cover book ranking, and Playwright certification covers book discovery from keyboard and mobile search journeys.
+- desktop and mobile language is portfolio-wide rather than project-only;
+- the visible keyboard hint is platform-neutral (`⌘/Ctrl K`);
+- the palette provides direct Books and Collections browse exits while retaining the project-directory path;
+- unit and Playwright coverage certify book discovery from keyboard and mobile search journeys.
 
 The implementation intentionally enriches the prerendered `/search-index.json` Astro endpoint instead of creating a second network request or introducing another tracked generated file.
 
-### 16B-1 acceptance gates
+#### 16B-1 closeout
 
-The change must pass the complete Quality workflow, including production-source validation, generated freshness, typecheck, unit tests, production build/performance budgets, and the complete Playwright browser/accessibility matrix.
+PR #18 passed the complete Quality workflow, including the full Chromium/Firefox/WebKit/mobile Playwright matrix. After merge, the authoritative Pages workflow completed build, deploy, and production verification successfully against `https://thiepn.dev/`.
 
-After merge, the Pages workflow must again complete build, deploy, and custom-domain production verification.
+### 16B-2 — Directory-first project discovery and continuous search access
+
+The next audit found two concrete discovery problems.
+
+First, `/projects/` placed its actual searchable/filterable directory after the portfolio browse-model explainer, five visitor-intent cards, and the category index. On small screens this pushed the primary project list several screens below the page introduction. Phase 16B-2 makes the complete directory the first content surface after the hero. Intent, category, collection, and book discovery remain intact as secondary browsing paths below it.
+
+Second, the desktop Search opener disappeared at widths up to 960px while the mobile menu did not appear until 650px. This left the 651–960px range without a visible route into global search. Phase 16B-2 removes that gap:
+
+- above 760px, the desktop/tablet header keeps the Search opener visible;
+- between 761px and 960px, the shortcut glyph and Theme label compress away while search and theme controls remain available;
+- at 760px and below, the header switches to the mobile navigation, which exposes `Search portfolio` directly;
+- the 760/761 boundary is explicitly certified for visibility, search activation, and horizontal containment.
+
+#### 16B-2 acceptance gates
+
+The tranche must preserve:
+
+- all existing intent/category/collection navigation and URL-state behavior;
+- no-JavaScript project-directory completeness;
+- one canonical category per project and overlapping collection semantics;
+- complete Quality validation, typecheck, unit tests, build/performance budgets, and full browser/accessibility certification;
+- successful post-merge build, deploy, and custom-domain production verification.
 
 ## Known repository-administration cleanup
 
@@ -70,4 +91,4 @@ The historical `v1.0.0` tag also remains unresolved and should only be created a
 
 ## Next discovery audit
 
-After unified search is certified, continue evaluating whether the Projects landing page reaches the actual project directory quickly enough, whether project-detail pages expose the right launch/source actions above the fold, and whether collection/book journeys have unnecessary explanatory layers before the primary content.
+After 16B-2 is certified, inspect collection and book journeys for redundant explanatory layers, then review homepage prioritization against the now-improved global discovery paths. Avoid changes that are merely stylistic or equivalent-quality rearrangements.
