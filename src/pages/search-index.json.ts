@@ -18,7 +18,9 @@ export async function GET() {
       lastUpdated: data.lastUpdated.toISOString().slice(0, 10),
     }));
 
-  return new Response(JSON.stringify({ ...searchIndex, books }), {
+  Object.assign(searchIndex, { books });
+
+  return new Response(JSON.stringify(searchIndex), {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
