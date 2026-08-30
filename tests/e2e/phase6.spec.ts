@@ -28,8 +28,8 @@ test('WORDSTRIKE video is lazy and only receives a source after interaction', as
 });
 
 test('project-detail inspector still arms, activates, and resets after hover', async ({ page }) => {
-  await page.goto('/project/pdf-studio/');
-  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
+  await page.goto('/project/manuscript/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
   await root.hover();
   await expect.poll(async () => await root.getAttribute('data-preview-state'), { timeout: 1200 })
@@ -53,8 +53,8 @@ test('leaving viewport resets an animated project-detail preview', async ({ page
 test('reduced motion never starts animated project-detail previews', async ({ browser }) => {
   const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/project/pdf-studio/');
-  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
+  await page.goto('http://127.0.0.1:4321/project/manuscript/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
   await root.hover();
   await page.waitForTimeout(350);
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
@@ -64,8 +64,8 @@ test('reduced motion never starts animated project-detail previews', async ({ br
 test('touch/mobile keeps the project-detail inspector poster-first with no hover dependency', async ({ browser, browserName }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(browserName === 'firefox' ? {} : { isMobile: true }) });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/project/pdf-studio/');
-  const root = page.locator('[data-record-preview] [data-preview-slug="pdf-studio"]').first();
+  await page.goto('http://127.0.0.1:4321/project/manuscript/');
+  const root = page.locator('[data-record-preview] [data-preview-slug="manuscript"]').first();
   await expect(root).toHaveAttribute('data-preview-state', 'poster');
   expect(await page.locator('[data-preview-state="active"]').count()).toBe(0);
   await context.close();
