@@ -34,6 +34,9 @@ jobs:
       - name: Structural validation
         run: npm run validate
 
+      - name: Phase 15 production-source invariants
+        run: npm run phase15:validate
+
       - name: Data-only G-010 automation fixture
         run: npm run test:automation
 
@@ -46,7 +49,7 @@ jobs:
       - name: Phase 13 visual language audit
         run: npm run visual:audit
 
-      - name: Phase 14 release-candidate source gate
+      - name: Release source gate
         run: npm run release:source
 
       - name: 250-artifact scale benchmark
