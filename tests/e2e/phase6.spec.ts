@@ -6,7 +6,7 @@ test('automatic live capture keeps PDF Studio authentic and static on the homepa
   await expect(root).toHaveAttribute('data-preview-kind', 'static');
   await expect(root).toHaveAttribute('data-preview-provenance', 'captured');
   await expect(root).toHaveAttribute('data-preview-state', 'static');
-  await expect(root.locator('img')).toHaveAttribute('src', '/projects/pdf-studio/capture.jpg');
+  await expect(root.locator('img')).toHaveAttribute('src', '/projects/pdf-studio/screenshot-desktop.png');
 });
 
 test('WORDSTRIKE video is lazy and only receives a source after interaction', async ({ page }) => {
