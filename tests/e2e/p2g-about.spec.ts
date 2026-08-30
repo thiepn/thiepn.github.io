@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('About page explains the portfolio and exposes the public contact channel', async ({ page }) => {
   await page.goto('/about/');
+  await expect(page.getByRole('main')).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1, name: 'I build useful things.' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'How I work.' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Want to discuss a project?' })).toBeVisible();
