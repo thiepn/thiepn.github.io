@@ -25,6 +25,8 @@ Phase 16A converts it to **Production Certification**, invoked explicitly with `
 
 The broad `Phase 15 Recovery Certification` workflow was also still auto-triggering for almost every source, script, test, or configuration PR and duplicated the same build/typecheck/browser work. It is removed in Phase 16A. Git history preserves the recovery procedure; the routine Quality workflow plus explicit Production Certification now provide the two intended levels of assurance.
 
+The Quality workflow itself previously ran seven targeted Playwright smoke passes and then ran the complete Playwright suite, causing the same responsive, interaction, project-detail, collection, and WebKit paths to execute twice. Phase 16A removes those duplicate subset passes and retains the complete `npm run test:e2e` matrix as the single routine browser gate. The Playwright configuration already covers Chromium, Firefox, WebKit, mobile Chromium, and mobile WebKit with the appropriate mobile-certification tags.
+
 ### Documentation integrity
 
 - Update the README from the obsolete Phase 14 / `1.0.0-rc.1` state to the actual post-launch `1.0.0` state.
@@ -62,7 +64,7 @@ The Phase 16A pull request must pass the repository's full Quality workflow, inc
 - 250-artifact scale benchmark;
 - typecheck and unit tests;
 - production build and built-output budgets;
-- responsive/cross-browser Playwright certification.
+- the complete Playwright cross-browser/responsive/accessibility matrix.
 
 After merge, the authoritative Pages workflow must complete build, deploy, and production verification successfully.
 
