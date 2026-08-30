@@ -23,6 +23,8 @@ The historical `Release Candidate` workflow was still running its 35-minute full
 
 Phase 16A converts it to **Production Certification**, invoked explicitly with `workflow_dispatch`. Normal pull requests continue to receive the full Quality gate, including cross-browser and accessibility certification. The heavier release audit, visual-baseline generation, canonical-state capture, and online launch health checks remain available when a deliberate production certification is needed.
 
+The broad `Phase 15 Recovery Certification` workflow was also still auto-triggering for almost every source, script, test, or configuration PR and duplicated the same build/typecheck/browser work. It is removed in Phase 16A. Git history preserves the recovery procedure; the routine Quality workflow plus explicit Production Certification now provide the two intended levels of assurance.
+
 ### Documentation integrity
 
 - Update the README from the obsolete Phase 14 / `1.0.0-rc.1` state to the actual post-launch `1.0.0` state.
