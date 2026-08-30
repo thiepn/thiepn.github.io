@@ -23,11 +23,11 @@ const categoryCounts=new Map<string,number>();
 for(const project of projects) categoryCounts.set(project.data.category,(categoryCounts.get(project.data.category)??0)+1);
 const representedCategories=[...categoryCounts.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
 const collectionIndex=[
-  {href:'#position',label:'Position'},
-  {href:'#about',label:'About'},
   ...(anchors.length?[{href:'#featured',label:'Featured'}]:[]),
   {href:'#directory',label:'Directory'},
   {href:'#connections',label:'Connections'},
+  {href:'#about',label:'About'},
+  {href:'#position',label:'Position'},
 ];
 ---
 <BaseLayout title={`${c.title} — THIEPN`} description={c.summary} ogImage={`/og/collection-${c.slug}.svg`}>
@@ -54,6 +54,36 @@ const collectionIndex=[
       </div>
     </nav>
 
+    {anchors.length>0&&(
+      <section id="featured" class="collection-record__anchors" aria-labelledby="anchors-title">
+        <header class="collection-record__section-head"><div><p class="meta">Start here</p><h2 id="anchors-title">Featured projects</h2></div><span class="meta">{String(anchors.length).padStart(2,'0')} selected</span></header>
+        <div class="collection-record__anchor-grid">{anchors.map((project)=><ArtifactPlate project={project} variant="feature" />)}</div>
+      </section>
+    )}
+
+    <section id="directory" class="collection-record__index" aria-labelledby="collection-index-title">
+      <header class="collection-record__section-head"><div><p class="meta">Directory</p><h2 id="collection-index-title">Everything in this collection</h2></div><span class="meta">{String(projects.length).padStart(2,'0')} projects</span></header>
+      <div class="collection-record__project-list">{projects.map((project)=><CompactArtifact project={project} />)}</div>
+    </section>
+
+    <section id="connections" class="collection-record__map" aria-labelledby="map-title">
+      <header class="collection-record__section-head"><div><p class="meta">Connections</p><h2 id="map-title">How the projects relate</h2></div><span class="meta">Optional relationship view</span></header>
+      <p class="collection-record__section-note">A secondary view for seeing how selected projects connect. The complete project list is above.</p>
+      <CollectionMap collection={collection} projects={projects} />
+    </section>
+
+    <section id="about" class="collection-record__logic" aria-labelledby="logic-title">
+      <header class="collection-record__section-head"><div><p class="meta">About</p><h2 id="logic-title">About this collection</h2></div></header>
+      <div class="collection-record__logic-grid">
+        <p>{c.editorialNote}</p>
+        <dl>
+          <div><dt>Projects</dt><dd>{String(projects.length).padStart(2,'0')}</dd></div>
+          <div><dt>Browse</dt><dd>{projects.length > 8 ? 'Featured projects + full directory' : 'Complete project group'}</dd></div>
+          <div><dt>Topics</dt><dd>{c.keywords.join(' / ')}</dd></div>
+        </dl>
+      </div>
+    </section>
+
     <section id="position" class="collection-record__position" aria-labelledby="position-title" data-collection-classification>
       <header class="collection-record__section-head"><div><p class="meta">Portfolio position</p><h2 id="position-title">Collection, not category</h2></div><span class="meta">Themes may overlap · project types stay singular</span></header>
       <div class="collection-record__position-grid">
@@ -73,36 +103,6 @@ const collectionIndex=[
         <a class="text-link" href="/projects/#category-title">Browse project categories →</a>
         <a class="text-link" href="/collections/">Browse all collections →</a>
       </div>
-    </section>
-
-    <section id="about" class="collection-record__logic" aria-labelledby="logic-title">
-      <header class="collection-record__section-head"><div><p class="meta">About</p><h2 id="logic-title">About this collection</h2></div></header>
-      <div class="collection-record__logic-grid">
-        <p>{c.editorialNote}</p>
-        <dl>
-          <div><dt>Projects</dt><dd>{String(projects.length).padStart(2,'0')}</dd></div>
-          <div><dt>Browse</dt><dd>{projects.length > 8 ? 'Featured projects + full directory' : 'Complete project group'}</dd></div>
-          <div><dt>Topics</dt><dd>{c.keywords.join(' / ')}</dd></div>
-        </dl>
-      </div>
-    </section>
-
-    {anchors.length>0&&(
-      <section id="featured" class="collection-record__anchors" aria-labelledby="anchors-title">
-        <header class="collection-record__section-head"><div><p class="meta">Start here</p><h2 id="anchors-title">Featured projects</h2></div><span class="meta">{String(anchors.length).padStart(2,'0')} selected</span></header>
-        <div class="collection-record__anchor-grid">{anchors.map((project)=><ArtifactPlate project={project} variant="feature" />)}</div>
-      </section>
-    )}
-
-    <section id="directory" class="collection-record__index" aria-labelledby="collection-index-title">
-      <header class="collection-record__section-head"><div><p class="meta">Directory</p><h2 id="collection-index-title">Everything in this collection</h2></div><span class="meta">{String(projects.length).padStart(2,'0')} projects</span></header>
-      <div class="collection-record__project-list">{projects.map((project)=><CompactArtifact project={project} />)}</div>
-    </section>
-
-    <section id="connections" class="collection-record__map" aria-labelledby="map-title">
-      <header class="collection-record__section-head"><div><p class="meta">Connections</p><h2 id="map-title">How the projects relate</h2></div><span class="meta">Optional relationship view</span></header>
-      <p class="collection-record__section-note">A secondary view for seeing how selected projects connect. The complete project list is above.</p>
-      <CollectionMap collection={collection} projects={projects} />
     </section>
   </article>
 </BaseLayout>
