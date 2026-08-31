@@ -16,7 +16,7 @@ describe('bounded async worker pool', () => {
     const seen: number[] = [];
     const items = Array.from({ length: 18 }, (_, index) => index);
 
-    await forEachConcurrent(items, 4, async (item) => {
+    await forEachConcurrent(items, 4, async (item: number) => {
       active += 1;
       peak = Math.max(peak, active);
       await new Promise((resolve) => setTimeout(resolve, 4));
