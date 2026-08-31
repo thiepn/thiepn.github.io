@@ -3,22 +3,6 @@
   "width": 1200,
   "height": 630,
   "entries": {
-    "algodat-study-system.svg": {
-      "png": "algodat-study-system.png",
-      "sha256": "19d85fd68e3d0f9731971fd443d9a889858f0ce27255190ebfaa5c694dba2a09"
-    },
-    "analysis-idle.svg": {
-      "png": "analysis-idle.png",
-      "sha256": "15a2f1e87490cd63aeb3da595847c2189686f5da150143fcec9a53930c1ddf44"
-    },
-    "analysis-ii-klausurlabor.svg": {
-      "png": "analysis-ii-klausurlabor.png",
-      "sha256": "bf4ab420872797bd31913d8b4e63b1d6930e4c1f92d162a924ee641cb4a505cf"
-    },
-    "analysis-ii-lernsystem.svg": {
-      "png": "analysis-ii-lernsystem.png",
-      "sha256": "eb3bc84120a24fb4d100c19fe782dde7e4c4be5bec4f254cbd64e4e2d6b9075c"
-    },
     "artikelwerk.svg": {
       "png": "artikelwerk.png",
       "sha256": "b0d243c141bffa8fa6127afb7adf4572ced76884b8148caafe1508db49945804"
@@ -47,10 +31,6 @@
       "png": "collection-french-learning.png",
       "sha256": "169eb5ffebc0a741713b5bbaac573f0d28d1e97dd01db96e46b9629c78040b6b"
     },
-    "collection-mathematics-cs.svg": {
-      "png": "collection-mathematics-cs.png",
-      "sha256": "9e77077e09dba7de39879a1486825b7a44e6d73941b5b0c6907bcd3adfa16660"
-    },
     "collection-productivity-creation.svg": {
       "png": "collection-productivity-creation.png",
       "sha256": "fbe4f743d2d1aa126552d2f7d40c92716fd120803644a52fe99edf87079d8e9e"
@@ -70,10 +50,6 @@
     "echoframe-last-signal.svg": {
       "png": "echoframe-last-signal.png",
       "sha256": "b02d764697201d4233079b7936de1145366e97164ade202fab462d60c0b543cf"
-    },
-    "franzosisch-flashcards.svg": {
-      "png": "franzosisch-flashcards.png",
-      "sha256": "e0eac28afb8909c16a79cc78166e20ee67f9fd74d30bdab1b0cdaceb1c3ecaf1"
     },
     "french-3000.svg": {
       "png": "french-3000.png",
