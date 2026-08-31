@@ -3,9 +3,7 @@ name: Generate THIEPN social cards
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - agent/phase16b8-og-identity
+    branches: [main]
     paths:
       - scripts/generate-og.mjs
       - scripts/rasterize-og.mjs
