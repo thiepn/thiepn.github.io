@@ -62,7 +62,7 @@ PR #18 passed the complete Quality workflow, including the full Chromium/Firefox
 
 The next audit found two concrete discovery problems.
 
-First, `/projects/` placed its actual searchable/filterable directory after the portfolio browse-model explainer, five visitor-intent cards, and the category index. On small screens this pushed the primary project list several screens below the page introduction. Phase 16B-2 makes the complete directory the first content surface after the hero. Intent, category, collection, and book discovery remain intact as secondary browsing paths below it.
+First, `/projects/` placed its actual searchable/filterable directory after the portfolio browse-model explainer, five visitor-intent cards, and the category index. Phase 16B-2 makes the complete directory the first content surface after the hero. Intent, category, collection, and book discovery remain intact as secondary browsing paths below it.
 
 Second, the desktop Search opener disappeared at widths up to 960px while the mobile menu did not appear until 650px. This left the 651–960px range without a visible route into global search. Phase 16B-2 removes that gap:
 
@@ -71,15 +71,65 @@ Second, the desktop Search opener disappeared at widths up to 960px while the mo
 - at 760px and below, the header switches to the mobile navigation, which exposes `Search portfolio` directly;
 - the 760/761 boundary is explicitly certified for visibility, search activation, and horizontal containment.
 
-#### 16B-2 acceptance gates
+#### 16B-2 closeout
 
-The tranche must preserve:
+PR #19 passed the complete Quality workflow and the full browser matrix. After merge, build, Pages deployment, and custom-domain production verification all succeeded.
 
-- all existing intent/category/collection navigation and URL-state behavior;
-- no-JavaScript project-directory completeness;
-- one canonical category per project and overlapping collection semantics;
-- complete Quality validation, typecheck, unit tests, build/performance budgets, and full browser/accessibility certification;
-- successful post-merge build, deploy, and custom-domain production verification.
+### 16B-3 — Main-landmark integrity
+
+The About page contained a nested `<main>` even though `BaseLayout` already owns the document's sole main landmark. The visual result was harmless, but the landmark structure was invalid for assistive technology.
+
+Phase 16B-3:
+
+- replaces the About page's nested `<main>` with a neutral wrapper;
+- keeps `BaseLayout` as the sole owner of `#main-content`;
+- extends the Phase 12 source audit to require exactly one `<main>` in `BaseLayout` and reject page-level `<main>` elements on routes that use that layout;
+- adds browser coverage asserting `/about/` exposes exactly one main landmark.
+
+#### 16B-3 closeout
+
+PR #20 passed the complete Quality workflow and full browser/accessibility certification. The post-merge Pages workflow completed build, deploy, and production verification successfully.
+
+### 16B-4 — Project-first collection records
+
+Collection records originally put `Collection, not category` taxonomy explanation and editorial About content before the projects themselves. The hero already explains the collection's theme, so visitors were forced through portfolio-model explanation before reaching the work they came to browse.
+
+Phase 16B-4 reorders collection records to:
+
+1. Featured projects, when anchors exist;
+2. the complete project directory;
+3. the optional relationship view;
+4. editorial About content;
+5. category/classification explanation.
+
+All collection membership, canonical category semantics, relationship data, category links, no-JavaScript navigation, and visual components remain unchanged.
+
+#### 16B-4 closeout
+
+PR #21 passed the complete Quality workflow, including the full browser/accessibility matrix. After merge, build, deploy, and `https://thiepn.dev/` production verification all succeeded.
+
+### 16B-5 — Metadata and public discoverability
+
+The next audit moves from on-site discovery to external discoverability. Several public identity signals still describe the older project-only site model even though Books and broader publication surfaces are now first-class:
+
+- `SITE.title` is still `THIEPN — Projects`;
+- `SITE.description` is the narrow `Projects, tools, games & experiments.`;
+- the web-app manifest still uses the legacy `THIEPN Project Universe` name;
+- WebSite JSON-LD advertises a URL-based `SearchAction` that only points into the project archive even though the real global palette now searches projects, collections, and books.
+
+Phase 16B-5 aligns these public signals with the current portfolio:
+
+- use a broad canonical title covering software, games, learning, and books;
+- use one richer site description across default metadata and WebSite structured data;
+- rename install metadata to `THIEPN Portfolio`;
+- remove the inaccurate project-only SearchAction until a canonical URL-addressable portfolio-wide search surface exists;
+- identify the public GitHub profile through WebSite `sameAs`;
+- preserve the already-correct `robots.txt` and canonical sitemap declaration;
+- add unit and browser regression coverage for the current identity, manifest, crawler metadata, and JSON-LD contract.
+
+#### 16B-5 acceptance gates
+
+The tranche must pass generated freshness, structural/production/accessibility/visual/release source gates, scale benchmark, typecheck, unit tests, production build and built-performance budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must again pass build, deploy, and custom-domain production verification.
 
 ## Known repository-administration cleanup
 
@@ -89,6 +139,6 @@ This is not solved by making Jekyll build the Astro source tree; doing that risk
 
 The historical `v1.0.0` tag also remains unresolved and should only be created after identifying the intended historical launch commit.
 
-## Next discovery audit
+## Next audit
 
-After 16B-2 is certified, inspect collection and book journeys for redundant explanatory layers, then review homepage prioritization against the now-improved global discovery paths. Avoid changes that are merely stylistic or equivalent-quality rearrangements.
+After 16B-5 is certified, audit indexability and search-engine presentation from the rendered production site: canonical/robots/sitemap consistency, page-title and description quality across route classes, structured-data coverage for collection/about pages, and whether any public route lacks a useful search-result description. Avoid speculative keyword stuffing or visual changes without a measurable visitor benefit.
