@@ -16,6 +16,7 @@ const searchIndex = readJson('src/generated/search-index.json');
 const routeManifest = readJson('src/generated/route-manifest.json');
 const stats = readJson('src/generated/catalogue-stats.json');
 const curation = readJson('src/data/curation.json');
+const ogRasterManifest = readJson('src/generated/og-raster-manifest.json');
 const sourceProjectFiles = await readFrontmatterDirectory(path.resolve('src/content/projects'));
 const sourceStats = computeStats(sourceProjectFiles.map(({ data }) => data));
 
@@ -26,6 +27,7 @@ const previewController = fs.readFileSync('src/scripts/preview-controller.ts', '
 const githubSync = fs.readFileSync('scripts/sync-github.mjs', 'utf8');
 const sitemapSource = fs.readFileSync('src/pages/sitemap.xml.ts', 'utf8');
 const notFoundSource = fs.readFileSync('src/pages/404.astro', 'utf8');
+const ogGeneratorSource = fs.readFileSync('scripts/generate-og.mjs', 'utf8');
 
 if (pkg.version !== rc.release) fail(`package version ${pkg.version} does not match RC ${rc.release}`);
 const sitePhase = Number(/phase:\s*(\d+)/.exec(siteSource)?.[1] ?? 0);
@@ -37,7 +39,7 @@ const projects = publicCatalogue.projects ?? [];
 const collections = searchIndex.collections ?? [];
 const indexedProjects = searchIndex.projects ?? [];
 if (stats.totalRegistered !== sourceStats.totalRegistered) fail(`generated registered project count ${stats.totalRegistered} != source count ${sourceStats.totalRegistered}`);
-if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed project count ${stats.totalListed} != source listed count ${sourceStats.totalListed}`);
+if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed project count ${stats.totalListed} != source count ${sourceStats.totalListed}`);
 if (projects.length !== sourceStats.totalListed) fail(`public catalogue project count ${projects.length} != source listed count ${sourceStats.totalListed}`);
 if (indexedProjects.length !== sourceStats.totalListed) fail(`search index project count ${indexedProjects.length} != source listed count ${sourceStats.totalListed}`);
 if (collections.length !== rc.expected.collections) fail(`collection count ${collections.length} != ${rc.expected.collections}`);
@@ -79,6 +81,15 @@ if (!previewController.includes("addEventListener('error'") || !previewControlle
 if (!githubSync.includes('cached-or-unavailable') || !githubSync.includes('stale: true')) fail('GitHub metadata failure fallback is missing');
 if (!sitemapSource.includes("!route.startsWith('/dev/')")) fail('sitemap must exclude development routes');
 if (!/<BaseLayout\b[^>]*\bnoindex=\{true\}/s.test(notFoundSource)) fail('404 page must opt into BaseLayout noindex handling');
+if (ogGeneratorSource.includes('PROJECT UNIVERSE')) fail('social-card generator still contains legacy Project Universe branding');
+if (!ogGeneratorSource.includes('THIEPN / PORTFOLIO')) fail('social-card generator must use the current portfolio footer');
+for (const svgFile of Object.keys(ogRasterManifest.entries ?? {})) {
+  const svgPath = path.join('public/og', svgFile);
+  if (!exists(svgPath)) { fail(`missing social-card SVG ${svgFile}`); continue; }
+  const svg = fs.readFileSync(svgPath, 'utf8');
+  if (svg.includes('PROJECT UNIVERSE')) fail(`${svgFile}: legacy Project Universe branding remains`);
+  if (!svg.includes('THIEPN / PORTFOLIO')) fail(`${svgFile}: current portfolio footer is missing`);
+}
 
 const requiredFiles = [
   'src/pages/404.astro',
