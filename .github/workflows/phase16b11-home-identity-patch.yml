@@ -1,0 +1,59 @@
+name: Phase 16B-11 homepage identity alignment
+
+on:
+  push:
+    branches: [agent/phase16b11-home-identity]
+    paths:
+      - '.github/workflows/phase16b11-home-identity-patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase16b11-home-identity
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: agent/phase16b11-home-identity
+          fetch-depth: 0
+
+      - name: Align homepage identity with canonical site metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/pages/index.astro')
+          text = path.read_text()
+          replacements = {
+              '<BaseLayout title="THIEPN — Software, Games & Learning Systems" description="Independent software, browser games, learning systems, publishing tools and experiments — designed, built and refined as real products.">': '<BaseLayout>',
+              '<p class="eyebrow">Independent software & experiments</p>': '<p class="eyebrow">Independent digital portfolio</p>',
+              '<span class="section-heading__note">Five ways into the THIEPN universe</span>': '<span class="section-heading__note">Five ways to explore the portfolio</span>',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one occurrence: {old}')
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+          grep -q '<BaseLayout>' src/pages/index.astro
+          grep -q 'Independent digital portfolio' src/pages/index.astro
+          grep -q 'Five ways to explore the portfolio' src/pages/index.astro
+          ! grep -q 'Five ways into the THIEPN universe' src/pages/index.astro
+
+      - name: Commit homepage identity changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/index.astro
+          git commit -m 'fix: align homepage with canonical portfolio identity'
+          git pull --rebase origin agent/phase16b11-home-identity
+          git push origin HEAD:agent/phase16b11-home-identity
