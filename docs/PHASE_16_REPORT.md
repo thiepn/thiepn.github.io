@@ -144,9 +144,30 @@ Phase 16B-6:
 - extends release-source validation so future 404 changes cannot silently remove the noindex contract;
 - extends existing Phase 14 browser coverage to certify both robots metadata and JSON-LD absence.
 
-#### 16B-6 acceptance gates
+#### 16B-6 closeout
 
-The tranche must pass the full routine Quality workflow, including source validation, accessibility/performance audits, typecheck, unit tests, production build, built budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must pass build, deploy, and custom-domain production verification.
+PR #23 passed the full routine Quality workflow, including source validation, accessibility/performance audits, typecheck, unit tests, production build, built budgets, and complete Chromium/Firefox/WebKit/mobile Playwright certification. After merge, the authoritative Pages workflow completed build, deploy, and custom-domain production verification successfully against `https://thiepn.dev/`.
+
+### 16B-7 — Route-class structured-data semantics
+
+The rendered-metadata audit found three route-class mismatches:
+
+- individual `/collection/*` records were emitted as generic `WebPage` nodes even though they are dedicated collection pages;
+- `/collections/` had no machine-readable list of its editorial collections;
+- `/about/` was emitted as a generic `WebPage` even though Schema.org defines the dedicated `AboutPage` type.
+
+Phase 16B-7 keeps the schema factual and conservative:
+
+- model collection records as `CollectionPage` with a `Collection` main entity;
+- expose collection title, summary, keywords, project count, and project membership through `Collection` properties without inventing authorship or ranking claims;
+- model `/collections/` as `CollectionPage` with an `ItemList` whose items resolve to the individual `Collection` entities;
+- emit the dedicated `AboutPage` type for `/about/` without adding unsupported Person/author identity;
+- preserve the existing `WebSite`, project, project-index, and book structured-data contracts;
+- add fast unit coverage for graph construction and browser coverage for all three rendered route classes.
+
+#### 16B-7 acceptance gates
+
+The tranche must pass generated freshness, structural/production/accessibility/visual/release source gates, scale benchmark, typecheck, unit tests, production build and built-performance budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must again pass build, deploy, and custom-domain production verification.
 
 ## Known repository-administration cleanup
 
@@ -158,4 +179,4 @@ The historical `v1.0.0` tag also remains unresolved and should only be created a
 
 ## Next audit
 
-After 16B-6 is certified, continue the rendered-metadata audit with explicit schema/page-type coverage for route classes that are still generic WebPages, especially collection detail pages and About. Keep schema changes factual and conservative; do not add unsupported author/person claims or keyword stuffing.
+After 16B-7 is certified, audit search-result presentation quality rather than adding more schema for its own sake: route-title uniqueness, description usefulness/length, social-card route appropriateness, and any public HTML route still inheriting generic metadata where route-specific copy would materially help a visitor or crawler.
