@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { forEachConcurrent, normalizeConcurrency } from '../../scripts/lib/async-pool.mjs';
 
@@ -31,5 +32,13 @@ describe('bounded async worker pool', () => {
     let calls = 0;
     await forEachConcurrent([], 6, async () => { calls += 1; });
     expect(calls).toBe(0);
+  });
+
+  it('keeps production route and launch verification on the bounded pool', () => {
+    const source = fs.readFileSync('scripts/smoke-production.mjs', 'utf8');
+    expect(source).toContain('forEachConcurrent(routes, concurrency');
+    expect(source).toContain('forEachConcurrent(launches, concurrency');
+    expect(source).toContain("arg('--concurrency')");
+    expect(source).toContain('retryDelay');
   });
 });
