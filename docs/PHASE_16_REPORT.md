@@ -165,9 +165,30 @@ Phase 16B-7 keeps the schema factual and conservative:
 - preserve the existing `WebSite`, project, project-index, and book structured-data contracts;
 - add fast unit coverage for graph construction and browser coverage for all three rendered route classes.
 
-#### 16B-7 acceptance gates
+#### 16B-7 closeout
 
-The tranche must pass generated freshness, structural/production/accessibility/visual/release source gates, scale benchmark, typecheck, unit tests, production build and built-performance budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must again pass build, deploy, and custom-domain production verification.
+PR #24 passed generated freshness, structural/production/accessibility/visual/release source gates, scale benchmark, typecheck, unit tests, production build, built-performance budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow completed build, deploy, and custom-domain production verification successfully against `https://thiepn.dev/`.
+
+### 16B-8 — Social-card identity and derivative hygiene
+
+The search-result/social-presentation audit found the final visible `Project Universe` identity in generated Open Graph cards. Every canonical SVG card used the footer `THIEPN / PROJECT UNIVERSE`, and the homepage card still used narrower project-era summary copy.
+
+Phase 16B-8:
+
+- changes the canonical social-card footer to `THIEPN / PORTFOLIO`;
+- broadens the homepage card summary to include software, games, learning systems, books, and experiments;
+- regenerates all canonical 1200×630 SVG and PNG social-card derivatives and refreshes their SHA-256 manifest;
+- adds a write-capable `Generate THIEPN social cards` workflow, modeled on the existing brand-icon derivative pipeline, so source changes can regenerate binary outputs reproducibly;
+- makes the rasterizer derive the exact canonical card set from current public projects and collections, then remove orphan SVG/PNG pairs;
+- removes six obsolete card pairs left behind by older project/collection records;
+- extends the release-source audit to reject legacy `Project Universe` branding and require the current portfolio footer on every manifest-tracked SVG;
+- adds HTTP-level Playwright coverage for representative source cards and the broader homepage card copy.
+
+The temporary branch trigger used to generate and prune derivatives is removed before certification; the permanent workflow runs on `main` plus manual dispatch only.
+
+#### 16B-8 acceptance gates
+
+The final head must pass generated freshness, the strengthened release-source guard, all source/accessibility/performance gates, scale/type/unit/build budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must pass build, deploy, and custom-domain production verification. The main-only social-card derivative workflow must also complete without creating an unreviewed source change.
 
 ## Known repository-administration cleanup
 
@@ -179,4 +200,4 @@ The historical `v1.0.0` tag also remains unresolved and should only be created a
 
 ## Next audit
 
-After 16B-7 is certified, audit search-result presentation quality rather than adding more schema for its own sake: route-title uniqueness, description usefulness/length, social-card route appropriateness, and any public HTML route still inheriting generic metadata where route-specific copy would materially help a visitor or crawler.
+After 16B-8 is certified, continue with machine-readable catalogue consistency: evaluate whether `/catalogue.json` should keep the legacy `THIEPN PROJECTS` identity now that collections and books are first-class portfolio surfaces, and whether the public catalogue should include published books or remain explicitly project/collection-only. Do not broaden the schema until its intended consumer contract is clear.
