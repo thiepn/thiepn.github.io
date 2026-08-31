@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { forEachConcurrent, normalizeConcurrency } from './lib/async-pool.mjs';
 
 const args = process.argv.slice(2);
 const arg = (name) => { const i=args.indexOf(name); return i>=0 ? args[i+1] : undefined; };
@@ -6,6 +7,7 @@ const base = new URL(arg('--url') || process.env.PRODUCTION_URL || 'https://thie
 const manifest = JSON.parse(fs.readFileSync('src/generated/route-manifest.json','utf8'));
 const catalogue = JSON.parse(fs.readFileSync('src/generated/catalogue-public.json','utf8'));
 const retries = Number(arg('--retries') || 10);
+const concurrency = normalizeConcurrency(arg('--concurrency') || process.env.SMOKE_CONCURRENCY || 6);
 const expectedProjects = (catalogue.projects ?? []).length;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -15,7 +17,7 @@ async function fetchRetry(url, expected = (r) => r.ok) {
   let last;
   for (let i=0;i<retries;i++) {
     try {
-      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.0'} });
+      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
       if (expected(r)) return r;
       last = new Error(`${r.status} ${r.statusText}`);
     } catch (e) { last=e; }
@@ -28,7 +30,7 @@ async function fetchTextRetry(url, responseExpected, textExpected, failureMessag
   let last;
   for (let i=0;i<retries;i++) {
     try {
-      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.0'} });
+      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
       const text = await r.text();
       if (responseExpected(r) && textExpected(text)) return { response:r, text };
       last = new Error(failureMessage || `${r.status} ${r.statusText}`);
@@ -59,17 +61,21 @@ await check('sitemap.xml', async()=>{
   if(!text.includes(base.origin)) throw new Error('production canonical domain missing');
   if(text.includes('/dev/')) throw new Error('development route leaked into sitemap');
 });
-for (const route of manifest.routes ?? []) {
-  if (route.startsWith('/dev/') || route.endsWith('.json')) continue;
+
+const routes = (manifest.routes ?? []).filter((route) => !route.startsWith('/dev/') && !route.endsWith('.json'));
+const launches = (catalogue.projects ?? []).filter((project) => project.liveUrl);
+console.log(`Production smoke fan-out: ${routes.length} routes / ${launches.length} launches / concurrency ${concurrency}.`);
+
+await forEachConcurrent(routes, concurrency, async (route) => {
   await check(`route ${route}`, async()=>{ await fetchRetry(new URL(route,base)); });
-}
-for (const project of catalogue.projects ?? []) {
-  if (!project.liveUrl) continue;
+});
+await forEachConcurrent(launches, concurrency, async (project) => {
   await check(`launch ${project.code}`, async()=>{
     const r=await fetchRetry(project.liveUrl);
     if(!r.ok) throw new Error(`unexpected final status ${r.status}`);
   });
-}
+});
+
 await check('custom 404', async()=>{
   await fetchTextRetry(
     new URL('/__production_smoke_missing__',base),
