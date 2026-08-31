@@ -57,14 +57,9 @@ function websiteNode(): JsonLdNode {
     '@id': websiteId,
     url: `${SITE.url}/`,
     name: SITE.name,
-    alternateName: 'THIEPN Project Universe',
     description: SITE.description,
     inLanguage: 'en',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${SITE.url}/projects/?q={search_term_string}`,
-      'query-input': 'required name=search_term_string',
-    },
+    sameAs: [SITE.githubUrl],
   };
 }
 

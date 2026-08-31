@@ -1,7 +1,7 @@
 {
-  "name": "THIEPN Project Universe",
+  "name": "THIEPN Portfolio",
   "short_name": "THIEPN",
-  "description": "Games, tools, learning systems, books and experiments.",
+  "description": "Independent software, browser games, learning systems, books, publishing tools and experiments.",
   "start_url": "/",
   "scope": "/",
   "display": "browser",

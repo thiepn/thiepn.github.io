@@ -35,7 +35,7 @@ test('manifest and PNG assets expose exact install icon dimensions', async ({ re
   const manifestResponse = await request.get('/manifest.webmanifest');
   expect(manifestResponse.ok()).toBeTruthy();
   const manifest = await manifestResponse.json();
-  expect(manifest.name).toBe('THIEPN Project Universe');
+  expect(manifest.name).toBe('THIEPN Portfolio');
   expect(manifest.short_name).toBe('THIEPN');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }),

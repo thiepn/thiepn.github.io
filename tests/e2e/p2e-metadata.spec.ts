@@ -20,7 +20,7 @@ async function expectPng(request: APIRequestContext, path: string) {
   expect(body.readUInt32BE(20)).toBe(630);
 }
 
-test('homepage exposes raster social metadata and WebSite JSON-LD', async ({ page, request }) => {
+test('homepage exposes current portfolio metadata and WebSite JSON-LD', async ({ page, request }) => {
   await page.goto('/');
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/og\/index\.png$/);
   await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute('content', 'image/png');
@@ -28,12 +28,35 @@ test('homepage exposes raster social metadata and WebSite JSON-LD', async ({ pag
   await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
   await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', /THIEPN/i);
   await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', /\/og\/index\.png$/);
+
   const data = await jsonLd(page);
   expect(data['@context']).toBe('https://schema.org');
   const website = graphType(data, 'WebSite');
   expect(website?.url).toBe('https://thiepn.dev/');
   expect(website?.name).toBe('THIEPN');
+  expect(String(website?.description ?? '')).toContain('software');
+  expect(String(website?.description ?? '')).toContain('books');
+  expect(website?.sameAs).toEqual(['https://github.com/thiepn']);
+  expect(website).not.toHaveProperty('alternateName');
+  expect(website).not.toHaveProperty('potentialAction');
   await expectPng(request, '/og/index.png');
+});
+
+test('install and crawler metadata use the current portfolio identity', async ({ request }) => {
+  const manifestResponse = await request.get('/manifest.webmanifest');
+  expect(manifestResponse.ok()).toBeTruthy();
+  const manifest = await manifestResponse.json() as { name?: string; short_name?: string; description?: string };
+  expect(manifest.name).toBe('THIEPN Portfolio');
+  expect(manifest.short_name).toBe('THIEPN');
+  expect(manifest.description).toContain('books');
+  expect(manifest.name).not.toContain('Project Universe');
+
+  const robotsResponse = await request.get('/robots.txt');
+  expect(robotsResponse.ok()).toBeTruthy();
+  const robots = await robotsResponse.text();
+  expect(robots).toContain('Allow: /');
+  expect(robots).toContain('Disallow: /dev/');
+  expect(robots).toContain('Sitemap: https://thiepn.dev/sitemap.xml');
 });
 
 test('project pages expose canonical project structured data', async ({ page, request }) => {

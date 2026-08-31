@@ -7,9 +7,12 @@ describe('site configuration', () => {
     expect(new URL(SITE.url).pathname).toBe('/');
   });
 
-  it('uses the portfolio identity without legacy index branding', () => {
+  it('uses the current portfolio identity without legacy project-only branding', () => {
     expect(SITE.name).toBe('THIEPN');
-    expect(SITE.title).toBe('THIEPN — Projects');
+    expect(SITE.title).toBe('THIEPN — Software, Games, Learning & Books');
+    expect(SITE.description).toContain('software');
+    expect(SITE.description).toContain('books');
+    expect(SITE.description).not.toBe('Projects, tools, games & experiments.');
     expect(SITE.designSystem).toBe('THIEPN Portfolio / DS-01');
     expect(SITE.phase).toBeGreaterThanOrEqual(16);
   });
