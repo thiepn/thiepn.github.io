@@ -76,11 +76,13 @@ test.describe('Phase 14 / release candidate', () => {
     }
   });
 
-  test('404 preserves useful project navigation', async ({ page }) => {
+  test('404 preserves useful project navigation and stays out of search indexes', async ({ page }) => {
     await page.goto('/404.html');
     await expect(page.getByRole('heading', { name: /This page doesn't exist/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /Go home/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /Browse projects/i })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex,nofollow');
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   });
 
   test('no-JS public project grid remains complete and launchable', async ({ browser }) => {

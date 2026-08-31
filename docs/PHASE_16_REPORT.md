@@ -110,12 +110,12 @@ PR #21 passed the complete Quality workflow, including the full browser/accessib
 
 ### 16B-5 — Metadata and public discoverability
 
-The next audit moves from on-site discovery to external discoverability. Several public identity signals still describe the older project-only site model even though Books and broader publication surfaces are now first-class:
+The external-discovery audit found several public identity signals still describing the older project-only site model even though Books and broader publication surfaces are now first-class:
 
-- `SITE.title` is still `THIEPN — Projects`;
-- `SITE.description` is the narrow `Projects, tools, games & experiments.`;
-- the web-app manifest still uses the legacy `THIEPN Project Universe` name;
-- WebSite JSON-LD advertises a URL-based `SearchAction` that only points into the project archive even though the real global palette now searches projects, collections, and books.
+- the default title was `THIEPN — Projects`;
+- the default description was the narrow `Projects, tools, games & experiments.`;
+- the web-app manifest still used the legacy `THIEPN Project Universe` name;
+- WebSite JSON-LD advertised a URL-based `SearchAction` pointing only into the project archive even though the real global palette searches projects, collections, and books.
 
 Phase 16B-5 aligns these public signals with the current portfolio:
 
@@ -127,9 +127,26 @@ Phase 16B-5 aligns these public signals with the current portfolio:
 - preserve the already-correct `robots.txt` and canonical sitemap declaration;
 - add unit and browser regression coverage for the current identity, manifest, crawler metadata, and JSON-LD contract.
 
-#### 16B-5 acceptance gates
+#### 16B-5 closeout
 
-The tranche must pass generated freshness, structural/production/accessibility/visual/release source gates, scale benchmark, typecheck, unit tests, production build and built-performance budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must again pass build, deploy, and custom-domain production verification.
+PR #22 passed all source, type, unit, build, performance, scale, and full Chromium/Firefox/WebKit/mobile Playwright gates. One stale browser assertion still expected the old `THIEPN Project Universe` manifest name; that certification contract was updated without reverting the new metadata. After merge, the authoritative Pages workflow completed build, deploy, and custom-domain production verification successfully against `https://thiepn.dev/`.
+
+### 16B-6 — 404 indexability
+
+The custom 404 route was already absent from the generated public route manifest/sitemap, but it still rendered ordinary indexable page metadata and JSON-LD. Error pages should not compete with real content in search indexes.
+
+Phase 16B-6:
+
+- opts `src/pages/404.astro` into BaseLayout's existing `noindex` path;
+- emits `robots=noindex,nofollow` on the 404 document;
+- suppresses structured JSON-LD for the 404 route through the same BaseLayout contract;
+- preserves the existing recovery links and visual design;
+- extends release-source validation so future 404 changes cannot silently remove the noindex contract;
+- extends existing Phase 14 browser coverage to certify both robots metadata and JSON-LD absence.
+
+#### 16B-6 acceptance gates
+
+The tranche must pass the full routine Quality workflow, including source validation, accessibility/performance audits, typecheck, unit tests, production build, built budgets, and the complete Playwright browser/accessibility matrix. After merge, the authoritative Pages workflow must pass build, deploy, and custom-domain production verification.
 
 ## Known repository-administration cleanup
 
@@ -141,4 +158,4 @@ The historical `v1.0.0` tag also remains unresolved and should only be created a
 
 ## Next audit
 
-After 16B-5 is certified, audit indexability and search-engine presentation from the rendered production site: canonical/robots/sitemap consistency, page-title and description quality across route classes, structured-data coverage for collection/about pages, and whether any public route lacks a useful search-result description. Avoid speculative keyword stuffing or visual changes without a measurable visitor benefit.
+After 16B-6 is certified, continue the rendered-metadata audit with explicit schema/page-type coverage for route classes that are still generic WebPages, especially collection detail pages and About. Keep schema changes factual and conservative; do not add unsupported author/person claims or keyword stuffing.
