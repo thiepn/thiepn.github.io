@@ -49,12 +49,12 @@ function svg({ code, title, subtitle, accent = '#777A73', kind = 'PROJECT' }) {
   <text x="88" y="108" fill="#555650" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="2">${xmlEscape(code)} / ${xmlEscape(kind)}</text>
   <text fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="${titleSize}" font-weight="600" letter-spacing="-3.5">${titleMarkup}</text>
   <text x="90" y="${lines.length > 1 ? 455 : 405}" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="27">${safeSubtitle}</text>
-  <text x="88" y="538" fill="#151613" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="3">THIEPN / PROJECT UNIVERSE</text>
+  <text x="88" y="538" fill="#151613" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="3">THIEPN / PORTFOLIO</text>
 </svg>\n`;
 }
 
 const cards = [
-  { file: 'index.svg', code: 'HOME', title: 'THIEPN', subtitle: 'Games, tools, learning systems and ideas — built to be used, played and explored.', kind: 'PORTFOLIO', accent: '#555650' },
+  { file: 'index.svg', code: 'HOME', title: 'THIEPN', subtitle: 'Software, games, learning systems, books and experiments — built to be used, played and explored.', kind: 'PORTFOLIO', accent: '#555650' },
   { file: 'projects.svg', code: 'PROJECTS', title: 'Projects', subtitle: 'The complete THIEPN project catalogue: games, tools, learning systems, resources and experiments.', kind: 'DIRECTORY', accent: '#555650' },
   { file: 'books.svg', code: 'BOOKS', title: 'Books', subtitle: 'Published long-form works available through the THIEPN Library.', kind: 'LIBRARY', accent: '#555650' },
   { file: 'collections.svg', code: 'COLLECTIONS', title: 'Collections', subtitle: 'Editorial paths through related THIEPN projects, subjects and experiments.', kind: 'DIRECTORY', accent: '#555650' },
