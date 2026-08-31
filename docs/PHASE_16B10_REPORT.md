@@ -22,7 +22,7 @@ Phase 16B-10:
 - changes routine Media Audit dependency installation from `npm install` to `npm ci`;
 - removes the obsolete `.github/workflows/phase15-bootstrap.yml` workflow;
 - removes the obsolete `.github/workflows/phase15-finalize.yml` workflow;
-- changes the footer descriptor to `Independent software & research portfolio`;
+- changes the footer descriptor to `Independent digital portfolio`;
 - adds a unit/source-contract test that requires the two routine audit workflows to use the lockfile and prevents the obsolete Phase 15 materialization workflows from returning.
 
 ## Non-goals
