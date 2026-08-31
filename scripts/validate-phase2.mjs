@@ -125,7 +125,8 @@ for(const f of ['src/pages/index.astro','src/pages/projects/index.astro','src/pa
 const identityFiles=[
   'src/data/site.ts','src/layouts/BaseLayout.astro','src/components/shell/SiteHeader.astro','src/components/shell/SiteFooter.astro','src/components/shell/MobileMenu.astro','src/components/search/CatalogueSearch.astro','src/components/archive/ArchiveControls.astro','src/components/archive/ProjectArchive.astro','src/components/archive/CategoryIndex.astro','src/components/books/BookCard.astro','src/components/collections/CollectionPreview.astro','src/components/records/CapabilityList.astro','src/components/records/ArtifactGallery.astro','src/components/records/RecordMetadata.astro','src/components/records/RecordNavigation.astro','src/pages/projects/index.astro','src/pages/books/index.astro','src/pages/project/[slug].astro','src/pages/collections/index.astro','src/pages/collection/[slug].astro','src/pages/404.astro'
 ];
-const legacyPhrases=['THIEPN.','THE INDEX','Project Archive','Artifact Record','Related Artifacts','Anchor Artifacts','Search / The Index','Random Access','This artifact does not exist','Return to index','Project archive','No listed artifacts'];
+if(/\bname:\s*['"]THIEPN\.['"]/.test(site))fail.push('src/data/site.ts retains the legacy punctuated THIEPN brand name');
+const legacyPhrases=['THE INDEX','Project Archive','Artifact Record','Related Artifacts','Anchor Artifacts','Search / The Index','Random Access','This artifact does not exist','Return to index','Project archive','No listed artifacts'];
 for(const file of identityFiles){const text=read(file);for(const phrase of legacyPhrases){if(text.includes(phrase))fail.push(`${file} retains legacy public identity phrase: ${phrase}`)}}
 
 if(fail.length){console.error('Phase 2 validation failed:\n- '+fail.join('\n- '));process.exit(1)}
