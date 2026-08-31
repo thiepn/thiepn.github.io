@@ -25,6 +25,7 @@ const mobileMenu = fs.readFileSync('src/components/shell/MobileMenu.astro', 'utf
 const previewController = fs.readFileSync('src/scripts/preview-controller.ts', 'utf8');
 const githubSync = fs.readFileSync('scripts/sync-github.mjs', 'utf8');
 const sitemapSource = fs.readFileSync('src/pages/sitemap.xml.ts', 'utf8');
+const notFoundSource = fs.readFileSync('src/pages/404.astro', 'utf8');
 
 if (pkg.version !== rc.release) fail(`package version ${pkg.version} does not match RC ${rc.release}`);
 const sitePhase = Number(/phase:\s*(\d+)/.exec(siteSource)?.[1] ?? 0);
@@ -36,7 +37,7 @@ const projects = publicCatalogue.projects ?? [];
 const collections = searchIndex.collections ?? [];
 const indexedProjects = searchIndex.projects ?? [];
 if (stats.totalRegistered !== sourceStats.totalRegistered) fail(`generated registered project count ${stats.totalRegistered} != source count ${sourceStats.totalRegistered}`);
-if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed project count ${stats.totalListed} != source count ${sourceStats.totalListed}`);
+if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed project count ${stats.totalListed} != source listed count ${sourceStats.totalListed}`);
 if (projects.length !== sourceStats.totalListed) fail(`public catalogue project count ${projects.length} != source listed count ${sourceStats.totalListed}`);
 if (indexedProjects.length !== sourceStats.totalListed) fail(`search index project count ${indexedProjects.length} != source listed count ${sourceStats.totalListed}`);
 if (collections.length !== rc.expected.collections) fail(`collection count ${collections.length} != ${rc.expected.collections}`);
@@ -77,6 +78,7 @@ if (!baseLayout.includes('thiepn:index-theme') || !baseLayout.includes("prefers-
 if (!previewController.includes("addEventListener('error'") || !previewController.includes("setState('unavailable')")) fail('preview media failure fallback is missing');
 if (!githubSync.includes('cached-or-unavailable') || !githubSync.includes('stale: true')) fail('GitHub metadata failure fallback is missing');
 if (!sitemapSource.includes("!route.startsWith('/dev/')")) fail('sitemap must exclude development routes');
+if (!/<BaseLayout\b[^>]*\bnoindex=\{true\}/s.test(notFoundSource)) fail('404 page must opt into BaseLayout noindex handling');
 
 const requiredFiles = [
   'src/pages/404.astro',
