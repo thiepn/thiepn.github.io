@@ -3,14 +3,30 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { chromium } from '@playwright/test';
-import { PATHS, SCRIPT_ROOT } from './lib/catalogue-files.mjs';
+import { PATHS, SCRIPT_ROOT, publicProjects, readCollections, readProjects } from './lib/catalogue-files.mjs';
 
 const WIDTH = 1200;
 const HEIGHT = 630;
 const generator = spawnSync(process.execPath, [path.join(SCRIPT_ROOT, 'scripts/generate-og.mjs'), '--svg-only'], { stdio: 'inherit', env: process.env });
 if (generator.status !== 0) process.exit(generator.status ?? 1);
 
-const svgFiles = (await fs.readdir(PATHS.og)).filter((file) => file.endsWith('.svg')).sort();
+const projects = publicProjects(await readProjects());
+const collections = await readCollections();
+const svgFiles = [
+  'index.svg',
+  'projects.svg',
+  'books.svg',
+  'collections.svg',
+  ...projects.map((project) => `${project.data.slug}.svg`),
+  ...collections.map((collection) => `collection-${collection.data.slug}.svg`),
+].sort();
+const canonicalAssets = new Set(svgFiles.flatMap((file) => [file, file.replace(/\.svg$/i, '.png')]));
+for (const file of await fs.readdir(PATHS.og)) {
+  if (!/\.(?:svg|png)$/i.test(file) || canonicalAssets.has(file)) continue;
+  await fs.rm(path.join(PATHS.og, file));
+  console.log(`Removed orphan Open Graph asset: ${file}`);
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
 const page = await context.newPage();
@@ -37,4 +53,4 @@ const manifest = { version: 1, width: WIDTH, height: HEIGHT, entries };
 const manifestPath = path.join(PATHS.generated, 'og-raster-manifest.json');
 await fs.mkdir(path.dirname(manifestPath), { recursive: true });
 await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-console.log(`Rasterized ${svgFiles.length} Open Graph cards at ${WIDTH}x${HEIGHT}.`);
+console.log(`Rasterized ${svgFiles.length} canonical Open Graph cards at ${WIDTH}x${HEIGHT}.`);
