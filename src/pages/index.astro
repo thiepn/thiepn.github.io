@@ -23,11 +23,11 @@ const intentCounts = getIntentCounts(projects.map(({ data }) => data));
 const intentCount = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 'read' ? intentCounts.read + books.length : intentCounts[intent.key];
 const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 'read' ? '/books/' : `/projects/?intent=${intent.key}#archive-catalogue`;
 ---
-<BaseLayout title="THIEPN — Software, Games & Learning Systems" description="Independent software, browser games, learning systems, publishing tools and experiments — designed, built and refined as real products.">
+<BaseLayout>
   <div class="universe page-shell" data-index-hero>
     <section class="universe-hero" aria-labelledby="universe-title">
       <div class="universe-hero__copy">
-        <p class="eyebrow">Independent software & experiments</p>
+        <p class="eyebrow">Independent digital portfolio</p>
         <h1 id="universe-title" data-hero-title>Things I build.</h1>
         <p class="universe-hero__intro" data-hero-copy>
           Software, games, learning systems, publishing tools and experiments — designed, built and refined as real products.
@@ -113,7 +113,7 @@ const intentHref = (intent: (typeof PROJECT_INTENTS)[number]) => intent.key === 
           <p class="eyebrow">Start by intent</p>
           <h2 id="intent-title">What do you want to do?</h2>
         </div>
-        <span class="section-heading__note">Five ways into the THIEPN universe</span>
+        <span class="section-heading__note">Five ways to explore the portfolio</span>
       </header>
 
       <nav class="intent-universe" aria-label="Explore projects and publications by intent">
