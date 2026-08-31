@@ -106,3 +106,40 @@ test('books catalogue exposes Book entities owned by their Library URLs', async 
   }
   await expectPng(request, '/og/books.png');
 });
+
+test('collections directory exposes collection entities through a CollectionPage ItemList', async ({ page }) => {
+  await page.goto('/collections/');
+  const data = await jsonLd(page);
+  const collectionPage = graphType(data, 'CollectionPage');
+  const list = graphType(data, 'ItemList');
+  const collections = data['@graph']?.filter((node) => node['@type'] === 'Collection') ?? [];
+  expect(collectionPage?.mainEntity).toEqual({ '@id': 'https://thiepn.dev/collections/#collections' });
+  expect(Number(list?.numberOfItems)).toBeGreaterThan(0);
+  expect(collections.length).toBe(list?.numberOfItems);
+  for (const collection of collections) {
+    expect(String(collection.url ?? '')).toMatch(/^https:\/\/thiepn\.dev\/collection\//);
+    expect(Number(collection.collectionSize)).toBeGreaterThan(0);
+  }
+});
+
+test('collection records expose a Collection main entity and project membership', async ({ page }) => {
+  await page.goto('/collection/browser-games/');
+  const data = await jsonLd(page);
+  const collectionPage = graphType(data, 'CollectionPage');
+  const collection = graphType(data, 'Collection');
+  expect(collectionPage?.mainEntity).toEqual({ '@id': 'https://thiepn.dev/collection/browser-games/#collection' });
+  expect(collection?.name).toBe('Browser Games');
+  expect(Number(collection?.collectionSize)).toBeGreaterThan(0);
+  const hasPart = collection?.hasPart as Array<Record<string, unknown>>;
+  expect(hasPart.length).toBe(collection?.collectionSize);
+  expect(hasPart.every((item) => String(item['@id'] ?? '').startsWith('https://thiepn.dev/project/'))).toBeTruthy();
+});
+
+test('About route uses the dedicated AboutPage schema type', async ({ page }) => {
+  await page.goto('/about/');
+  const data = await jsonLd(page);
+  const about = graphType(data, 'AboutPage');
+  expect(about?.url).toBe('https://thiepn.dev/about/');
+  expect(about?.name).toBe('About — THIEPN');
+  expect(graphType(data, 'WebPage')).toBeUndefined();
+});
