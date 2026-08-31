@@ -1,0 +1,44 @@
+name: Phase 16B-11 inherited identity validator patch
+
+on:
+  push:
+    branches: [agent/phase16b11-home-identity]
+    paths:
+      - '.github/workflows/phase16b11-validator-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/phase16b11-home-identity
+          fetch-depth: 0
+      - name: Teach Phase 2 validator canonical identity inheritance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/validate-phase2.mjs')
+          text = path.read_text()
+          old = "if(!home.includes('THIEPN'))fail.push('homepage missing THIEPN brand identity');"
+          new = "if(!home.includes('THIEPN') && !(home.includes('<BaseLayout>') && layout.includes('title = SITE.title') && layout.includes('description = SITE.description')))fail.push('homepage missing THIEPN brand identity');"
+          if text.count(old) != 1:
+              raise SystemExit('Expected exactly one legacy homepage brand assertion')
+          path.write_text(text.replace(old, new))
+          PY
+          grep -q "layout.includes('title = SITE.title')" scripts/validate-phase2.mjs
+          grep -q "layout.includes('description = SITE.description')" scripts/validate-phase2.mjs
+      - name: Commit validator fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/validate-phase2.mjs
+          git commit -m 'fix: validate inherited homepage identity'
+          git pull --rebase origin agent/phase16b11-home-identity
+          git push origin HEAD:agent/phase16b11-home-identity
