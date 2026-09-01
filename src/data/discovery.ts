@@ -22,7 +22,7 @@ export const PROJECT_INTENTS = [
   {
     key: 'read',
     label: 'Read',
-    description: 'Books, guides, references, and long-form resources.',
+    description: 'Guides, references, and long-form resources.',
     categories: ['resources'],
   },
   {
