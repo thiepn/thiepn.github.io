@@ -9,13 +9,11 @@
   "analysis-ii-lernsystem": ["analysis-ii-klausurlabor", "analysis-idle"],
   "algodat-study-system": ["analysis-ii-klausurlabor", "analysis-ii-lernsystem"],
   "tms60": ["the-bible-challenge"],
-  "the-bible-challenge": ["tms60", "ligo-quizabend"],
+  "the-bible-challenge": ["tms60"],
   "wordstrike": ["wordfall", "skyspire"],
   "wordfall": ["wordstrike", "skyspire"],
-  "curio": ["nebula-foundry", "echoframe-last-signal"],
+  "curio": ["nebula-foundry"],
   "nebula-foundry": ["curio", "analysis-idle"],
-  "ligo-quizabend": ["the-bible-challenge", "wordstrike"],
-  "echoframe-last-signal": ["skyspire", "curio"],
-  "skyspire": ["echoframe-last-signal", "wordfall"],
+  "skyspire": ["wordfall"],
   "analysis-idle": ["nebula-foundry", "analysis-ii-lernsystem"]
 }

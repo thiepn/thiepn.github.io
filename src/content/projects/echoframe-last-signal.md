@@ -11,7 +11,7 @@ aliases:
 category: games
 type: game
 status: beta
-visibility: listed
+visibility: hidden
 summary: Fight through runs built around temporal echoes that repeat and combine your previous actions.
 repo: thiepn/echoframe
 liveUrl: https://thiepn.dev/echoframe/

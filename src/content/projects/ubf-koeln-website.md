@@ -11,7 +11,7 @@ aliases:
 category: experiments
 type: prototype
 status: experiment
-visibility: listed
+visibility: hidden
 summary: A stakeholder-ready redesign prototype for UBF Köln focused on clearer service information, navigation, church discovery, events, and responsive access.
 repo: thiepn/ubfkoeln
 liveUrl: https://thiepn.dev/ubfkoeln/

@@ -12,7 +12,7 @@ aliases:
 category: games
 type: quiz
 status: live
-visibility: listed
+visibility: hidden
 summary: Run a hosted quiz night with teams, timers, game formats, scoring, presentation, and clear rules.
 repo: thiepn/ligoquiz
 liveUrl: https://thiepn.dev/ligoquiz/

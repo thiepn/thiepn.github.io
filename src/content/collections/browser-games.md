@@ -12,8 +12,6 @@ projects:
 - curio
 - nebula-foundry
 - the-bible-challenge
-- ligo-quizabend
-- echoframe-last-signal
 - skyspire
 - impossible-transit
 - voidcut
@@ -22,7 +20,6 @@ anchors:
 - wordstrike
 - voidcut
 - impossible-transit
-- echoframe-last-signal
 relationships:
 - from: micro-arcade
   to: wordstrike
@@ -40,19 +37,11 @@ relationships:
   to: nebula-foundry
   label: Systems & progression
   note: Both ask the player to read systems, make trade-offs, and build value over repeated decisions.
-- from: the-bible-challenge
-  to: ligo-quizabend
-  label: Social quiz play
-  note: Both turn questions into group-friendly play, with one centered on Bible knowledge and the other on flexible quiz-night hosting.
-- from: echoframe-last-signal
-  to: impossible-transit
-  label: Atmosphere & space
-  note: Both use audiovisual atmosphere and unusual spatial rules to make browser play feel more like a fully authored game world.
 - from: skyspire
   to: nebula-foundry
   label: Long-run progression
   note: Both support sessions where accumulating progression changes how later play feels.
-editorialNote: 'A cross-section of how far browser play can be pushed: a 31-game instant-play arcade, precision typing games, social quiz formats, long-form incremental systems, atmospheric action, and a complete first-person 3D journey. The collection is organized by play pattern rather than by a single genre.'
+editorialNote: 'A cross-section of how far browser play can be pushed: a 31-game instant-play arcade, precision typing games, quiz play, long-form incremental systems, atmospheric action, and a complete first-person 3D journey. The collection is organized by play pattern rather than by a single genre.'
 keywords:
 - browser games
 - arcade
