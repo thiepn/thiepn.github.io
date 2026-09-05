@@ -46,7 +46,7 @@ test('install and crawler metadata use the current portfolio identity', async ({
   const manifestResponse = await request.get('/manifest.webmanifest');
   expect(manifestResponse.ok()).toBeTruthy();
   const manifest = await manifestResponse.json() as { name?: string; short_name?: string; description?: string };
-  expect(manifest.name).toBe('THIEPN Portfolio');
+  expect(manifest.name).toBe('THIEPN');
   expect(manifest.short_name).toBe('THIEPN');
   expect(manifest.description).toContain('books');
   expect(manifest.name).not.toContain('Project Universe');
