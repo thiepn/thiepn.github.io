@@ -40,6 +40,15 @@ async function fetchTextRetry(url, responseExpected, textExpected, failureMessag
   throw last ?? new Error(`Failed ${url}`);
 }
 
+async function expectPng(path, size) {
+  const r = await fetchRetry(new URL(path, base));
+  const type = r.headers.get('content-type') ?? '';
+  if (!type.includes('image/png')) throw new Error(`${path} expected image/png, got ${type || 'missing content-type'}`);
+  const body = Buffer.from(await r.arrayBuffer());
+  if (body.length < 24 || body.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error(`${path} is not a valid PNG`);
+  if (body.readUInt32BE(16) !== size || body.readUInt32BE(20) !== size) throw new Error(`${path} expected ${size}x${size}`);
+}
+
 const failures=[];
 const check = async (label, fn) => { try { await fn(); console.log(`PASS ${label}`); } catch(e){ failures.push(`${label}: ${e.message}`); console.error(`FAIL ${label}: ${e.message}`); } };
 
@@ -58,6 +67,20 @@ await check('manifest.webmanifest', async()=>{
   if(json.short_name!=='THIEPN') throw new Error(`expected short_name THIEPN, got ${json.short_name ?? 'missing'}`);
   if(json.id!=='/') throw new Error(`expected id /, got ${json.id ?? 'missing'}`);
   if(json.display!=='standalone') throw new Error(`expected display standalone, got ${json.display ?? 'missing'}`);
+  const icons = Array.isArray(json.icons) ? json.icons : [];
+  const expectedIcons = [
+    ['/icon-192.png','192x192','any'],
+    ['/icon-512.png','512x512','any'],
+    ['/icon-192.png','192x192','maskable'],
+    ['/icon-512.png','512x512','maskable'],
+  ];
+  for (const [src,sizes,purpose] of expectedIcons) {
+    if (!icons.some((icon)=>icon.src===src && icon.sizes===sizes && icon.type==='image/png' && icon.purpose===purpose)) {
+      throw new Error(`missing PNG icon ${src} ${sizes} ${purpose}`);
+    }
+  }
+  if (icons.some((icon)=>icon.type==='image/svg+xml')) throw new Error('launcher manifest must not advertise SVG icons');
+  await Promise.all([expectPng('/icon-192.png',192), expectPng('/icon-512.png',512)]);
 });
 await check('catalogue.json', async()=>{
   const r=await fetchRetry(new URL('/catalogue.json',base)); const json=await r.json();
