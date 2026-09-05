@@ -51,6 +51,14 @@ await check('homepage', async()=>{
     'homepage structural identity not available yet',
   );
 });
+await check('manifest.webmanifest', async()=>{
+  const r=await fetchRetry(new URL('/manifest.webmanifest',base));
+  const json=await r.json();
+  if(json.name!=='THIEPN') throw new Error(`expected name THIEPN, got ${json.name ?? 'missing'}`);
+  if(json.short_name!=='THIEPN') throw new Error(`expected short_name THIEPN, got ${json.short_name ?? 'missing'}`);
+  if(json.id!=='/') throw new Error(`expected id /, got ${json.id ?? 'missing'}`);
+  if(json.display!=='standalone') throw new Error(`expected display standalone, got ${json.display ?? 'missing'}`);
+});
 await check('catalogue.json', async()=>{
   const r=await fetchRetry(new URL('/catalogue.json',base)); const json=await r.json();
   const projects=json.projects ?? json;
