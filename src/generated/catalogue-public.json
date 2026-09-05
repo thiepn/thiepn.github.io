@@ -134,37 +134,6 @@
       "updatedAt": "2026-08-18"
     },
     {
-      "code": "G-007",
-      "slug": "echoframe-last-signal",
-      "title": "ECHOFRAME: LAST SIGNAL",
-      "subtitle": "Temporal action roguelite",
-      "summary": "Fight through runs built around temporal echoes that repeat and combine your previous actions.",
-      "category": "games",
-      "type": "game",
-      "status": "beta",
-      "route": "/project/echoframe-last-signal/",
-      "liveUrl": "https://thiepn.dev/echoframe/",
-      "repo": "thiepn/echoframe",
-      "tags": [
-        "action",
-        "roguelite",
-        "game"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop"
-      ],
-      "collections": [
-        "browser-games"
-      ],
-      "previewTier": "P4",
-      "previewType": "static",
-      "previewProvenance": "static",
-      "updatedAt": "2026-08-18"
-    },
-    {
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -261,39 +230,6 @@
       "previewTier": "P3",
       "previewType": "synthetic",
       "previewProvenance": null,
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "code": "G-006",
-      "slug": "ligo-quizabend",
-      "title": "LiGo Quizabend",
-      "subtitle": "Community quiz-night system",
-      "summary": "Run a hosted quiz night with teams, timers, game formats, scoring, presentation, and clear rules.",
-      "category": "games",
-      "type": "quiz",
-      "status": "live",
-      "route": "/project/ligo-quizabend/",
-      "liveUrl": "https://thiepn.dev/ligoquiz/",
-      "repo": "thiepn/ligoquiz",
-      "tags": [
-        "quiz",
-        "community",
-        "game"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [
-        "browser-games"
-      ],
-      "previewTier": "P4",
-      "previewType": "synthetic",
-      "previewProvenance": "synthetic",
       "updatedAt": "2026-08-18"
     },
     {
@@ -632,33 +568,6 @@
       "updatedAt": "2026-08-18"
     },
     {
-      "code": "X-001",
-      "slug": "ubf-koeln-website",
-      "title": "UBF Köln Website V2",
-      "subtitle": "Church website stakeholder prototype",
-      "summary": "A stakeholder-ready redesign prototype for UBF Köln focused on clearer service information, navigation, church discovery, events, and responsive access.",
-      "category": "experiments",
-      "type": "prototype",
-      "status": "experiment",
-      "route": "/project/ubf-koeln-website/",
-      "liveUrl": "https://thiepn.dev/ubfkoeln/",
-      "repo": "thiepn/ubfkoeln",
-      "tags": [
-        "community"
-      ],
-      "capabilityTags": [],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "collections": [],
-      "previewTier": "P1",
-      "previewType": "static",
-      "previewProvenance": "static",
-      "updatedAt": "2026-08-21"
-    },
-    {
       "code": "V-001",
       "slug": "unreached",
       "title": "Unreached",
@@ -818,8 +727,6 @@
         "curio",
         "nebula-foundry",
         "the-bible-challenge",
-        "ligo-quizabend",
-        "echoframe-last-signal",
         "skyspire",
         "impossible-transit",
         "voidcut"

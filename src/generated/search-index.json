@@ -147,40 +147,6 @@
     },
     {
       "kind": "project",
-      "code": "G-007",
-      "slug": "echoframe-last-signal",
-      "title": "ECHOFRAME: LAST SIGNAL",
-      "subtitle": "Temporal action roguelite",
-      "summary": "Fight through runs built around temporal echoes that repeat and combine your previous actions.",
-      "aliases": [
-        "echoframe",
-        "last signal",
-        "echo game"
-      ],
-      "category": "games",
-      "status": "beta",
-      "tags": [
-        "action",
-        "roguelite",
-        "game"
-      ],
-      "collections": [
-        "Browser Games"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop"
-      ],
-      "repo": "thiepn/echoframe",
-      "liveUrl": "https://thiepn.dev/echoframe/",
-      "accentLight": "#5F5167",
-      "accentDark": "#B9A6C4",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -285,43 +251,6 @@
       "liveUrl": "https://thiepn.dev/french-a1-a2/",
       "accentLight": "#76508D",
       "accentDark": "#C89AE2",
-      "updatedAt": "2026-08-18"
-    },
-    {
-      "kind": "project",
-      "code": "G-006",
-      "slug": "ligo-quizabend",
-      "title": "LiGo Quizabend",
-      "subtitle": "Community quiz-night system",
-      "summary": "Run a hosted quiz night with teams, timers, game formats, scoring, presentation, and clear rules.",
-      "aliases": [
-        "ligoquiz",
-        "quiz night",
-        "quizabend",
-        "community quiz"
-      ],
-      "category": "games",
-      "status": "live",
-      "tags": [
-        "quiz",
-        "community",
-        "game"
-      ],
-      "collections": [
-        "Browser Games"
-      ],
-      "capabilityTags": [
-        "local-first"
-      ],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/ligoquiz",
-      "liveUrl": "https://thiepn.dev/ligoquiz/",
-      "accentLight": "#84406F",
-      "accentDark": "#E58BC3",
       "updatedAt": "2026-08-18"
     },
     {
@@ -694,36 +623,6 @@
     },
     {
       "kind": "project",
-      "code": "X-001",
-      "slug": "ubf-koeln-website",
-      "title": "UBF Köln Website V2",
-      "subtitle": "Church website stakeholder prototype",
-      "summary": "A stakeholder-ready redesign prototype for UBF Köln focused on clearer service information, navigation, church discovery, events, and responsive access.",
-      "aliases": [
-        "ubf koeln",
-        "ubf köln",
-        "church website redesign"
-      ],
-      "category": "experiments",
-      "status": "experiment",
-      "tags": [
-        "community"
-      ],
-      "collections": [],
-      "capabilityTags": [],
-      "platforms": [
-        "desktop",
-        "tablet",
-        "mobile"
-      ],
-      "repo": "thiepn/ubfkoeln",
-      "liveUrl": "https://thiepn.dev/ubfkoeln/",
-      "accentLight": "#176AA3",
-      "accentDark": "#72B9E8",
-      "updatedAt": "2026-08-21"
-    },
-    {
-      "kind": "project",
       "code": "V-001",
       "slug": "unreached",
       "title": "Unreached",
@@ -911,7 +810,7 @@
       "slug": "browser-games",
       "title": "Browser Games",
       "summary": "Games and hosted play experiences that run directly in the browser, from precision arcade play to surreal 3D worlds and long-form systems.",
-      "editorialNote": "A cross-section of how far browser play can be pushed: a 31-game instant-play arcade, precision typing games, social quiz formats, long-form incremental systems, atmospheric action, and a complete first-person 3D journey. The collection is organized by play pattern rather than by a single genre.",
+      "editorialNote": "A cross-section of how far browser play can be pushed: a 31-game instant-play arcade, precision typing games, quiz play, long-form incremental systems, atmospheric action, and a complete first-person 3D journey. The collection is organized by play pattern rather than by a single genre.",
       "projects": [
         "micro-arcade",
         "wordstrike",
@@ -919,8 +818,6 @@
         "curio",
         "nebula-foundry",
         "the-bible-challenge",
-        "ligo-quizabend",
-        "echoframe-last-signal",
         "skyspire",
         "impossible-transit",
         "voidcut"
@@ -932,8 +829,6 @@
         "Curio",
         "Nebula Foundry",
         "The Bible Challenge",
-        "LiGo Quizabend",
-        "ECHOFRAME: LAST SIGNAL",
         "Skyspire",
         "Impossible Transit",
         "VOIDCUT"
@@ -956,10 +851,6 @@
         "Both reward fast, exact input and immediate correction, with one centered on typing and the other on spatial cuts.",
         "Systems & progression",
         "Both ask the player to read systems, make trade-offs, and build value over repeated decisions.",
-        "Social quiz play",
-        "Both turn questions into group-friendly play, with one centered on Bible knowledge and the other on flexible quiz-night hosting.",
-        "Atmosphere & space",
-        "Both use audiovisual atmosphere and unusual spatial rules to make browser play feel more like a fully authored game world.",
         "Long-run progression",
         "Both support sessions where accumulating progression changes how later play feels."
       ]
