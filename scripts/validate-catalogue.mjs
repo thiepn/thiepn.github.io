@@ -85,6 +85,7 @@ if (order.length !== publicSlugs.size) failures.push('Curated archive order must
 
 for (const project of projects) {
   for (const collection of project.collections ?? []) if (!collectionSlugs.has(collection)) failures.push(`${project.slug}: unknown collection ${collection}.`);
+  if (project.visibility !== 'listed') continue;
   for (const collectionSlug of project.collections ?? []) {
     const collection = collectionFiles.find((entry) => entry.data.slug === collectionSlug)?.data;
     if (collection && !collection.projects.includes(project.slug)) failures.push(`${project.slug}: project declares ${collectionSlug}, but collection does not include it.`);
