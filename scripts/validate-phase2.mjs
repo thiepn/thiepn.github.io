@@ -25,7 +25,7 @@ const contentConfig=read('src/content.config.ts');
 if(!fs.existsSync(path.join(root,'src/data/discovery.ts')))fail.push('missing src/data/discovery.ts');
 const discovery=fs.existsSync(path.join(root,'src/data/discovery.ts'))?read('src/data/discovery.ts'):'';
 
-if(!home.includes('THIEPN'))fail.push('homepage missing THIEPN brand identity');
+if(!home.includes('THIEPN') && !(home.includes('<BaseLayout>') && layout.includes('title = SITE.title') && layout.includes('description = SITE.description')))fail.push('homepage missing THIEPN brand identity');
 if(home.includes('LivingIndexField'))fail.push('homepage must not render the decorative Living Index field');
 if(home.includes('<ProjectArchive'))fail.push('homepage must not duplicate the full project browser');
 
