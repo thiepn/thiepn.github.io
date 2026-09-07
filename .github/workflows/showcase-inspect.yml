@@ -1,0 +1,66 @@
+name: Showcase inspection
+on:
+  push:
+    branches: [design/showcase-tiny-tools]
+    paths: ['.github/workflows/showcase-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Collect source and clean browser observations
+        run: |
+          mkdir -p showcase-evidence
+          git archive HEAD | gzip > showcase-evidence/site-source.tar.gz
+          tar -czf showcase-evidence/dependencies.tar.gz node_modules
+          for repo in tools arcade manuscript wordstrike pdf tbc; do
+            git clone --depth 1 https://github.com/thiepn/$repo.git /tmp/source-$repo >/dev/null 2>&1
+            git -C /tmp/source-$repo rev-parse HEAD > showcase-evidence/$repo-sha.txt
+            git -C /tmp/source-$repo archive HEAD | gzip > showcase-evidence/$repo-source.tar.gz
+          done
+          cat > inspect-showcase.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import fs from 'node:fs';
+          const browser=await chromium.launch();
+          const observations=[];
+          async function capture(url,name,width=1440,theme='light'){
+            const ctx=await browser.newContext({viewport:{width,height:960},colorScheme:theme,reducedMotion:'reduce'});
+            const page=await ctx.newPage();
+            const row={url,name,width,theme,errors:[]};
+            page.on('pageerror',e=>row.errors.push(e.message));
+            try{
+              const res=await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(2400);await page.evaluate(()=>document.fonts.ready);
+              row.status=res.status();row.url=page.url();row.title=await page.title();
+              await page.screenshot({path:`showcase-evidence/${name}.png`,timeout:15000});
+              await page.evaluate(async()=>{for(let y=0;y<Math.min(document.documentElement.scrollHeight,14000);y+=700){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,80))}window.scrollTo(0,0)});
+              await page.screenshot({path:`showcase-evidence/${name}-full.png`,fullPage:true,timeout:15000});
+              row.text=(await page.locator('body').innerText()).slice(0,65000);
+              row.links=await page.locator('a[href]').evaluateAll(es=>es.map(e=>({text:e.innerText,href:e.href})));
+              row.controls=await page.locator('button,input,textarea,select').evaluateAll(es=>es.map(e=>({tag:e.tagName,text:e.innerText.slice(0,200),label:e.getAttribute('aria-label'),placeholder:e.getAttribute('placeholder'),type:e.getAttribute('type')})));
+              row.layout=await page.evaluate(()=>({width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}));
+              fs.writeFileSync(`showcase-evidence/${name}.html`,await page.content());
+            }catch(e){row.error=e.message;}
+            observations.push(row);await ctx.close();
+          }
+          for(const width of [375,1440])for(const theme of ['light','dark'])await capture('https://thiepn.dev/',`before-home-${width}-${theme}`,width,theme);
+          for(const path of ['work','projects','about','project/micro-arcade','tools','arcade','manuscript','wordstrike','pdf','tbc'])await capture(`https://thiepn.dev/${path}/`,'live-'+path.replaceAll('/','-'));
+          fs.writeFileSync('showcase-evidence/observations.json',JSON.stringify(observations,null,2));
+          await browser.close();
+          JS
+          node inspect-showcase.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: showcase-inspection
+          path: showcase-evidence/
+          retention-days: 7
