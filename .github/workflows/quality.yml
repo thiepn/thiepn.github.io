@@ -1,85 +1,33 @@
 name: Quality
-
 on:
   pull_request:
   push:
     branches: [main]
-
 permissions:
   contents: read
-
 concurrency:
-  group: quality-${{ github.workflow }}-${{ github.ref }}
+  group: quality-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Node
-        uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
-
-      - name: Generated catalogue freshness
-        run: npm run generated:check
-
-      - name: Structural validation
-        run: npm run validate
-
-      - name: Phase 15 production-source invariants
-        run: npm run phase15:validate
-
-      - name: Data-only G-010 automation fixture
-        run: npm run test:automation
-
-      - name: Phase 11 source performance budgets
-        run: npm run perf:source
-
-      - name: Phase 12 accessibility source audit
-        run: npm run a11y:source
-
-      - name: Phase 13 visual language audit
-        run: npm run visual:audit
-
-      - name: Release source gate
-        run: npm run release:source
-
-      - name: 250-artifact scale benchmark
-        run: npm run perf:scale
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Production build
-        run: npm run build
-
-      - name: Built performance budgets
-        run: npm run perf:budget
-
-      - name: Install certification browsers
-        run: npx playwright install --with-deps chromium firefox webkit
-
-      - name: Complete Playwright browser and accessibility certification
-        run: npm run test:e2e
-
-      - name: Upload Playwright certification report
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run audit:studio
+      - name: Retained scale and automation checks
+        run: npm run perf:scale && npm run test:automation
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: playwright-certification-report
-          if-no-files-found: warn
-          retention-days: 7
+          name: studio-certification
           path: |
-            playwright-report
-            test-results
+            playwright-report/
+            test-results/
+          retention-days: 7
