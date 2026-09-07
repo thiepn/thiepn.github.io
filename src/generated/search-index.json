@@ -585,6 +585,44 @@
     },
     {
       "kind": "project",
+      "code": "T-006",
+      "slug": "tiny-tools",
+      "title": "Tiny Tools",
+      "subtitle": "Small tools for everyday work",
+      "summary": "Focused browser utilities for text, images, files, data and everyday tasks, without an account.",
+      "aliases": [
+        "tools",
+        "utility suite",
+        "text cleaner",
+        "image converter",
+        "JSON formatter"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "productivity",
+        "documents",
+        "cleaning"
+      ],
+      "collections": [
+        "Productivity & Creation"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/tools",
+      "liveUrl": "https://thiepn.dev/tools/",
+      "accentLight": "#356142",
+      "accentDark": "#D6E6AB",
+      "updatedAt": "2026-09-08"
+    },
+    {
+      "kind": "project",
       "code": "L-007",
       "slug": "tms60",
       "title": "TMS60",
@@ -891,11 +929,13 @@
       "summary": "Practical tools for documents, publishing, and structured everyday workflows.",
       "editorialNote": "Three tools built around turning messy inputs into controlled outputs: PDF Studio manipulates finished documents, Manuscript turns source text into publication-ready pages, and Clean30 turns an everyday environment into a finite workflow. The shared idea is structured transformation.",
       "projects": [
+        "tiny-tools",
         "pdf-studio",
         "manuscript",
         "clean30"
       ],
       "projectTitles": [
+        "Tiny Tools",
         "PDF Studio",
         "Manuscript",
         "Clean30"
@@ -948,6 +988,7 @@
   ],
   "featured": [
     "micro-arcade",
+    "tiny-tools",
     "pdf-studio",
     "wordstrike",
     "the-bible-challenge",

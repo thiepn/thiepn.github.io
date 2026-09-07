@@ -103,6 +103,10 @@
       "png": "thiepn-library.png",
       "sha256": "cf5c4ce0b0cd0911dcd1f80e9ef5c9f482dbcf3a22a82a48fcaa9b7393a9f9f4"
     },
+    "tiny-tools.svg": {
+      "png": "tiny-tools.png",
+      "sha256": "3a8d74480b150da7fe5a3939ad44473e21d29baef156e6468da1f7a346f0ee91"
+    },
     "tms60.svg": {
       "png": "tms60.png",
       "sha256": "11484a5e700b7647aaa8dd2dd08982c0219fc481ffd0b4d1db0f4e8c4d6554f4"

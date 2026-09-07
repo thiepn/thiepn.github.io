@@ -1,6 +1,7 @@
 {
   "featured": [
     "micro-arcade",
+    "tiny-tools",
     "pdf-studio",
     "wordstrike",
     "the-bible-challenge",
@@ -8,6 +9,7 @@
   ],
   "archiveOrder": [
     "the-bible-challenge",
+    "tiny-tools",
     "pdf-studio",
     "wordstrike",
     "micro-arcade",

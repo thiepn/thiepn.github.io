@@ -6,6 +6,7 @@ title: Productivity & Creation
 summary: Practical tools for documents, publishing, and structured everyday workflows.
 type: persistent
 projects:
+- tiny-tools
 - pdf-studio
 - manuscript
 - clean30

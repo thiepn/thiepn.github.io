@@ -11,6 +11,7 @@ describe('current catalogue contracts', () => {
     expect(ledger.projects['G-012']).toBe('micro-arcade');
     expect(ledger.projects['T-004']).toBe('mathlab');
     expect(ledger.projects['T-005']).toBe('thiepn-library');
+    expect(ledger.projects['T-006']).toBe('tiny-tools');
     expect(ledger.projects['L-008']).toBe('pflegelern');
     expect(ledger.projects['L-009']).toBe('artikelwerk');
     expect(ledger.projects['L-901']).toBe('biblical-greek');
@@ -27,7 +28,7 @@ describe('current catalogue contracts', () => {
     expect(ledger.collections['C-006']).toBe('typing-games');
   });
 
-  it('locks the intentional five-project featured set', () => {
-    expect(curation.featured).toEqual(['micro-arcade', 'pdf-studio', 'wordstrike', 'the-bible-challenge', 'manuscript']);
+  it('locks the edited selection including Tiny Tools', () => {
+    expect(curation.featured).toEqual(['micro-arcade', 'tiny-tools', 'pdf-studio', 'wordstrike', 'the-bible-challenge', 'manuscript']);
   });
 });
