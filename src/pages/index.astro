@@ -1,20 +1,34 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ArcadeShowcase from '../components/studio/ArcadeShowcase.astro';
+import TinyToolsSpotlight from '../components/studio/TinyToolsSpotlight.astro';
 import ProjectExhibit from '../components/studio/ProjectExhibit.astro';
 import { getPublicProjects } from '../lib/catalogue';
 import { showcase, selectProjects } from '../lib/showcase';
 const projects = await getPublicProjects();
-const hero = selectProjects(projects, [showcase.hero])[0]!;
 const tools = selectProjects(projects, showcase.homeTools);
 const games = selectProjects(projects, showcase.homeGames);
 ---
-<BaseLayout title="THIEPN — Useful tools. Playable ideas." description="Games, useful software and ways to learn, made by Jonathan. Play Micro Arcade, explore PDF Studio, or find your next interesting project.">
+<BaseLayout title="THIEPN — A few things worth opening." description="Games to play, tools to use, and ideas to explore. Independent projects by Jonathan, including Micro Arcade, Tiny Tools, PDF Studio and Manuscript.">
   <div class="studio-home page-shell">
-    <header class="home-intro"><h1>Useful tools.<br/><span>Playable ideas.</span></h1><p>Independent projects by Jonathan —<br class="desktop-only"/> games, tools and ways to learn.</p></header>
-    <ProjectExhibit project={hero} lead priority heading="h2" />
-    <section class="studio-section" aria-labelledby="tools-heading"><header class="section-head"><div><p class="eyebrow">For the things you’re making</p><h2 id="tools-heading">From idea to output.</h2></div><a class="action-link" href="/work/">More work <span aria-hidden="true">→</span></a></header><div class="exhibit-pair exhibit-pair--uneven">{tools.map(project => <ProjectExhibit project={project}/>)}</div></section>
-    <section class="studio-section" aria-labelledby="games-heading"><header class="section-head"><div><p class="eyebrow">A different kind of practice</p><h2 id="games-heading">Put yourself to the test.</h2></div></header><div class="exhibit-pair">{games.map(project => <ProjectExhibit project={project}/>)}</div></section>
-    <section class="library-feature studio-section" aria-labelledby="library-heading"><div class="library-feature__copy"><p class="eyebrow">Away from the interface</p><h2 id="library-heading">Some ideas take<br/>a little longer.</h2><p>Longer-form writing on faith, discipleship and mission, collected in a library built for reading.</p><a class="button" href="/library/">Visit the Library <span aria-hidden="true">→</span></a></div><div class="book-pair"><a href="/library/works/choosing-a-mission-organization/" aria-label="Read Choosing a Mission Organization"><img src="/library/media/works/choosing-a-mission-organization/cover.svg" width="400" height="600" alt="Choosing a Mission Organization book cover" loading="lazy" decoding="async"/></a><a href="/library/works/how-to-love-god/" aria-label="Read How to Love God"><img src="/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp" width="400" height="600" alt="How to Love God book cover" loading="lazy" decoding="async"/></a></div></section>
-    <section class="maker-note studio-section" aria-labelledby="maker-heading"><h2 id="maker-heading">Different projects.<br/>One curious person.</h2><div><p>I’m Jonathan. These projects follow the things I’m interested in: mathematics, languages, useful software, games and the questions that deserve a longer look.</p><div class="actions"><a class="action-link" href="/about/">More about me <span aria-hidden="true">→</span></a><a class="quiet-link" href="/projects/">Explore the complete archive</a></div></div></section>
+    <header class="home-opening">
+      <div><p class="section-kicker">Independent projects by Jonathan</p><h1>A few things<br/><span>worth opening.</span></h1></div>
+      <div class="home-opening__aside"><p>Games to play.<br/>Tools to get things done.<br/>Ideas to spend time with.</p><a href="#tiny-tools" class="action-link">Meet Tiny Tools <span aria-hidden="true">↘</span></a></div>
+    </header>
+    <ArcadeShowcase/>
+    <TinyToolsSpotlight/>
+    <section class="studio-section" aria-labelledby="tools-heading">
+      <header class="section-head"><div><p class="section-kicker">From the first draft to the finished thing</p><h2 id="tools-heading">Make something of it.</h2></div><a class="action-link" href="/work/">Selected work <span aria-hidden="true">→</span></a></header>
+      <div class="exhibit-pair exhibit-pair--uneven">{tools.map(project => <ProjectExhibit project={project}/>)}</div>
+    </section>
+    <section class="studio-section" aria-labelledby="games-heading">
+      <header class="section-head"><div><p class="section-kicker">A different kind of practice</p><h2 id="games-heading">A little challenge goes a long way.</h2></div></header>
+      <div class="exhibit-pair">{games.map(project => <ProjectExhibit project={project}/>)}</div>
+    </section>
+    <section class="library-feature studio-section" aria-labelledby="library-heading">
+      <div class="library-feature__copy"><p class="section-kicker">The Library</p><h2 id="library-heading">Not every idea<br/>needs an interface.</h2><p>Books and longer-form writing on faith, discipleship and mission. For the questions that take more than a quick visit.</p><a class="button" href="/library/">Find something to read <span aria-hidden="true">→</span></a></div>
+      <div class="book-pair"><a href="/library/works/choosing-a-mission-organization/" aria-label="Read Choosing a Mission Organization"><img src="/library/media/works/choosing-a-mission-organization/cover.svg" width="400" height="600" alt="Choosing a Mission Organization book cover" loading="lazy" decoding="async"/></a><a href="/library/works/how-to-love-god/" aria-label="Read How to Love God"><img src="/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp" width="400" height="600" alt="How to Love God book cover" loading="lazy" decoding="async"/></a></div>
+    </section>
+    <section class="maker-note studio-section" aria-labelledby="maker-heading"><h2 id="maker-heading">One workshop.<br/>Many directions.</h2><div><p>I’m Jonathan. Mathematics, languages, writing and play keep giving me new things to build. This is where those ideas become something you can try.</p><div class="actions"><a class="action-link" href="/about/">The person behind the projects <span aria-hidden="true">→</span></a><a class="quiet-link" href="/projects/">Everything in the archive</a></div></div></section>
   </div>
 </BaseLayout>

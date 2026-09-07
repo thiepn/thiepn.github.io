@@ -20,4 +20,17 @@ for(const file of ['src/pages/index.astro','src/pages/work/index.astro','src/com
 assert(fs.readFileSync('src/pages/index.astro','utf8').includes('/library/'),'Library entry missing');
 assert(fs.readFileSync('src/pages/projects/index.astro','utf8').includes('data-simple-item'),'Archive must render real rows without JS');
 assert(!fs.readFileSync('src/layouts/BaseLayout.astro','utf8').includes('runtime-loader'),'Retired effects runtime must not load on new pages');
+assert(config.work.includes('tiny-tools'),'Tiny Tools must be selected');
+assert.equal(config.projects['tiny-tools'].tier,'showcase');
+for(const preview of config.arcadePreviews){
+ assert(fs.existsSync('public'+preview.src),`Missing game capture: ${preview.id}`);
+ if(preview.video)assert(fs.existsSync('public'+preview.video),`Missing gameplay recording: ${preview.id}`);
+}
+for(const task of config.toolShortcuts)assert(/^\/tools\/#\/tool\/[a-z0-9-]+$/.test(task.href),'Unexpected Tiny Tools shortcut');
+const notes=JSON.parse(fs.readFileSync('src/data/build-notes.json','utf8'));
+for(const [slug,note] of Object.entries(notes)){
+ assert(bySlug.has(slug));assert(note.sections.length>0);assert(note.sources.length>0);
+ for(const source of note.sources)assert(/^https:\/\/github\.com\/thiepn\/[^/]+\/blob\/[0-9a-f]{40}\//.test(source.url),'Build notes need pinned source links');
+ for(const related of note.related)assert(bySlug.has(related));
+}
 console.log(`Studio content validation passed: ${projects.length} public projects; ${config.work.length} selected works; authentic media present.`);

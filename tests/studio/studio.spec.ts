@@ -9,6 +9,11 @@ test.beforeAll(async({playwright})=>{
  const request=await playwright.request.newContext();
  try {
   for(const path of ['/library/media/works/choosing-a-mission-organization/cover.svg','/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp']){
+   if(process.env.LIBRARY_ASSET_DIR){
+    const body=fs.readFileSync(process.env.LIBRARY_ASSET_DIR+path.replace('/library/media',''));
+    libraryAssets.set(path,{body,contentType:path.endsWith('.svg')?'image/svg+xml':'image/webp'});
+    continue;
+   }
    const response=await request.get('https://thiepn.dev'+path,{timeout:30000});
    expect(response.status()).toBe(200);
    libraryAssets.set(path,{body:await response.body(),contentType:response.headers()['content-type']||'application/octet-stream'});
@@ -43,8 +48,8 @@ for(const route of routes.routes.filter(x=>!x.endsWith('.json'))){
   expect(await page.locator('meta[name="description"]').getAttribute('content')).toBeTruthy();
   for(const text of await page.locator('script[type="application/ld+json"]').allTextContents())expect(()=>JSON.parse(text)).not.toThrow();
   await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=700){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,40));}});
-  for(const image of await page.locator('img').all()){await image.scrollIntoViewIfNeeded();await expect(image).toHaveJSProperty('complete',true,{timeout:15000});}
-  const broken=await page.locator('img').evaluateAll(es=>es.filter(e=>!(e as HTMLImageElement).naturalWidth).map(e=>e.getAttribute('src')));expect(broken).toEqual([]);
+  for(const image of await page.locator('img:visible').all()){await image.scrollIntoViewIfNeeded();await expect(image).toHaveJSProperty('complete',true,{timeout:15000});}
+  const broken=await page.locator('img:visible').evaluateAll(es=>es.filter(e=>!(e as HTMLImageElement).naturalWidth).map(e=>e.getAttribute('src')));expect(broken).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
  });
 }
@@ -77,9 +82,10 @@ test('mobile menu, search handoff and persistent theme',async({page})=>{
 });
 test('static archive and primary work survive JavaScript disabled',async({browser})=>{
  const ctx=await browser.newContext({javaScriptEnabled:false,viewport:{width:375,height:812}});const page=await ctx.newPage();await page.goto('http://127.0.0.1:4321/projects/');
- expect(await page.locator('[data-simple-item]').count()).toBeGreaterThan(15);await expect(page.locator('.mobile-menu__noscript')).toBeVisible();await page.goto('http://127.0.0.1:4321/');await expect(page.getByRole('link',{name:'Play Micro Arcade'}).last()).toBeVisible();await ctx.close();
+ expect(await page.locator('[data-simple-item]').count()).toBeGreaterThan(15);await expect(page.locator('.mobile-menu__noscript')).toBeVisible();await page.goto('http://127.0.0.1:4321/');await expect(page.getByRole('link',{name:'Play Micro Arcade'}).last()).toBeVisible();
+ await expect(page.locator('[data-preview-input]')).toBeDisabled();await expect(page.locator('[data-preview-output]')).toHaveValue(/A little less friction/);await expect(page.getByRole('link',{name:'Open Tiny Tools',exact:false}).first()).toBeVisible();await ctx.close();
 });
-for(const route of ['/','/work/','/projects/','/about/','/books/','/collections/','/collection/browser-games/','/project/micro-arcade/','/project/pdf-studio/','/project/manuscript/','/privacy/'])for(const theme of ['light','dark'] as const){
+for(const route of ['/','/work/','/projects/','/about/','/books/','/collections/','/collection/browser-games/','/project/micro-arcade/','/project/pdf-studio/','/project/manuscript/','/project/tiny-tools/','/privacy/'])for(const theme of ['light','dark'] as const){
  test(`accessibility ${route} ${theme}`,async({page})=>{
  await page.setViewportSize({width:375,height:812});await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.goto(route);
  await page.addScriptTag({path:process.env.AXE_PATH||'/tmp/audit-tools/node_modules/axe-core/axe.min.js'});
@@ -91,4 +97,52 @@ for(const route of ['/','/work/','/projects/','/about/','/books/','/collections/
 }
 test('media and publication sources are explicit, not invented',()=>{
  expect(config.hero).toBe('micro-arcade');for(const slug of config.work){const data=(config.projects as any)[slug];expect(fs.existsSync('public'+data.media)).toBe(true);}
+});
+for(const route of ['/','/project/micro-arcade/'])test(`all gameplay panels load and keyboard navigation works ${route}`,async({page})=>{
+ await page.goto(route);const tabs=page.locator('[data-media-tab]');await expect(tabs).toHaveCount(3);
+ for(let i=0;i<3;i++){
+  await tabs.nth(i).click();await expect(tabs.nth(i)).toHaveAttribute('aria-selected','true');
+  const panel=page.locator('[data-media-panel]:visible');await expect(panel).toHaveCount(1);
+  await expect(panel.locator('img')).toHaveJSProperty('complete',true);
+  expect(await panel.locator('img').evaluate((e:HTMLImageElement)=>e.naturalWidth)).toBeGreaterThan(0);
+ }
+ await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');await expect(tabs.nth(1)).toBeFocused();
+ await page.keyboard.press('End');await expect(tabs.nth(2)).toBeFocused();await page.keyboard.press('Home');await expect(tabs.nth(0)).toBeFocused();
+});
+test('recording is opt-in, recovers from failure, and never blocks the launch link',async({page})=>{
+ const requests:string[]=[];page.on('request',r=>{if(r.url().includes('.mp4'))requests.push(r.url());});
+ await page.route('**/*.mp4',r=>r.abort('failed'));await page.goto('/');
+ const video=page.locator('[data-demo-video]');await expect(video).not.toHaveAttribute('src',/.+/);expect(requests).toEqual([]);
+ await page.getByRole('button',{name:/Watch gameplay/}).click();
+ await expect(page.locator('[data-media-status]')).toContainText(/could not/);expect(requests.length).toBeGreaterThan(0);
+ await expect(page.getByRole('link',{name:'Play Micro Arcade'})).toHaveAttribute('href','/arcade/');await expect(video).not.toBeVisible();
+});
+test('Tiny Tools preview is useful, bounded and private',async({page})=>{
+ await page.goto('/');const preview=page.locator('[data-text-preview]');await expect(preview).toHaveAttribute('data-ready','true');
+ const input=page.locator('[data-preview-input]'),output=page.locator('[data-preview-output]');
+ const requests:string[]=[];page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType()))requests.push(r.url());});
+ await input.fill('  Bonjour   안녕하세요  😀  ');await expect(output).toHaveValue('Bonjour 안녕하세요 😀');
+ expect(await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}))).not.toContain('Bonjour');
+ await page.waitForTimeout(150);expect(requests).toEqual([]);
+ await input.fill('');await expect(page.locator('[data-preview-copy]')).toBeDisabled();
+ await page.locator('[data-preview-reset]').click();await expect(input).toBeFocused();await expect(input).toHaveValue(/A little/);
+});
+test('clipboard rejection gives a selectable result instead of false success',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('Denied'))}}));
+ await page.goto('/');await page.locator('[data-preview-copy]').click();await expect(page.locator('[data-preview-status]')).toContainText('copy it manually');await expect(page.locator('[data-preview-output]')).toBeFocused();
+});
+test('clipboard success copies exactly the cleaned result',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:(value:string)=>{(window as any).__copied=value;return Promise.resolve();}}}));
+ await page.goto('/');await page.locator('[data-preview-input]').fill(' one   two ');await page.locator('[data-preview-copy]').click();
+ await expect(page.locator('[data-preview-status]')).toHaveText('Cleaned text copied.');expect(await page.evaluate(()=>(window as any).__copied)).toBe('one two');
+});
+test('Tiny Tools feature and its task links are present on home, work and project',async({page})=>{
+ await page.goto('/');await expect(page.locator('#tiny-tools')).toContainText('Small jobs.');
+ await expect(page.getByRole('link',{name:'Open Tiny Tools',exact:false}).first()).toHaveAttribute('href','/tools/');
+ for(const route of ['/','/project/tiny-tools/']){await page.goto(route);for(const task of ['text-cleaner','image-converter','json-formatter','qr-studio'])expect(await page.locator(`a[href="/tools/#/tool/${task}"]`).count()).toBeGreaterThan(0);}
+ await page.goto('/work/');await expect(page.locator('[data-project="tiny-tools"]')).toBeVisible();
+});
+for(const slug of ['tiny-tools','micro-arcade','pdf-studio'])test(`build notes contain inspectable pinned source evidence ${slug}`,async({page})=>{
+ await page.goto(`/project/${slug}/`);const notes=page.locator('.build-notes');await expect(notes).toBeVisible();
+ for(const href of await notes.locator('a').evaluateAll(es=>es.map(e=>(e as HTMLAnchorElement).href)))expect(href).toMatch(/^https:\/\/github\.com\/thiepn\/[^/]+\/blob\/[0-9a-f]{40}\//);
 });
