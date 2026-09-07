@@ -47,10 +47,6 @@
       "png": "curio.png",
       "sha256": "6373a410877e1d0422a2416433ae01ca3e26809ba9b79e48d4354d1a3559784d"
     },
-    "echoframe-last-signal.svg": {
-      "png": "echoframe-last-signal.png",
-      "sha256": "b02d764697201d4233079b7936de1145366e97164ade202fab462d60c0b543cf"
-    },
     "french-3000.svg": {
       "png": "french-3000.png",
       "sha256": "37e6922adc9347375219429bc14b41d28bf736e6058c705b94bc071ba9616fe4"
@@ -67,10 +63,6 @@
       "png": "le-carnet-francais.png",
       "sha256": "fb984439010e3302049dc6a392ae97ea5af3eea8ebcf1bf2ff64aa972dfbe143"
     },
-    "ligo-quizabend.svg": {
-      "png": "ligo-quizabend.png",
-      "sha256": "b9f4076f280f537fb993f2d51cc5a68c921d541e3f0e8e176e3c6aebcf850bb9"
-    },
     "manuscript.svg": {
       "png": "manuscript.png",
       "sha256": "fb459d1b8b694be87103728733ea412ac425729fddf42fd112d19c832283a0e1"
@@ -81,7 +73,7 @@
     },
     "micro-arcade.svg": {
       "png": "micro-arcade.png",
-      "sha256": "ae80df8f2db646e75c31396ff58675fe5be9b48062db31a9b998a3f944fc51f9"
+      "sha256": "c75a3eb4f3f1593a9cf8531653458217192df229ee1dc67f93fd4d81b806a54d"
     },
     "nebula-foundry.svg": {
       "png": "nebula-foundry.png",
@@ -114,10 +106,6 @@
     "tms60.svg": {
       "png": "tms60.png",
       "sha256": "11484a5e700b7647aaa8dd2dd08982c0219fc481ffd0b4d1db0f4e8c4d6554f4"
-    },
-    "ubf-koeln-website.svg": {
-      "png": "ubf-koeln-website.png",
-      "sha256": "db9989e65965db5cb631376bcdc5494fc7e11192e498ebc651a1bc6dea833091"
     },
     "unreached.svg": {
       "png": "unreached.png",

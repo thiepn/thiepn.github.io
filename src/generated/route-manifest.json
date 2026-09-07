@@ -3,6 +3,7 @@
   "routes": [
     "/",
     "/about/",
+    "/books/",
     "/catalogue.json",
     "/collection/bible-faith/",
     "/collection/browser-games/",
@@ -32,6 +33,7 @@
     "/project/voidcut/",
     "/project/wordfall/",
     "/project/wordstrike/",
-    "/projects/"
+    "/projects/",
+    "/work/"
   ]
 }

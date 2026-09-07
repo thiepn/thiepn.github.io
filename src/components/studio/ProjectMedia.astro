@@ -1,0 +1,9 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+interface Props { src: string; alt: string; priority?: boolean; sizes?: string; }
+const { src, alt, priority = false, sizes = '(max-width: 700px) calc(100vw - 40px), (max-width: 1300px) 60vw, 800px' } = Astro.props;
+const assets = import.meta.glob<{ default: ImageMetadata }>('/src/assets/showcase/**/*.{png,jpg,jpeg,webp}', { eager: true });
+const image = assets[`/src/assets/showcase${src}`]?.default;
+---
+{image ? <Image src={image} alt={alt} widths={[480,800,1280]} sizes={sizes} width={image.width} height={image.height} format="webp" quality={84} loading={priority ? 'eager' : 'lazy'} fetchpriority={priority ? 'high' : 'auto'} decoding="async" /> : <div class="media-unavailable"><span>Preview coming soon</span><p>{alt}</p></div>}

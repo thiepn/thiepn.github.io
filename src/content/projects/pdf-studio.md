@@ -77,4 +77,4 @@ gallery:
 
 A privacy-first PDF workspace for editing, organizing, annotating, converting, and automating documents locally.
 
-The workflow is organized around document operations rather than uploads to a remote service: page organization, annotation, redaction, conversion, and export stay inside one local-first workspace. The record therefore treats privacy and document consequence as part of the interaction, not as a footer claim.
+The workflow is organized around document operations rather than uploads to a remote service: page organization, annotation, redaction, conversion, and export stay inside one local-first workspace. Document operations stay together in one workspace, with local processing as a central design constraint.

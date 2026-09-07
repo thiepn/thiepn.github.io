@@ -28,12 +28,6 @@ describe('current catalogue contracts', () => {
   });
 
   it('locks the intentional five-project featured set', () => {
-    expect(curation.featured).toEqual([
-      'the-bible-challenge',
-      'pdf-studio',
-      'wordstrike',
-      'micro-arcade',
-      'voidcut',
-    ]);
+    expect(curation.featured).toEqual(['micro-arcade', 'pdf-studio', 'wordstrike', 'the-bible-challenge', 'manuscript']);
   });
 });

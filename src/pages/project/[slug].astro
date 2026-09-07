@@ -1,137 +1,26 @@
 ---
 import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ProjectPreview from '../../components/artifacts/ProjectPreview.astro';
-import StatusLabel from '../../components/artifacts/StatusLabel.astro';
-import CompactArtifact from '../../components/artifacts/CompactArtifact.astro';
-import ProjectShowcase from '../../components/records/ProjectShowcase.astro';
-import CapabilityList from '../../components/records/CapabilityList.astro';
-import ArtifactGallery from '../../components/records/ArtifactGallery.astro';
-import RecordMetadata from '../../components/records/RecordMetadata.astro';
-import RecordNavigation from '../../components/records/RecordNavigation.astro';
-import PortfolioClassification from '../../components/records/PortfolioClassification.astro';
-import { getPublicProjects, getRelatedProjects, getProjectNeighbors, getCollectionsForProject } from '../../lib/catalogue';
-
-export async function getStaticPaths(){
-  const projects=await getPublicProjects();
-  return projects.map((project)=>({params:{slug:project.data.slug},props:{project}}));
-}
-type ProjectEntry = Awaited<ReturnType<typeof getPublicProjects>>[number];
-interface Props{project:ProjectEntry}
-const { project }=Astro.props;
-const p=project.data;
-const related=await getRelatedProjects(p.slug,4);
-const collections=await getCollectionsForProject(p.slug);
-const { previous, next }=await getProjectNeighbors(p.slug);
-const { Content }=await render(project);
-const accentStyle=`--project-accent-light:${p.accent.light};--project-accent-dark:${p.accent.dark};`;
-const sectionTitle = p.category === 'learning' ? 'Learning Modes' : p.category === 'games' ? 'Core Systems' : 'Capabilities';
-const previewLabel = p.preview.provenance === 'captured' ? 'Captured interface' : p.preview.type === 'video' ? 'Demo video' : p.preview.type === 'synthetic' ? 'Animated demo' : 'Project preview';
-const defaultPreviewState = `PRIMARY / ${previewLabel.toUpperCase()}`;
-const lifecycle = p.status === 'live' ? 'Available now' : p.status === 'beta' ? 'Active beta' : p.status === 'experiment' ? 'Experimental build' : 'Archived record';
-const recordIndex = [
-  { href: '#snapshot', label: 'Snapshot' },
-  { href: '#overview', label: 'Overview' },
-  { href: '#classification', label: 'Classification' },
-  { href: '#capabilities', label: sectionTitle },
-  { href: '#details', label: 'Details' },
-  ...(p.gallery?.length ? [{ href: '#views', label: 'Views' }] : []),
-  ...(related.length ? [{ href: '#related', label: 'Related' }] : []),
-];
+import ProjectMedia from '../../components/studio/ProjectMedia.astro';
+import ProjectExhibit from '../../components/studio/ProjectExhibit.astro';
+import { getPublicProjects, getRelatedProjects } from '../../lib/catalogue';
+import { presentation } from '../../lib/showcase';
+export async function getStaticPaths(){return (await getPublicProjects()).map(project=>({params:{slug:project.data.slug},props:{project}}));}
+type Entry = Awaited<ReturnType<typeof getPublicProjects>>[number];
+interface Props { project: Entry; }
+const { project } = Astro.props;const p=project.data;const view=presentation(project);
+const {Content}=await render(project);const related=(await getRelatedProjects(p.slug,2)).slice(0,2);
+const gallery=(p.gallery ?? []).filter(item=>item.source && item.source!==view.media);
+const lifecycle=p.status==='beta'?'In beta — still being developed':p.status==='archived'?'Archived project':p.status==='experiment'?'An experiment':null;
 ---
-<BaseLayout title={`${p.title} — THIEPN`} description={p.summary} ogImage={`/og/${p.slug}.svg`}>
-  <article class="record page-shell" style={accentStyle} data-record-slug={p.slug}>
-    <div class="record__breadcrumb"><a href="/projects/">Projects</a><span aria-hidden="true">/</span><span>{p.code}</span></div>
-
-    <header class="record__hero index-grid">
-      <div class="record__copy">
-        <div class="record__identity"><span class="record__code">{p.code}</span><StatusLabel status={p.status} /></div>
-        <p class="record__eyebrow">Project record / {p.type}</p>
-        <h1>{p.title}</h1>
-        <p class="record__subtitle">{p.subtitle}</p>
-        <p class="record__summary">{p.summary}</p>
-        <p class="record__availability">{lifecycle} <span aria-hidden="true">·</span> {p.platforms.length ? p.platforms.join(' / ') : 'web'}</p>
-        <div class="record__actions" data-record-primary-actions>
-          {p.liveUrl&&<a class="structural-button" href={p.liveUrl}>{p.actions.primaryLabel} <span aria-hidden="true">↗</span></a>}
-          <a class="text-link" href="#overview">Overview <span aria-hidden="true">↓</span></a>
-          {p.repo&&p.actions.source&&<a class="text-link" href={`https://github.com/${p.repo}`}>Source <span aria-hidden="true">↗</span></a>}
-        </div>
-      </div>
-      <div class="record__preview" data-record-preview aria-labelledby="record-preview-heading">
-        <div class="record__preview-label">
-          <span id="record-preview-heading">Inspection window</span>
-          <strong data-record-preview-label data-record-preview-default={defaultPreviewState} aria-live="polite">{defaultPreviewState}</strong>
-        </div>
-        <ProjectPreview project={project} size="hero" focusable={true} />
-      </div>
-    </header>
-
-    <nav class="record__index" aria-label="On this project">
-      <span class="record__index-label">On this project</span>
-      <div class="record__index-links">
-        {recordIndex.map((item, index)=><a href={item.href}><span>{String(index+1).padStart(2,'0')}</span>{item.label}</a>)}
-      </div>
-    </nav>
-
-    <ProjectShowcase project={project} />
-
-    <section id="overview" class="record__section record__overview" aria-labelledby="overview-title">
-      <header class="record__section-head"><div><p class="meta">Project story</p><h2 id="overview-title">About this project</h2></div></header>
-      <div class="record__overview-grid">
-        <div class="record__prose"><Content /></div>
-        <aside><span class="meta">Focus</span><p>{p.type === 'game' ? 'Gameplay loop, controls, and progression.' : p.category === 'learning' ? 'What the learner practices, recalls, or understands.' : 'Workflow, capabilities, and practical result.'}</p></aside>
-      </div>
-    </section>
-
-    <PortfolioClassification project={project} collections={collections} />
-
-    <CapabilityList project={project} />
-
-    <section id="details" class="record__section" aria-labelledby="details-title">
-      <header class="record__section-head"><div><p class="meta">Technical record</p><h2 id="details-title">Project details</h2></div></header>
-      <RecordMetadata project={project} />
-    </section>
-
-    <ArtifactGallery project={project} />
-
-    {related.length>0&&<section id="related" class="record__section" aria-labelledby="related-title">
-      <header class="record__section-head"><div><p class="meta">Explore more</p><h2 id="related-title">Related projects</h2></div></header>
-      <div class="record__related">{related.map((entry)=><CompactArtifact project={entry} />)}</div>
-    </section>}
-
-    <RecordNavigation previous={previous} next={next} />
-    <nav class="record__end" aria-label="Project actions">
-      <a class="text-link" href="/projects/">← All projects</a>
-      <span class="record__end-context">{p.code} / {sectionTitle.toUpperCase()}</span>
-      {p.liveUrl&&<a class="structural-button" href={p.liveUrl}>{p.actions.primaryLabel} <span aria-hidden="true">↗</span></a>}
-    </nav>
-  </article>
+<BaseLayout title={`${p.title} — THIEPN`} description={view.summary} ogImage={`/og/${p.slug}.png`}>
+<article class="project-story page-shell" data-record-slug={p.slug}>
+<a class="back-link" href="/work/">← Back to the work</a>
+<header class="project-hero"><div class="project-hero__copy"><p class="eyebrow">{p.subtitle}</p><h1>{p.title}</h1><p class="project-purpose">{view.summary}</p>{lifecycle && <p class="availability">{lifecycle}</p>}{view.note && <p class="project-caveat">{view.note}</p>}<div class="actions">{p.liveUrl && !p.unavailable && <a class="button" href={p.liveUrl}>{view.action}<span aria-hidden="true">↗</span></a>}{p.repo&&p.actions.source&&<a class="action-link" href={`https://github.com/${p.repo}`}>Source code <span aria-hidden="true">↗</span></a>}</div></div><figure class:list={['project-hero__media',`exhibit--${view.tone}`]}><ProjectMedia src={view.media} alt={view.caption} priority/><figcaption>{view.caption}</figcaption></figure></header>
+<section class="story-section" aria-labelledby="story-heading"><h2 id="story-heading">{p.category==='games'?'The idea behind the game':p.category==='learning'?'What you can practice':'What it does'}</h2><div class="prose"><Content/></div></section>
+{p.capabilities.length>0&&<section class="story-section" aria-labelledby="capabilities-heading"><h2 id="capabilities-heading">{p.category==='games'?'Ways to play':p.category==='learning'?'Inside the learning experience':'Inside the project'}</h2><div class="capability-notes">{p.capabilities.map(item=><div><h3>{item.title}</h3><p>{item.description}</p></div>)}</div></section>}
+{gallery.length>0&&<section class="project-gallery" aria-label="More views of the project">{gallery.map(item=><figure><a href={item.source} aria-label={`View full-size image: ${item.label}`}><ProjectMedia src={item.source!} alt={item.caption} sizes="(max-width:700px) calc(100vw - 40px), (max-width:1300px) 85vw, 1100px"/></a><figcaption>{item.caption} <a href={item.source}>View full size ↗</a></figcaption></figure>)}</section>}
+<details class="technical-details" id="technical"><summary><span>Under the hood</span><span aria-hidden="true">+</span></summary><div class="technical-details__body"><dl><div><dt>Platforms</dt><dd>{p.platforms.join(', ') || 'Browser'}</dd></div>{p.controls.length>0&&<div><dt>Controls</dt><dd>{p.controls.join(', ')}</dd></div>}{p.showcase?.stack&&<div><dt>Built with</dt><dd>{p.showcase.stack.join(', ')}</dd></div>}<div><dt>Project status</dt><dd>{p.status==='live'?'Available':p.status}</dd></div>{p.repo&&<div><dt>Implementation</dt><dd><a href={`https://github.com/${p.repo}`}>{p.repo} ↗</a></dd></div>}</dl><p>Read the source and revision history for implementation details and current development.</p></div></details>
+{related.length>0&&<section class="studio-section" aria-labelledby="related-heading"><header class="section-head"><h2 id="related-heading">Another direction to explore.</h2><a class="action-link" href="/work/">Selected work →</a></header><div class="exhibit-pair">{related.map(project=><ProjectExhibit project={project}/>)}</div></section>}
+</article>
 </BaseLayout>
-<style>
-  .record{--project-accent:var(--project-accent-light);padding-top:clamp(26px,4vw,52px);padding-bottom:clamp(64px,8vw,104px)}:global(html[data-theme="dark"]) .record{--project-accent:var(--project-accent-dark)}
-  .record__breadcrumb{display:flex;align-items:center;gap:8px;font:500 .66rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.record__breadcrumb a{text-decoration:none;color:inherit}.record__breadcrumb a:hover{color:var(--ink)}
-  .record__hero{padding:clamp(30px,4vw,52px) 0 clamp(38px,5vw,64px);align-items:center;border-bottom:1px solid var(--line-strong)}.record__copy{grid-column:1/span 5}.record__preview{grid-column:6/-1;min-width:0}.record__identity{display:flex;align-items:center;gap:var(--space-3)}.record__code{font:600 .74rem var(--font-meta);letter-spacing:.065em;color:var(--project-accent)}
-  .record__eyebrow{margin-top:var(--space-5);font:500 .64rem var(--font-meta);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted)}
-  .record h1{margin-top:8px;font-size:clamp(3rem,5.4vw,5.3rem);line-height:.88;letter-spacing:-.062em;max-width:14ch;font-weight:560}.record__subtitle{margin-top:var(--space-4);font-size:clamp(1.12rem,1.8vw,1.48rem);line-height:1.2;letter-spacing:-.025em}.record__summary{margin-top:var(--space-3);max-width:52ch;color:var(--ink-secondary);font-size:clamp(.98rem,1.15vw,1.08rem);line-height:1.58}
-  .record__availability{margin-top:var(--space-4);font:600 .68rem var(--font-meta);letter-spacing:.065em;text-transform:uppercase;color:var(--project-accent)}.record__availability span{padding-inline:5px;color:var(--ink-muted)}
-  .record__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-5);margin-top:var(--space-5)}.record__preview-label{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--line);font:500 .62rem var(--font-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}.record__preview-label strong{color:var(--project-accent);font-weight:600;text-align:right}
-  .record__index{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(0,4.3fr);gap:var(--space-5);align-items:start;padding:14px 0;border-bottom:1px solid var(--line);font:500 .64rem var(--font-meta);letter-spacing:.055em;text-transform:uppercase}.record__index-label{color:var(--ink-muted)}.record__index-links{display:flex;flex-wrap:wrap;gap:8px clamp(14px,2.2vw,28px)}.record__index-links a{display:inline-flex;gap:7px;color:var(--ink-secondary);text-decoration:none}.record__index-links a span{color:var(--ink-muted)}.record__index-links a:hover,.record__index-links a:focus-visible{color:var(--project-accent)}
-  .record__section{padding-top:clamp(46px,6vw,70px);scroll-margin-top:90px}.record__section-head{display:flex;justify-content:space-between;align-items:end;gap:var(--space-5);padding-bottom:12px;border-bottom:1px solid var(--line-strong)}.record__section-head .meta{color:var(--ink-muted);font-size:.68rem}.record__section-head h2{margin-top:3px;font-size:clamp(1.55rem,2.6vw,2.35rem);line-height:1;letter-spacing:-.04em;font-weight:560}
-  .record__overview-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(220px,.55fr);gap:clamp(28px,6vw,90px);margin-top:var(--space-5)}.record__prose{max-width:66ch;font-size:clamp(1rem,1.2vw,1.1rem);line-height:1.68}.record__prose :global(p+p){margin-top:var(--space-3)}.record__overview-grid aside{border-left:1px solid var(--line);padding-left:var(--space-4)}.record__overview-grid aside .meta{color:var(--ink-muted);font-size:.68rem}.record__overview-grid aside p{margin-top:7px;color:var(--ink-secondary);font-size:.82rem;line-height:1.52}
-  .record__related{margin-top:var(--space-4);border-top:1px solid var(--line-strong)}.record__end{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--space-5);padding-top:var(--space-6);margin-top:var(--space-6);border-top:1px solid var(--line-soft)}.record__end .structural-button{justify-self:end}.record__end-context{font:500 .62rem var(--font-meta);letter-spacing:.06em;color:var(--ink-muted)}
-
-  .record__preview[data-record-preview-variant="organize"] :global(.pdf-page--moving){transform:translate(-25px,8px) rotate(-3deg)}
-  .record__preview[data-record-preview-variant="annotate"] :global(.pdf-appbar span:last-child){color:var(--project-accent);font-weight:700}
-  .record__preview[data-record-preview-variant="redact"] :global(.pdf-selection),.record__preview[data-record-preview-variant="redact"] :global(.pdf-page--moving .redact){opacity:1;transform:scale(1)}
-  .record__preview[data-record-preview-variant="export"] :global(.pdf-page--moving .redact){opacity:1}.record__preview[data-record-preview-variant="export"] :global(.pdf-tool strong){opacity:1;color:var(--project-accent)}
-  .record__preview[data-record-preview-variant="source"] :global(.paper-pane){opacity:.28}.record__preview[data-record-preview-variant="build"] :global(.manuscript-progress span){width:66%}.record__preview[data-record-preview-variant="compose"] :global(.paper-figure){outline:2px solid var(--project-accent);outline-offset:2px}.record__preview[data-record-preview-variant="output"] :global(.editor-pane){opacity:.32}.record__preview[data-record-preview-variant="output"] :global(.manuscript-progress span){width:100%}
-  .record__preview[data-record-preview-variant="tasks"] :global(.clean-progress span){width:0}.record__preview[data-record-preview-variant="progress"] :global(.clean-progress span){width:67%}.record__preview[data-record-preview-variant="routine"] :global(.clean-head strong){color:var(--project-accent)}.record__preview[data-record-preview-variant="complete"] :global(.clean-progress span){width:100%}.record__preview[data-record-preview-variant="complete"] :global(.clean-complete){opacity:1}
-  .record__preview[data-record-preview-variant="campaign"] :global(.strike-core){box-shadow:0 0 25px color-mix(in srgb,var(--project-accent) 28%,transparent)}.record__preview[data-record-preview-variant="typing"] :global(.word-target){opacity:.18}.record__preview[data-record-preview-variant="typing"] :global(.strike-entry){outline:1px solid var(--project-accent)}.record__preview[data-record-preview-variant="endless"] :global(.word-target){color:var(--project-accent)}.record__preview[data-record-preview-variant="daily"] :global(.strike-hud span:first-child){color:var(--project-accent)}
-  .record__preview[data-record-preview-variant="prompt"] :global(.french-card--one em),.record__preview[data-record-preview-variant="prompt"] :global(.french-card--one p){opacity:.08}.record__preview[data-record-preview-variant="context"] :global(.french-card--one em),.record__preview[data-record-preview-variant="context"] :global(.french-card--one p){color:var(--project-accent)}.record__preview[data-record-preview-variant="rating"] :global(.rating .active){background:color-mix(in srgb,var(--project-accent) 18%,transparent)}.record__preview[data-record-preview-variant="next"] :global(.french-card--one){opacity:.2}.record__preview[data-record-preview-variant="next"] :global(.french-card--two){opacity:1}
-  .record__preview[data-record-preview-variant="question"] :global(.quiz-lock){opacity:0}.record__preview[data-record-preview-variant="timer"] :global(.quiz-top strong){color:var(--project-accent)}.record__preview[data-record-preview-variant="answer"] :global(.answer-correct){border-color:var(--project-accent)}.record__preview[data-record-preview-variant="score"] :global(.quiz-score){color:var(--project-accent)}
-  .record__preview[data-record-preview-variant="parameter"] :global(.analysis-head strong){color:var(--project-accent)}.record__preview[data-record-preview-variant="graph"] :global(.analysis-curve--a){opacity:.08}.record__preview[data-record-preview-variant="graph"] :global(.analysis-curve--b){opacity:1}.record__preview[data-record-preview-variant="problem"] :global(.analysis-result strong){opacity:.12}.record__preview[data-record-preview-variant="result"] :global(.analysis-result strong){opacity:1;color:var(--project-accent)}
-
-  @media(max-width:950px){.record__copy{grid-column:1/-1}.record__preview{grid-column:1/-1;margin-top:var(--space-6)}.record__overview-grid{grid-template-columns:1fr}.record__overview-grid aside{border-left:0;border-top:1px solid var(--line);padding:var(--space-3) 0 0}.record__index{grid-template-columns:1fr;gap:7px}}
-  @media(max-width:599px){.record{padding-top:var(--space-5)}.record__hero{padding-top:var(--space-6)}.record h1{font-size:clamp(2.8rem,14vw,4.2rem)}.record__actions{gap:14px 18px}.record__preview-label{flex-direction:column;align-items:flex-start;gap:3px}.record__preview-label strong{text-align:left}.record__index-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}.record__end{grid-template-columns:1fr;align-items:start}.record__end-context{display:none}.record__end .structural-button{justify-self:start}}
-  @media(prefers-reduced-motion:reduce){.record__preview :global(*){transition:none!important}}
-</style>
