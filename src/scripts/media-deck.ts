@@ -51,7 +51,7 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-media-deck]')) 
     button.addEventListener('click', async () => {
       announce('');
       if (!video.hidden) { stopVideos(); return; }
-      if (!video.src) video.src = video.dataset.src!;
+      if (!video.src) video.src = video.dataset.videoUrl!;
       video.hidden = false;
       video.currentTime = 0;
       button.textContent = 'Close preview ×';

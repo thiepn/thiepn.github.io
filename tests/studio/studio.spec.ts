@@ -146,3 +146,14 @@ for(const slug of ['tiny-tools','micro-arcade','pdf-studio'])test(`build notes c
  await page.goto(`/project/${slug}/`);const notes=page.locator('.build-notes');await expect(notes).toBeVisible();
  for(const href of await notes.locator('a').evaluateAll(es=>es.map(e=>(e as HTMLAnchorElement).href)))expect(href).toMatch(/^https:\/\/github\.com\/thiepn\/[^/]+\/blob\/[0-9a-f]{40}\//);
 });
+
+test('recording plays only on request and stops when changing panels',async({page})=>{
+ await page.goto('/');await expect(page.locator('[data-media-deck]')).toHaveAttribute('data-ready','true');
+ const video=page.locator('[data-demo-video]');
+ await expect(video).toHaveJSProperty('paused',true);
+ await video.evaluate((v:HTMLVideoElement)=>v.addEventListener('playing',()=>v.dataset.didPlay='true'));
+ await page.getByRole('button',{name:/Watch gameplay/}).click();
+ await expect(video).toHaveAttribute('data-did-play','true',{timeout:10000});
+ await page.getByRole('tab',{name:'Block Drop',exact:true}).click();
+ await expect(video).toHaveJSProperty('paused',true);await expect(video).not.toBeVisible();
+});

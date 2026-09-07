@@ -187,3 +187,6 @@ html[data-theme='dark'] { --showcase-rule: #4b6153; --tools-paper: #1d2b22; --to
 .media-deck__image img { position: absolute; inset: 0; min-width: 0; min-height: 0; }
 
 .project-hero__media.exhibit--tools figcaption { color: var(--ink-secondary); }
+
+.media-deck__status { padding: 12px 20px; color: #e6eddf; font-size: .8125rem; line-height: 1.5; border-top: 1px solid #28323b; }
+.media-deck__status:empty { display: none; }
