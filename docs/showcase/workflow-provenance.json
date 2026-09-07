@@ -1,0 +1,69 @@
+[
+  {
+    "slug": "manuscript",
+    "url": "https://thiepn.dev/manuscript/",
+    "capturedAt": "2026-09-07T22:56:51.430Z",
+    "errors": [],
+    "text": "\\n \\n\nSkip to Manuscript\nM\nManuscript\nSaved locally\nWrite\nPreview\nFormat\nAdd\nPublish\nExport\nParagraph\nHeading 1\nHeading 2\nHeading 3\nHeading 4\nHeading 5\nHeading 6\nWrite\nSplit\nPreview\nMARKDOWN SOURCE\n224 WORDS\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n36\n37\n38\n39\n40\n41\n42\n43\n44\n45\n46\n47\n48\n49\n⌄\n⌄\n⌄\n⌄\n⌄\n⌄\n⌄\n⌄\n⌄\n---\ntitle: Manuscript Guided Sample\nsubtitle: Learn the core publishing workflow\nauthor: Your Name\ndate: 2026-09-07\n---\n\n\n[[titlepage]]\n\n\n<!-- manuscript:mainmatter -->\n\n\n# Manuscript Guided Sample\n\n\nThis sample is designed to teach the normal workflow: **Write → Format → Add → Publish**. Edit any paragraph in the Markdown source and watch the preview update.\n\n\n## 1. Write\n\n\nUse Markdown headings, emphasis, links, lists, tables, code, and page breaks. Open the command palette with **Ctrl/Cmd+K** to discover available actions.\n\n\n- Keep the source readable.\n- Use the Outline to navigate long documents.\n- Use Search for project-level edits.\n\n\n## 2. Format\n\n\nOpen **Format** in the workflow bar. The Inspector is deliberately split into **Setup** (document rules), **Style** (appearance), and **Layout** (page geometry), so each control has one clear home.\n\n\n## 3. Add\n\n\n| Feature | Where to find it |\n|---|---|\n| Images | Left rail → Media |\n| References | Left rail → References |\n| Equations | Insert / command palette |\n| Tables | Toolbar or Insert |\n\n\n::: note {title=\"Publishing note\"}\nAdvanced controls remain available, but the most common controls are shown first. Expand an Inspector section only when you need it.\n:::\n\n\n$$ {#eq-sample}\nE = mc^2\n$$\n\n\n## 4. Publish\n\n\nSwitch to **Publish**. Inspect paginated pages, open the page navigator, run Preflight, resolve blocking diagnostics, and then choose **Print / Save as PDF**.\n\n\n<!-- manuscript:pagebreak -->\nLine 1, column 1\nFlow\nPages\n1 / 3\nGo\n82%\nManuscript Guided Sample\n\nLearn the core publishing workflow\n\nAUTHOR\nYour Name\nDATE\n2026-09-07\nTitle page\nYour Name\nManuscript Guided Sample\nManuscript Guided Sample\n\nThis sample is designed to teach the normal workflow: Write → Format → Add → Publish. Edit any paragraph in the Markdown source and watch the preview update.\n\n1. Write\n\nUse Markdown headings, emphasis, links, lists, tables, code, and page breaks. Open the command palette with Ctrl/Cmd+K to discover available actions.\n\nKeep the source readable.\nUse the Outline to navigate long documents.\nUse Search for project-level edits.\n2. Format\n\nOpen Format in the workflow bar. The Inspector is deliberately split into Setup (document rules), Style (appearance), and Layout (page geometry), so each control has one clear home.\n\n3. Add\nFeature\tWhere to find it\nImages\tLeft rail → Media\nReferences\tLeft rail → References\nEquations\tInsert / command palette\nTables\tToolbar or Insert\nPublishing note\n\nAdvanced controls remain available, but the most common controls are shown first. Expand an Inspector section only when you need it.\n\n𝐸\n=\n𝑚\n𝑐\n2\nE=mc\n2\n(1)\n4. Publish\n\nSwitch to Publish. Inspect paginated pages, open the page navigator, run Preflight, resolve blocking diagnostics, and then choose Print / Save as PDF.\n\n1\nMain matter · 1\nYour Name\nManuscript Guided Sample\nPractice page\n\nTry changing the page size, adding a figure, or inserting a citation. Nothing in this sample is required; it can be deleted like any other local project.\n\n2\nMain matter · 2\nLn 1, Col 1\n224 words\n3 pages\n1 warnings\n82%\nEditing Manuscript Guided Sample\n✓\nGuided sample opened\nUse the workflow bar from Write through Publish.",
+    "file": "/projects/manuscript/showcase-editor.webp",
+    "success": true
+  },
+  {
+    "slug": "wordstrike",
+    "url": "https://thiepn.dev/wordstrike/",
+    "capturedAt": "2026-09-07T22:56:56.698Z",
+    "errors": [],
+    "text": "BACK\nSTAGE 1 0 / 10\nSCORE 351\nCORE ◇◇◇\ngiven\nnear\nforth",
+    "file": "/projects/wordstrike/showcase-run.webp",
+    "success": true
+  },
+  {
+    "tool": "text-cleaner",
+    "url": "https://thiepn.dev/tools/#/tool/text-cleaner",
+    "status": 200,
+    "headings": [
+      "Text Cleaner & Normalizer",
+      "Related tools"
+    ],
+    "text": "All tools\nProcesses locally\nFavorited\nText Cleaner & Normalizer\nTEXT\n\nClean, normalize, trim, and format pasted text with selectable transformations.\n\nCLEANING TRANSFORMATIONS\nSelect all\n•\nReset defaults\nTrim entire text\nTrim each line\nCollapse repeated spaces\nRemove trailing spaces\nRemove all empty lines\nReduce multiple blank lines to one\nNormalize smart quotes (“ ” ‘ ’)\nNormalize dashes (— –)\nRemove invisible/zero-width spaces & BOM\nTabs to spaces:\n2 spaces\n4 spaces\n8 spaces\nRemove duplicate lines\nStrip ZWNJ (U+200C) & ZWJ (U+200D) joiners\n(Warning: May alter Persian/Arabic word meanings, Indic script ligatures, or break composite emojis like 👨‍👩‍👧)\nInput Text\nLoad example\n0 characters\n0 lines\nCleaned Output\nCopy Result\n0 characters\n0 lines\nRELATED TOOLS\nCase Converter\nText\nConvert text between camelCase, PascalCase, snake_case, kebab-case, UPPERCASE, lowercase, CONSTANT_CASE, dot.case, and Title Case. Includes expert scenarios plus a professional QA console for reproducibility fingerprints, control-level validation, repeatability checks, and exportable reports.\nWord & Character Counter\nText\nCount words, characters, unique words, sentences, paragraphs, reading/speaking time, and frequency rankings.\nList Processor & Sorter\nText\nSort alphabetically/numerically, deduplicate, reverse, shuffle, prefix/suffix, number, and change delimiters.",
+    "success": true
+  },
+  {
+    "tool": "json-formatter",
+    "url": "https://thiepn.dev/tools/#/tool/json-formatter",
+    "status": 200,
+    "headings": [
+      "JSON Formatter & Validator",
+      "Related tools"
+    ],
+    "text": "All tools\nProcesses locally\nFavorite\nJSON Formatter & Validator\nDEVELOPER\n\nFormat, prettify, minify, sort keys, and validate JSON data with line error detection.\n\n2 Spaces\n4 Spaces\nMinify\nSort Object Keys\nLoad example\nDownload\nCopy JSON\nSource Input\nFormatted Output\nRELATED TOOLS\nText Cleaner & Normalizer\nText\nTrim excess whitespace, normalize Unicode spaces, clean line endings, normalize punctuation, and remove duplicate lines.\nRegex Tester & Debugger\nDeveloper\nTest regular expressions, inspect captured groups and flags, and preview real-time string replacement.\nURL & Base64 Tools\nDeveloper\nEncode/decode URLs, parse and edit query parameters, and convert UTF-8 strings to and from Base64. Includes expert scenarios plus a professional QA console for reproducibility fingerprints, control-level validation, repeatability checks, and exportable reports.",
+    "success": true
+  },
+  {
+    "tool": "image-converter",
+    "url": "https://thiepn.dev/tools/#/tool/image-converter",
+    "status": 200,
+    "headings": [
+      "Image Converter",
+      "Expert workspace",
+      "Professional QA console",
+      "Image Converter — S-tier specialist verification",
+      "Related tools"
+    ],
+    "text": "All tools\nProcesses locally\nFavorite\nImage Converter\nIMAGES\n\nConvert mainstream image formats locally, including HEIC/TIFF fallbacks and PDF output.\n\nUpload, choose an output format, convert, download. Files stay on this device. Optional format runtimes are downloaded only when needed; your file content is not sent to them.\nDrop or choose a file\nYour file never leaves this device.\nDetected / source format\nConvert to\nJPG / JPEG\nPNG\nWebP\nAVIF\nGIF (static)\nBMP\nICO\nTIFF\nPDF\nQuality: 90%\nConvert & download\n\nMainstream outputs: JPG, PNG, WebP, AVIF, GIF, BMP, ICO, TIFF, and PDF. HEIC/HEIF and TIFF inputs have lazy decoder fallbacks. Animated inputs use the decoded frame; this converter does not claim animation-preserving GIF/APNG/WebP transcoding.\n\nExpert workspace\n\nScenarios · batch runs · sensitivity · file inspection · live trace\n\nLocal only\nCopy state\nRESTORABLE FIELDS\n3\nSENSITIVE OMITTED\n0\nFILE INPUTS\n1\nFORM VALIDITY\nValid\nScenarios\nBatch & sensitivity\nFile lab · 1\nLive trace\nScenario name\nSave state\nExport JSON\n Snapshots are opt-in and stay in this browser. Password/secret-like fields are omitted automatically.\n\nNo saved scenarios yet. Capture two or more configurations to compare inputs and output changes.\n\nImport a scenario JSON\nProfessional QA console\n\nReproducibility · control map · validation · report export · repeatability\n\nConsole stays local\nCONTROLS\n5\nWRITABLE\n4\nINVALID\n0\nUNNAMED\n0\nDUPLICATE IDS\n0\nFINGERPRINT\n02b88edf17\nQA report\nControl map\nRepeatability\nCurrent quality gate\nNative form validity: clean\nProgrammatic control names: clean\nDuplicate element IDs: none detected\nVisible output capture: 616 characters / 2 lines\nSensitive values omitted: 0\nReproducibility fingerprint\n02b88edf176769d2\n\nThe fingerprint covers the current non-sensitive control state and captured visible output. The capture timestamp is excluded, so identical states produce the same fingerprint.\n\nCopy Markdown report\nMarkdown\nJSON\nR17 S-TIER SPECIALIST CORE\nImage Converter — S-tier specialist verification\n\nproduction fidelity & export lab. This layer is deliberately route-specific: it adds measurable acceptance gates, stress scenarios, intermediate evidence and reproducible verification to an already mature tool.\n\nProduction scenario\nWidth / rate\nHeight / secondary rate\nQuality / scale (%)\nPRIMARY DIMENSIONS/RATES\n1920 × 1080\nPIXEL/SAMPLE PRODUCT\n2,073,600\nSCALE / QUALITY\n80%\nRGBA MEMORY PROXY\n7.91 MiB\nASPECT / RATE RATIO\n1.77778\nSCALED OUTPUT PROXY\n1536 × 864\nSCENARIO FINGE",
+    "success": true
+  },
+  {
+    "tool": "qr-studio",
+    "url": "https://thiepn.dev/tools/#/tool/qr-studio",
+    "status": 200,
+    "headings": [
+      "QR Code Studio & Scanner",
+      "Expert workspace",
+      "Professional QA console",
+      "Related tools"
+    ],
+    "text": "All tools\nProcesses locally\nSend output to…\nFavorited\nQR Code Studio & Scanner\nEVERYDAY\n\nGenerate high-resolution custom QR codes and scan codes via camera or image files locally.\n\nCreate QR Code\nScan QR Code\nSELECT CONTENT TYPE\nPlain Text\nWebsite URL\nWi-Fi Network\nEmail\nPhone Call\nSMS Message\nContact vCard\nPlain Text Message\nQR APPEARANCE & COLORS\nForeground\n#000000\nBackground\n#FFFFFF\nError Correction\nL (7% recovery)\nM (15% standard)\nQ (25% high)\nH (30% best)\nQuiet Margin\n0 (No border)\n1 module\n2 modules\n4 (Standard)\nDownload PNG\nDownload SVG\nCopy QR Image\nExpert workspace\n\nScenarios · batch runs · sensitivity · file inspection · live trace\n\nLocal only\nCopy state\nRESTORABLE FIELDS\n5\nSENSITIVE OMITTED\n0\nFILE INPUTS\n0\nFORM VALIDITY\nValid\nScenarios\nBatch & sensitivity\nFile lab\nLive trace\nScenario name\nSave state\nExport JSON\n Snapshots are opt-in and stay in this browser. Password/secret-like fields are omitted automatically.\n\nNo saved scenarios yet. Capture two or more configurations to compare inputs and output changes.\n\nImport a scenario JSON\nProfessional QA console\n\nReproducibility · control map · validation · report export · repeatability\n\nConsole stays local\nCONTROLS\n17\nWRITABLE\n5\nINVALID\n0\nUNNAMED\n0\nDUPLICATE IDS\n0\nFINGERPRINT\nde7c7d3bd6\nQA report\nControl map\nRepeatability\nCurrent quality gate\nNative form validity: clean\nProgrammatic control names: clean\nDuplicate element IDs: none detected\nVisible output capture: 405 characters / 1 lines\nSensitive values omitted: 0\nReproducibility fingerprint\nde7c7d3bd61111cc\n\nThe fingerprint covers the current non-sensitive control state and captured visible output. The capture timestamp is excluded, so identical states produce the same fingerprint.\n\nCopy Markdown report\nMarkdown\nJSON\nRELATED TOOLS\nURL & Base64 Tools\nDeveloper\nEncode/decode URLs, parse and edit query parameters, and convert UTF-8 strings to and from Base64. Includes expert scenarios plus a professional QA console for reproducibility fingerprints, control-level validation, repeatability checks, and exportable reports.\nPassword & Passphrase Generator\nDeveloper\nCryptographically secure passwords, EFF multi-word passphrases, PINs, and entropy calculation.\nImage Optimizer & Converter\nImages\nCompress, resize, and convert images between WebP, JPEG, and PNG client-side with instant before/after preview.",
+    "success": true
+  }
+]
