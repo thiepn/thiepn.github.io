@@ -1,0 +1,25 @@
+---
+import type { ProjectEntry } from '../../lib/catalogue';
+import { presentation } from '../../lib/showcase';
+import ProjectMedia from './ProjectMedia.astro';
+interface Props { project: ProjectEntry; lead?: boolean; priority?: boolean; heading?: 'h2' | 'h3'; }
+const { project, lead = false, priority = false, heading = 'h3' } = Astro.props;
+const p = project.data, view = presentation(project), Heading = heading;
+const details = `/project/${p.slug}/`;
+---
+<article class:list={['exhibit', `exhibit--${view.tone}`, lead && 'exhibit--lead']} data-project={p.slug}>
+  <a class="exhibit__media" href={lead && p.liveUrl ? p.liveUrl : details} aria-label={lead ? view.action : `Explore ${p.title}`}>
+    <ProjectMedia src={view.media} alt={view.caption} priority={priority} sizes={lead ? '(max-width: 700px) calc(100vw - 40px), (max-width: 1300px) 60vw, 800px' : '(max-width: 700px) calc(100vw - 40px), (max-width: 1300px) 50vw, 680px'} />
+  </a>
+  <div class="exhibit__copy">
+    {lead && <p class="eyebrow">Start here</p>}
+    <Heading><a href={details}>{p.title}</a></Heading>
+    {lead && <p class="exhibit__line">{view.line}</p>}
+    <p class="exhibit__summary">{view.summary}</p>
+    {(p.status !== 'live' || p.platforms.length === 1) && <p class="availability">{p.status !== 'live' ? `${p.status === 'beta' ? 'Beta — still being developed' : p.status}` : ''}{p.status !== 'live' && p.platforms.length === 1 ? ' · ' : ''}{p.platforms.length === 1 && p.platforms[0] === 'desktop' ? 'Keyboard required' : ''}</p>}
+    <div class="actions">
+      {p.liveUrl && !p.unavailable && <a class:list={[lead ? 'button button--light' : 'action-link']} href={p.liveUrl}>{view.action}<span aria-hidden="true">↗</span></a>}
+      <a class={lead ? 'action-link' : 'quiet-link'} href={details}>{lead ? 'Inside the project' : 'Project story'}<span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</article>

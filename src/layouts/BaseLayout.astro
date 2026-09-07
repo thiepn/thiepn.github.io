@@ -1,22 +1,22 @@
 ---
-import { getCollection } from 'astro:content';
 import PrivacyAnalytics from '../components/analytics/PrivacyAnalytics.astro';
 import SiteHeader from '../components/shell/SiteHeader.astro';
 import SiteFooter from '../components/shell/SiteFooter.astro';
 import CatalogueSearch from '../components/search/CatalogueSearch.astro';
+import { showcase, selectProjects } from '../lib/showcase';
 import { SITE } from '../data/site';
-import { getCatalogueStats, getCollections, getPublicProjects } from '../lib/catalogue';
+import { getCollections, getPublicProjects } from '../lib/catalogue';
 import { buildStructuredGraph, serializeStructuredData } from '../lib/structured-data';
-import '@fontsource-variable/instrument-sans/wght.css';
+
 import '@fontsource/ibm-plex-mono/latin-500.css';
-import '@fontsource/ibm-plex-mono/latin-600.css';
-import '../styles/global.css';
+
+import '../styles/studio.css';
 interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; ogImageAlt?: string; noindex?: boolean; }
 const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage, ogImageAlt, noindex = false } = Astro.props;
-const stats = await getCatalogueStats();
+
 const pathname = Astro.url.pathname;
 const canonicalUrl = new URL(pathname, SITE.url).href;
-const sectionOgImage = pathname === '/projects/' ? '/og/projects.png'
+const sectionOgImage = (pathname === '/projects/' || pathname === '/work/') ? '/og/projects.png'
   : pathname === '/books/' ? '/og/books.png'
   : pathname === '/collections/' ? '/og/collections.png'
   : '/og/index.png';
@@ -27,19 +27,17 @@ const socialImageAlt = ogImageAlt ?? `${title} social card`;
 
 let structuredProject;
 let structuredProjects;
-let structuredBooks;
 let structuredCollection;
 let structuredCollections;
 let structuredPageType: 'WebPage' | 'CollectionPage' | 'AboutPage' | undefined;
 if (!noindex && pathname.startsWith('/project/')) {
   const slug = pathname.split('/').filter(Boolean)[1];
   structuredProject = (await getPublicProjects()).find((entry) => entry.data.slug === slug)?.data;
-} else if (!noindex && pathname === '/projects/') {
-  structuredProjects = (await getPublicProjects()).map((entry) => entry.data);
+} else if (!noindex && (pathname === '/projects/' || pathname === '/work/')) {
+  const publicProjects = await getPublicProjects();
+  structuredProjects = (pathname === '/work/' ? selectProjects(publicProjects, showcase.work) : publicProjects).map((entry) => entry.data);
 } else if (!noindex && pathname === '/books/') {
-  structuredBooks = (await getCollection('books'))
-    .sort((a, b) => b.data.lastUpdated.getTime() - a.data.lastUpdated.getTime())
-    .map((entry) => entry.data);
+  structuredPageType = 'CollectionPage';
 } else if (!noindex && pathname.startsWith('/collection/')) {
   const slug = pathname.split('/').filter(Boolean)[1];
   structuredCollection = (await getCollections()).find((entry) => entry.data.slug === slug)?.data;
@@ -57,7 +55,6 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
   pageType: structuredPageType,
   project: structuredProject,
   projects: structuredProjects,
-  books: structuredBooks,
   collection: structuredCollection,
   collections: structuredCollections,
 }));
@@ -67,7 +64,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#F4F1EA" />
+    <meta name="theme-color" content="#F7F7F2" />
     <meta name="color-scheme" content="light dark" />
     <meta name="referrer" content="strict-origin" />
     <meta name="application-name" content="THIEPN" />
@@ -106,7 +103,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
         const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const resolved = preference === 'system' ? (dark ? 'dark' : 'light') : preference;
         const root = document.documentElement; root.classList.add('js'); root.dataset.theme = resolved; root.dataset.themePreference = preference; root.style.colorScheme = resolved;
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#0F141A' : '#F4F1EA');
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#101715' : '#F7F7F2');
       })();
     </script>
   </head>
@@ -114,9 +111,9 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     <a class="skip-link" href="#main-content">Skip to main content</a>
     {!hideHeader && <SiteHeader />}
     <main id="main-content" tabindex="-1"><slot /></main>
-    {!hideFooter && <SiteFooter count={stats.totalListed} />}
+    {!hideFooter && <SiteFooter  />}
     <CatalogueSearch />
-    <script>import '../scripts/runtime-loader';</script>
+    <script>import '../scripts/catalogue-search-bootstrap';</script>
     <PrivacyAnalytics noindex={noindex} />
   </body>
 </html>

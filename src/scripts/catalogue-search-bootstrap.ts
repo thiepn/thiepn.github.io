@@ -6,13 +6,18 @@ interface SearchOpenDetail {
 let modulePromise: Promise<typeof import('./catalogue-search')> | null = null;
 
 function loadSearch() {
-  modulePromise ??= import('./catalogue-search');
+  modulePromise ??= import('./catalogue-search').catch(error => { modulePromise = null; throw error; });
   return modulePromise;
 }
 
 async function open(detail: SearchOpenDetail = {}) {
-  const module = await loadSearch();
-  await module.openCatalogueSearch(detail);
+  try {
+    const module = await loadSearch();
+    await module.openCatalogueSearch(detail);
+  } catch {
+    // The static archive remains usable when a split chunk cannot load.
+    location.assign('/projects/');
+  }
 }
 
 function getOpenSearchDialog() {

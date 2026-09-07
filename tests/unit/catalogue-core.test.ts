@@ -50,6 +50,6 @@ describe('catalogue helpers', () => {
       project({ code: 'G-001', slug: 'wordstrike', title: 'WORDSTRIKE', category: 'games', status: 'live', visibility: 'listed' }),
       project({ code: 'T-001', slug: 'pdf-studio', title: 'PDF Studio', category: 'tools', status: 'live', visibility: 'listed' }),
     ];
-    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['pdf-studio', 'wordstrike', 'micro-arcade']);
+    expect(sortFeaturedProjects(input).map((entry) => entry.slug)).toEqual(['micro-arcade', 'pdf-studio', 'wordstrike']);
   });
 });

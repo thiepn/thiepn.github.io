@@ -8,25 +8,20 @@ const active = (href: string) => {
   if (href === '/about/') return path.startsWith('/about/');
   return path.startsWith(href);
 };
-const items = [
-  ['Home', '/'],
-  ['Projects', '/projects/'],
-  ['Collections', '/collections/'],
-  ['About', '/about/'],
-] as const;
+const items: [string,string][] = [['Work', '/work/'], ['Library', '/library/'], ['About', '/about/'], ['All projects', '/projects/']];
 ---
 <div class="mobile-menu" data-mobile-menu>
   <button class="mobile-menu__trigger" type="button" data-mobile-menu-open aria-haspopup="dialog" aria-controls="mobile-navigation">Menu</button>
   <dialog class="mobile-menu__dialog" id="mobile-navigation" data-mobile-menu-dialog aria-labelledby="mobile-menu-title">
     <div class="mobile-menu__surface">
       <header class="mobile-menu__header">
-        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN portfolio home">thiepn</a>
+        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN portfolio home">THIEPN.</a>
         <button class="mobile-menu__close" type="button" data-mobile-menu-close aria-label="Close navigation menu">Close</button>
       </header>
       <div class="mobile-menu__index">
         <p class="meta" id="mobile-menu-title">Navigation</p>
         <a class="mobile-menu__search" href="/projects/" data-catalogue-search-open>
-          <span><small>Find anything</small><strong>Search portfolio</strong></span>
+          <span><small>Find anything</small><strong>Search the work</strong></span>
           <i aria-hidden="true">⌕</i>
         </a>
         <nav aria-label="Mobile navigation">
@@ -45,7 +40,7 @@ const items = [
   </dialog>
   <noscript>
     <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
-      <a href="/">Home</a><a href="/projects/">Projects</a><a href="/collections/">Collections</a><a href="/about/">About</a>
+      <a href="/work/">Work</a><a href="/library/">Library</a><a href="/about/">About</a>
     </nav>
   </noscript>
 </div>

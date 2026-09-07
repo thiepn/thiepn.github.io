@@ -1,0 +1,13 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectExhibit from '../../components/studio/ProjectExhibit.astro';
+import { getPublicProjects } from '../../lib/catalogue';
+import { showcase, selectProjects } from '../../lib/showcase';
+const projects = selectProjects(await getPublicProjects(), showcase.work);
+---
+<BaseLayout title="Selected work — THIEPN" description="A selection of games, browser tools, learning systems and interactive projects by Jonathan.">
+<div class="page-shell page-content"><header class="page-intro"><p class="eyebrow">Selected work</p><h1>Made to be used.</h1><div class="page-intro__bottom"><p>A few good places to start, from small games to tools for bigger projects.</p><a class="action-link" href="/projects/">All projects <span aria-hidden="true">→</span></a></div></header>
+<div class="work-gallery">{projects.map((project,index) => <ProjectExhibit project={project} heading="h2" priority={index < 2}/>)}</div>
+<section class="archive-invitation"><div><h2>There’s more in the workshop.</h2><p>Earlier work, learning tools and experiments live in the complete archive.</p></div><div class="actions"><a class="button" href="/projects/">Explore all projects <span aria-hidden="true">→</span></a><a class="quiet-link" href="/projects/?sort=newest">Newest additions</a></div></section>
+</div>
+</BaseLayout>

@@ -26,7 +26,7 @@ function getPayload(): Promise<SearchPayload> {
   }).then(async (response) => {
     if (!response.ok) throw new Error(`Search index request failed: ${response.status}`);
     return await response.json() as SearchPayload;
-  });
+  }).catch(error => { payloadPromise = null; throw error; });
   return payloadPromise;
 }
 
@@ -63,7 +63,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
 
   async function ensurePayload() {
     if (payload) return payload;
-    statusEl.textContent = 'Loading portfolio search…';
+    statusEl.textContent = 'Loading search…';
     resultsEl.setAttribute('aria-busy', 'true');
     try {
       payload = await getPayload();
@@ -107,9 +107,6 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     option.style.setProperty('--result-accent-light', item.kind === 'project' ? item.accentLight : 'var(--line-strong)');
     option.style.setProperty('--result-accent-dark', item.kind === 'project' ? item.accentDark : 'var(--line-strong)');
 
-    const code = document.createElement('span');
-    code.className = 'catalogue-search__result-code';
-    code.textContent = item.kind === 'book' ? 'BOOK' : item.code;
     const copy = document.createElement('span'); copy.className = 'catalogue-search__result-copy';
     const title = document.createElement('strong'); title.textContent = item.title;
     const descriptor = document.createElement('small');
@@ -118,7 +115,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     const type = document.createElement('span');
     type.className = 'catalogue-search__result-type';
     type.textContent = item.kind === 'project' ? item.category : item.kind;
-    option.append(code, copy, type);
+    option.append(copy, type);
     option.addEventListener('pointermove', () => {
       if (selectedIndex !== index) { selectedIndex = index; syncSelection(); }
     });
@@ -131,9 +128,9 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     empty.className = 'catalogue-search__empty';
     const title = document.createElement('strong'); title.textContent = 'No matching work.';
     const copy = document.createElement('p'); copy.textContent = query
-      ? `Nothing matched “${query}”. Try a broader topic, title, subject, or project code.`
-      : 'Search by title, topic, subject, or project code.';
-    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse project directory →';
+      ? `Nothing matched “${query}”. Try a project name or a broader topic.`
+      : 'Search by project name or topic.';
+    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse all projects →';
     empty.append(title, copy, browse);
     return empty;
   }
@@ -146,7 +143,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     if (ranked.length) resultsEl.replaceChildren(...ranked.map(({ item }, index) => buildResult(item, index)));
     else resultsEl.replaceChildren(buildEmpty(query));
 
-    if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} featured projects`;
+    if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} suggested projects`;
     else if (!ranked.length) statusEl.textContent = '0 matches';
     else {
       const counts = ranked.reduce((current, { item }) => {
@@ -190,7 +187,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       render();
     } catch {
       resultsEl.setAttribute('aria-busy', 'false');
-      statusEl.textContent = 'Portfolio search is unavailable.';
+      statusEl.textContent = 'Search is temporarily unavailable. Close it and try again, or browse all projects.';
       resultsEl.replaceChildren(buildEmpty(inputEl.value.trim()));
     }
     requestAnimationFrame(() => inputEl.focus());
