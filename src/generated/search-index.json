@@ -331,8 +331,8 @@
       "code": "G-012",
       "slug": "micro-arcade",
       "title": "Micro Arcade",
-      "subtitle": "31 instant-play browser games",
-      "summary": "A 31-game browser arcade with instant play, offline PWA support, local progression, multi-input controls, achievements, and optional global leaderboards.",
+      "subtitle": "Instant-play browser games",
+      "summary": "A browser arcade with instant play, offline PWA support, local progression, multi-input controls, achievements, and optional global leaderboards.",
       "aliases": [
         "micro arcade",
         "arcade",

@@ -49,9 +49,9 @@ dateAdded: '2026-08-26'
 yearAdded: 2026
 capabilities:
 - title: A varied arcade library
-  description: Jump between thirty-one distinct mini-games from one unified browser-native arcade shell without installing separate titles.
+  description: Jump between distinct mini-games from one unified browser-native arcade shell without installing separate titles.
 - title: Offline-first play
-  description: Install the arcade as a PWA and keep the game shell, lazy-loaded game chunks, local progress, favorites, and high scores available offline.
+  description: Install the arcade as a PWA. The shell and previously loaded game assets can be reused offline, while progress and high scores stay in this browser.
 - title: Flexible controls
   description: Support keyboard, mouse, touch, on-screen controls, and a Gamepad API bridge so the same collection remains playable across device classes.
 - title: Progress and competition

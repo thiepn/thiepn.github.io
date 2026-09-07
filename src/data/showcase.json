@@ -1,17 +1,109 @@
 {
   "hero": "micro-arcade",
-  "homeTools": ["pdf-studio", "manuscript"],
-  "homeGames": ["wordstrike", "the-bible-challenge"],
-  "work": ["micro-arcade", "pdf-studio", "manuscript", "wordstrike", "the-bible-challenge", "mathlab", "unreached", "artikelwerk", "voidcut"],
+  "homeTools": [
+    "pdf-studio",
+    "manuscript"
+  ],
+  "homeGames": [
+    "wordstrike",
+    "the-bible-challenge"
+  ],
+  "work": [
+    "micro-arcade",
+    "pdf-studio",
+    "manuscript",
+    "wordstrike",
+    "the-bible-challenge",
+    "mathlab",
+    "unreached",
+    "artikelwerk",
+    "voidcut"
+  ],
   "projects": {
-    "micro-arcade": {"tier": "showcase", "line": "Pick a game. Press play.", "summary": "A collection of small browser games, with quick starts and plenty of reasons to come back.", "media": "/projects/micro-arcade/screenshot-gameplay.png", "caption": "Orbit, one of the games in Micro Arcade.", "tone": "arcade", "action": "Play Micro Arcade", "note": "Local play works on its own. Global leaderboards depend on the optional online service."},
-    "pdf-studio": {"tier": "showcase", "line": "Your documents. Your workspace.", "summary": "Edit, annotate and organize PDFs in your browser.", "media": "/projects/pdf-studio/screenshot-workspace.png", "caption": "A sample document open in the PDF Studio workspace.", "tone": "paper", "action": "Open PDF Studio"},
-    "manuscript": {"tier": "standard", "line": "From draft to document.", "summary": "Write in Markdown. Shape it into something worth reading.", "media": "/projects/manuscript/capture.jpg", "caption": "The Manuscript publishing studio landing page.", "tone": "sand", "action": "Open Manuscript"},
-    "wordstrike": {"tier": "showcase", "line": "Your keyboard is the controller.", "summary": "An arcade typing game where accuracy keeps you alive.", "media": "/projects/wordstrike/screenshot-desktop.png", "caption": "The WORDSTRIKE start screen. A keyboard is required to play.", "tone": "night", "action": "Play WORDSTRIKE", "note": "Designed for a desktop or laptop with a keyboard."},
-    "the-bible-challenge": {"tier": "showcase", "line": "How much do you remember?", "summary": "Explore the Bible through questions, collections and replayable challenges.", "media": "/projects/the-bible-challenge/screenshot-desktop.png", "caption": "The Bible Challenge home and practice entry points.", "tone": "blue", "action": "Play The Bible Challenge"},
-    "mathlab": {"tier": "standard", "line": "Work the problem. See the mathematics.", "summary": "An interactive workspace for mathematical exploration and practice.", "media": "/projects/mathlab/capture.jpg", "caption": "MathLab’s mathematical workspace. This project is in beta.", "tone": "paper", "action": "Explore MathLab"},
-    "unreached": {"tier": "standard", "line": "A map with a different question.", "summary": "Explore peoples, languages and access to Scripture in a world mission atlas.", "media": "/projects/unreached/capture.jpg", "caption": "The Unreached world atlas. This project is in beta.", "tone": "sage", "action": "Explore Unreached", "note": "A developing visualization, not a definitive measure of an individual’s faith or access. Check the atlas’s data notes and limitations."},
-    "artikelwerk": {"tier": "standard", "line": "Der, die or das?", "summary": "Deliberate German noun-gender practice, one decision at a time.", "media": "/projects/artikelwerk/capture.jpg", "caption": "Artikelwerk’s German vocabulary practice interface.", "tone": "sand", "action": "Try Artikelwerk"},
-    "voidcut": {"tier": "standard", "line": "Make the cut.", "summary": "A precision arcade game about cutting space and protecting moving nodes.", "media": "/projects/voidcut/screenshot-desktop.png", "caption": "The VOIDCUT browser game.", "tone": "sand", "action": "Play VOIDCUT"}
+    "micro-arcade": {
+      "tier": "showcase",
+      "line": "Pick a game. Press play.",
+      "summary": "A collection of small browser games, with quick starts and plenty of reasons to come back.",
+      "media": "/projects/micro-arcade/screenshot-gameplay.png",
+      "caption": "Orbit, one of the games in Micro Arcade.",
+      "tone": "arcade",
+      "action": "Play Micro Arcade",
+      "note": "Local play works on its own. Global leaderboards depend on the optional online service."
+    },
+    "pdf-studio": {
+      "tier": "showcase",
+      "line": "Your documents. Your workspace.",
+      "summary": "Edit, annotate and organize PDFs in your browser.",
+      "media": "/projects/pdf-studio/screenshot-workspace.png",
+      "caption": "A sample document open in the PDF Studio workspace.",
+      "tone": "paper",
+      "action": "Open PDF Studio",
+      "note": "Release candidate. Keep original documents and check exported files before relying on them."
+    },
+    "manuscript": {
+      "tier": "standard",
+      "line": "From draft to document.",
+      "summary": "Write in Markdown. Shape it into something worth reading.",
+      "media": "/projects/manuscript/capture.jpg",
+      "caption": "The Manuscript publishing studio landing page.",
+      "tone": "sand",
+      "action": "Open Manuscript"
+    },
+    "wordstrike": {
+      "tier": "showcase",
+      "line": "Your keyboard is the controller.",
+      "summary": "An arcade typing game where accuracy keeps you alive.",
+      "media": "/projects/wordstrike/screenshot-desktop.png",
+      "caption": "The WORDSTRIKE start screen. A keyboard is required to play.",
+      "tone": "night",
+      "action": "Play WORDSTRIKE",
+      "note": "Designed for a desktop or laptop with a keyboard."
+    },
+    "the-bible-challenge": {
+      "tier": "showcase",
+      "line": "How much do you remember?",
+      "summary": "Explore the Bible through questions, collections and replayable challenges.",
+      "media": "/projects/the-bible-challenge/screenshot-desktop.png",
+      "caption": "The Bible Challenge home and practice entry points.",
+      "tone": "blue",
+      "action": "Play The Bible Challenge"
+    },
+    "mathlab": {
+      "tier": "standard",
+      "line": "Work the problem. See the mathematics.",
+      "summary": "An interactive workspace for mathematical exploration and practice.",
+      "media": "/projects/mathlab/capture.jpg",
+      "caption": "MathLab’s mathematical workspace. This project is in beta.",
+      "tone": "paper",
+      "action": "Explore MathLab"
+    },
+    "unreached": {
+      "tier": "standard",
+      "line": "A map with a different question.",
+      "summary": "Explore peoples, languages and access to Scripture in a world mission atlas.",
+      "media": "/projects/unreached/capture.jpg",
+      "caption": "The Unreached world atlas. This project is in beta.",
+      "tone": "sage",
+      "action": "Explore Unreached",
+      "note": "A developing visualization, not a definitive measure of an individual’s faith or access. Check the atlas’s data notes and limitations."
+    },
+    "artikelwerk": {
+      "tier": "standard",
+      "line": "Der, die or das?",
+      "summary": "Deliberate German noun-gender practice, one decision at a time.",
+      "media": "/projects/artikelwerk/capture.jpg",
+      "caption": "Artikelwerk’s German vocabulary practice interface.",
+      "tone": "sand",
+      "action": "Try Artikelwerk"
+    },
+    "voidcut": {
+      "tier": "standard",
+      "line": "Make the cut.",
+      "summary": "A precision arcade game about cutting space and protecting moving nodes.",
+      "media": "/projects/voidcut/screenshot-desktop.png",
+      "caption": "The VOIDCUT browser game.",
+      "tone": "sand",
+      "action": "Play VOIDCUT"
+    }
   }
 }

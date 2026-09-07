@@ -64,3 +64,7 @@ maintained book inventory from stale root-repository records. `/books/` is a com
 Root-preview tests proxy the actual Library cover assets; they do not mock project interfaces.
 
 See [the redesign specification](docs/STUDIO_REDESIGN.md). The historical launch manifest remains intact.
+
+## Social-image regeneration
+
+After changing a project subtitle, title or accent, run `npx playwright install chromium`, then `node scripts/rasterize-og.mjs` and `npm run catalogue:refresh`. Commit the updated `public/og` images and `src/generated` records. The build deliberately rejects stale social-image derivatives rather than sharing outdated content.
