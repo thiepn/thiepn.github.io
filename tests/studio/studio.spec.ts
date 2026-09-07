@@ -2,15 +2,27 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const routes: {routes:string[]} = JSON.parse(fs.readFileSync('src/generated/route-manifest.json','utf8'));
 const config: {hero:string;work:string[];projects:Record<string,{media:string}>} = JSON.parse(fs.readFileSync('src/data/showcase.json','utf8'));
-// The Library is a separate deployed application. Proxy only its two real cover assets
-// for root-site preview; no mocked project UI or hidden failed media.
+// Fetch the separately deployed Library's real public covers once per worker.
+// Preview serves those exact bytes; no invented or mocked product UI.
+const libraryAssets = new Map<string, {body: Buffer; contentType: string}>();
+test.beforeAll(async({playwright})=>{
+ const request=await playwright.request.newContext();
+ try {
+  for(const path of ['/library/media/works/choosing-a-mission-organization/cover.svg','/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp']){
+   const response=await request.get('https://thiepn.dev'+path,{timeout:30000});
+   expect(response.status()).toBe(200);
+   libraryAssets.set(path,{body:await response.body(),contentType:response.headers()['content-type']||'application/octet-stream'});
+  }
+ } finally {await request.dispose();}
+});
 test.beforeEach(async({page})=>{
  await page.route('**/library/media/**',async route=>{
-   const path=new URL(route.request().url()).pathname;
-   const response=await page.request.get('https://thiepn.dev'+path);
-   await route.fulfill({response});
+  const asset=libraryAssets.get(new URL(route.request().url()).pathname);
+  if(!asset)throw new Error('Unexpected Library media URL');
+  await route.fulfill({status:200,...asset});
  });
 });
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:'wait'});});
 for(const width of [320,375,768,1440,1920])for(const theme of ['light','dark'] as const){
  test(`home hierarchy and layout ${width} ${theme}`,async({page})=>{
   await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:theme});await page.goto('/');
@@ -31,7 +43,7 @@ for(const route of routes.routes.filter(x=>!x.endsWith('.json'))){
   expect(await page.locator('meta[name="description"]').getAttribute('content')).toBeTruthy();
   for(const text of await page.locator('script[type="application/ld+json"]').allTextContents())expect(()=>JSON.parse(text)).not.toThrow();
   await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=700){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,40));}});
-  await page.waitForFunction(()=>[...document.images].every(img=>img.complete),{},{timeout:15000});
+  for(const image of await page.locator('img').all()){await image.scrollIntoViewIfNeeded();await expect(image).toHaveJSProperty('complete',true,{timeout:15000});}
   const broken=await page.locator('img').evaluateAll(es=>es.filter(e=>!(e as HTMLImageElement).naturalWidth).map(e=>e.getAttribute('src')));expect(broken).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
  });

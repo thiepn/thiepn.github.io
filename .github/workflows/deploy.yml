@@ -50,7 +50,7 @@ jobs:
         with:
           node-version: 24
           package-manager: npm@11
-          build-cmd: npm run build:enriched
+          build-cmd: npm run validate && npm run typecheck && npm test && npm run build:enriched
 
   deploy:
     needs: build
