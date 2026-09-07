@@ -49,7 +49,7 @@ async function record(name, url, action, options = {}) {
     const c = row.crop;
     const crop = [c.width,c.height,c.x,c.y].map(v=>Math.floor(v/2)*2);
     const target = `public/projects/micro-arcade/breakout-demo.mp4`;
-    execFileSync('ffmpeg',['-y','-ss',String(row.videoStart || 3),'-i',raw,'-t','6','-an','-vf',`crop=${crop.join(':')},scale=960:-2`,'-r','24','-c:v','libx264','-preset','slow','-crf','26','-pix_fmt','yuv420p','-movflags','+faststart',target],{stdio:'ignore'});
+    execFileSync('ffmpeg',['-y','-ss',String(row.videoStart || 3),'-i',raw,'-t','2','-an','-vf',`crop=${crop.join(':')},scale=960:-2`,'-r','24','-c:v','libx264','-preset','slow','-crf','26','-pix_fmt','yuv420p','-movflags','+faststart',target],{stdio:'ignore'});
     row.video = '/projects/micro-arcade/breakout-demo.mp4';
   }
   records.push(row);
@@ -58,13 +58,8 @@ async function record(name, url, action, options = {}) {
 await record('arcade-breakout','https://thiepn.dev/arcade/',async(page,row,began)=>{
   await page.locator('#play-btn-breakout').click();
   await page.locator('canvas').first().waitFor();
-  await page.waitForTimeout(700);
   row.videoStart=(Date.now()-began)/1000;
-  const box=await page.locator('canvas').first().boundingBox();
-  for(let i=0;i<12;i++){
-    await page.mouse.move(box.x+box.width*(.5+.24*Math.sin(i*.7)),box.y+box.height*.9);
-    await page.waitForTimeout(240);
-  }
+  await page.waitForTimeout(250);
 },{slug:'micro-arcade',file:'showcase-breakout',canvas:true,video:true});
 await record('arcade-blockdrop','https://thiepn.dev/arcade/',async page=>{
   await page.locator('#play-btn-blockdrop').click();await page.locator('canvas').first().waitFor();
@@ -81,7 +76,11 @@ await record('tiny-tools-json','https://thiepn.dev/tools/#/tool/json-formatter',
   const input=page.locator('textarea').first();await input.waitFor();await input.fill('{"project":"Tiny Tools","processing":"local","tasks":["clean text","format data","convert files"]}');await page.waitForTimeout(500);
 },{slug:'tiny-tools',file:'showcase-json'});
 await record('manuscript','https://thiepn.dev/manuscript/',async page=>{
-  await page.getByRole('button',{name:'Start Writing',exact:true}).click();await page.waitForTimeout(1500);
+  await page.getByRole('button',{name:'Start Writing',exact:true}).click();await page.waitForTimeout(600);
+  const blank=page.locator('[data-action=onboarding-blank]');if(await blank.isVisible())await blank.click();
+  await page.waitForFunction(()=>document.documentElement.dataset.screen==='editor');
+  const split=page.locator('[data-workspace=split]');if(await split.count())await split.click();
+  await page.waitForTimeout(700);
   const editable=page.locator('.cm-content[contenteditable=true]').first();
   if(await editable.count()){
     await editable.click();await page.keyboard.press('Control+a');await page.keyboard.insertText('# A field guide to curiosity\n\nSmall experiments are a way of asking better questions. A useful tool begins with a real task, a clear constraint, and a willingness to try again.\n\n## Start with something concrete\n\nChoose one question. Make the smallest working version. Use it long enough to discover what the first sketch missed.\n\n> The interesting part is what happens between the idea and the thing you can use.\n\n## Three questions worth keeping\n\n| Question | What it reveals |\n| --- | --- |\n| Who is this for? | The person, not the feature list |\n| What can they do? | An outcome, not a promise |\n| What can go wrong? | The boundary of the design |\n\n## Keep the evidence\n\nA short record of the choices, the compromises, and the result is often more useful than a long list of features.');
@@ -93,7 +92,8 @@ await record('pdf-studio','https://thiepn.dev/pdf/',async page=>{
 },{slug:'pdf-studio',file:'showcase-workspace'});
 await record('wordstrike','https://thiepn.dev/wordstrike/',async page=>{
   const close=page.getByRole('button',{name:'Close tutorial'});if(await close.count())await close.click();
-  await page.getByRole('button',{name:'START',exact:true}).click();await page.waitForTimeout(1200);
+  await page.getByRole('button',{name:'START',exact:true}).click();await page.waitForTimeout(400);
+  await page.locator('button:visible').filter({hasText:/ENDLESS/}).first().click();await page.waitForTimeout(800);
   // Capture the actual play configuration if the game intentionally requires a mode choice.
   const play=page.getByRole('button',{name:/^PLAY$|^START GAME$|^START RUN$|^BEGIN$/i}).filter({visible:true}).first();
   if(await play.count())await play.click();await page.waitForTimeout(2400);
@@ -101,7 +101,7 @@ await record('wordstrike','https://thiepn.dev/wordstrike/',async page=>{
 await record('the-bible-challenge','https://thiepn.dev/tbc/',async page=>{
   const beginner=page.getByRole('button',{name:/^1\s*Beginner/}).filter({visible:true}).first();
   if(await beginner.count())await beginner.click();await page.waitForTimeout(500);
-  const quick=page.getByRole('button',{name:'Quick Play',exact:true}).filter({visible:true}).first();
+  const quick=page.locator('button:visible').filter({hasText:/^Quick Play$/}).first();
   await quick.click();await page.waitForTimeout(1400);
 },{slug:'the-bible-challenge',file:'showcase-question'});
 await browser.close();
