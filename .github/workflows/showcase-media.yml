@@ -1,0 +1,37 @@
+name: Showcase media
+on:
+  push:
+    branches: [design/showcase-tiny-tools]
+    paths: ['.github/workflows/showcase-media.yml','scripts/capture-showcase-media.mjs']
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/showcase-tiny-tools
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/capture-showcase-media.mjs
+      - name: Commit genuine assets
+        run: |
+          mkdir -p docs/showcase
+          cp showcase-media-evidence/manifest.json docs/showcase/media-provenance.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/projects docs/showcase/media-provenance.json
+          if ! git diff --cached --quiet; then git commit -m 'feat: add real gameplay, tool and publishing workflow captures'; git push origin HEAD:design/showcase-tiny-tools; fi
+          tar -czf showcase-media-evidence/updated-media.tar.gz public/projects docs/showcase/media-provenance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: showcase-media
+          path: showcase-media-evidence/
+          retention-days: 7
