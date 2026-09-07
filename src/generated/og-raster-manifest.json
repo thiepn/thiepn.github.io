@@ -5,127 +5,127 @@
   "entries": {
     "artikelwerk.svg": {
       "png": "artikelwerk.png",
-      "sha256": "b0d243c141bffa8fa6127afb7adf4572ced76884b8148caafe1508db49945804"
+      "sha256": "236b67f86802fe35496eba4c6fdb4d52708d98c1a0f3511de54ec88b94387c17"
     },
     "biblical-greek.svg": {
       "png": "biblical-greek.png",
-      "sha256": "995d300e5d9b5b5dcd6a702fa716cd7d1bb7041bb0b77168dcc0fe8aa08cef3b"
+      "sha256": "ed0d8afefa7652ffb06050209278c82ba0fe23863c8769f8d31899ff8ec9b8f8"
     },
     "books.svg": {
       "png": "books.png",
-      "sha256": "eb54376c8bf765c6db6840497c70f3b23bf33e6132530a0c48d513f737b8f504"
+      "sha256": "1de4c3d51b2d49b58b994fd1830599e99a9b856464f4191a04c2a999567767a3"
     },
     "clean30.svg": {
       "png": "clean30.png",
-      "sha256": "eb9e5ad7bf36dfca2c62732d9bd7e6412ef900c0e664801105ce23b31c3fe24e"
+      "sha256": "23afaed7a5a29d1c9cc65985fe53dc5c4a34e0c0f6cbac7f05f9b6afd28eb045"
     },
     "collection-bible-faith.svg": {
       "png": "collection-bible-faith.png",
-      "sha256": "19ee3700ef8d5156a07add274c25a98b9d3c46179e354b329d52bc158b50d22d"
+      "sha256": "914ffc9f91349a1d0bd2dc889e07427e8a8bb4ce65554ed4b2913675f7d20319"
     },
     "collection-browser-games.svg": {
       "png": "collection-browser-games.png",
-      "sha256": "7906d1c1e759ddd8c3876d80ddadfc44054534bc2e3960096c078dfd39a6fa63"
+      "sha256": "91de2fe1b8f7ca824da582e8d08ba0b40e436cab9feeb1e9046217210d40bf36"
     },
     "collection-french-learning.svg": {
       "png": "collection-french-learning.png",
-      "sha256": "169eb5ffebc0a741713b5bbaac573f0d28d1e97dd01db96e46b9629c78040b6b"
+      "sha256": "fc424e1d7d245d53b8697715733ac04ba7f0d1c4f7efcc99ef9e77c957602020"
     },
     "collection-productivity-creation.svg": {
       "png": "collection-productivity-creation.png",
-      "sha256": "fbe4f743d2d1aa126552d2f7d40c92716fd120803644a52fe99edf87079d8e9e"
+      "sha256": "3b7a4cfa85414eab0f484e137b6c8c6e4749372d7942985cf085e013d8b0000d"
     },
     "collection-typing-games.svg": {
       "png": "collection-typing-games.png",
-      "sha256": "1e0b6dfe191fb9ceeee1383c507586ae6ceb66338bb0cf1ee6dc79712350a4b2"
+      "sha256": "4a3c7ec0a1e7b3100c8a872007dad8b2cdeb482f1a44d3e081bf824cc4b6cde6"
     },
     "collections.svg": {
       "png": "collections.png",
-      "sha256": "f8544dc07b675ceb018c57c1d5bf1c8f247a74e13980181c03212c623d967759"
+      "sha256": "829f87ee5de2f8937d66f400d998829c88caa4abe240386b0b68e69efe31ba64"
     },
     "curio.svg": {
       "png": "curio.png",
-      "sha256": "6373a410877e1d0422a2416433ae01ca3e26809ba9b79e48d4354d1a3559784d"
+      "sha256": "91942a1449a6a8241436e84d99cc67560d353e9925a291aeb6de28209ba7380b"
     },
     "french-3000.svg": {
       "png": "french-3000.png",
-      "sha256": "37e6922adc9347375219429bc14b41d28bf736e6058c705b94bc071ba9616fe4"
+      "sha256": "cd6ab0d9a12a0cf256068885eb2626ea7f664bb097a040180ece1f00fece4f36"
     },
     "impossible-transit.svg": {
       "png": "impossible-transit.png",
-      "sha256": "3cabb1fb968b3e7b7240f76097a05c32cb3a48fe50e09b0714d17481ca2ca8af"
+      "sha256": "f99f8c16b0418a3553fdf98b9a70d41b0e830add71f393432db8aa528fda09eb"
     },
     "index.svg": {
       "png": "index.png",
-      "sha256": "6436d3ec0ef1db15df396f5505f12950e543584df6d28d0674829e26152e7d41"
+      "sha256": "0b47d9d1501ea453bcc2b608df16c22ebd13f8a7e8a2ff63d3e23667d70c6fd5"
     },
     "le-carnet-francais.svg": {
       "png": "le-carnet-francais.png",
-      "sha256": "fb984439010e3302049dc6a392ae97ea5af3eea8ebcf1bf2ff64aa972dfbe143"
+      "sha256": "e5b3fe7b0380cd0508eb63e92fc8b468ff0f95ffa671e88a3138786c60ceb7dc"
     },
     "manuscript.svg": {
       "png": "manuscript.png",
-      "sha256": "fb459d1b8b694be87103728733ea412ac425729fddf42fd112d19c832283a0e1"
+      "sha256": "b728ae58eb4b0b973c257c4c09d15343c8835752b3bf3d0de6a81eae76e96ad5"
     },
     "mathlab.svg": {
       "png": "mathlab.png",
-      "sha256": "a81bd83b249d3dcf12c3a4bf54e10f6e55daf0ce5f5424221e819c374144857a"
+      "sha256": "3c6ae250c06b5329e39960c1b05de3c6a95113bbce81a1a26d36b2f96e59b983"
     },
     "micro-arcade.svg": {
       "png": "micro-arcade.png",
-      "sha256": "c75a3eb4f3f1593a9cf8531653458217192df229ee1dc67f93fd4d81b806a54d"
+      "sha256": "1ed6bd7a9c1e84821011760fa914acab6613561dc11c55f441845946b90a9cdb"
     },
     "nebula-foundry.svg": {
       "png": "nebula-foundry.png",
-      "sha256": "89a510e98a069a6c38a735ddbab566be217933ce9fd9331a7b74ab59067eb417"
+      "sha256": "dcab9ce71059f721ec885d38ea2e8d028b713c231b179764d8739e98921ef83d"
     },
     "pdf-studio.svg": {
       "png": "pdf-studio.png",
-      "sha256": "d8e14a5274c079cbce0e59b459f05ea6b54bf7f6a22aaa95f6eb1f785899fa62"
+      "sha256": "255526f666be165a58b5b0ed66a266cb5985838607d72efc33a8865537318cba"
     },
     "pflegelern.svg": {
       "png": "pflegelern.png",
-      "sha256": "5ca67704fc1e1506227ab5bea7bde3ef90fc4d592752f10268379b5b6fc2b278"
+      "sha256": "394cc8a5db4f90dc80e2744af4af41cfbda562974ed30541c4efbc0e2b5b4da3"
     },
     "projects.svg": {
       "png": "projects.png",
-      "sha256": "3a0ad22ead461652d5f4715e7f102adcd305e7bd7f9937ad159ac5824676548b"
+      "sha256": "46d30c09d486a3a11664d66f960e14a449e1392c1a4991b12bdea64c473641f5"
     },
     "skyspire.svg": {
       "png": "skyspire.png",
-      "sha256": "f8f06ebb512afd17659867a16e7541f276604116cb122391287c31de3c25b221"
+      "sha256": "aae36756edf871c937f7a084e329eebc6f93aaf4c1a86efa18548521b4716040"
     },
     "the-bible-challenge.svg": {
       "png": "the-bible-challenge.png",
-      "sha256": "8cb4402db01b8d273bbcbec072674ab6e27eb3a4eaa96ab9ffa50b01b7a4485a"
+      "sha256": "c50994db109955bd22ca6f2acf5feba9f6b453ea500498d61d9d1984ebca522b"
     },
     "thiepn-library.svg": {
       "png": "thiepn-library.png",
-      "sha256": "cf5c4ce0b0cd0911dcd1f80e9ef5c9f482dbcf3a22a82a48fcaa9b7393a9f9f4"
+      "sha256": "c62d004c015ae85bad4e68ee14101f39c9465d3ef78689f97cecc832d46a9ea1"
     },
     "tiny-tools.svg": {
       "png": "tiny-tools.png",
-      "sha256": "3a8d74480b150da7fe5a3939ad44473e21d29baef156e6468da1f7a346f0ee91"
+      "sha256": "da58f82ae7f1fb979750644145d2929a102991a9b7d772863f5e0c137e9aade0"
     },
     "tms60.svg": {
       "png": "tms60.png",
-      "sha256": "11484a5e700b7647aaa8dd2dd08982c0219fc481ffd0b4d1db0f4e8c4d6554f4"
+      "sha256": "115eb4067148912289383db4ba33e771e7e8bae21039636405dca863c02d8ea6"
     },
     "unreached.svg": {
       "png": "unreached.png",
-      "sha256": "266ba614de1ecd5709ff6e7dedfa006e5c77e3b44db1c9e4f182af0c694b0383"
+      "sha256": "5888b84d120aed5a7cafc340811f2c9e00e3da76821138dfccf7167383429b09"
     },
     "voidcut.svg": {
       "png": "voidcut.png",
-      "sha256": "d7b6b0be83c88a2011c7f6588768706ba1e3c1c9fc6e5d1cb3d9a9ac149734b9"
+      "sha256": "a9e3ef899bb16805150f6939644b0c55a96ef8ab2960f1d6de449d5448f803f5"
     },
     "wordfall.svg": {
       "png": "wordfall.png",
-      "sha256": "4c94a36e21b8c37c0faa5c1d54bc5f63175edbfb95779c0268ba3f90e001d0ae"
+      "sha256": "62c14da0df3aea5f93e4111c2f9cdf2bb7df6be031dbe1cf0ee329e851ef99ed"
     },
     "wordstrike.svg": {
       "png": "wordstrike.png",
-      "sha256": "1a06c56e610789db5cb4bf7a88a63d3962c3dbb4ec1dd14c8d55ab16e731d3ba"
+      "sha256": "c0e3cae6d062a1e6e6ceb444b2c0cb088130ba3456305fc38b9d9504925129d2"
     }
   }
 }
