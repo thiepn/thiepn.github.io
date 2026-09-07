@@ -1,0 +1,75 @@
+name: Live showcase verification
+on:
+  push:
+    branches: [design/showcase-tiny-tools]
+    paths: ['.github/workflows/showcase-live-evidence.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 457e6b4d2cbaea4424a3e570dae79e3eb1ccd0ef
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0 lighthouse@13.4.1
+      - run: npx playwright install --with-deps chromium
+      - name: Wait for the actual new deployment
+        run: |
+          mkdir -p live-showcase-evidence
+          git rev-parse HEAD > live-showcase-evidence/source-sha.txt
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          let ready=false;
+          for(let i=0;i<36;i++){
+            const response=await fetch('https://thiepn.dev/',{headers:{'Cache-Control':'no-cache'}});
+            const html=await response.text();
+            if(response.ok&&html.includes('Meet Tiny Tools')&&html.includes('data-preview-input')){ready=true;fs.writeFileSync('live-showcase-evidence/homepage.html',html);break;}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!ready)throw new Error('The new homepage was not observed on the live origin');
+          JS
+          node scripts/smoke-production.mjs --url https://thiepn.dev/ --retries 6 > live-showcase-evidence/production-smoke.log 2>&1
+      - name: Render production pages and interactions
+        env:
+          SHOWCASE_BASE_URL: https://thiepn.dev
+          SHOWCASE_EVIDENCE_DIR: live-showcase-evidence
+        run: |
+          node scripts/capture-showcase-qa.mjs
+          node --input-type=module - <<'JS'
+          import {chromium} from '@playwright/test';
+          import fs from 'node:fs';
+          const browser=await chromium.launch();
+          const page=await browser.newPage({viewport:{width:1440,height:960},colorScheme:'light'});
+          await page.goto('https://thiepn.dev/',{waitUntil:'networkidle'});
+          await page.locator('[data-text-preview][data-ready=true]').waitFor();
+          await page.locator('#tiny-tools').screenshot({path:'live-showcase-evidence/tiny-tools-first-view.png'});
+          await page.locator('[data-preview-input]').fill('  Bonjour   안녕하세요  😀  ');
+          const output=await page.locator('[data-preview-output]').inputValue();
+          if(output!=='Bonjour 안녕하세요 😀')throw new Error('Live text preview output mismatch');
+          await page.getByRole('tab',{name:'Vanguard',exact:true}).click();
+          await page.locator('[data-media-panel]:visible img').evaluate(e=>e.decode());
+          const media=await page.locator('[data-media-panel]:visible img').evaluate(e=>({loaded:e.complete&&e.naturalWidth>0,source:e.currentSrc}));
+          if(!media.loaded)throw new Error('Live alternate preview failed');
+          fs.writeFileSync('live-showcase-evidence/live-interactions.json',JSON.stringify({origin:'https://thiepn.dev',textPreview:output,media,checkedAt:new Date().toISOString()},null,2));
+          await browser.close();
+          JS
+      - name: Measure the live origin
+        run: |
+          for i in 1 2 3; do
+            node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/ --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-home-mobile-$i.json --quiet
+          done
+          node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/ --preset=desktop --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-home-desktop.json --quiet
+          node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/project/tiny-tools/ --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-tiny-tools-mobile.json --quiet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-showcase-verification
+          path: live-showcase-evidence/
+          retention-days: 7
