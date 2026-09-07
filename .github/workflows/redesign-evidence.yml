@@ -1,0 +1,104 @@
+name: Redesign evidence
+on:
+  push:
+    branches: [redesign/curated-studio-2026-09]
+    paths: ['.github/workflows/redesign-evidence.yml']
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build baseline
+        run: |
+          mkdir -p evidence
+          npm run build > evidence/build.log 2>&1 || true
+          tar --exclude='.git' --exclude='node_modules' --exclude='evidence' --exclude='test-results' --exclude='playwright-report' -czf /tmp/source.tar.gz .
+          mv /tmp/source.tar.gz evidence/source.tar.gz
+          tar -czf /tmp/dependencies.tar.gz node_modules
+          mv /tmp/dependencies.tar.gz evidence/dependencies.tar.gz
+      - name: Capture live site and references
+        run: |
+          cat > /tmp/collect.cjs <<'JS'
+          const { chromium } = require(process.cwd() + '/node_modules/@playwright/test');
+          const fs = require('fs');
+          const path = require('path');
+          const out = 'evidence';
+          const refs = [
+            ['neal','https://neal.fun/'],['bruno','https://bruno-simon.com/'],['rauno','https://rauno.me/'],['rauno-craft','https://rauno.me/craft'],
+            ['paco','https://paco.me/'],['emil','https://emilkowal.ski/'],['jhey','https://jhey.dev/'],['hakim','https://hakim.se/'],['bartosz','https://ciechanow.ski/'],
+            ['josh','https://www.joshwcomeau.com/'],['nicky','https://ncase.me/'],['tobias','https://tobiasahlin.com/'],['sindresorhus','https://sindresorhus.com/'],
+            ['brian','https://brianlovin.com/'],['leerob','https://leerob.com/'],['benedict','https://benediktdeicke.com/'],['danmall','https://danmall.com/'],
+            ['olivier','https://olivierlarose.com/'],['lusion','https://lusion.co/'],['resn','https://resn.co.nz/'],['linear','https://linear.app/'],['raycast','https://www.raycast.com/'],
+            ['things','https://culturedcode.com/things/'],['stripe','https://stripe.com/'],['readcv','https://read.cv/'],['pudding','https://pudding.cool/'],
+            ['distill','https://distill.pub/'],['stripepress','https://press.stripe.com/'],['thebrowser','https://thebrowser.com/'],['pentagram','https://www.pentagram.com/']
+          ];
+          const summary = { capturedAt: new Date().toISOString(), baseline: [], references: [], interactions: [] };
+          const slug = x => x.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'') || 'home';
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            async function capture(url, name, width=1440, scheme='light', full=true) {
+              const context = await browser.newContext({viewport:{width,height:900}, colorScheme:scheme, reducedMotion:'reduce',ignoreHTTPSErrors:true});
+              const page = await context.newPage();
+              const errors=[];
+              page.on('pageerror', e=>errors.push(e.message));
+              const row={url,name,width,scheme,errors};
+              try {
+                const res=await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+                row.status=res?.status();
+                await page.waitForTimeout(1800);
+                await page.evaluate(async()=>{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,2000))]);});
+                row.finalURL=page.url();
+                row.title=await page.title();
+                row.text=(await page.locator('body').innerText()).slice(0,45000);
+                row.links=await page.locator('a[href]').evaluateAll(es=>es.map(e=>({text:e.innerText,href:e.href,visible:!!(e.offsetWidth||e.offsetHeight)})));
+                row.headings=await page.locator('h1,h2,h3').evaluateAll(es=>es.map(e=>({tag:e.tagName,text:e.innerText,top:e.getBoundingClientRect().top})));
+                row.images=await page.locator('img').evaluateAll(es=>es.map(e=>({src:e.currentSrc,alt:e.alt,loaded:e.complete&&e.naturalWidth>0,width:e.width,height:e.height})));
+                row.layout=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,height:document.documentElement.scrollHeight,nav:performance.getEntriesByType('navigation')[0]?.toJSON(),resources:performance.getEntriesByType('resource').map(r=>({name:r.name,bytes:r.transferSize,duration:r.duration}))}));
+                row.meta=await page.locator('meta,link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML));
+                await page.screenshot({path:path.join(out,name+'.png'),fullPage:full,animations:'disabled',timeout:15000});
+                fs.writeFileSync(path.join(out,name+'.html'),await page.content());
+              } catch(e){row.error=e.message;try{await page.screenshot({path:path.join(out,name+'.png'),timeout:5000});}catch{}}
+              await context.close();
+              return row;
+            }
+            for(const width of [375,768,1440,1920]) for(const scheme of ['light','dark']) summary.baseline.push(await capture('https://thiepn.dev/','home-'+width+'-'+scheme,width,scheme));
+            const seedPages=['https://thiepn.dev/projects/','https://thiepn.dev/collections/','https://thiepn.dev/about/','https://thiepn.dev/library/'];
+            for(const url of seedPages) summary.baseline.push(await capture(url,'page-'+slug(new URL(url).pathname)));
+            let urls=new Set(summary.baseline.flatMap(r=>(r.links||[]).map(a=>a.href)).filter(u=>/^https:\/\/thiepn.dev\/(projects|collections)\//.test(u)&&!u.includes('?')&&!u.includes('#')));
+            for(const url of [...urls].slice(0,45)) {
+              if(seedPages.includes(url))continue;
+              summary.baseline.push(await capture(url,'detail-'+slug(new URL(url).pathname)));
+            }
+            for(const url of ['https://thiepn.dev/projects/','https://thiepn.dev/about/','https://thiepn.dev/library/']) summary.baseline.push(await capture(url,'mobile-'+slug(new URL(url).pathname),375));
+            const ctx=await browser.newContext({viewport:{width:375,height:812}});const p=await ctx.newPage();
+            try {
+              await p.goto('https://thiepn.dev/',{waitUntil:'domcontentloaded'});
+              const menu=p.getByRole('button',{name:'Menu',exact:true});
+              if(await menu.count()){await menu.click();await p.screenshot({path:out+'/mobile-menu.png'});summary.interactions.push({test:'mobile menu',text:await p.locator('body').innerText()});await p.keyboard.press('Escape');}
+              await p.keyboard.press('Control+k');await p.waitForTimeout(250);await p.screenshot({path:out+'/search-open.png'});
+              const search=p.locator('dialog input, [role=dialog] input').first();
+              if(await search.count()){await search.fill('zzzzunlikelyresult');await p.waitForTimeout(250);await p.screenshot({path:out+'/search-empty.png'});summary.interactions.push({test:'search empty',text:await p.locator('body').innerText()});await p.keyboard.press('Escape');}
+              await p.goto('https://thiepn.dev/projects/',{waitUntil:'domcontentloaded'});summary.interactions.push({test:'filter controls',inputs:await p.locator('input,select,button').evaluateAll(es=>es.map(e=>({tag:e.tagName,type:e.getAttribute('type'),text:e.innerText,name:e.getAttribute('aria-label')})))});
+            }catch(e){summary.interactions.push({error:e.message});}await ctx.close();
+            let queue=[...refs];
+            await Promise.all(Array.from({length:4},async()=>{while(queue.length){let [name,url]=queue.shift();summary.references.push(await capture(url,'ref-'+name,1440,'light',true));}}));
+            await browser.close();
+            fs.writeFileSync(out+'/summary.json',JSON.stringify(summary,null,2));
+          })().catch(e=>{console.error(e);fs.writeFileSync(out+'/summary.json',JSON.stringify(summary,null,2));process.exitCode=1;});
+          JS
+          node /tmp/collect.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redesign-evidence
+          path: evidence/
+          retention-days: 7
