@@ -20,6 +20,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: grep -q 'const blank=' scripts/capture-showcase-media.mjs || python scripts/refine-media-capture.py
       - run: node scripts/capture-showcase-media.mjs
       - name: Commit genuine assets
         run: |
@@ -27,9 +28,9 @@ jobs:
           cp showcase-media-evidence/manifest.json docs/showcase/media-provenance.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add public/projects docs/showcase/media-provenance.json
-          if ! git diff --cached --quiet; then git commit -m 'feat: add real gameplay, tool and publishing workflow captures'; git push origin HEAD:design/showcase-tiny-tools; fi
-          tar -czf showcase-media-evidence/updated-media.tar.gz public/projects docs/showcase/media-provenance.json
+          git add public/projects docs/showcase/media-provenance.json scripts/capture-showcase-media.mjs
+          if ! git diff --cached --quiet; then git commit -m 'feat: use genuine active game and publishing states'; git push origin HEAD:design/showcase-tiny-tools; fi
+          tar -czf showcase-media-evidence/updated-media.tar.gz public/projects docs/showcase/media-provenance.json scripts/capture-showcase-media.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
