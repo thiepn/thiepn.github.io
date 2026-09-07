@@ -8,7 +8,7 @@ const result = cleanPreviewText(PREVIEW_EXAMPLE);
   <div class="tools-spotlight__intro">
     <p class="section-kicker">A useful place to start</p>
     <h2 id="tiny-tools-title">Tiny Tools<span aria-hidden="true">.</span></h2>
-    <p class="tools-spotlight__line">Small jobs.<br/>Less friction.</p>
+    <p class="tools-spotlight__line">Small jobs. <br/>Less friction.</p>
     <p class="tools-spotlight__description">Clean up text, convert an image, format data, or make a QR code. A collection of focused browser utilities, without an account.</p>
     <div class="actions"><a class="button" href="/tools/">Open Tiny Tools <span aria-hidden="true">↗</span></a><a class="quiet-link" href="/project/tiny-tools/">Inside the project <span aria-hidden="true">→</span></a></div>
     <nav class="tool-shortcuts" aria-label="Go straight to a Tiny Tool">
@@ -27,3 +27,13 @@ const result = cleanPreviewText(PREVIEW_EXAMPLE);
   </div>
 </section>
 <script>import '../../scripts/text-preview';</script>
+<style>
+  /* Keep the complete default example visible when narrow fields wrap its lines.
+     User-entered long text can still scroll; field height remains bounded. */
+  @media (max-width: 1050px) {
+    .text-preview textarea { height: 11.5rem; min-height: 11.5rem; }
+  }
+  @media (max-width: 380px) {
+    .text-preview textarea { height: 13rem; min-height: 13rem; }
+  }
+</style>
