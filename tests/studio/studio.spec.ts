@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import routes from '../../src/generated/route-manifest.json';
-import config from '../../src/data/showcase.json';
+const routes: {routes:string[]} = JSON.parse(fs.readFileSync('src/generated/route-manifest.json','utf8'));
+const config: {hero:string;work:string[];projects:Record<string,{media:string}>} = JSON.parse(fs.readFileSync('src/data/showcase.json','utf8'));
 // The Library is a separate deployed application. Proxy only its two real cover assets
 // for root-site preview; no mocked project UI or hidden failed media.
 test.beforeEach(async({page})=>{
