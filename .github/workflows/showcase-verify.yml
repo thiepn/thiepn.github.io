@@ -17,9 +17,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Integrate existing content contracts
+      - name: Integrate and refine source
         run: |
           if ! grep -q "import '../styles/showcase.css'" src/layouts/BaseLayout.astro; then python scripts/integrate-showcase.py; fi
+          python scripts/finalize-showcase.py
       - run: npm ci --no-audit --no-fund
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
@@ -30,8 +31,8 @@ jobs:
           npm run catalogue:refresh > showcase-qa/generated.log 2>&1
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src tests scripts/validate-catalogue.mjs public/og
-          if ! git diff --cached --quiet; then git commit -m 'feat: integrate Tiny Tools and synchronize public catalogue and sharing'; git push origin HEAD:design/showcase-tiny-tools; fi
+          git add src tests README.md scripts/validate-catalogue.mjs public/og
+          if ! git diff --cached --quiet; then git commit -m 'fix: clarify deferred media and complete interactive showcase verification'; git push origin HEAD:design/showcase-tiny-tools; fi
       - name: Source and production checks
         run: |
           npm run generated:check > showcase-qa/generated-check.log 2>&1
