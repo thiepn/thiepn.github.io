@@ -68,3 +68,7 @@ See [the redesign specification](docs/STUDIO_REDESIGN.md). The historical launch
 ## Social-image regeneration
 
 After changing a project subtitle, title or accent, run `npx playwright install chromium`, then `node scripts/rasterize-og.mjs` and `npm run catalogue:refresh`. Commit the updated `public/og` images and `src/generated` records. The build deliberately rejects stale social-image derivatives rather than sharing outdated content.
+
+## Interactive showcase
+
+Tiny Tools has a dedicated homepage feature, four direct task routes, a local whitespace-cleaner miniature and a complete project page. Micro Arcade uses genuine, keyboard-operable game previews with an opt-in recording. Source-linked build notes document three projects without invented outcomes or contribution claims. See [showcase maintenance and verification](docs/showcase/README.md) for content, media and lifecycle contracts.

@@ -1,0 +1,11 @@
+---
+import entries from '../../data/build-notes.json';
+interface Props { slug: string; }
+const { slug } = Astro.props;
+const note = entries[slug as keyof typeof entries];
+---
+{note && <section class="build-notes" aria-labelledby="build-notes-title">
+  <header class="build-notes__heading"><div><p class="eyebrow">A closer look at the build</p><h2 id="build-notes-title">{note.title}</h2></div><p class="build-notes__lead">{note.lead}</p></header>
+  <div class="build-notes__body">{note.sections.map(section => <div><h3>{section.title}</h3><p>{section.text}</p></div>)}</div>
+  <footer class="build-notes__sources"><span>Read the implementation</span>{note.sources.map(source => <a href={source.url}>{source.label} <span aria-hidden="true">↗</span></a>)}<small>Source-linked notes · inspected September 2026</small></footer>
+</section>}

@@ -1,0 +1,86 @@
+{
+  "tiny-tools": {
+    "title": "A toolbox without the usual detour.",
+    "lead": "One route per task. Shared engines underneath. The difficult part is keeping a broad collection understandable without making every visit expensive.",
+    "sections": [
+      {
+        "title": "Load the tool, not the whole toolbox.",
+        "text": "The registry connects readable task names to lazy-loaded React components. Opening a text utility does not require starting the PDF, audio or image-processing engines. The app provides the common navigation and recovery boundary; individual tools own their workspaces."
+      },
+      {
+        "title": "More formats, fewer duplicate routes.",
+        "text": "Conversion tasks are consolidated into document, data, image, audio and other format families. Old links are normalized to their current equivalents, so extending the toolbox does not require publishing every possible input–output pair as a separate product."
+      },
+      {
+        "title": "Local is a boundary, not a slogan.",
+        "text": "The utility suite processes user content in the browser wherever possible. Some engines first download static runtimes. Currency rates and explicitly started network diagnostics use external services. Those exceptions matter, and are not hidden behind an absolute “no network” claim."
+      },
+      {
+        "title": "Try one small job.",
+        "text": "The four shortcuts on this page open real task routes. The homepage text-cleaner miniature demonstrates only whitespace cleanup; the full tool has additional options. Office conversions and media support have documented fidelity and browser limits."
+      }
+    ],
+    "sources": [
+      { "label": "Lazy tool registry", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tools.ts" },
+      { "label": "Compatible task routes", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tool-shell-mode.ts" },
+      { "label": "Capabilities & limits", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/README.md" }
+    ],
+    "related": ["pdf-studio", "manuscript"]
+  },
+  "micro-arcade": {
+    "title": "Different games. One familiar way to play.",
+    "lead": "An arcade is more than a collection of game canvases. The surrounding experience needs to stay predictable as the mechanics change.",
+    "sections": [
+      {
+        "title": "A shared shell, independent games.",
+        "text": "The application keeps its library, settings and personal statistics together while loading a game through a separate game shell. That separation lets the individual mechanics vary without asking players to relearn the surrounding navigation for every game."
+      },
+      {
+        "title": "Timing that does not assume one display.",
+        "text": "The timing helpers define a 60 Hz reference step and bound the amount of simulation work in a frame. Blending, decay and random-event helpers account for elapsed time rather than treating every rendered frame as the same amount of time. This is a design mechanism, not a claim that every game has been exhaustively certified on every device."
+      },
+      {
+        "title": "Local play comes first.",
+        "text": "Personal progress stays in the browser. Online rankings use a separate optional service; losing that service should not be confused with losing the ability to open and play local games. The project page keeps those two promises distinct."
+      },
+      {
+        "title": "Show the actual playfield.",
+        "text": "The previews above were captured from the running games, then cropped to the canvas. The recording is user-initiated and silent. The stills are not concept art, and opening the arcade does not require playing the portfolio recording first."
+      }
+    ],
+    "sources": [
+      { "label": "Application & game loading", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/App.tsx" },
+      { "label": "Timing helpers", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/lib/frameRateRuntime.ts" },
+      { "label": "Local play & online service", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/README.md" }
+    ],
+    "related": ["wordstrike", "voidcut"]
+  },
+  "pdf-studio": {
+    "title": "The exported file is part of the interface.",
+    "lead": "A document tool needs to do more than look correct on screen. Its operation model has to account for competing work, cancellation and the resulting file.",
+    "sections": [
+      {
+        "title": "One document operation at a time.",
+        "text": "The operation coordinator tracks work by project, exposes progress and cancellation, and refuses competing operations. It checks local storage headroom when a task requests a reserve. A project lease or Web Lock coordinates access rather than letting separate document mutations silently race."
+      },
+      {
+        "title": "Move export work off the interface thread.",
+        "text": "The editor sends copied document bytes and required assets to a worker. Requests have identifiers, cancellation is explicit, and the worker is terminated when the operation finishes or fails. The source document is not simply handed off as an unprotected mutable buffer."
+      },
+      {
+        "title": "Check the output, not just the command.",
+        "text": "The editor export path invokes a source–output fidelity check and rejects the result when that check reports a failure. Mixed native and overlay edits are checked against the original source. These checks establish a defined boundary; they do not promise lossless editing of every possible PDF."
+      },
+      {
+        "title": "Keep the limits visible.",
+        "text": "This is a release-candidate document workspace. Keep the original and inspect the exported copy before relying on it. The built-in sample is a lower-risk way to explore the interface before opening an important document."
+      }
+    ],
+    "sources": [
+      { "label": "Operation coordinator", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/operations/projectOperationCoordinator.ts" },
+      { "label": "Export & fidelity boundary", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/editor/editorExportClient.ts" },
+      { "label": "Release status & limitations", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/README.md" }
+    ],
+    "related": ["tiny-tools", "manuscript"]
+  }
+}

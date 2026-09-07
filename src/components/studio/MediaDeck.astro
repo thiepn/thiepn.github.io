@@ -1,0 +1,22 @@
+---
+import ProjectMedia from './ProjectMedia.astro';
+export interface Slide { id: string; title: string; src: string; caption: string; video?: string; }
+interface Props { id: string; slides: Slide[]; priority?: boolean; }
+const { id, slides, priority = false } = Astro.props;
+---
+<div class="media-deck" data-media-deck>
+  <div class="media-deck__stage">
+    {slides.map((slide,index) => <div id={`${id}-${slide.id}`} class="media-deck__panel" role="tabpanel" tabindex="0" aria-labelledby={`${id}-tab-${slide.id}`} hidden={index !== 0} data-media-panel>
+      <figure style="margin:0">
+        <div class="media-deck__image"><ProjectMedia src={slide.src} alt={slide.caption} priority={priority && index === 0} sizes="(max-width:760px) calc(100vw - 40px), (max-width:1440px) 57vw, 800px"/>
+        {slide.video && <video data-demo-video data-video-url={slide.video} preload="none" controls muted playsinline hidden aria-label={`Recorded ${slide.title} gameplay. No audio.`}></video>}</div>
+        <figcaption><span>{slide.caption}</span>{slide.video && <button type="button" data-demo-play disabled>Watch gameplay <span aria-hidden="true">▷</span></button>}</figcaption>
+      </figure>
+    </div>)}
+  </div>
+  <div class="media-deck__tabs" role="tablist" aria-label="Choose a gameplay preview">
+    {slides.map((slide,index) => <button type="button" id={`${id}-tab-${slide.id}`} role="tab" aria-controls={`${id}-${slide.id}`} aria-selected={index === 0 ? 'true' : 'false'} tabindex={index === 0 ? 0 : -1} data-media-tab disabled><span class="media-deck__tab-mark" aria-hidden="true"></span>{slide.title}</button>)}
+  </div>
+  <p class="media-deck__status" data-media-status role="status" aria-live="polite"></p>
+</div>
+<script>import '../../scripts/media-deck';</script>

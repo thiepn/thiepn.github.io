@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { PATHS, compactText, parseArgs, publicProjects, readCollections, readProjects, writeText, xmlEscape } from './lib/catalogue-files.mjs';
+import { PATHS, ROOT, compactText, parseArgs, publicProjects, readCollections, readProjects, writeText, xmlEscape } from './lib/catalogue-files.mjs';
 
 const args = parseArgs();
 const check = Boolean(args.check);
@@ -14,47 +15,54 @@ const HEIGHT = 630;
 function shorten(value, max = 82) { return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`; }
 function sha256(value) { return createHash('sha256').update(value).digest('hex'); }
 
-function wrapTitle(value) {
-  const words = compactText(value).split(/\s+/).filter(Boolean);
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length > 27 && current) {
-      lines.push(current);
-      current = word;
-    } else current = candidate;
-  }
-  if (current) lines.push(current);
-  if (lines.length <= 2) return lines;
-  return [lines[0], shorten(lines.slice(1).join(' '), 31)];
-}
+const showcasePath = path.join(ROOT, 'src/data/showcase.json');
+const showcase = existsSync(showcasePath) ? JSON.parse(readFileSync(showcasePath, 'utf8')) : { projects: {} };
 
-function svg({ code, title, subtitle, accent = '#777A73', kind = 'PROJECT' }) {
-  const lines = wrapTitle(title);
-  const safeSubtitle = xmlEscape(shorten(compactText(subtitle)));
-  const titleSize = lines.length > 1 ? 66 : compactText(title).length > 28 ? 68 : 78;
-  const titleStart = lines.length > 1 ? 282 : 330;
-  const titleMarkup = lines.map((line, index) => `<tspan x="88" y="${titleStart + index * 78}">${xmlEscape(line)}</tspan>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="${xmlEscape(compactText(title))}">
-  <rect width="1200" height="630" fill="#ECEAE3"/>
-  <path d="M54 54H1146M54 576H1146M112 54V576M1088 54V576" stroke="#D0CDC4" stroke-width="1"/>
-  <rect x="54" y="54" width="6" height="522" fill="${xmlEscape(accent)}"/>
-  <g fill="none" stroke="#AAA79E" stroke-width="1.5" opacity=".9">
-    <path d="M985 92H1100M1042 74V132"/>
-    <circle cx="985" cy="92" r="5" fill="#ECEAE3"/>
-    <circle cx="1100" cy="92" r="5" fill="${xmlEscape(accent)}" stroke="${xmlEscape(accent)}"/>
-    <circle cx="1042" cy="132" r="5" fill="#ECEAE3"/>
-  </g>
-  <text x="88" y="108" fill="#555650" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="2">${xmlEscape(code)} / ${xmlEscape(kind)}</text>
-  <text fill="#151613" font-family="Arial, Helvetica, sans-serif" font-size="${titleSize}" font-weight="600" letter-spacing="-3.5">${titleMarkup}</text>
-  <text x="90" y="${lines.length > 1 ? 455 : 405}" fill="#555650" font-family="Arial, Helvetica, sans-serif" font-size="27">${safeSubtitle}</text>
-  <text x="88" y="538" fill="#151613" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18" letter-spacing="3">THIEPN / PORTFOLIO</text>
+function wrapCopy(value, limit, maxLines = 3) {
+  const lines = []; let line = '';
+  for (const word of compactText(value).split(/\s+/)) {
+    if (line && (line + ' ' + word).length > limit) { lines.push(line); line = word; }
+    else line += (line ? ' ' : '') + word;
+  }
+  if (line) lines.push(line);
+  if (lines.length <= maxLines) return lines;
+  return [...lines.slice(0,maxLines-1), shorten(lines.slice(maxLines-1).join(' '),limit)];
+}
+function svg({ file, title, subtitle, accent = '#356142', kind = 'PROJECT' }) {
+  const home = file === 'index.svg';
+  const slug = home ? 'micro-arcade' : file.replace(/\.svg$/, '');
+  const media = showcase.projects?.[slug]?.media;
+  const mediaPath = media ? path.join(PATHS.public, media.replace(/^\//,'')) : null;
+  const hasMedia = mediaPath && existsSync(mediaPath);
+  const lines = wrapCopy(title, hasMedia ? 19 : 30);
+  const ink = home ? '#eff3e8' : '#18231f';
+  const muted = home ? '#bdcbbc' : '#526057';
+  const paper = home ? '#14201f' : '#f6f7f2';
+  const subtitleLines = wrapCopy(subtitle, hasMedia ? 37 : 67, 2);
+  const titleY = lines.length > 1 ? 263 : 306;
+  const subtitleY = titleY + (lines.length-1)*72 + 62;
+  let picture = '';
+  if (hasMedia) {
+    const type = /\.jpe?g$/i.test(mediaPath) ? 'jpeg' : /\.png$/i.test(mediaPath) ? 'png' : 'webp';
+    const data = readFileSync(mediaPath).toString('base64');
+    picture = `<rect x="637" y="160" width="503" height="360" rx="8" fill="${home?'#090d14':'#e9eee5'}"/>
+      <image x="653" y="176" width="471" height="328" href="data:image/${type};base64,${data}" preserveAspectRatio="xMidYMid meet"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="${xmlEscape(title)}">
+  <rect width="1200" height="630" fill="${paper}"/>
+  <text x="64" y="85" fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.5">THIEPN.</text>
+  <path d="M64 115H1136" stroke="${home?'#354239':'#ccd5c9'}"/>
+  <text x="64" y="164" fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="18">${home?'Independent projects by Jonathan':kind==='PROJECT'?'A project by Jonathan':kind==='LIBRARY'?'From the Library':'Explore the work'}</text>
+  <text fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="${hasMedia?62:76}" font-weight="600" letter-spacing="-2.8">${lines.map((line,i)=>`<tspan x="64" y="${titleY+i*72}">${xmlEscape(line)}</tspan>`).join('')}</text>
+  <text fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="24">${subtitleLines.map((line,i)=>`<tspan x="66" y="${subtitleY+i*33}">${xmlEscape(line)}</tspan>`).join('')}</text>
+  ${picture}
+  <rect x="64" y="555" width="34" height="3" fill="${home?'#c6e7a8':xmlEscape(accent)}"/>
+  <text x="64" y="595" fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="18">thiepn.dev</text>
 </svg>\n`;
 }
 
 const cards = [
-  { file: 'index.svg', code: 'HOME', title: 'THIEPN', subtitle: 'Software, games, learning systems, books and experiments — built to be used, played and explored.', kind: 'PORTFOLIO', accent: '#555650' },
+  { file: 'index.svg', code: 'HOME', title: 'A few things worth opening.', subtitle: 'Games to play. Tools to use. Ideas to explore.', kind: 'PORTFOLIO', accent: '#555650' },
   { file: 'projects.svg', code: 'PROJECTS', title: 'Projects', subtitle: 'The complete THIEPN project catalogue: games, tools, learning systems, resources and experiments.', kind: 'DIRECTORY', accent: '#555650' },
   { file: 'books.svg', code: 'BOOKS', title: 'Books', subtitle: 'Published long-form works available through the THIEPN Library.', kind: 'LIBRARY', accent: '#555650' },
   { file: 'collections.svg', code: 'COLLECTIONS', title: 'Collections', subtitle: 'Editorial paths through related THIEPN projects, subjects and experiments.', kind: 'DIRECTORY', accent: '#555650' },

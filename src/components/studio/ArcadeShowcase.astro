@@ -1,0 +1,15 @@
+---
+import MediaDeck from './MediaDeck.astro';
+import { showcase } from '../../lib/showcase';
+---
+<article class="arcade-showcase" data-project="micro-arcade" aria-labelledby="arcade-showcase-title">
+  <div class="arcade-showcase__copy">
+    <p class="section-kicker">For your next five minutes</p>
+    <h2 id="arcade-showcase-title">Micro<br class="arcade-title-break"/> Arcade</h2>
+    <p class="arcade-showcase__line">One more go.</p>
+    <p class="arcade-showcase__description">Small games with a simple invitation: pick one, find your rhythm, beat your best.</p>
+    <div class="actions"><a class="button button--light" href="/arcade/">Play Micro Arcade <span aria-hidden="true">↗</span></a><a class="action-link" href="/project/micro-arcade/">Inside the arcade <span aria-hidden="true">→</span></a></div>
+    <p class="arcade-showcase__note">Play in your browser. No account needed.</p>
+  </div>
+  <MediaDeck id="home-arcade" slides={showcase.arcadePreviews} priority/>
+</article>

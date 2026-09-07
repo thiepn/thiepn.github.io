@@ -3,21 +3,28 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProjectMedia from '../../components/studio/ProjectMedia.astro';
 import ProjectExhibit from '../../components/studio/ProjectExhibit.astro';
+import MediaDeck from '../../components/studio/MediaDeck.astro';
+import BuildNotes from '../../components/studio/BuildNotes.astro';
+import buildNotes from '../../data/build-notes.json';
 import { getPublicProjects, getRelatedProjects } from '../../lib/catalogue';
-import { presentation } from '../../lib/showcase';
+import { presentation, showcase, selectProjects } from '../../lib/showcase';
 export async function getStaticPaths(){return (await getPublicProjects()).map(project=>({params:{slug:project.data.slug},props:{project}}));}
 type Entry = Awaited<ReturnType<typeof getPublicProjects>>[number];
 interface Props { project: Entry; }
 const { project } = Astro.props;const p=project.data;const view=presentation(project);
-const {Content}=await render(project);const related=(await getRelatedProjects(p.slug,2)).slice(0,2);
+const {Content}=await render(project);
+const note=buildNotes[p.slug as keyof typeof buildNotes];
+const related=note ? selectProjects(await getPublicProjects(),note.related) : (await getRelatedProjects(p.slug,2)).slice(0,2);
 const gallery=(p.gallery ?? []).filter(item=>item.source && item.source!==view.media);
 const lifecycle=p.status==='beta'?'In beta — still being developed':p.status==='archived'?'Archived project':p.status==='experiment'?'An experiment':null;
 ---
 <BaseLayout title={`${p.title} — THIEPN`} description={view.summary} ogImage={`/og/${p.slug}.png`}>
 <article class="project-story page-shell" data-record-slug={p.slug}>
 <a class="back-link" href="/work/">← Back to the work</a>
-<header class="project-hero"><div class="project-hero__copy"><p class="eyebrow">{p.subtitle}</p><h1>{p.title}</h1><p class="project-purpose">{view.summary}</p>{lifecycle && <p class="availability">{lifecycle}</p>}{view.note && <p class="project-caveat">{view.note}</p>}<div class="actions">{p.liveUrl && !p.unavailable && <a class="button" href={p.liveUrl}>{view.action}<span aria-hidden="true">↗</span></a>}{p.repo&&p.actions.source&&<a class="action-link" href={`https://github.com/${p.repo}`}>Source code <span aria-hidden="true">↗</span></a>}</div></div><figure class:list={['project-hero__media',`exhibit--${view.tone}`]}><ProjectMedia src={view.media} alt={view.caption} priority/><figcaption>{view.caption}</figcaption></figure></header>
+<header class="project-hero"><div class="project-hero__copy"><p class="eyebrow">{p.subtitle}</p><h1>{p.title}</h1><p class="project-purpose">{view.summary}</p>{lifecycle && <p class="availability">{lifecycle}</p>}{view.note && <p class="project-caveat">{view.note}</p>}<div class="actions">{p.liveUrl && !p.unavailable && <a class="button" href={p.liveUrl}>{view.action}<span aria-hidden="true">↗</span></a>}{p.repo&&p.actions.source&&<a class="action-link" href={`https://github.com/${p.repo}`}>Source code <span aria-hidden="true">↗</span></a>}</div></div><div class:list={['project-hero__media',`exhibit--${view.tone}`]}>{p.slug===showcase.hero ? <MediaDeck id="project-arcade" slides={showcase.arcadePreviews} priority/> : <figure><ProjectMedia src={view.media} alt={view.caption} priority/><figcaption>{view.caption}</figcaption></figure>}</div></header>
+{p.slug==='tiny-tools'&&<nav class="project-starts" aria-label="Try a Tiny Tools task"><strong>Start with a task</strong>{showcase.toolShortcuts.map(task=><a class="action-link" href={task.href}>{task.label} <span aria-hidden="true">↗</span></a>)}</nav>}
 <section class="story-section" aria-labelledby="story-heading"><h2 id="story-heading">{p.category==='games'?'The idea behind the game':p.category==='learning'?'What you can practice':'What it does'}</h2><div class="prose"><Content/></div></section>
+<BuildNotes slug={p.slug}/>
 {p.capabilities.length>0&&<section class="story-section" aria-labelledby="capabilities-heading"><h2 id="capabilities-heading">{p.category==='games'?'Ways to play':p.category==='learning'?'Inside the learning experience':'Inside the project'}</h2><div class="capability-notes">{p.capabilities.map(item=><div><h3>{item.title}</h3><p>{item.description}</p></div>)}</div></section>}
 {gallery.length>0&&<section class="project-gallery" aria-label="More views of the project">{gallery.map(item=><figure><a href={item.source} aria-label={`View full-size image: ${item.label}`}><ProjectMedia src={item.source!} alt={item.caption} sizes="(max-width:700px) calc(100vw - 40px), (max-width:1300px) 85vw, 1100px"/></a><figcaption>{item.caption} <a href={item.source}>View full size ↗</a></figcaption></figure>)}</section>}
 <details class="technical-details" id="technical"><summary><span>Under the hood</span><span aria-hidden="true">+</span></summary><div class="technical-details__body"><dl><div><dt>Platforms</dt><dd>{p.platforms.join(', ') || 'Browser'}</dd></div>{p.controls.length>0&&<div><dt>Controls</dt><dd>{p.controls.join(', ')}</dd></div>}{p.showcase?.stack&&<div><dt>Built with</dt><dd>{p.showcase.stack.join(', ')}</dd></div>}<div><dt>Project status</dt><dd>{p.status==='live'?'Available':p.status}</dd></div>{p.repo&&<div><dt>Implementation</dt><dd><a href={`https://github.com/${p.repo}`}>{p.repo} ↗</a></dd></div>}</dl><p>Read the source and revision history for implementation details and current development.</p></div></details>

@@ -1,0 +1,29 @@
+---
+import { PREVIEW_EXAMPLE, cleanPreviewText, characterCount } from '../../lib/text-preview';
+import { showcase } from '../../lib/showcase';
+const shortcuts = showcase.toolShortcuts;
+const result = cleanPreviewText(PREVIEW_EXAMPLE);
+---
+<section class="tools-spotlight" id="tiny-tools" aria-labelledby="tiny-tools-title" data-project="tiny-tools">
+  <div class="tools-spotlight__intro">
+    <p class="section-kicker">A useful place to start</p>
+    <h2 id="tiny-tools-title">Tiny Tools<span aria-hidden="true">.</span></h2>
+    <p class="tools-spotlight__line">Small jobs.<br/>Less friction.</p>
+    <p class="tools-spotlight__description">Clean up text, convert an image, format data, or make a QR code. A collection of focused browser utilities, without an account.</p>
+    <div class="actions"><a class="button" href="/tools/">Open Tiny Tools <span aria-hidden="true">↗</span></a><a class="quiet-link" href="/project/tiny-tools/">Inside the project <span aria-hidden="true">→</span></a></div>
+    <nav class="tool-shortcuts" aria-label="Go straight to a Tiny Tool">
+      {shortcuts.map(tool => <a href={tool.href}><span>{tool.label}</span><span aria-hidden="true">↗</span></a>)}
+    </nav>
+  </div>
+  <div class="text-preview" data-text-preview>
+    <header class="text-preview__header"><span class="preview-glyph" aria-hidden="true">Aa</span><div><h3>Text cleaner</h3><p>A working miniature. Try your own text.</p></div></header>
+    <div class="text-preview__field"><label for="tiny-preview-input">Your text</label><textarea id="tiny-preview-input" data-preview-input disabled rows="3" maxlength="10000" spellcheck="false" aria-describedby="tiny-preview-help">{PREVIEW_EXAMPLE}</textarea></div>
+    <div class="text-preview__divider"><span aria-hidden="true">↓</span><span>Same words. Tidier spacing.</span></div>
+    <div class="text-preview__field text-preview__field--result"><label for="tiny-preview-output">Cleaned result</label><textarea id="tiny-preview-output" data-preview-output rows="3" readonly spellcheck="false">{result}</textarea></div>
+    <div class="text-preview__actions"><button type="button" data-preview-copy disabled>Copy result</button><button type="button" data-preview-reset disabled>Reset example</button><span data-preview-count>{characterCount(PREVIEW_EXAMPLE)-characterCount(result)} characters removed</span></div>
+    <p class="text-preview__status" data-preview-status role="status" aria-live="polite" aria-atomic="true"></p>
+    <p class="text-preview__note" id="tiny-preview-help">This miniature only trims lines and repeated whitespace. Nothing you type here is sent or saved. <a href="/tools/#/tool/text-cleaner">Open the full Text Cleaner →</a></p>
+    <noscript><p class="text-preview__note">The example is shown above. Enable JavaScript to edit this preview.</p></noscript>
+  </div>
+</section>
+<script>import '../../scripts/text-preview';</script>

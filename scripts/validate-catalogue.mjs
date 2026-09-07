@@ -98,8 +98,6 @@ for (const [slug, related] of Object.entries(relations)) {
 }
 
 const stats = computeStats(projects);
-if (stats.totalRegistered !== 20) warnings.push(`Expected initial registered count 20; found ${stats.totalRegistered}.`);
-if (stats.totalListed !== 19) warnings.push(`Expected initial listed count 19; found ${stats.totalListed}.`);
 
 if (failures.length) {
   console.error('Catalogue validation failed:\n');

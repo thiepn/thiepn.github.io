@@ -534,6 +534,39 @@
       "updatedAt": "2026-08-25"
     },
     {
+      "code": "T-006",
+      "slug": "tiny-tools",
+      "title": "Tiny Tools",
+      "subtitle": "Small tools for everyday work",
+      "summary": "Focused browser utilities for text, images, files, data and everyday tasks, without an account.",
+      "category": "tools",
+      "type": "app",
+      "status": "live",
+      "route": "/project/tiny-tools/",
+      "liveUrl": "https://thiepn.dev/tools/",
+      "repo": "thiepn/tools",
+      "tags": [
+        "productivity",
+        "documents",
+        "cleaning"
+      ],
+      "capabilityTags": [
+        "local-first"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [
+        "productivity-creation"
+      ],
+      "previewTier": "P4",
+      "previewType": "static",
+      "previewProvenance": "captured",
+      "updatedAt": "2026-09-08"
+    },
+    {
       "code": "L-007",
       "slug": "tms60",
       "title": "TMS60",
@@ -750,6 +783,7 @@
       "summary": "Practical tools for documents, publishing, and structured everyday workflows.",
       "route": "/collection/productivity-creation/",
       "projects": [
+        "tiny-tools",
         "pdf-studio",
         "manuscript",
         "clean30"
