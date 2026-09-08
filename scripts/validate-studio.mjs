@@ -26,7 +26,8 @@ for(const preview of config.arcadePreviews){
  assert(fs.existsSync('public'+preview.src),`Missing game capture: ${preview.id}`);
  if(preview.video)assert(fs.existsSync('public'+preview.video),`Missing gameplay recording: ${preview.id}`);
 }
-for(const task of config.toolShortcuts)assert(/^\/tools\/#\/tool\/[a-z0-9-]+$/.test(task.href),'Unexpected Tiny Tools shortcut');
+assert(config.toolFamilies.length>=8,'Tiny Tools needs a cross-suite overview');
+for(const family of config.toolFamilies){assert(family.tools.length>=2);for(const task of family.tools)assert(/^\/tools\/#\/tool\/[a-z0-9-]+$/.test(task.href),'Unexpected Tiny Tools shortcut');}
 const notes=JSON.parse(fs.readFileSync('src/data/build-notes.json','utf8'));
 for(const [slug,note] of Object.entries(notes)){
  assert(bySlug.has(slug));assert(note.sections.length>0);assert(note.sources.length>0);

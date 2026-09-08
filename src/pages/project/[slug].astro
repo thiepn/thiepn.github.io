@@ -5,6 +5,7 @@ import ProjectMedia from '../../components/studio/ProjectMedia.astro';
 import ProjectExhibit from '../../components/studio/ProjectExhibit.astro';
 import MediaDeck from '../../components/studio/MediaDeck.astro';
 import BuildNotes from '../../components/studio/BuildNotes.astro';
+import ToolboxOverview from '../../components/studio/ToolboxOverview.astro';
 import buildNotes from '../../data/build-notes.json';
 import { getPublicProjects, getRelatedProjects } from '../../lib/catalogue';
 import { presentation, showcase, selectProjects } from '../../lib/showcase';
@@ -22,7 +23,7 @@ const lifecycle=p.status==='beta'?'In beta — still being developed':p.status==
 <article class="project-story page-shell" data-record-slug={p.slug}>
 <a class="back-link" href="/work/">← Back to the work</a>
 <header class="project-hero"><div class="project-hero__copy"><p class="eyebrow">{p.subtitle}</p><h1>{p.title}</h1><p class="project-purpose">{view.summary}</p>{lifecycle && <p class="availability">{lifecycle}</p>}{view.note && <p class="project-caveat">{view.note}</p>}<div class="actions">{p.liveUrl && !p.unavailable && <a class="button" href={p.liveUrl}>{view.action}<span aria-hidden="true">↗</span></a>}{p.repo&&p.actions.source&&<a class="action-link" href={`https://github.com/${p.repo}`}>Source code <span aria-hidden="true">↗</span></a>}</div></div><div class:list={['project-hero__media',`exhibit--${view.tone}`]}>{p.slug===showcase.hero ? <MediaDeck id="project-arcade" slides={showcase.arcadePreviews} priority/> : <figure><ProjectMedia src={view.media} alt={view.caption} priority/><figcaption>{view.caption}</figcaption></figure>}</div></header>
-{p.slug==='tiny-tools'&&<nav class="project-starts" aria-label="Try a Tiny Tools task"><strong>Start with a task</strong>{showcase.toolShortcuts.map(task=><a class="action-link" href={task.href}>{task.label} <span aria-hidden="true">↗</span></a>)}</nav>}
+{p.slug==='tiny-tools'&&<section class="studio-section" aria-labelledby="toolbox-heading"><header class="section-head"><div><h2 id="toolbox-heading">Across the toolbox</h2><p class="meta">Examples from the wider collection.</p></div><a class="action-link" href="/tools/">Explore all tools →</a></header><ToolboxOverview/></section>}
 <section class="story-section" aria-labelledby="story-heading"><h2 id="story-heading">{p.category==='games'?'The idea behind the game':p.category==='learning'?'What you can practice':'What it does'}</h2><div class="prose"><Content/></div></section>
 <BuildNotes slug={p.slug}/>
 {p.capabilities.length>0&&<section class="story-section" aria-labelledby="capabilities-heading"><h2 id="capabilities-heading">{p.category==='games'?'Ways to play':p.category==='learning'?'Inside the learning experience':'Inside the project'}</h2><div class="capability-notes">{p.capabilities.map(item=><div><h3>{item.title}</h3><p>{item.description}</p></div>)}</div></section>}
