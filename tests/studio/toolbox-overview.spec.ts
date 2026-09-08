@@ -3,7 +3,7 @@ for (const width of [320,375,768,1440]) for (const theme of ['light','dark'] as 
  test(`suite breadth and readable links ${width} ${theme}`,async({page},testInfo)=>{
   await page.setViewportSize({width,height:960});await page.emulateMedia({colorScheme:theme});
   await page.goto('/');const section=page.locator('#tiny-tools');
-  await expect(section.getByRole('heading',{name:'Tiny Tools.'})).toBeVisible();
+  await expect(section.getByRole('heading',{name:'Tiny Tools',exact:true})).toBeVisible();
   await expect(section).toContainText('Hundreds of tools.');
   await expect(section.locator('[data-toolbox-family]')).toHaveCount(8);
   await expect(section.locator('[data-toolbox-overview] a')).toHaveCount(16);
