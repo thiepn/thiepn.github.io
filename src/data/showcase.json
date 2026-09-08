@@ -36,7 +36,7 @@
       "line": "Your documents. Your workspace.",
       "summary": "Edit, annotate and organize PDFs in your browser.",
       "media": "/projects/pdf-studio/showcase-workspace.webp",
-      "caption": "The built-in sample document open in the real PDF Studio workspace.",
+      "caption": "Project Northstar, the built-in sample, open in the real PDF Studio workspace.",
       "tone": "paper",
       "action": "Open PDF Studio",
       "note": "Release candidate. Keep original documents and check exported files before relying on them."
