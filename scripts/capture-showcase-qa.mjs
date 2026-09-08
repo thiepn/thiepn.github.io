@@ -69,9 +69,6 @@ for (const title of ['Block Drop','Vanguard','Breakout Mini']) {
   await page.locator('[data-media-panel]:visible img').evaluate(e => e.decode());
   await page.locator('.arcade-showcase').screenshot({ path: `${out}/arcade-${title.replaceAll(' ','-')}.png` });
 }
-await page.locator('[data-preview-input]').fill('  Less   friction.   More   focus.  ');
-await page.locator('#tiny-tools').screenshot({ path: `${out}/tiny-tools-live-preview.png` });
-await page.locator('[data-preview-reset]').click();
 await page.locator('#tiny-tools').screenshot({ path: `${out}/tiny-tools-feature.png` });
 await page.keyboard.press('Control+k');
 await page.locator('[data-catalogue-search-input]').fill('tiny tools');

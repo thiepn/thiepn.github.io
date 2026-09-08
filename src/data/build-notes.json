@@ -16,16 +16,28 @@
         "text": "The utility suite processes user content in the browser wherever possible. Some engines first download static runtimes. Currency rates and explicitly started network diagnostics use external services. Those exceptions matter, and are not hidden behind an absolute “no network” claim."
       },
       {
-        "title": "Try one small job.",
-        "text": "The four shortcuts on this page open real task routes. The homepage text-cleaner miniature demonstrates only whitespace cleanup; the full tool has additional options. Office conversions and media support have documented fidelity and browser limits."
+        "title": "A collection built for discovery.",
+        "text": "The toolbox brings hundreds of tasks together through search, categories and directly addressable tool routes. The examples on this page span different kinds of work; the full collection remains the main destination. Office conversions and media formats have documented fidelity and browser limits."
       }
     ],
     "sources": [
-      { "label": "Lazy tool registry", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tools.ts" },
-      { "label": "Compatible task routes", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tool-shell-mode.ts" },
-      { "label": "Capabilities & limits", "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/README.md" }
+      {
+        "label": "Lazy tool registry",
+        "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tools.ts"
+      },
+      {
+        "label": "Compatible task routes",
+        "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/src/registry/tool-shell-mode.ts"
+      },
+      {
+        "label": "Capabilities & limits",
+        "url": "https://github.com/thiepn/tools/blob/a35498aef714f5a9d320c15fdcd3abf995e6a088/README.md"
+      }
     ],
-    "related": ["pdf-studio", "manuscript"]
+    "related": [
+      "pdf-studio",
+      "manuscript"
+    ]
   },
   "micro-arcade": {
     "title": "Different games. One familiar way to play.",
@@ -49,11 +61,23 @@
       }
     ],
     "sources": [
-      { "label": "Application & game loading", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/App.tsx" },
-      { "label": "Timing helpers", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/lib/frameRateRuntime.ts" },
-      { "label": "Local play & online service", "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/README.md" }
+      {
+        "label": "Application & game loading",
+        "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/App.tsx"
+      },
+      {
+        "label": "Timing helpers",
+        "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/src/lib/frameRateRuntime.ts"
+      },
+      {
+        "label": "Local play & online service",
+        "url": "https://github.com/thiepn/arcade/blob/5f9e5a50e7c988c5be5fed1c6e883edfb59f3f44/README.md"
+      }
     ],
-    "related": ["wordstrike", "voidcut"]
+    "related": [
+      "wordstrike",
+      "voidcut"
+    ]
   },
   "pdf-studio": {
     "title": "The exported file is part of the interface.",
@@ -77,10 +101,22 @@
       }
     ],
     "sources": [
-      { "label": "Operation coordinator", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/operations/projectOperationCoordinator.ts" },
-      { "label": "Export & fidelity boundary", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/editor/editorExportClient.ts" },
-      { "label": "Release status & limitations", "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/README.md" }
+      {
+        "label": "Operation coordinator",
+        "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/operations/projectOperationCoordinator.ts"
+      },
+      {
+        "label": "Export & fidelity boundary",
+        "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/src/editor/editorExportClient.ts"
+      },
+      {
+        "label": "Release status & limitations",
+        "url": "https://github.com/thiepn/pdf/blob/b09ff0e6e543da779df10540458a5bdbb1a301dc/README.md"
+      }
     ],
-    "related": ["tiny-tools", "manuscript"]
+    "related": [
+      "tiny-tools",
+      "manuscript"
+    ]
   }
 }

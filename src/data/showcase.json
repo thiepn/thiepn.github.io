@@ -109,21 +109,15 @@
     },
     "tiny-tools": {
       "tier": "showcase",
-      "line": "Small jobs. Less friction.",
-      "summary": "Focused browser utilities for text, images, files and everyday work. No account needed.",
-      "media": "/projects/tiny-tools/showcase.webp",
-      "caption": "A sample inside the real Tiny Tools Text Cleaner.",
+      "line": "Hundreds of tools. One place.",
+      "summary": "Hundreds of browser tools for documents, images, audio, video, data, code, calculators and everyday tasks.",
+      "media": "/projects/tiny-tools/showcase-suite.webp",
+      "caption": "The Tiny Tools collection, with its full-toolbox search, categories and utility directory.",
       "tone": "tools",
-      "action": "Open Tiny Tools",
+      "action": "Explore Tiny Tools",
       "note": "Most tools process content locally. Network-dependent tools disclose their external connections. Format support varies by browser."
     }
   },
-  "toolShortcuts": [
-    { "label": "Clean up text", "href": "/tools/#/tool/text-cleaner" },
-    { "label": "Convert an image", "href": "/tools/#/tool/image-converter" },
-    { "label": "Format JSON", "href": "/tools/#/tool/json-formatter" },
-    { "label": "Make a QR code", "href": "/tools/#/tool/qr-studio" }
-  ],
   "arcadePreviews": [
     {
       "id": "breakout",
@@ -143,6 +137,120 @@
       "title": "Vanguard",
       "src": "/projects/micro-arcade/showcase-vanguard.webp",
       "caption": "Galaxy Vanguard · move, fire and survive the next wave."
+    }
+  ],
+  "toolFamilies": [
+    {
+      "label": "PDFs & documents",
+      "icon": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M14 2v6h6M8 13h8M8 17h5",
+      "tools": [
+        {
+          "label": "Merge PDF",
+          "href": "/tools/#/tool/merge-pdf"
+        },
+        {
+          "label": "Document & eBook Converter",
+          "href": "/tools/#/tool/document-converter"
+        }
+      ]
+    },
+    {
+      "label": "Images & design",
+      "icon": "M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1M3 16l6-6 5 5 3-3 4 4M16 7h.01",
+      "tools": [
+        {
+          "label": "Image Converter",
+          "href": "/tools/#/tool/image-converter"
+        },
+        {
+          "label": "Palette Generator",
+          "href": "/tools/#/tool/color-palette-generator"
+        }
+      ]
+    },
+    {
+      "label": "Audio & video",
+      "icon": "M9 18V5l12-2v13M9 18a3 3 0 1 1-3-3h3M21 16a3 3 0 1 1-3-3h3",
+      "tools": [
+        {
+          "label": "Audio Converter",
+          "href": "/tools/#/tool/audio-converter"
+        },
+        {
+          "label": "Subtitle Converter",
+          "href": "/tools/#/tool/subtitle-converter"
+        }
+      ]
+    },
+    {
+      "label": "Files & data",
+      "icon": "M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7M3 10h18",
+      "tools": [
+        {
+          "label": "Data Converter",
+          "href": "/tools/#/tool/data-converter"
+        },
+        {
+          "label": "Archive Converter",
+          "href": "/tools/#/tool/archive-converter"
+        }
+      ]
+    },
+    {
+      "label": "Text & developer",
+      "icon": "M8 5l-6 7 6 7M16 5l6 7-6 7M14 3l-4 18",
+      "tools": [
+        {
+          "label": "Word Counter",
+          "href": "/tools/#/tool/word-counter"
+        },
+        {
+          "label": "Regex Tester",
+          "href": "/tools/#/tool/regex-tester"
+        }
+      ]
+    },
+    {
+      "label": "Math & calculators",
+      "icon": "M4 3h16v18H4zM7 7h10M7 12h2M15 12h2M7 17h2M15 17h2",
+      "tools": [
+        {
+          "label": "Statistics",
+          "href": "/tools/#/tool/statistics-calculator"
+        },
+        {
+          "label": "Unit Converter",
+          "href": "/tools/#/tool/unit-converter"
+        }
+      ]
+    },
+    {
+      "label": "Devices & diagnostics",
+      "icon": "M3 3h18v13H3zM8 21h8M12 16v5M7 8h2l2 4 3-6 2 4h2",
+      "tools": [
+        {
+          "label": "Keyboard Test",
+          "href": "/tools/#/tool/keyboard-test"
+        },
+        {
+          "label": "Browser Capabilities",
+          "href": "/tools/#/tool/browser-capability-inspector"
+        }
+      ]
+    },
+    {
+      "label": "Time & everyday",
+      "icon": "M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9M12 7v5l3 2",
+      "tools": [
+        {
+          "label": "Time Zone",
+          "href": "/tools/#/tool/time-zone-converter"
+        },
+        {
+          "label": "QR Studio",
+          "href": "/tools/#/tool/qr-studio"
+        }
+      ]
     }
   ]
 }

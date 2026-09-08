@@ -83,7 +83,7 @@ test('mobile menu, search handoff and persistent theme',async({page})=>{
 test('static archive and primary work survive JavaScript disabled',async({browser})=>{
  const ctx=await browser.newContext({javaScriptEnabled:false,viewport:{width:375,height:812}});const page=await ctx.newPage();await page.goto('http://127.0.0.1:4321/projects/');
  expect(await page.locator('[data-simple-item]').count()).toBeGreaterThan(15);await expect(page.locator('.mobile-menu__noscript')).toBeVisible();await page.goto('http://127.0.0.1:4321/');await expect(page.getByRole('link',{name:'Play Micro Arcade'}).last()).toBeVisible();
- await expect(page.locator('[data-preview-input]')).toBeDisabled();await expect(page.locator('[data-preview-output]')).toHaveValue(/A little less friction/);await expect(page.getByRole('link',{name:'Open Tiny Tools',exact:false}).first()).toBeVisible();await ctx.close();
+ await expect(page.locator('#tiny-tools [data-toolbox-family]')).toHaveCount(8);await expect(page.locator('#tiny-tools textarea')).toHaveCount(0);await expect(page.getByRole('link',{name:'Explore all tools',exact:false}).first()).toBeVisible();await ctx.close();
 });
 for(const route of ['/','/work/','/projects/','/about/','/books/','/collections/','/collection/browser-games/','/project/micro-arcade/','/project/pdf-studio/','/project/manuscript/','/project/tiny-tools/','/privacy/'])for(const theme of ['light','dark'] as const){
  test(`accessibility ${route} ${theme}`,async({page})=>{
@@ -117,30 +117,14 @@ test('recording is opt-in, recovers from failure, and never blocks the launch li
  await expect(page.locator('[data-media-status]')).toContainText(/could not/);expect(requests.length).toBeGreaterThan(0);
  await expect(page.getByRole('link',{name:'Play Micro Arcade'})).toHaveAttribute('href','/arcade/');await expect(video).not.toBeVisible();
 });
-test('Tiny Tools preview is useful, bounded and private',async({page})=>{
- await page.goto('/');const preview=page.locator('[data-text-preview]');await expect(preview).toHaveAttribute('data-ready','true');
- const input=page.locator('[data-preview-input]'),output=page.locator('[data-preview-output]');
- const requests:string[]=[];page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType()))requests.push(r.url());});
- await input.fill('  Bonjour   안녕하세요  😀  ');await expect(output).toHaveValue('Bonjour 안녕하세요 😀');
- expect(await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}))).not.toContain('Bonjour');
- await page.waitForTimeout(150);expect(requests).toEqual([]);
- await input.fill('');await expect(page.locator('[data-preview-copy]')).toBeDisabled();
- await page.locator('[data-preview-reset]').click();await expect(input).toBeFocused();await expect(input).toHaveValue(/A little/);
-});
-test('clipboard rejection gives a selectable result instead of false success',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('Denied'))}}));
- await page.goto('/');await page.locator('[data-preview-copy]').click();await expect(page.locator('[data-preview-status]')).toContainText('copy it manually');await expect(page.locator('[data-preview-output]')).toBeFocused();
-});
-test('clipboard success copies exactly the cleaned result',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:(value:string)=>{(window as any).__copied=value;return Promise.resolve();}}}));
- await page.goto('/');await page.locator('[data-preview-input]').fill(' one   two ');await page.locator('[data-preview-copy]').click();
- await expect(page.locator('[data-preview-status]')).toHaveText('Cleaned text copied.');expect(await page.evaluate(()=>(window as any).__copied)).toBe('one two');
-});
-test('Tiny Tools feature and its task links are present on home, work and project',async({page})=>{
- await page.goto('/');await expect(page.locator('#tiny-tools')).toContainText('Small jobs.');
- await expect(page.getByRole('link',{name:'Open Tiny Tools',exact:false}).first()).toHaveAttribute('href','/tools/');
- for(const route of ['/','/project/tiny-tools/']){await page.goto(route);for(const task of ['text-cleaner','image-converter','json-formatter','qr-studio'])expect(await page.locator(`a[href="/tools/#/tool/${task}"]`).count()).toBeGreaterThan(0);}
- await page.goto('/work/');await expect(page.locator('[data-project="tiny-tools"]')).toBeVisible();
+test('Tiny Tools is a suite on home, work and project',async({page})=>{
+ for(const route of ['/','/project/tiny-tools/']){
+  await page.goto(route);await expect(page.locator('[data-toolbox-family]')).toHaveCount(8);
+  await expect(page.getByRole('link',{name:'Explore all tools',exact:false}).first()).toHaveAttribute('href','/tools/');
+  for(const task of ['merge-pdf','image-converter','audio-converter','data-converter','regex-tester','statistics-calculator','keyboard-test','qr-studio'])expect(await page.locator(`a[href="/tools/#/tool/${task}"]`).count()).toBeGreaterThan(0);
+ }
+ await page.goto('/');await expect(page.locator('#tiny-tools')).toContainText('Hundreds of tools.');await expect(page.locator('[data-text-preview]')).toHaveCount(0);
+ await page.goto('/work/');await expect(page.locator('[data-project="tiny-tools"]')).toContainText('Hundreds of browser tools');
 });
 for(const slug of ['tiny-tools','micro-arcade','pdf-studio'])test(`build notes contain inspectable pinned source evidence ${slug}`,async({page})=>{
  await page.goto(`/project/${slug}/`);const notes=page.locator('.build-notes');await expect(notes).toBeVisible();

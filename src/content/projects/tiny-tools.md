@@ -3,7 +3,7 @@ schemaVersion: 1
 code: T-006
 slug: tiny-tools
 title: Tiny Tools
-subtitle: Small tools for everyday work
+subtitle: Hundreds of tools in one browser toolbox
 aliases:
 - tools
 - utility suite
@@ -14,7 +14,7 @@ category: tools
 type: app
 status: live
 visibility: listed
-summary: Focused browser utilities for text, images, files, data and everyday tasks, without an account.
+summary: Hundreds of browser tools spanning documents, images, audio, video, files, data, code, calculators, diagnostics and everyday tasks.
 repo: thiepn/tools
 liveUrl: https://thiepn.dev/tools/
 tags:
@@ -40,7 +40,7 @@ preview:
   tier: P4
   type: static
   provenance: captured
-  poster: /projects/tiny-tools/showcase.webp
+  poster: /projects/tiny-tools/showcase-suite.webp
 showcase:
   purpose: Put everyday text, file, image and data tasks in small browser workspaces with direct links, local processing and explicit format limits.
   stack:
@@ -62,6 +62,10 @@ capabilities:
 - title: Local processing, explicit exceptions
   description: Most content processing runs in the browser. Currency rates and user-started network diagnostics disclose their external connections.
 gallery:
+- label: The complete toolbox
+  caption: The real Tiny Tools collection, with search, categories and the utility directory.
+  variant: suite
+  source: /projects/tiny-tools/showcase-suite.webp
 - label: Text cleaning
   caption: A sample text being normalized inside the real Tiny Tools Text Cleaner, with transformations and output visible.
   variant: cleaner
@@ -74,6 +78,6 @@ gallery:
 
 Some jobs do not need another account or a large application. They need a place to paste some text, convert a supported file, tidy a table, or check a value.
 
-Tiny Tools brings those jobs into focused browser workspaces. Start with the Text Cleaner, JSON Formatter, Image Converter or QR Studio, then use the wider collection when another task comes up.
+Tiny Tools brings those jobs into focused browser workspaces. Explore the full collection through search and categories, from PDF operations and file converters to image, audio, video, text, developer, calculator, diagnostic and everyday tools.
 
 Files are not sent to an application conversion service. Some tools first download a local runtime; others, such as currency and network diagnostics, intentionally contact disclosed external services. Format support and output fidelity have limits: keep originals and check consequential results.

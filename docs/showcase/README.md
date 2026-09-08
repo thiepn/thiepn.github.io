@@ -4,9 +4,11 @@ The homepage presents work before the catalogue. Tiny Tools is a dedicated secon
 
 ## Editing
 
-`src/data/showcase.json` owns selected order, project summaries, real media, game-preview descriptors and four direct Tiny Tools task links. `src/data/build-notes.json` holds source-linked technical notes and deliberately selected related projects. Cite inspected commit-pinned source when updating those notes; do not invent author motivations, metrics or claims of product certification.
+`src/data/showcase.json` owns selected order, project summaries, real media, game-preview descriptors and cross-suite tool-family examples. `src/data/build-notes.json` holds source-linked technical notes and deliberately selected related projects. Cite inspected commit-pinned source when updating those notes; do not invent author motivations, metrics or claims of product certification.
 
-The text-cleaner miniature demonstrates only whitespace normalization. It is deliberately not a full copy of Tiny Tools' normalizer. Its input is not sent or persisted. It handles empty input, clipboard denial and no-JavaScript states explicitly. Extend the pure transformation and its tests together rather than inserting a larger utility framework into the homepage.
+Tiny Tools is presented as the complete suite, not as one utility. `toolFamilies` supplies a static cross-section of the collection on the homepage and project page; “Explore all tools” leads to the full application. The former text-cleaner miniature and its JavaScript have been removed. Do not reinstate a dominant single-tool demo as the identity of this project. The overview is intentionally an edited sample rather than a duplicate catalogue.
+
+The collection was checked at tools commit `a35498aef714f5a9d320c15fdcd3abf995e6a088`: 351 tool routes across 13 categories. Public copy uses “hundreds” rather than a brittle exact count.
 
 Game previews are genuine canvas captures. The silent MP4 loads only after a visitor asks to watch it. It never autoplays; a still and a real launch link work independently. Tabs support arrow, Home and End keys. A generic tabpanel contains a native figure and caption; do not override a figure's native role. Switching tabs, leaving the viewport or hiding the page stops playback. Respect these lifecycle and network constraints when adding media.
 
