@@ -5,13 +5,14 @@ const config: {hero:string;work:string[];projects:Record<string,{media:string}>}
 // Fetch the separately deployed Library's real public covers once per worker.
 // Preview serves those exact bytes; no invented or mocked product UI.
 const libraryAssets = new Map<string, {body: Buffer; contentType: string}>();
+const libraryContentType = (path:string) => path.endsWith('.svg') ? 'image/svg+xml' : path.endsWith('.png') ? 'image/png' : path.endsWith('.webp') ? 'image/webp' : 'application/octet-stream';
 test.beforeAll(async({playwright})=>{
  const request=await playwright.request.newContext();
  try {
-  for(const path of ['/library/media/works/choosing-a-mission-organization/cover.svg','/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp']){
+  for(const path of ['/library/media/works/how-to-prepare-for-missions/editions/1.1.0/how-to-prepare-for-missions-cover.png','/library/media/works/how-to-love-god/editions/1.1.0/how-to-love-god.webp']){
    if(process.env.LIBRARY_ASSET_DIR){
     const body=fs.readFileSync(process.env.LIBRARY_ASSET_DIR+path.replace('/library/media',''));
-    libraryAssets.set(path,{body,contentType:path.endsWith('.svg')?'image/svg+xml':'image/webp'});
+    libraryAssets.set(path,{body,contentType:libraryContentType(path)});
     continue;
    }
    const response=await request.get('https://thiepn.dev'+path,{timeout:30000});
@@ -97,6 +98,12 @@ for(const route of ['/','/work/','/projects/','/about/','/books/','/collections/
 }
 test('media and publication sources are explicit, not invented',()=>{
  expect(config.hero).toBe('micro-arcade');for(const slug of config.work){const data=(config.projects as any)[slug];expect(fs.existsSync('public'+data.media)).toBe(true);}
+});
+test('Library showcase uses the finished missions cover',async({page})=>{
+ await page.goto('/');const library=page.locator('.library-feature');
+ await expect(library.getByRole('link',{name:'Read How to Prepare for Missions'})).toHaveAttribute('href','/library/works/how-to-prepare-for-missions/');
+ await expect(library.getByAltText('How to Prepare for Missions book cover')).toHaveAttribute('src','/library/media/works/how-to-prepare-for-missions/editions/1.1.0/how-to-prepare-for-missions-cover.png');
+ await expect(library.getByRole('link',{name:'Read Choosing a Mission Organization'})).toHaveCount(0);
 });
 for(const route of ['/','/project/micro-arcade/'])test(`all gameplay panels load and keyboard navigation works ${route}`,async({page})=>{
  await page.goto(route);const tabs=page.locator('[data-media-tab]');await expect(tabs).toHaveCount(3);
