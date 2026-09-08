@@ -66,7 +66,7 @@ gallery:
   variant: home
   source: /projects/pdf-studio/screenshot-desktop.png
 - label: Open document
-  caption: A real sample PDF opened inside the editing workspace with pages, tools, zoom, and document canvas visible.
+  caption: Project Northstar, the real built-in sample, opened inside the workspace with pages, tools, zoom, and document canvas visible.
   variant: workspace
   source: /projects/pdf-studio/screenshot-workspace.png
 - label: Page organizer
