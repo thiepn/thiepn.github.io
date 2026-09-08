@@ -1,0 +1,97 @@
+name: PDF Studio showcase recapture
+on:
+  push:
+    branches: [fix/pdf-studio-showcase-northstar]
+    paths: ['.github/workflows/pdf-showcase-recapture.yml']
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pdf-studio-showcase-northstar
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y webp
+      - name: Wait for Project Northstar on production and capture it
+        run: |
+          mkdir -p /tmp/pdf-showcase
+          cat > /tmp/pdf-showcase/capture.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import fs from 'node:fs';
+          const browser=await chromium.launch();
+          let captured=false;
+          const observations=[];
+          for(let attempt=1;attempt<=150;attempt++){
+            const context=await browser.newContext({viewport:{width:1440,height:960},colorScheme:'light'});
+            const page=await context.newPage();
+            const row={attempt,checkedAt:new Date().toISOString(),errors:[]};
+            page.on('pageerror',e=>row.errors.push(e.message));
+            try{
+              const response=await page.goto('https://thiepn.dev/pdf/#/home',{waitUntil:'domcontentloaded',timeout:30000});
+              row.status=response?.status();
+              await page.getByRole('button',{name:'Open sample',exact:true}).click({timeout:10000});
+              const pdfPage=page.getByRole('region',{name:'PDF page 1'});
+              await pdfPage.waitFor({timeout:12000});
+              await page.waitForTimeout(900);
+              row.text=(await pdfPage.innerText()).slice(0,2500);
+              if(row.text.includes('Launch Review')&&row.text.includes('PROJECT NORTHSTAR')){
+                await page.screenshot({path:'/tmp/pdf-showcase/workspace.png',fullPage:false});
+                row.captured=true;captured=true;observations.push(row);await context.close();break;
+              }
+            }catch(e){row.error=e.message;}
+            observations.push(row);await context.close();
+            await new Promise(r=>setTimeout(r,6000));
+          }
+          fs.writeFileSync('/tmp/pdf-showcase/observations.json',JSON.stringify(observations,null,2));
+          await browser.close();
+          if(!captured)throw new Error('Project Northstar was not observed on the production PDF Studio origin within the capture window');
+          JS
+          node /tmp/pdf-showcase/capture.mjs
+          cwebp -quiet -q 88 /tmp/pdf-showcase/workspace.png -o public/projects/pdf-studio/showcase-workspace.webp
+          cp /tmp/pdf-showcase/workspace.png public/projects/pdf-studio/screenshot-workspace.png
+      - name: Refresh the truthful caption and generated share assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('src/data/showcase.json'); data=json.loads(p.read_text())
+          data['projects']['pdf-studio']['caption']='Project Northstar, the built-in sample, open in the real PDF Studio workspace.'
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          project=Path('src/content/projects/pdf-studio.md'); text=project.read_text()
+          text=text.replace('A real sample PDF opened inside the editing workspace with pages, tools, zoom, and document canvas visible.','Project Northstar, the real built-in sample, opened inside the workspace with pages, tools, zoom, and document canvas visible.')
+          project.write_text(text)
+          PY
+          node scripts/rasterize-og.mjs
+          npm run catalogue:refresh
+      - name: Verify portfolio source and build
+        env:
+          LIBRARY_ASSET_DIR: ''
+        run: |
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Commit only the production showcase result
+        run: |
+          rm -f .github/workflows/pdf-showcase-recapture.yml
+          mkdir -p docs/showcase
+          cp /tmp/pdf-showcase/observations.json docs/showcase/pdf-studio-northstar-capture.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: showcase PDF Studio with the polished Northstar sample'
+          git push origin HEAD:fix/pdf-studio-showcase-northstar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdf-studio-showcase-capture
+          path: /tmp/pdf-showcase/
+          retention-days: 7
