@@ -1,0 +1,89 @@
+name: Final live showcase verification
+on:
+  push:
+    branches: [design/showcase-tiny-tools]
+    paths: ['.github/workflows/showcase-final-live.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 63bd7c1aec22128d6000bd9d52d54ab07f69c642
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0 lighthouse@13.4.1
+      - run: npx playwright install --with-deps chromium
+      - name: Require the corrected deployment
+        run: |
+          mkdir -p live-showcase-evidence
+          git rev-parse HEAD > live-showcase-evidence/source-sha.txt
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          let ready=false;
+          for(let i=0;i<36;i++){
+            const response=await fetch('https://thiepn.dev/',{headers:{'Cache-Control':'no-cache'}});
+            const html=await response.text();
+            if(response.ok && /Small jobs\.\s+<br[^>]*>/.test(html) && html.includes('data-preview-input')){
+              ready=true;fs.writeFileSync('live-showcase-evidence/homepage.html',html);break;
+            }
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!ready)throw new Error('The corrected Tiny Tools markup was not observed in production');
+          JS
+          node scripts/smoke-production.mjs --url https://thiepn.dev/ --retries 6 > live-showcase-evidence/production-smoke.log 2>&1
+      - name: Render production and verify first-use states
+        env:
+          SHOWCASE_BASE_URL: https://thiepn.dev
+          SHOWCASE_EVIDENCE_DIR: live-showcase-evidence
+        run: |
+          node scripts/capture-showcase-qa.mjs
+          node --input-type=module - <<'JS'
+          import {chromium} from '@playwright/test';
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const browser=await chromium.launch();
+          const page=await browser.newPage({viewport:{width:1440,height:960},colorScheme:'light'});
+          await page.goto('https://thiepn.dev/',{waitUntil:'networkidle'});
+          await page.locator('[data-text-preview][data-ready=true]').waitFor();
+          await page.locator('#tiny-tools').screenshot({path:'live-showcase-evidence/tiny-tools-first-view.png'});
+          await page.locator('[data-preview-input]').fill('  Bonjour   안녕하세요  😀  ');
+          const output=await page.locator('[data-preview-output]').inputValue();
+          assert.equal(output,'Bonjour 안녕하세요 😀');
+          await page.getByRole('tab',{name:'Vanguard',exact:true}).click();
+          await page.locator('[data-media-panel]:visible img').evaluate(e=>e.decode());
+          const media=await page.locator('[data-media-panel]:visible img').evaluate(e=>({loaded:e.complete&&e.naturalWidth>0,source:e.currentSrc}));
+          assert(media.loaded);
+          const readability=[];
+          for(const width of [320,375,768,1440]){
+            await page.setViewportSize({width,height:960});await page.goto('https://thiepn.dev/',{waitUntil:'networkidle'});
+            await page.locator('[data-text-preview][data-ready=true]').waitFor();await page.evaluate(()=>document.fonts.ready);
+            const tagline=(await page.locator('.tools-spotlight__line').textContent()).replace(/\s+/g,' ').trim();
+            assert.equal(tagline,'Small jobs. Less friction.');
+            const fields=await page.locator('[data-preview-input],[data-preview-output]').evaluateAll(es=>es.map(e=>({height:e.clientHeight,scrollHeight:e.scrollHeight,width:e.clientWidth,scrollWidth:e.scrollWidth})));
+            assert(fields.every(e=>e.scrollHeight<=e.height+1&&e.scrollWidth<=e.width+1));
+            readability.push({width,tagline,fields});
+            if(width===375)await page.locator('#tiny-tools').screenshot({path:'live-showcase-evidence/tiny-tools-mobile.png'});
+          }
+          fs.writeFileSync('live-showcase-evidence/live-interactions.json',JSON.stringify({origin:'https://thiepn.dev',sourceSha:'63bd7c1aec22128d6000bd9d52d54ab07f69c642',textPreview:output,media,readability,checkedAt:new Date().toISOString()},null,2));
+          await browser.close();
+          JS
+      - name: Measure the corrected live origin
+        run: |
+          for i in 1 2 3; do
+            node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/ --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-home-mobile-$i.json --quiet
+          done
+          node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/ --preset=desktop --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-home-desktop.json --quiet
+          node /tmp/audit-tools/node_modules/lighthouse/cli/index.js https://thiepn.dev/project/tiny-tools/ --chrome-flags='--headless --no-sandbox' --output=json --output-path=live-showcase-evidence/lighthouse-tiny-tools-mobile.json --quiet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final-live-showcase
+          path: live-showcase-evidence/
+          retention-days: 7
