@@ -20,16 +20,16 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y webp
-      - name: Wait for Project Northstar on production and capture it
+      - name: Capture Project Northstar from production
         run: |
           mkdir -p /tmp/pdf-showcase
-          cat > /tmp/pdf-showcase/capture.mjs <<'JS'
+          cat > .pdf-showcase-capture.mjs <<'JS'
           import { chromium } from '@playwright/test';
           import fs from 'node:fs';
           const browser=await chromium.launch();
           let captured=false;
           const observations=[];
-          for(let attempt=1;attempt<=150;attempt++){
+          for(let attempt=1;attempt<=10;attempt++){
             const context=await browser.newContext({viewport:{width:1440,height:960},colorScheme:'light'});
             const page=await context.newPage();
             const row={attempt,checkedAt:new Date().toISOString(),errors:[]};
@@ -38,26 +38,35 @@ jobs:
               const response=await page.goto('https://thiepn.dev/pdf/#/home',{waitUntil:'domcontentloaded',timeout:30000});
               row.status=response?.status();
               await page.getByRole('button',{name:'Open sample',exact:true}).click({timeout:10000});
-              const pdfPage=page.getByRole('region',{name:'PDF page 1'});
-              await pdfPage.waitFor({timeout:12000});
-              await page.waitForTimeout(900);
-              row.text=(await pdfPage.innerText()).slice(0,2500);
+              await page.waitForURL(/#\/workspace\/[^/]+\/viewer/,{timeout:12000});
+              const renderedPage=page.locator('.pdf-page-shell[data-rendered="true"]').first();
+              await renderedPage.waitFor({timeout:12000});
+              const textLayer=renderedPage.locator('.pdf-text-layer');
+              await textLayer.waitFor({timeout:12000});
+              await page.waitForFunction(()=>{
+                const text=document.querySelector('.pdf-page-shell[data-rendered="true"] .pdf-text-layer')?.textContent??'';
+                return text.includes('Launch Review')&&text.includes('PROJECT NORTHSTAR');
+              },{timeout:12000});
+              row.text=((await textLayer.textContent())??'').slice(0,2500);
+              row.url=page.url();
               if(row.text.includes('Launch Review')&&row.text.includes('PROJECT NORTHSTAR')){
+                await page.waitForTimeout(900);
                 await page.screenshot({path:'/tmp/pdf-showcase/workspace.png',fullPage:false});
                 row.captured=true;captured=true;observations.push(row);await context.close();break;
               }
             }catch(e){row.error=e.message;}
             observations.push(row);await context.close();
-            await new Promise(r=>setTimeout(r,6000));
+            await new Promise(r=>setTimeout(r,3000));
           }
           fs.writeFileSync('/tmp/pdf-showcase/observations.json',JSON.stringify(observations,null,2));
           await browser.close();
-          if(!captured)throw new Error('Project Northstar was not observed on the production PDF Studio origin within the capture window');
+          if(!captured)throw new Error('Project Northstar was not observed on the production PDF Studio origin');
           JS
-          node /tmp/pdf-showcase/capture.mjs
+          node .pdf-showcase-capture.mjs
+          rm .pdf-showcase-capture.mjs
           cwebp -quiet -q 88 /tmp/pdf-showcase/workspace.png -o public/projects/pdf-studio/showcase-workspace.webp
           cp /tmp/pdf-showcase/workspace.png public/projects/pdf-studio/screenshot-workspace.png
-      - name: Refresh the truthful caption and generated share assets
+      - name: Refresh truthful caption and generated share assets
         run: |
           python - <<'PY'
           from pathlib import Path
