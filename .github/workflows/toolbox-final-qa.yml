@@ -1,0 +1,60 @@
+name: Toolbox final QA
+on:
+  push:
+    branches: [qa/tiny-tools-suite]
+    paths: ['.github/workflows/toolbox-final-qa.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Preview visual QA and live tool links
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4321 > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 20); do curl -s http://127.0.0.1:4321/ >/dev/null && break; sleep 1; done
+          node scripts/verify-toolbox-suite.mjs
+          node scripts/capture-showcase-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: toolbox-preview-qa
+          path: |
+            toolbox-qa/
+            showcase-qa/
+          retention-days: 7
+      - name: Require corrected production presentation
+        run: |
+          node --input-type=module - <<'JS'
+          let ready=false;
+          for(let i=0;i<90;i++){
+            const response=await fetch('https://thiepn.dev/',{headers:{'Cache-Control':'no-cache'}});
+            const html=await response.text();
+            if(response.ok&&html.includes('data-toolbox-family')&&html.includes('Hundreds of tools.')&&!html.includes('data-preview-input')){ready=true;break;}
+            await new Promise(resolve=>setTimeout(resolve,5000));
+          }
+          if(!ready)throw new Error('Corrected portfolio deployment was not observed');
+          JS
+      - name: Verify production suite and route health
+        env:
+          TOOLBOX_BASE_URL: https://thiepn.dev
+          TOOLBOX_EVIDENCE_DIR: toolbox-live-qa
+        run: |
+          node scripts/verify-toolbox-suite.mjs
+          node scripts/smoke-production.mjs --url https://thiepn.dev/ --retries 6 > toolbox-live-qa/smoke.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: toolbox-live-qa
+          path: toolbox-live-qa/
+          retention-days: 7
