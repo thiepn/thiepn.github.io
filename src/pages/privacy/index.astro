@@ -6,13 +6,13 @@ const analyticsConfigured = import.meta.env.PROD && token.length > 0;
 ---
 <BaseLayout
   title="Privacy — THIEPN"
-  description="How THIEPN handles privacy, local preferences, and privacy-conscious aggregate web analytics."
+  description="How THIEPN handles privacy, optional account identity, local preferences, and privacy-conscious aggregate web analytics."
 >
   <div class="page-shell privacy-page">
     <header class="privacy-hero">
       <p class="eyebrow">Site policy</p>
       <h1>Privacy</h1>
-      <p class="privacy-hero__lede">THIEPN is designed to work without accounts, advertising profiles, or persistent analytics identifiers.</p>
+      <p class="privacy-hero__lede">Most of THIEPN can be browsed and used without an account. Supported first-party apps can optionally use THIEPN Account for one shared sign-in identity while keeping each app's private data in separate ownership boundaries.</p>
       <div class="privacy-status" data-analytics-status={analyticsConfigured ? 'configured' : 'not-configured'}>
         <span class="privacy-status__label">Analytics status</span>
         <strong>{analyticsConfigured ? 'Configured' : 'Not configured'}</strong>
@@ -34,9 +34,9 @@ const analyticsConfigured = import.meta.env.PROD && token.length > 0;
         <ul>
           <li>No analytics cookies, <code>localStorage</code>, <code>sessionStorage</code>, or persistent visitor ID.</li>
           <li>No advertising pixels, ad profiles, fingerprinting, or cross-site analytics tracking.</li>
-          <li>No custom analytics events for searches, clicks, project launches, or book reads.</li>
+          <li>No custom analytics events for searches, clicks, project launches, book reads, account actions, or app content.</li>
           <li>No analytics beacon on URLs containing a query string or fragment, so filter/search state is not sent as the landing URL.</li>
-          <li>No analytics on development routes or pages marked <code>noindex</code>.</li>
+          <li>No analytics on development routes or pages marked <code>noindex</code>, including the THIEPN Account dashboard.</li>
         </ul>
       </section>
 
@@ -58,10 +58,19 @@ const analyticsConfigured = import.meta.env.PROD && token.length > 0;
         </p>
       </section>
 
-      <section class="privacy-local" aria-labelledby="local-heading">
+      <section aria-labelledby="account-heading">
         <p class="section-index">05</p>
+        <h2 id="account-heading">THIEPN Account</h2>
+        <p>THIEPN Account uses one canonical authentication identity for supported first-party apps. The browser can reuse the same signed-in session across app paths on <code>thiepn.dev</code>, but authentication alone does not grant access to another app's private records.</p>
+        <p>Private app rows are owned by the authenticated account ID and protected by database Row Level Security. Notes, Diet Copilot and WORDSTRIKE keep their domain data separate even when they use the same identity.</p>
+        <p>The account dashboard can store a small global profile such as display name, preferred language and timezone. Email, provider identities, sessions and password credentials are handled by Supabase Auth. App-specific content is not copied into the global profile.</p>
+        <p>Deleting THIEPN Account is ecosystem-wide: private Notes attachment objects are removed first, then the canonical identity is deleted and app rows linked to that identity are removed through database ownership cascades.</p>
+      </section>
+
+      <section class="privacy-local" aria-labelledby="local-heading">
+        <p class="section-index">06</p>
         <h2 id="local-heading">Local site preferences</h2>
-        <p>Analytics storage is separate from functional site preferences. For example, the THIEPN theme control may store a light/dark preference locally in your browser so the interface can remember your choice. That preference is not used as an analytics identifier or sent as an analytics event.</p>
+        <p>Analytics storage is separate from functional site preferences. For example, the THIEPN theme control may store a light/dark preference locally in your browser so the interface can remember your choice. A signed-in THIEPN Account session is also stored locally so supported apps on this origin can recognize the same account. These functional values are not used as analytics identifiers or sent as analytics events.</p>
       </section>
     </div>
   </div>

@@ -1,0 +1,204 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/account.css';
+---
+<BaseLayout
+  title="THIEPN Account"
+  description="Manage your THIEPN Account, profile, sign-in methods, connected apps and account deletion."
+  noindex={true}
+>
+  <div class="page-shell account-page" data-account-root>
+    <header class="account-hero">
+      <p class="eyebrow">THIEPN Account</p>
+      <div class="account-hero__grid">
+        <div>
+          <h1>One account.<br/><span>Separate apps.</span></h1>
+          <p class="account-hero__lede">Your identity can follow you across supported THIEPN apps. Notes, diet data, game progress and other app content stay in their own data boundaries.</p>
+        </div>
+        <div class="account-principle" aria-label="THIEPN Account principle">
+          <span>Identity</span><strong>Shared</strong>
+          <span>App data</span><strong>Separated</strong>
+          <span>Ownership</span><strong>Your account</strong>
+        </div>
+      </div>
+      <p class="account-global-status" data-account-global-status aria-live="polite">Checking your THIEPN Account…</p>
+    </header>
+
+    <section class="account-auth" data-account-signed-out hidden aria-labelledby="account-sign-in-heading">
+      <div class="account-auth__copy">
+        <p class="section-index">01</p>
+        <h2 id="account-sign-in-heading">Sign in once.</h2>
+        <p>The same THIEPN Account session is recognized by supported apps on <code>thiepn.dev</code>. You can use Google or email and password.</p>
+        <ul class="account-checks">
+          <li>One canonical account identity</li>
+          <li>No shared pool of Notes, Diet or WORDSTRIKE content</li>
+          <li>Sign out clears the shared session in this browser</li>
+        </ul>
+      </div>
+
+      <div class="account-auth__panel">
+        <button class="account-google-button" type="button" data-auth-google>
+          <span aria-hidden="true">G</span>
+          Continue with Google
+        </button>
+        <div class="account-divider"><span>or use email</span></div>
+        <form class="account-form" data-auth-form>
+          <label>
+            <span>Email</span>
+            <input type="email" autocomplete="email" required data-auth-email />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" autocomplete="current-password" minlength="8" required data-auth-password />
+          </label>
+          <button class="button" type="submit">Sign in</button>
+          <div class="account-inline-actions">
+            <button type="button" class="account-text-button" data-auth-create>Create account</button>
+            <button type="button" class="account-text-button" data-auth-reset>Forgot password?</button>
+          </div>
+          <p class="account-form-status" data-auth-status data-tone="neutral" aria-live="polite" hidden></p>
+        </form>
+      </div>
+    </section>
+
+    <div data-account-signed-in hidden>
+      <section class="account-summary" aria-labelledby="account-summary-heading">
+        <div class="account-summary__identity">
+          <div class="account-avatar" data-account-avatar aria-hidden="true">TH</div>
+          <div>
+            <p class="section-index">Your account</p>
+            <h2 id="account-summary-heading" data-account-name>THIEPN user</h2>
+            <p data-account-email></p>
+            <div class="account-providers" data-account-providers aria-label="Sign-in methods"></div>
+          </div>
+        </div>
+        <dl class="account-summary__meta">
+          <div><dt>Account created</dt><dd data-account-created>—</dd></div>
+          <div><dt>Last sign-in</dt><dd data-account-last-sign-in>—</dd></div>
+        </dl>
+        <button class="account-secondary-button" type="button" data-account-sign-out>Sign out</button>
+      </section>
+
+      <div class="account-grid">
+        <section class="account-card" aria-labelledby="profile-heading">
+          <p class="section-index">02</p>
+          <h2 id="profile-heading">Profile</h2>
+          <p class="account-card__intro">Basic account preferences live here. Apps can choose to use them later without putting app-specific data in your global profile.</p>
+          <form class="account-form" data-profile-form>
+            <label>
+              <span>Display name</span>
+              <input type="text" maxlength="80" autocomplete="name" data-profile-display-name />
+            </label>
+            <label>
+              <span>Preferred language</span>
+              <select data-profile-language>
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="ko">한국어</option>
+                <option value="tr">Türkçe</option>
+                <option value="fr">Français</option>
+              </select>
+            </label>
+            <label>
+              <span>Timezone</span>
+              <div class="account-input-action">
+                <input type="text" maxlength="64" placeholder="Europe/Berlin" data-profile-timezone />
+                <button type="button" class="account-mini-button" data-profile-detect-timezone>Detect</button>
+              </div>
+            </label>
+            <button class="button" type="submit">Save profile</button>
+            <p class="account-form-status" data-profile-status aria-live="polite" hidden></p>
+          </form>
+        </section>
+
+        <section class="account-card" aria-labelledby="security-heading">
+          <p class="section-index">03</p>
+          <h2 id="security-heading">Sign-in & security</h2>
+          <div class="account-security-facts">
+            <div><span>Email</span><strong data-security-current-email>—</strong><small data-security-email-verified>—</small></div>
+            <div><span>Google</span><strong data-security-google>—</strong><small>Provider identity</small></div>
+          </div>
+          <p class="account-pending-email" data-security-pending-email hidden></p>
+
+          <form class="account-form account-form--compact" data-email-form>
+            <label>
+              <span>Change email</span>
+              <input type="email" autocomplete="email" placeholder="new@example.com" data-new-email />
+            </label>
+            <button class="account-secondary-button" type="submit">Update email</button>
+            <p class="account-form-status" data-email-status aria-live="polite" hidden></p>
+          </form>
+
+          <form class="account-form account-form--compact" data-password-form>
+            <label>
+              <span>Set or change password</span>
+              <input type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" data-security-new-password />
+            </label>
+            <label>
+              <span>Confirm password</span>
+              <input type="password" autocomplete="new-password" minlength="8" data-security-confirm-password />
+            </label>
+            <button class="account-secondary-button" type="submit">Save password</button>
+            <p class="account-form-status" data-password-status aria-live="polite" hidden></p>
+          </form>
+        </section>
+      </div>
+
+      <section class="account-apps-section" aria-labelledby="apps-heading">
+        <div class="account-section-head">
+          <div>
+            <p class="section-index">04</p>
+            <h2 id="apps-heading">Your apps</h2>
+          </div>
+          <p>Connected means this account has server-side activity for that app. Available apps can still recognize the same signed-in identity.</p>
+        </div>
+        <div class="account-apps" data-account-apps></div>
+      </section>
+
+      <section class="account-data-boundary" aria-labelledby="boundary-heading">
+        <p class="section-index">How the boundary works</p>
+        <h2 id="boundary-heading">Shared identity does not mean shared content.</h2>
+        <div>
+          <p>THIEPN Account provides the canonical user ID and sign-in session. Each app keeps its own tables and ownership policies.</p>
+          <p>Signing into WORDSTRIKE cannot reveal Notes or Diet data. Database Row Level Security scopes private rows to the authenticated account.</p>
+        </div>
+      </section>
+
+      <section class="account-danger" aria-labelledby="delete-heading">
+        <div class="account-danger__copy">
+          <p class="section-index">05 · Danger zone</p>
+          <h2 id="delete-heading">Delete THIEPN Account</h2>
+          <p>This is ecosystem-wide and irreversible. It removes the canonical identity and all data attached to it in connected THIEPN apps. Private Notes attachment objects are removed before the identity is deleted.</p>
+          <p class="account-danger__label">Deletion includes:</p>
+          <ul data-delete-apps></ul>
+        </div>
+        <div class="account-danger__action">
+          <label>
+            <span>Type <strong>DELETE MY ACCOUNT</strong> to confirm</span>
+            <input type="text" autocomplete="off" spellcheck="false" data-delete-confirmation />
+          </label>
+          <button class="account-delete-button" type="button" data-delete-account disabled>Delete THIEPN Account</button>
+          <p class="account-form-status" data-delete-status aria-live="polite" hidden></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="account-deleted" data-account-deleted hidden aria-labelledby="account-deleted-heading">
+      <p class="section-index">Account deleted</p>
+      <h2 id="account-deleted-heading">The identity is gone.</h2>
+      <p data-delete-result>Your THIEPN Account and connected app data were deleted.</p>
+      <a class="action-link" href="/">Return to THIEPN <span aria-hidden="true">→</span></a>
+    </section>
+
+    <noscript>
+      <section class="account-noscript">
+        <h2>JavaScript is required for account management.</h2>
+        <p>The rest of THIEPN remains browseable without it, but authentication and account changes require browser scripting.</p>
+      </section>
+    </noscript>
+  </div>
+
+  <script>
+    import '../../scripts/account';
+  </script>
+</BaseLayout>
