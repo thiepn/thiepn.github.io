@@ -8,7 +8,6 @@ export interface ThiepnMfaFactor {
   updated_at?: string;
   phone?: string;
   last_challenged_at?: string;
-  [key: string]: unknown;
 }
 export interface ThiepnUser {
   id: string;
@@ -118,7 +117,7 @@ export interface AccountClient {
   updatePassword(input?: { password?: string; nonce?: string }): Promise<ThiepnUser>;
   listMfaFactors(session?: ThiepnSession | null): Promise<{ user: ThiepnUser | null; factors: ThiepnMfaFactor[] }>;
   enrollTotp(input?: { friendlyName?: string }, session?: ThiepnSession | null): Promise<{ id?: string; type?: string; totp?: { qr_code?: string; secret?: string; uri?: string }; [key: string]: unknown }>;
-  challengeMfa(input?: { factorId?: string; channel?: 'sms' | 'whatsapp' }, session?: ThiepnSession | null): Promise<{ id?: string; [key: string]: unknown }>;
+  challengeMfa(input?: { factorId?: string; channel?: 'sms' | 'whatsapp' | undefined }, session?: ThiepnSession | null): Promise<{ id?: string; [key: string]: unknown }>;
   verifyMfa(input?: { factorId?: string; challengeId?: string; code?: string }, session?: ThiepnSession | null): Promise<ThiepnSession>;
   unenrollMfa(input?: { factorId?: string }, session?: ThiepnSession | null): Promise<unknown>;
   signOut(options?: { scope?: 'local' | 'global' | 'others' | string }): Promise<void>;
