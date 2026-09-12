@@ -20,6 +20,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
+      - name: THIEPN Account security contract
+        run: npm run account:contract
       - run: npm run audit:studio
       - name: Retained scale and automation checks
         run: npm run perf:scale && npm run test:automation

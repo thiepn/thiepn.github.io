@@ -24,7 +24,7 @@ const session = {
 
 describe('THIEPN Account SDK v1', () => {
   it('locks the canonical shared identity contract', () => {
-    expect(THIEPN_ACCOUNT_VERSION).toBe('1.0.0');
+    expect(THIEPN_ACCOUNT_VERSION).toBe('1.1.0');
     expect(THIEPN_ACCOUNT_CONFIG.sessionKey).toBe('sb-hycegznamzjhwinegaai-auth-token');
     expect(THIEPN_ACCOUNT_CONFIG.supabaseUrl).toBe('https://hycegznamzjhwinegaai.supabase.co');
   });
