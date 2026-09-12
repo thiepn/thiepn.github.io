@@ -10,6 +10,11 @@ interface AuthIdentity {
   provider?: string;
 }
 
+interface AuthAppMetadata {
+  provider?: string;
+  providers?: string[];
+}
+
 interface AuthUser {
   id: string;
   email?: string;
@@ -17,6 +22,7 @@ interface AuthUser {
   email_confirmed_at?: string;
   created_at?: string;
   last_sign_in_at?: string;
+  app_metadata?: AuthAppMetadata;
   user_metadata?: Record<string, unknown>;
   identities?: AuthIdentity[];
 }
@@ -293,7 +299,15 @@ async function consumeAuthCallback(): Promise<AuthSession | null> {
 }
 
 function providerSet(user: AuthUser): Set<string> {
-  return new Set((user.identities ?? []).map((identity) => identity.provider).filter((provider): provider is string => Boolean(provider)));
+  const providers = new Set<string>();
+  (user.identities ?? []).forEach((identity) => {
+    if (identity.provider) providers.add(identity.provider);
+  });
+  (user.app_metadata?.providers ?? []).forEach((provider) => {
+    if (provider) providers.add(provider);
+  });
+  if (user.app_metadata?.provider) providers.add(user.app_metadata.provider);
+  return providers;
 }
 
 function metadataString(user: AuthUser, key: string): string | null {
@@ -404,7 +418,7 @@ function renderIdentity(user: AuthUser): void {
   if (providerList) {
     providerList.replaceChildren();
     const entries = [
-      { key: 'email', label: 'Email', connected: providers.has('email') || Boolean(user.email) },
+      { key: 'email', label: 'Email', connected: providers.has('email') },
       { key: 'google', label: 'Google', connected: providers.has('google') },
     ];
     entries.forEach(({ key, label, connected }) => {
