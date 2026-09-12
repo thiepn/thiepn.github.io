@@ -12,6 +12,7 @@ const mockUser = {
   app_metadata: { provider: 'google', providers: ['google'] },
   user_metadata: { full_name: 'Test User' },
   identities: [{ provider: 'google' }],
+  factors: [],
 };
 
 const mockSession = {
@@ -88,6 +89,21 @@ async function installMockAccountApi(page: Page) {
       ]);
       return;
     }
+    if (url.pathname === '/rest/v1/rpc/list_thiepn_account_sessions') {
+      await fulfillJson(route, [
+        {
+          session_id: '33333333-3333-4333-8333-333333333333',
+          created_at: '2026-09-12T19:00:00.000Z',
+          updated_at: '2026-09-12T20:00:00.000Z',
+          refreshed_at: null,
+          not_after: null,
+          user_agent: 'Mozilla/5.0 Firefox/155.0 Windows',
+          aal: 'aal1',
+          is_current: true,
+        },
+      ]);
+      return;
+    }
     if (url.pathname === '/storage/v1/object/list/notes-attachments') {
       await fulfillJson(route, []);
       return;
@@ -101,8 +117,8 @@ async function installMockAccountApi(page: Page) {
   });
 }
 
-test.describe('A1 THIEPN Account core', () => {
-  test('renders the private signed-out account shell', async ({ page }) => {
+test.describe('A1 THIEPN Account core + A3 security surface', () => {
+  test('renders the private signed-out account shell and recovery sign-in option', async ({ page }) => {
     await page.goto('/account/');
 
     await expect(page).toHaveTitle('THIEPN Account');
@@ -112,11 +128,13 @@ test.describe('A1 THIEPN Account core', () => {
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
     await expect(page.locator('[data-auth-email]')).toBeVisible();
     await expect(page.locator('[data-auth-password]')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Email sign-in code' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Send sign-in email' })).toBeVisible();
     await expect(page.locator('[data-account-signed-in]')).toBeHidden();
     await expect(page.locator('[data-account-deleted]')).toBeHidden();
   });
 
-  test('renders a restored shared account and its app boundaries', async ({ page }) => {
+  test('renders a restored shared account, app boundaries and session security', async ({ page }) => {
     await installMockAccountApi(page);
     await page.goto('/account/');
 
@@ -128,6 +146,10 @@ test.describe('A1 THIEPN Account core', () => {
     await expect(page.locator('[data-account-providers] [data-provider="email"]')).toHaveText('Email · Not connected');
     await expect(page.locator('[data-security-google]')).toHaveText('Connected');
     await expect(page.locator('[data-security-email-verified]')).toHaveText('Verified');
+    await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
+    await expect(page.locator('[data-a3-mfa-badge]')).toHaveText('Not enabled');
+    await expect(page.getByRole('heading', { name: 'Active sessions' })).toBeVisible();
+    await expect(page.locator('[data-a3-session-list]')).toContainText('This device');
     await expect(page.locator('.account-app')).toHaveCount(3);
     await expect(page.locator('.account-app[data-connected="true"]')).toHaveCount(2);
     await expect(page.getByRole('heading', { name: 'Shared identity does not mean shared content.' })).toBeVisible();
