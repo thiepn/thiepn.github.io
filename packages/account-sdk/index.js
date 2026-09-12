@@ -1,4 +1,4 @@
-export const THIEPN_ACCOUNT_VERSION = '1.0.0';
+export const THIEPN_ACCOUNT_VERSION = '1.1.0';
 
 export const THIEPN_ACCOUNT_CONFIG = Object.freeze({
   supabaseUrl: 'https://hycegznamzjhwinegaai.supabase.co',
@@ -143,6 +143,60 @@ export function hasProvider(user, provider) {
   return getConnectedProviders(user).has(provider);
 }
 
+export function getMfaFactors(user) {
+  const factors = Array.isArray(user?.factors) ? user.factors : [];
+  return factors.filter((factor) => isRecord(factor) && typeof factor.id === 'string' && typeof factor.factor_type === 'string');
+}
+
+export function getVerifiedMfaFactors(user) {
+  return getMfaFactors(user).filter((factor) => factor.status === 'verified');
+}
+
+function decodeBase64Url(value) {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const binary = globalThis.atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+export function decodeJwtPayload(token) {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const decoded = decodeBase64Url(parts[1]);
+  if (!decoded) return null;
+  try {
+    const payload = JSON.parse(decoded);
+    return isRecord(payload) ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getSessionSecurity(session) {
+  const claims = decodeJwtPayload(session?.access_token);
+  const aal = claims?.aal === 'aal2' ? 'aal2' : 'aal1';
+  const amr = Array.isArray(claims?.amr)
+    ? claims.amr.filter((entry) => isRecord(entry) && typeof entry.method === 'string' && typeof entry.timestamp === 'number')
+    : [];
+  return Object.freeze({
+    aal,
+    sessionId: typeof claims?.session_id === 'string' ? claims.session_id : null,
+    expiresAt: typeof claims?.exp === 'number' ? claims.exp : session?.expires_at ?? null,
+    amr,
+  });
+}
+
+export function needsMfaChallenge(session, user = session?.user) {
+  return getVerifiedMfaFactors(user).length > 0 && getSessionSecurity(session).aal !== 'aal2';
+}
+
 export function accountUrl({ origin = globalThis.location?.origin ?? 'https://thiepn.dev' } = {}) {
   return new URL(THIEPN_ACCOUNT_CONFIG.accountPath, origin).toString();
 }
@@ -179,6 +233,11 @@ function normalizeSession(payload, fallbackUser) {
     token_type: typeof payload.token_type === 'string' && payload.token_type ? payload.token_type : 'bearer',
     user,
   };
+}
+
+function requireSignedIn(session) {
+  if (!session?.access_token) throw new ThiepnAccountError('Sign in first.', { code: 'not_signed_in' });
+  return session;
 }
 
 export function createAccountClient(options = {}) {
@@ -241,7 +300,9 @@ export function createAccountClient(options = {}) {
     if (!response.ok) {
       throw new ThiepnAccountError(messageFromPayload(payload, `Request failed (${response.status}).`), {
         status: response.status,
-        code: isRecord(payload) && typeof payload.code === 'string' ? payload.code : null,
+        code: isRecord(payload)
+          ? (typeof payload.error_code === 'string' ? payload.error_code : typeof payload.code === 'string' ? payload.code : null)
+          : null,
         payload,
       });
     }
@@ -254,7 +315,8 @@ export function createAccountClient(options = {}) {
   }
 
   async function refreshSession(session = read()) {
-    if (!session?.refresh_token) throw new ThiepnAccountError('No refresh token is available.', { code: 'missing_refresh_token' });
+    requireSignedIn(session);
+    if (!session.refresh_token) throw new ThiepnAccountError('No refresh token is available.', { code: 'missing_refresh_token' });
     const payload = await request('/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
       body: JSON.stringify({ refresh_token: session.refresh_token }),
@@ -306,6 +368,23 @@ export function createAccountClient(options = {}) {
     return write(normalizeSession(payload));
   }
 
+  async function requestEmailOtp({ email, shouldCreateUser = false } = {}) {
+    if (!email) throw new ThiepnAccountError('Enter your email first.', { code: 'email_required' });
+    return request('/auth/v1/otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, create_user: Boolean(shouldCreateUser) }),
+    });
+  }
+
+  async function verifyEmailOtp({ email, token } = {}) {
+    if (!email || !token) throw new ThiepnAccountError('Email and one-time code are required.', { code: 'otp_required' });
+    const payload = await request('/auth/v1/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, token, type: 'email' }),
+    });
+    return write(normalizeSession(payload));
+  }
+
   async function signUp({ email, password, redirectTo }) {
     const suffix = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : '';
     const payload = await request(`/auth/v1/signup${suffix}`, {
@@ -334,16 +413,63 @@ export function createAccountClient(options = {}) {
     return request(`/auth/v1/recover${suffix}`, { method: 'POST', body: JSON.stringify({ email }) });
   }
 
+  async function requestReauthentication(session = read()) {
+    requireSignedIn(session);
+    return request('/auth/v1/reauthenticate', { method: 'POST' }, session.access_token);
+  }
+
   async function updateUser(patch, session = read()) {
-    if (!session?.access_token) throw new ThiepnAccountError('Sign in first.', { code: 'not_signed_in' });
+    requireSignedIn(session);
     const user = await request('/auth/v1/user', { method: 'PUT', body: JSON.stringify(patch) }, session.access_token);
     write({ ...session, user });
     return user;
   }
 
+  async function listMfaFactors(session = read()) {
+    requireSignedIn(session);
+    const user = await getUser(session);
+    return { user, factors: getMfaFactors(user) };
+  }
+
+  async function enrollTotp({ friendlyName = 'Authenticator' } = {}, session = read()) {
+    requireSignedIn(session);
+    return request('/auth/v1/factors', {
+      method: 'POST',
+      body: JSON.stringify({ factor_type: 'totp', friendly_name: friendlyName }),
+    }, session.access_token);
+  }
+
+  async function challengeMfa({ factorId, channel } = {}, session = read()) {
+    requireSignedIn(session);
+    if (!factorId) throw new ThiepnAccountError('Choose a verification factor.', { code: 'factor_required' });
+    const body = channel ? { channel } : {};
+    return request(`/auth/v1/factors/${encodeURIComponent(factorId)}/challenge`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.access_token);
+  }
+
+  async function verifyMfa({ factorId, challengeId, code } = {}, session = read()) {
+    requireSignedIn(session);
+    if (!factorId || !challengeId || !code) {
+      throw new ThiepnAccountError('Factor, challenge and verification code are required.', { code: 'mfa_verification_required' });
+    }
+    const payload = await request(`/auth/v1/factors/${encodeURIComponent(factorId)}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ challenge_id: challengeId, code }),
+    }, session.access_token);
+    return write(normalizeSession(payload, session.user));
+  }
+
+  async function unenrollMfa({ factorId } = {}, session = read()) {
+    requireSignedIn(session);
+    if (!factorId) throw new ThiepnAccountError('Choose a verification factor.', { code: 'factor_required' });
+    return request(`/auth/v1/factors/${encodeURIComponent(factorId)}`, { method: 'DELETE' }, session.access_token);
+  }
+
   async function signOut({ scope = 'local' } = {}) {
     const current = read();
-    clear();
+    if (scope !== 'others') clear();
     if (!current?.access_token) return;
     try {
       await request(`/auth/v1/logout?scope=${encodeURIComponent(scope)}`, { method: 'POST' }, current.access_token);
@@ -353,8 +479,16 @@ export function createAccountClient(options = {}) {
   }
 
   async function authFetch(path, init = {}, session = read()) {
-    if (!session?.access_token) throw new ThiepnAccountError('Sign in first.', { code: 'not_signed_in' });
+    requireSignedIn(session);
     return request(path, init, session.access_token);
+  }
+
+  async function listAccountSessions(session = read()) {
+    requireSignedIn(session);
+    return authFetch('/rest/v1/rpc/list_thiepn_account_sessions', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }, session);
   }
 
   return Object.freeze({
@@ -369,13 +503,24 @@ export function createAccountClient(options = {}) {
     ensureSession,
     consumeAuthCallback,
     signInWithPassword,
+    requestEmailOtp,
+    verifyEmailOtp,
     signUp,
     oauthUrl,
     requestPasswordReset,
+    requestReauthentication,
     updateUser,
     updateEmail: ({ email }) => updateUser({ email }),
-    updatePassword: ({ password }) => updateUser({ password }),
+    updatePassword: ({ password, nonce } = {}) => updateUser(nonce ? { password, nonce } : { password }),
+    listMfaFactors,
+    enrollTotp,
+    challengeMfa,
+    verifyMfa,
+    unenrollMfa,
     signOut,
+    signOutOtherSessions: () => signOut({ scope: 'others' }),
     authFetch,
+    listAccountSessions,
+    getSessionSecurity: () => getSessionSecurity(read()),
   });
 }
