@@ -109,8 +109,8 @@ test.describe('A1 THIEPN Account core', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('One account.');
     await expect(page.getByRole('heading', { name: 'Sign in once.' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
-    await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.locator('[data-auth-email]')).toBeVisible();
+    await expect(page.locator('[data-auth-password]')).toBeVisible();
     await expect(page.locator('[data-account-signed-in]')).toBeHidden();
     await expect(page.locator('[data-account-deleted]')).toBeHidden();
   });
