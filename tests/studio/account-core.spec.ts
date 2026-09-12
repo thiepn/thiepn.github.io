@@ -9,6 +9,7 @@ const mockUser = {
   email_confirmed_at: '2026-09-01T10:00:00.000Z',
   created_at: '2026-08-01T10:00:00.000Z',
   last_sign_in_at: '2026-09-12T20:00:00.000Z',
+  app_metadata: { provider: 'google', providers: ['google'] },
   user_metadata: { full_name: 'Test User' },
   identities: [{ provider: 'google' }],
 };
@@ -123,6 +124,8 @@ test.describe('A1 THIEPN Account core', () => {
     await expect(page.locator('[data-account-signed-in]')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Test User' })).toBeVisible();
     await expect(page.locator('[data-account-email]')).toHaveText('account@example.test');
+    await expect(page.locator('[data-account-providers] [data-provider="google"]')).toHaveText('Google · Connected');
+    await expect(page.locator('[data-account-providers] [data-provider="email"]')).toHaveText('Email · Not connected');
     await expect(page.locator('[data-security-google]')).toHaveText('Connected');
     await expect(page.locator('[data-security-email-verified]')).toHaveText('Verified');
     await expect(page.locator('.account-app')).toHaveCount(3);
