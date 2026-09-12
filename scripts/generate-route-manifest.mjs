@@ -5,11 +5,11 @@ const args = parseArgs();
 const projects = publicProjects(await readProjects());
 const collections = await readCollections();
 const routes = [
-  '/', '/about/', '/work/', '/projects/', '/books/', '/collections/', '/privacy/',
+  '/', '/about/', '/account/', '/work/', '/projects/', '/books/', '/collections/', '/privacy/',
   ...projects.map(projectRoute),
   ...collections.map(collectionRoute),
   '/catalogue.json',
 ].sort((a, b) => a.localeCompare(b));
 const payload = { schemaVersion: 1, routes };
 await writeJson(path.join(PATHS.generated, 'route-manifest.json'), payload, { check: Boolean(args.check) });
-console.log(`Route manifest: ${routes.length} public routes.`);
+console.log(`Route manifest: ${routes.length} production routes.`);
