@@ -3,6 +3,7 @@
   "routes": [
     "/",
     "/about/",
+    "/account/",
     "/books/",
     "/catalogue.json",
     "/collection/bible-faith/",
