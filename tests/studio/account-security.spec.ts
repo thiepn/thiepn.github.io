@@ -63,7 +63,9 @@ async function installApi(page: Page, options: { user: typeof userWithoutMfa | t
   const { user, initialSession } = options;
   if (initialSession) {
     await page.addInitScript(
-      ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
+      ({ key, value }) => {
+        if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(value));
+      },
       { key: SESSION_KEY, value: initialSession },
     );
   }
