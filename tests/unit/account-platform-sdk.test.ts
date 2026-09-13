@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   THIEPN_PLATFORM_VERSION,
-  ThiepnAccountError,
   createAccountClient,
 } from '../../packages/account-sdk/index.js';
 
@@ -44,7 +43,7 @@ describe('A4 ecosystem platform SDK', () => {
   it('exposes platform version and reads the user-scoped ecosystem RPC', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      expect(url).toEndWith('/rest/v1/rpc/get_thiepn_ecosystem');
+      expect(url.endsWith('/rest/v1/rpc/get_thiepn_ecosystem')).toBe(true);
       expect(init?.method).toBe('POST');
       return new Response(JSON.stringify(ecosystem), { status: 200 });
     });
@@ -89,7 +88,7 @@ describe('A4 ecosystem platform SDK', () => {
     const client = createAccountClient({ storage: storage(), fetch: fetchMock as typeof fetch });
     client.writeSession(session);
 
-    await expect(client.recordAppActivity({ appId: '../notes' })).rejects.toMatchObject<Partial<ThiepnAccountError>>({
+    await expect(client.recordAppActivity({ appId: '../notes' })).rejects.toMatchObject({
       code: 'invalid_app_slug',
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -107,7 +106,7 @@ describe('A4 ecosystem platform SDK', () => {
       apps: [],
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(String(input)).toEndWith('/rest/v1/rpc/export_thiepn_platform_snapshot');
+      expect(String(input).endsWith('/rest/v1/rpc/export_thiepn_platform_snapshot')).toBe(true);
       expect(init?.method).toBe('POST');
       return new Response(JSON.stringify(snapshot), { status: 200 });
     });
