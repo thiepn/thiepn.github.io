@@ -153,6 +153,6 @@ This section is intentionally filled only after each exact consumer head complet
 
 | Consumer | PR | Candidate SHA | Status |
 | --- | --- | --- | --- |
-| Notes | `thiepn/notes#56` | pending final browser certification | Pending |
+| Notes | `thiepn/notes#56` | `1da1229e06ed6bb54dc985d2a71eef0707532d3a` | Pending final release/P20/PWA browser certification |
 | Diet Copilot | `thiepn/diet#2` | `339d02f128a656514d995f9db2a06d39248976ef` | Certified |
-| WORDSTRIKE | `thiepn/wordstrike#95` | pending broad browser certification | Pending |
+| WORDSTRIKE | `thiepn/wordstrike#95` | `97f6f8941752d86f69c43d0542361094212e23df` | Certified |
