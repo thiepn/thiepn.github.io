@@ -105,7 +105,7 @@ create policy account_user_apps_insert_own
       select 1
       from public.account_apps a
       join public.account_app_manifests m on m.app_slug = a.slug
-      where a.slug = app_slug
+      where a.slug = account_user_apps.app_slug
         and a.active = true
     )
   );
@@ -122,7 +122,7 @@ create policy account_user_apps_update_own
       select 1
       from public.account_apps a
       join public.account_app_manifests m on m.app_slug = a.slug
-      where a.slug = app_slug
+      where a.slug = account_user_apps.app_slug
         and a.active = true
     )
   );
