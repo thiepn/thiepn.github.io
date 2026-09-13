@@ -1,0 +1,155 @@
+.account-platform-section {
+  margin-top: clamp(2rem, 5vw, 4rem);
+  padding: clamp(1.1rem, 3vw, 1.7rem);
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.22));
+  border-radius: 1rem;
+  background: var(--surface, rgba(127, 127, 127, 0.04));
+}
+
+.account-platform-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.account-platform-section__head h2,
+.account-platform-section h3 {
+  margin: 0;
+}
+
+.account-platform-section__head p {
+  max-width: 46rem;
+  margin: 0.45rem 0 0;
+}
+
+.account-platform-version {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--muted, #6b7280);
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.account-platform-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1.15rem;
+}
+
+.account-platform-metric {
+  padding: 0.85rem;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.18));
+  border-radius: 0.8rem;
+}
+
+.account-platform-metric span,
+.account-platform-metric strong {
+  display: block;
+}
+
+.account-platform-metric span {
+  color: var(--muted, #6b7280);
+  font-size: 0.8rem;
+}
+
+.account-platform-metric strong {
+  margin-top: 0.2rem;
+  font-size: 1rem;
+}
+
+.account-platform-apps {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-platform-app {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.16));
+}
+
+.account-platform-app:first-child {
+  border-top: 0;
+}
+
+.account-platform-app__copy strong,
+.account-platform-app__copy small {
+  display: block;
+}
+
+.account-platform-app__copy small {
+  margin-top: 0.12rem;
+  color: var(--muted, #6b7280);
+}
+
+.account-platform-app__state {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.account-platform-app__state[data-connected="true"] {
+  color: var(--success, #067647);
+}
+
+.account-platform-export {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.18));
+}
+
+.account-platform-export p {
+  margin: 0.25rem 0 0;
+  color: var(--muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.account-platform-status {
+  min-height: 1.2rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+}
+
+.account-platform-status[data-tone="error"] {
+  color: var(--danger, #b42318);
+}
+
+.account-platform-status[data-tone="success"] {
+  color: var(--success, #067647);
+}
+
+@media (max-width: 760px) {
+  .account-platform-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .account-platform-section__head,
+  .account-platform-export,
+  .account-platform-app {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-platform-export button {
+    width: 100%;
+  }
+}
