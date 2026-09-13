@@ -72,6 +72,8 @@ Security properties:
 - execution granted to `authenticated`
 - account connection rows resolve only through the caller's `auth.uid()` and existing RLS
 
+Without an authenticated user, the ecosystem RPC returns zero rows and the platform snapshot returns `null`.
+
 ## App activity contract
 
 A4 deliberately does not add a privileged write RPC merely to record app activity.
@@ -84,15 +86,16 @@ await account.recordAppActivity({ appId: 'notes' })
 
 The SDK upserts `public.account_user_apps` directly.
 
-The existing database boundary remains authoritative:
+A4 tightens the database boundary so an activity INSERT/UPDATE is accepted only when:
 
-- the caller supplies the canonical session user id;
-- Row Level Security permits INSERT/UPDATE only where `user_id = auth.uid()`;
-- the foreign key requires a registered app slug;
-- first-use time is preserved;
-- subsequent calls update only last-use activity.
+- `user_id = auth.uid()`;
+- the app exists in `account_apps`;
+- the app is currently active;
+- the app has a versioned `account_app_manifests` row.
 
-This avoids adding a new write-capable `SECURITY DEFINER` function when the existing owner-scoped RLS path already provides the required authorization.
+The foreign key and RLS remain authoritative even if a consumer bypasses the SDK helper. First-use time is preserved, while subsequent activity calls update last-use activity.
+
+This avoids adding a new write-capable `SECURITY DEFINER` function when the existing owner-scoped RLS path can enforce both ownership and platform registration.
 
 ## Platform snapshot export
 
@@ -199,11 +202,12 @@ A4 does not bypass that sequencing.
 
 ## Live backend state
 
-The canonical Supabase project contains the A4 registry and read contracts as separately applied migrations:
+The canonical Supabase project contains the A4 contracts as separately applied migrations:
 
 - `a4_ecosystem_platform_registry`
 - `a4_get_ecosystem`
 - `a4_export_platform_snapshot`
+- `a4_activity_registry_guard`
 
 The repository keeps the reproducible consolidated migration at:
 
@@ -211,7 +215,9 @@ The repository keeps the reproducible consolidated migration at:
 supabase/migrations/20260913002000_a4_ecosystem_platform.sql
 ```
 
-The consolidated migration is idempotent for the registry seed and uses `create or replace` for the read RPCs.
+The consolidated migration is idempotent for the registry seed, recreates the activity RLS guards, and uses `create or replace` for the read RPCs.
+
+The live security advisor reports no new A4 `SECURITY DEFINER` surface. Existing warnings belong to earlier account/Notes RPCs and the existing leaked-password-protection configuration.
 
 ## Certification requirements
 
