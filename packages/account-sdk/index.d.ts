@@ -46,6 +46,54 @@ export interface ThiepnAccountSessionRecord {
   aal: string | null;
   is_current: boolean;
 }
+export interface ThiepnEcosystemApp {
+  app_slug: string;
+  name: string;
+  description: string;
+  path: string;
+  sort_order: number;
+  manifest_version: number;
+  identity_scope: 'shared';
+  data_scope: 'isolated';
+  export_scope: 'none' | 'app-owned' | 'platform-metadata';
+  capabilities: Record<string, unknown>;
+  connected: boolean;
+  first_used_at: string | null;
+  last_used_at: string | null;
+}
+export interface ThiepnAppActivity {
+  app_slug: string;
+  first_used_at: string | null;
+  last_used_at: string | null;
+}
+export interface ThiepnPlatformSnapshot {
+  schema: 'thiepn-platform-snapshot';
+  version: number;
+  platformVersion: string;
+  exportedAt: string;
+  account: { userId: string; email: string | null };
+  profile: {
+    displayName?: string | null;
+    preferredLanguage?: string | null;
+    timezone?: string | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  };
+  security: { assuranceLevel: 'aal1' | 'aal2' | string };
+  apps: Array<{
+    slug: string;
+    name: string;
+    path: string;
+    manifestVersion: number;
+    identityScope: 'shared';
+    dataScope: 'isolated';
+    exportScope: 'none' | 'app-owned' | 'platform-metadata';
+    capabilities: Record<string, unknown>;
+    connected: boolean;
+    firstUsedAt: string | null;
+    lastUsedAt: string | null;
+  }>;
+}
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -61,7 +109,8 @@ export interface AccountClientOptions {
   fetch?: typeof globalThis.fetch;
   strictRemoteSignOut?: boolean;
 }
-export declare const THIEPN_ACCOUNT_VERSION: '1.1.0';
+export declare const THIEPN_ACCOUNT_VERSION: '1.2.0';
+export declare const THIEPN_PLATFORM_VERSION: '1.0.0';
 export declare const THIEPN_ACCOUNT_CONFIG: Readonly<{
   supabaseUrl: string;
   publishableKey: string;
@@ -96,6 +145,7 @@ export declare function accountUrl(options?: { origin?: string }): string;
 export declare function appUrl(appId: 'notes' | 'diet' | 'wordstrike', options?: { origin?: string }): string;
 export interface AccountClient {
   version: string;
+  platformVersion: string;
   config: Readonly<{ supabaseUrl: string; publishableKey: string; sessionKey: string; timeoutMs: number; refreshSkewSeconds: number }>;
   readSession(): ThiepnSession | null;
   writeSession(session: ThiepnSession): ThiepnSession;
@@ -124,6 +174,9 @@ export interface AccountClient {
   signOutOtherSessions(): Promise<void>;
   authFetch<T = unknown>(path: string, init?: RequestInit, session?: ThiepnSession | null): Promise<T>;
   listAccountSessions(session?: ThiepnSession | null): Promise<ThiepnAccountSessionRecord[]>;
+  getEcosystemState(session?: ThiepnSession | null): Promise<ThiepnEcosystemApp[]>;
+  recordAppActivity(input?: { appId?: string }, session?: ThiepnSession | null): Promise<ThiepnAppActivity | null>;
+  exportPlatformSnapshot(session?: ThiepnSession | null): Promise<ThiepnPlatformSnapshot>;
   getSessionSecurity(): ThiepnSessionSecurity;
 }
 export declare function createAccountClient(options?: AccountClientOptions): AccountClient;
