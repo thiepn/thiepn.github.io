@@ -1,6 +1,10 @@
 -- A4 — Ecosystem Platform
--- Versioned first-party app manifests, user ecosystem state, a shared app-usage
--- marker, and a metadata-only platform export. App content remains isolated.
+-- Versioned first-party app manifests, user ecosystem state, and a
+-- metadata-only platform export. App content remains isolated.
+--
+-- App usage writes intentionally continue through public.account_user_apps
+-- under its existing auth.uid() RLS policies; A4 does not add a privileged
+-- write RPC merely to wrap an operation the caller can already perform safely.
 
 create table if not exists public.account_app_manifests (
   app_slug text primary key references public.account_apps(slug) on delete cascade,
@@ -138,55 +142,6 @@ grant execute on function public.get_thiepn_ecosystem() to authenticated;
 
 comment on function public.get_thiepn_ecosystem() is
   'Returns the active THIEPN app registry plus connection metadata for auth.uid(). It never returns app content.';
-
-create or replace function public.touch_thiepn_app_usage(p_app_slug text)
-returns jsonb
-language plpgsql
-security invoker
-set search_path = ''
-as $$
-declare
-  v_uid uuid := (select auth.uid());
-  v_result jsonb;
-begin
-  if v_uid is null then
-    raise exception 'not_authenticated' using errcode = '42501';
-  end if;
-
-  if p_app_slug is null or p_app_slug !~ '^[a-z0-9-]+$' then
-    raise exception 'invalid_app_slug' using errcode = '22023';
-  end if;
-
-  if not exists (
-    select 1
-    from public.account_apps a
-    join public.account_app_manifests m on m.app_slug = a.slug
-    where a.slug = p_app_slug
-      and a.active = true
-  ) then
-    raise exception 'unknown_or_inactive_app' using errcode = '22023';
-  end if;
-
-  insert into public.account_user_apps (user_id, app_slug, first_used_at, last_used_at, source)
-  values (v_uid, p_app_slug, now(), now(), 'app')
-  on conflict (user_id, app_slug) do update
-    set last_used_at = now()
-  returning jsonb_build_object(
-    'app_slug', app_slug,
-    'first_used_at', first_used_at,
-    'last_used_at', last_used_at
-  ) into v_result;
-
-  return v_result;
-end;
-$$;
-
-revoke all on function public.touch_thiepn_app_usage(text) from public;
-revoke all on function public.touch_thiepn_app_usage(text) from anon;
-grant execute on function public.touch_thiepn_app_usage(text) to authenticated;
-
-comment on function public.touch_thiepn_app_usage(text) is
-  'Canonical consumer contract for recording authenticated first-party app activity. It can only write the caller auth.uid().' ;
 
 create or replace function public.export_thiepn_platform_snapshot()
 returns jsonb
