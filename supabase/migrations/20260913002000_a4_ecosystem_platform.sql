@@ -2,9 +2,10 @@
 -- Versioned first-party app manifests, user ecosystem state, and a
 -- metadata-only platform export. App content remains isolated.
 --
--- App usage writes intentionally continue through public.account_user_apps
--- under its existing auth.uid() RLS policies; A4 does not add a privileged
--- write RPC merely to wrap an operation the caller can already perform safely.
+-- App usage writes intentionally continue through public.account_user_apps.
+-- A4 tightens that existing RLS path so writes require auth.uid() ownership,
+-- an active account_apps row, and a versioned A4 manifest. No privileged
+-- write RPC is added merely to wrap an operation RLS can authorize directly.
 
 create table if not exists public.account_app_manifests (
   app_slug text primary key references public.account_apps(slug) on delete cascade,
@@ -90,6 +91,41 @@ set manifest_version = excluded.manifest_version,
     export_scope = excluded.export_scope,
     capabilities = excluded.capabilities,
     updated_at = now();
+
+-- Keep app activity on the normal RLS path, but require a currently active
+-- platform registration and manifest in addition to user ownership.
+drop policy if exists account_user_apps_insert_own on public.account_user_apps;
+create policy account_user_apps_insert_own
+  on public.account_user_apps
+  for insert
+  to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1
+      from public.account_apps a
+      join public.account_app_manifests m on m.app_slug = a.slug
+      where a.slug = app_slug
+        and a.active = true
+    )
+  );
+
+drop policy if exists account_user_apps_update_own on public.account_user_apps;
+create policy account_user_apps_update_own
+  on public.account_user_apps
+  for update
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1
+      from public.account_apps a
+      join public.account_app_manifests m on m.app_slug = a.slug
+      where a.slug = app_slug
+        and a.active = true
+    )
+  );
 
 create or replace function public.get_thiepn_ecosystem()
 returns table (
