@@ -22,6 +22,8 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: THIEPN Account security contract
         run: npm run account:contract
+      - name: THIEPN Ecosystem platform contract
+        run: npm run platform:contract
       - run: npm run audit:studio
       - name: Retained scale and automation checks
         run: npm run perf:scale && npm run test:automation

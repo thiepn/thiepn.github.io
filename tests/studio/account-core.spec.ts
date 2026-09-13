@@ -23,6 +23,27 @@ const mockSession = {
   user: mockUser,
 };
 
+const ecosystem = [
+  {
+    app_slug: 'notes', name: 'Notes', description: 'Local-first notes.', path: '/notes/', sort_order: 10,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true, activityTracking: true, ecosystemDeletion: true, platformExport: 'metadata-only' },
+    connected: false, first_used_at: null, last_used_at: null,
+  },
+  {
+    app_slug: 'diet', name: 'Diet Copilot', description: 'Nutrition tracking.', path: '/diet/', sort_order: 20,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true, activityTracking: true, ecosystemDeletion: true, platformExport: 'metadata-only' },
+    connected: true, first_used_at: '2026-09-01T10:00:00.000Z', last_used_at: '2026-09-12T20:00:00.000Z',
+  },
+  {
+    app_slug: 'wordstrike', name: 'WORDSTRIKE', description: 'Typing training.', path: '/wordstrike/', sort_order: 30,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true, activityTracking: true, ecosystemDeletion: true, platformExport: 'metadata-only' },
+    connected: true, first_used_at: '2026-08-01T10:00:00.000Z', last_used_at: '2026-09-11T20:00:00.000Z',
+  },
+];
+
 async function fulfillJson(route: Route, body: unknown, status = 200) {
   await route.fulfill({
     status,
@@ -104,6 +125,10 @@ async function installMockAccountApi(page: Page) {
       ]);
       return;
     }
+    if (url.pathname === '/rest/v1/rpc/get_thiepn_ecosystem') {
+      await fulfillJson(route, ecosystem);
+      return;
+    }
     if (url.pathname === '/storage/v1/object/list/notes-attachments') {
       await fulfillJson(route, []);
       return;
@@ -117,7 +142,7 @@ async function installMockAccountApi(page: Page) {
   });
 }
 
-test.describe('A1 THIEPN Account core + A3 security surface', () => {
+test.describe('A1 THIEPN Account core + A3 security + A4 platform surface', () => {
   test('renders the private signed-out account shell and recovery sign-in option', async ({ page }) => {
     await page.goto('/account/');
 
@@ -134,7 +159,7 @@ test.describe('A1 THIEPN Account core + A3 security surface', () => {
     await expect(page.locator('[data-account-deleted]')).toBeHidden();
   });
 
-  test('renders a restored shared account, app boundaries and session security', async ({ page }) => {
+  test('renders a restored shared account, app boundaries, security and platform state', async ({ page }) => {
     await installMockAccountApi(page);
     await page.goto('/account/');
 
@@ -152,6 +177,10 @@ test.describe('A1 THIEPN Account core + A3 security surface', () => {
     await expect(page.locator('[data-a3-session-list]')).toContainText('This device');
     await expect(page.locator('.account-app')).toHaveCount(3);
     await expect(page.locator('.account-app[data-connected="true"]')).toHaveCount(2);
+    await expect(page.getByRole('heading', { name: 'One identity, explicit app boundaries.' })).toBeVisible();
+    await expect(page.locator('[data-a4-app-count]')).toHaveText('3');
+    await expect(page.locator('[data-a4-connected-count]')).toHaveText('2');
+    await expect(page.locator('[data-a4-platform-apps]')).toContainText('manifest v1 · data isolated');
     await expect(page.getByRole('heading', { name: 'Shared identity does not mean shared content.' })).toBeVisible();
   });
 

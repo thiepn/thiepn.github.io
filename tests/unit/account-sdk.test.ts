@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   THIEPN_ACCOUNT_CONFIG,
   THIEPN_ACCOUNT_VERSION,
+  THIEPN_PLATFORM_VERSION,
   createAccountClient,
   getConnectedProviders,
   migrateLegacySessions,
@@ -23,8 +24,9 @@ const session = {
 };
 
 describe('THIEPN Account SDK v1', () => {
-  it('locks the canonical shared identity contract', () => {
-    expect(THIEPN_ACCOUNT_VERSION).toBe('1.1.0');
+  it('locks the canonical shared identity and platform contracts', () => {
+    expect(THIEPN_ACCOUNT_VERSION).toBe('1.2.0');
+    expect(THIEPN_PLATFORM_VERSION).toBe('1.0.0');
     expect(THIEPN_ACCOUNT_CONFIG.sessionKey).toBe('sb-hycegznamzjhwinegaai-auth-token');
     expect(THIEPN_ACCOUNT_CONFIG.supabaseUrl).toBe('https://hycegznamzjhwinegaai.supabase.co');
   });

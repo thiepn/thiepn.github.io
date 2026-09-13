@@ -36,6 +36,24 @@ const userWithMfa = {
   }],
 };
 
+const ecosystem = [
+  {
+    app_slug: 'notes', name: 'Notes', description: 'Local-first notes.', path: '/notes/', sort_order: 10,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true }, connected: false, first_used_at: null, last_used_at: null,
+  },
+  {
+    app_slug: 'diet', name: 'Diet Copilot', description: 'Nutrition tracking.', path: '/diet/', sort_order: 20,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true }, connected: false, first_used_at: null, last_used_at: null,
+  },
+  {
+    app_slug: 'wordstrike', name: 'WORDSTRIKE', description: 'Typing training.', path: '/wordstrike/', sort_order: 30,
+    manifest_version: 1, identity_scope: 'shared', data_scope: 'isolated', export_scope: 'app-owned',
+    capabilities: { sharedIdentity: true, isolatedData: true }, connected: false, first_used_at: null, last_used_at: null,
+  },
+];
+
 function authSession(user: typeof userWithoutMfa | typeof userWithMfa, aal: 'aal1' | 'aal2') {
   return {
     access_token: jwt({ aal, session_id: SESSION_ID, exp: 2_000_000_000, amr: [{ method: aal === 'aal2' ? 'totp' : 'password', timestamp: 1_999_999_900 }] }),
@@ -144,8 +162,12 @@ async function installApi(page: Page, options: { user: typeof userWithoutMfa | t
       }]);
       return;
     }
+    if (url.pathname === '/rest/v1/rpc/get_thiepn_ecosystem') {
+      await fulfillJson(route, ecosystem);
+      return;
+    }
 
-    throw new Error(`Unexpected A3 account request: ${request.method()} ${url.pathname}`);
+    throw new Error(`Unexpected account request in A3/A4 test: ${request.method()} ${url.pathname}`);
   });
 }
 

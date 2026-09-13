@@ -11,6 +11,17 @@ const fail = (message) => {
 const check = (condition, message) => {
   if (!condition) fail(message);
 };
+const semverAtLeast = (version, minimum) => {
+  const parse = (value) => String(value).split('.').map((part) => Number(part));
+  const current = parse(version);
+  const floor = parse(minimum);
+  if (current.length !== 3 || floor.length !== 3 || [...current, ...floor].some((part) => !Number.isInteger(part) || part < 0)) return false;
+  for (let index = 0; index < 3; index += 1) {
+    if (current[index] > floor[index]) return true;
+    if (current[index] < floor[index]) return false;
+  }
+  return true;
+};
 
 const sdk = read('packages/account-sdk/index.js');
 const types = read('packages/account-sdk/index.d.ts');
@@ -19,10 +30,12 @@ const accountPage = read('src/pages/account/index.astro');
 const securityUi = read('src/scripts/accountSecurity.ts');
 const migration = read('supabase/migrations/20260913160000_a3_security_recovery.sql');
 const canonicalSessionKey = 'sb-hycegznamzjhwinegaai-auth-token';
+const runtimeVersion = sdk.match(/THIEPN_ACCOUNT_VERSION = '([^']+)'/)?.[1] ?? null;
+const typeVersion = types.match(/THIEPN_ACCOUNT_VERSION: '([^']+)'/)?.[1] ?? null;
 
-check(pkg.version === '1.1.0', 'SDK package must be version 1.1.0.');
-check(sdk.includes("THIEPN_ACCOUNT_VERSION = '1.1.0'"), 'runtime SDK version must be 1.1.0.');
-check(types.includes("THIEPN_ACCOUNT_VERSION: '1.1.0'"), 'type SDK version must be 1.1.0.');
+check(semverAtLeast(pkg.version, '1.1.0'), 'SDK package must preserve A3 compatibility at version 1.1.0 or later.');
+check(runtimeVersion === pkg.version, 'runtime SDK version must match the package version.');
+check(typeVersion === pkg.version, 'type SDK version must match the package version.');
 check(sdk.includes(`sessionKey: '${canonicalSessionKey}'`), 'canonical shared session key changed.');
 check(accountPage.includes("import '../../scripts/accountSecurity';"), 'account page does not load A3 security layer.');
 
