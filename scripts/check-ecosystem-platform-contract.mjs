@@ -36,11 +36,17 @@ for (const app of ['notes', 'diet', 'wordstrike']) {
 check(migration.includes('alter table public.account_app_manifests enable row level security;'), 'manifest registry RLS missing.');
 check(migration.includes('revoke all on table public.account_app_manifests from anon;'), 'manifest registry anon privileges were not revoked.');
 
+check(migration.includes('create policy account_user_apps_insert_own'), 'A4 app-activity INSERT guard missing.');
+check(migration.includes('create policy account_user_apps_update_own'), 'A4 app-activity UPDATE guard missing.');
+check(migration.includes('(select auth.uid()) = user_id'), 'app-activity RLS must remain fixed to auth.uid().');
+check((migration.match(/join public\.account_app_manifests m on m\.app_slug = a\.slug/g) ?? []).length >= 3, 'registry, activity guards and ecosystem state must all depend on versioned manifests.');
+check((migration.match(/a\.active = true/g) ?? []).length >= 3, 'activity writes and ecosystem reads must require active apps.');
+
 check(migration.includes('create or replace function public.get_thiepn_ecosystem()'), 'ecosystem state RPC missing.');
 check(migration.includes('create or replace function public.export_thiepn_platform_snapshot()'), 'platform snapshot RPC missing.');
 check((migration.match(/security invoker/g) ?? []).length >= 2, 'A4 read RPCs must remain SECURITY INVOKER.');
 check(!/security definer/i.test(migration), 'A4 must not introduce a SECURITY DEFINER platform function.');
-check(!migration.includes('touch_thiepn_app_usage'), 'A4 must use existing account_user_apps RLS rather than a privileged activity RPC.');
+check(!migration.includes('touch_thiepn_app_usage'), 'A4 must use account_user_apps RLS rather than a privileged activity RPC.');
 check(migration.includes("'schema', 'thiepn-platform-snapshot'"), 'snapshot schema identifier changed.');
 check(migration.includes("'platformVersion', '1.0.0'"), 'snapshot platform version changed.');
 
