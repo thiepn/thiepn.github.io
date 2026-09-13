@@ -188,9 +188,12 @@ test.describe('A4 Ecosystem Platform', () => {
       security: { assuranceLevel: 'aal1' },
     });
     expect(body.apps).toHaveLength(3);
-    expect(JSON.stringify(body)).not.toContain('note');
+    expect(body).not.toHaveProperty('notes');
+    expect(body).not.toHaveProperty('diet');
+    expect(body).not.toHaveProperty('wordstrike');
     expect(JSON.stringify(body)).not.toContain('calorie_target');
     expect(JSON.stringify(body)).not.toContain('leaderboard_submissions');
+    expect(JSON.stringify(body)).not.toContain('notes_sync_records');
     await expect(page.locator('[data-a4-platform-status]')).toContainText('App-owned content was not included.');
   });
 
