@@ -1,4 +1,5 @@
-export const THIEPN_ACCOUNT_VERSION = '1.1.0';
+export const THIEPN_ACCOUNT_VERSION = '1.2.0';
+export const THIEPN_PLATFORM_VERSION = '1.0.0';
 
 export const THIEPN_ACCOUNT_CONFIG = Object.freeze({
   supabaseUrl: 'https://hycegznamzjhwinegaai.supabase.co',
@@ -15,6 +16,7 @@ export const THIEPN_APPS = Object.freeze({
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_REFRESH_SKEW_SECONDS = 60;
+const APP_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
 export class ThiepnAccountError extends Error {
   constructor(message, { status = 0, code = null, payload = null } = {}) {
@@ -65,6 +67,13 @@ function safeRemove(storage, key) {
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeAppSlug(value) {
+  if (typeof value !== 'string' || !APP_SLUG_PATTERN.test(value)) {
+    throw new ThiepnAccountError('Use a valid THIEPN app slug.', { code: 'invalid_app_slug' });
+  }
+  return value;
 }
 
 export function parseSession(raw) {
@@ -491,8 +500,48 @@ export function createAccountClient(options = {}) {
     }, session);
   }
 
+  async function getEcosystemState(session = read()) {
+    requireSignedIn(session);
+    return authFetch('/rest/v1/rpc/get_thiepn_ecosystem', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }, session);
+  }
+
+  async function recordAppActivity({ appId } = {}, session = read()) {
+    requireSignedIn(session);
+    const appSlug = normalizeAppSlug(appId);
+    if (!session.user?.id) {
+      throw new ThiepnAccountError('The THIEPN Account session has no user ID.', { code: 'missing_user' });
+    }
+    const query = new URLSearchParams({
+      on_conflict: 'user_id,app_slug',
+      select: 'app_slug,first_used_at,last_used_at',
+    });
+    const rows = await authFetch(`/rest/v1/account_user_apps?${query}`, {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        user_id: session.user.id,
+        app_slug: appSlug,
+        last_used_at: new Date().toISOString(),
+        source: 'app',
+      }),
+    }, session);
+    return Array.isArray(rows) ? rows[0] ?? null : rows;
+  }
+
+  async function exportPlatformSnapshot(session = read()) {
+    requireSignedIn(session);
+    return authFetch('/rest/v1/rpc/export_thiepn_platform_snapshot', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }, session);
+  }
+
   return Object.freeze({
     version: THIEPN_ACCOUNT_VERSION,
+    platformVersion: THIEPN_PLATFORM_VERSION,
     config: Object.freeze({ ...config }),
     readSession: read,
     writeSession: write,
@@ -521,6 +570,9 @@ export function createAccountClient(options = {}) {
     signOutOtherSessions: () => signOut({ scope: 'others' }),
     authFetch,
     listAccountSessions,
+    getEcosystemState,
+    recordAppActivity,
+    exportPlatformSnapshot,
     getSessionSecurity: () => getSessionSecurity(read()),
   });
 }
