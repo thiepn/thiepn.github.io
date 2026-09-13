@@ -39,7 +39,8 @@ check(migration.includes('revoke all on table public.account_app_manifests from 
 check(migration.includes('create policy account_user_apps_insert_own'), 'A4 app-activity INSERT guard missing.');
 check(migration.includes('create policy account_user_apps_update_own'), 'A4 app-activity UPDATE guard missing.');
 check(migration.includes('(select auth.uid()) = user_id'), 'app-activity RLS must remain fixed to auth.uid().');
-check((migration.match(/join public\.account_app_manifests m on m\.app_slug = a\.slug/g) ?? []).length >= 3, 'registry, activity guards and ecosystem state must all depend on versioned manifests.');
+check((migration.match(/where a\.slug = account_user_apps\.app_slug/g) ?? []).length === 2, 'both activity write policies must correlate the registry check to the target account_user_apps.app_slug.');
+check((migration.match(/join public\.account_app_manifests m on m\.app_slug = a\.slug/g) ?? []).length >= 3, 'activity guards and ecosystem state must depend on versioned manifests.');
 check((migration.match(/a\.active = true/g) ?? []).length >= 3, 'activity writes and ecosystem reads must require active apps.');
 
 check(migration.includes('create or replace function public.get_thiepn_ecosystem()'), 'ecosystem state RPC missing.');
