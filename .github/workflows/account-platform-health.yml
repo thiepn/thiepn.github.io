@@ -2,6 +2,23 @@ name: Account Platform Health
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ops/**'
+      - 'scripts/account-platform-health.mjs'
+      - 'tests/ops/**'
+      - 'supabase/functions/platform-health/**'
+      - 'docs/account-platform/**'
+      - '.github/workflows/account-platform-health.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ops/**'
+      - 'scripts/account-platform-health.mjs'
+      - 'tests/ops/**'
+      - 'supabase/functions/platform-health/**'
+      - 'docs/account-platform/**'
+      - '.github/workflows/account-platform-health.yml'
   schedule:
     - cron: '17 * * * *'
 
