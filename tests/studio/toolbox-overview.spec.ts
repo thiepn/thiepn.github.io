@@ -1,24 +1,62 @@
 import { test, expect } from '@playwright/test';
-for (const width of [320,375,768,1440]) for (const theme of ['light','dark'] as const) {
- test(`suite breadth and readable links ${width} ${theme}`,async({page},testInfo)=>{
-  await page.setViewportSize({width,height:960});await page.emulateMedia({colorScheme:theme});
-  await page.goto('/');const section=page.locator('#tiny-tools');
-  await expect(section.getByRole('heading',{name:'Tiny Tools',exact:true})).toBeVisible();
-  await expect(section).toContainText('Hundreds of tools.');
-  await expect(section.locator('[data-toolbox-family]')).toHaveCount(8);
-  await expect(section.locator('[data-toolbox-overview] a')).toHaveCount(16);
-  await expect(section.locator('textarea,input,button')).toHaveCount(0);
-  for(const link of await section.locator('a').all()){
-   await expect(link).toBeVisible();const box=await link.boundingBox();expect(box!.height).toBeGreaterThanOrEqual(44);
-   expect(await link.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
-  }
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-  await testInfo.attach(`toolbox-${width}-${theme}`,{body:await section.screenshot(),contentType:'image/png'});
- });
+
+const expectedCounts: Record<string, number> = {
+  tools: 4,
+  create: 4,
+  learn: 6,
+  faith: 3,
+  explore: 2,
+  games: 7,
+};
+
+for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
+  test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 960 });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/');
+
+    const catalogue = page.locator('[data-hub-catalogue]');
+    await expect(catalogue).toBeVisible();
+    await expect(catalogue.locator('[data-hub-item]')).toHaveCount(26);
+    await expect(catalogue.locator('[data-hub-category]')).toHaveCount(7);
+    await expect(catalogue.locator('[data-hub-search]')).toBeVisible();
+
+    for (const [category, count] of Object.entries(expectedCounts)) {
+      const button = catalogue.locator(`[data-hub-category="${category}"]`);
+      await expect(button).toBeVisible();
+      await expect(button).toContainText(String(count));
+    }
+
+    for (const card of await catalogue.locator('[data-hub-item]').all()) {
+      await expect(card.locator('h2')).toBeVisible();
+      await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
+      expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    }
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await testInfo.attach(`hub-${width}-${theme}`, { body: await catalogue.screenshot(), contentType: 'image/png' });
+  });
 }
-test('suite examples are real destinations, not fake filters or demos',async({page})=>{
- await page.goto('/');const links=page.locator('#tiny-tools [data-toolbox-overview] a');
- const hrefs=await links.evaluateAll(es=>es.map(e=>e.getAttribute('href')));
- expect(new Set(hrefs).size).toBe(16);for(const href of hrefs)expect(href).toMatch(/^\/tools\/#\/tool\/[a-z0-9-]+$/);
- await links.first().focus();await expect(links.first()).toBeFocused();await page.keyboard.press('Tab');await expect(links.nth(1)).toBeFocused();
+
+test('Tiny Tools appears once as an ordinary Hub app card, not an embedded toolbox', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Tiny Tools', exact: true })).toHaveCount(1);
+  await expect(page.locator('#tiny-tools')).toHaveCount(0);
+  await expect(page.locator('[data-toolbox-overview]')).toHaveCount(0);
+  await expect(page.locator('[data-toolbox-family]')).toHaveCount(0);
+
+  const tinyToolsCard = page.locator('[data-hub-item]').filter({ has: page.getByRole('heading', { name: 'Tiny Tools', exact: true }) });
+  await expect(tinyToolsCard).toHaveCount(1);
+  await expect(tinyToolsCard.getByRole('link', { name: 'Open app', exact: false })).toHaveAttribute('href', '/tools/');
+  await expect(tinyToolsCard.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('href', '/project/tiny-tools/');
+});
+
+test('each category filter reveals exactly its locked app count', async ({ page }) => {
+  await page.goto('/');
+  const visibleCards = page.locator('[data-hub-item]:visible');
+  for (const [category, count] of Object.entries(expectedCounts)) {
+    await page.locator(`[data-hub-category="${category}"]`).click();
+    await expect(visibleCards).toHaveCount(count);
+    await expect(page.locator(`[data-hub-category="${category}"]`)).toHaveAttribute('aria-pressed', 'true');
+  }
 });
