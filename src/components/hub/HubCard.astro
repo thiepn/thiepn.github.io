@@ -9,7 +9,11 @@ const p = project.data;
 const view = presentation(project);
 const categoryLabel = HUB_CATEGORY_CONFIG.find((category) => category.id === hub.category)?.label ?? hub.category;
 const details = `/project/${p.slug}/`;
-const liveUrl = p.liveUrl!;
+const canonicalLiveUrl = p.liveUrl!;
+const parsedLiveUrl = new URL(canonicalLiveUrl);
+const liveUrl = parsedLiveUrl.origin === 'https://thiepn.dev'
+  ? `${parsedLiveUrl.pathname}${parsedLiveUrl.search}${parsedLiveUrl.hash}`
+  : canonicalLiveUrl;
 const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : hub.badge === 'new' ? 'New' : null;
 const searchText = getHubSearchText(entry);
 ---
