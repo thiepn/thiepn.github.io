@@ -38,8 +38,8 @@ jobs:
         run: |
           node --check public/account-platform/sdk/v1/index.js
           node --check public/account-platform/ui/v1/index.js
-      - name: SDK and contract tests
-        run: node --test tests/account-platform/developer-contract.test.mjs
+      - name: SDK and release-contract tests
+        run: node --test tests/account-platform/*.test.mjs
       - name: Reference consumer conformance
         run: node scripts/validate-account-consumer.mjs examples/account-consumer
       - name: Reusable conformance workflow contract
