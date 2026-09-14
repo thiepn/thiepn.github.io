@@ -99,6 +99,47 @@ export async function probePage(target, options = {}) {
   };
 }
 
+export async function probeJsonApi(target, options = {}) {
+  const result = await withRetry(() => fetchAttempt(target.url, {
+    method: target.method ?? 'GET',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(target.origin ? { Origin: target.origin } : {}),
+    },
+    body: target.body == null ? undefined : JSON.stringify(target.body),
+  }), options);
+
+  if (!result.response) {
+    return {
+      id: target.id,
+      status: 'outage',
+      category: 'network',
+      httpStatus: 0,
+      latencyMs: result.latencyMs,
+      detail: result.errorName ?? 'NetworkError',
+    };
+  }
+
+  let payload = null;
+  try {
+    payload = await result.response.json();
+  } catch {
+    // Invalid JSON is degraded even if the transport returned 2xx.
+  }
+  const contractOk = target.expectedOk === undefined || payload?.ok === target.expectedOk;
+  const healthy = result.response.ok && contractOk;
+  return {
+    id: target.id,
+    status: healthy ? 'healthy' : result.response.ok ? 'degraded' : 'outage',
+    category: healthy ? 'healthy' : classifyHttpStatus(result.response.status),
+    httpStatus: result.response.status,
+    latencyMs: result.latencyMs,
+    detail: healthy ? 'json-contract-ok' : result.response.ok ? 'json-contract-failure' : 'http-failure',
+    requestId: result.response.headers.get('x-request-id'),
+  };
+}
+
 export async function probePlatformHealth(url, options = {}) {
   const result = await withRetry(() => fetchAttempt(url, {
     headers: { Accept: 'application/json' },
@@ -144,6 +185,7 @@ export async function runHealth({ manifestPath = path.join(ROOT, 'ops/account-pl
   const checks = [];
   checks.push(await probePlatformHealth(manifest.healthEndpoint));
   for (const consumer of manifest.consumers) checks.push(await probePage(consumer));
+  for (const api of manifest.apiChecks ?? []) checks.push(await probeJsonApi(api));
 
   return {
     schemaVersion: 1,
