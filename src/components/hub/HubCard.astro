@@ -1,5 +1,5 @@
 ---
-import ProjectMedia from '../studio/ProjectMedia.astro';
+import HubMedia from './HubMedia.astro';
 import { presentation } from '../../lib/showcase';
 import { getHubSearchText, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
 interface Props { entry: HubProjectEntry; priority?: boolean; }
@@ -21,7 +21,7 @@ const searchText = getHubSearchText(entry);
   style={`--hub-accent-light:${p.accent.light};--hub-accent-dark:${p.accent.dark};`}
 >
   <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>
-    <ProjectMedia src={view.media} alt={view.caption} priority={priority} sizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1050px) 48vw, 31vw" />
+    <HubMedia slug={p.slug} fallback={view.media} alt={`${p.title} app interface`} priority={priority} />
   </a>
   <div class="hub-card__body">
     <div class="hub-card__meta">
