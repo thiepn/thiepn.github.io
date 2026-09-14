@@ -1,3 +1,5 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 const CACHE_TTL_MS = 30_000;
 const CHECK_TIMEOUT_MS = 4_000;
 
@@ -40,7 +42,7 @@ function classify(httpStatus: number): Check["status"] {
   return "outage";
 }
 
-async function check(url: string, headers: Record<string, string>): Promise<Check> {
+async function checkHttp(url: string, headers: Record<string, string>): Promise<Check> {
   const started = performance.now();
   try {
     const response = await fetch(url, {
@@ -52,6 +54,27 @@ async function check(url: string, headers: Record<string, string>): Promise<Chec
       status: classify(response.status),
       latencyMs: Math.round(performance.now() - started),
       httpStatus: response.status,
+    };
+  } catch {
+    return {
+      status: "outage",
+      latencyMs: Math.round(performance.now() - started),
+      httpStatus: 0,
+    };
+  }
+}
+
+async function checkDatabase(supabaseUrl: string, serviceRoleKey: string): Promise<Check> {
+  const started = performance.now();
+  try {
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const { error } = await client.from("account_apps").select("slug").limit(1);
+    return {
+      status: error ? "outage" : "healthy",
+      latencyMs: Math.round(performance.now() - started),
+      httpStatus: error ? 503 : 200,
     };
   } catch {
     return {
@@ -76,7 +99,7 @@ async function evaluate(): Promise<Omit<HealthPayload, "requestId">> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {
-    const unavailable: Omit<HealthPayload, "requestId"> = {
+    return {
       service: "thiepn-account-platform",
       status: "outage",
       checkedAt: new Date().toISOString(),
@@ -85,16 +108,11 @@ async function evaluate(): Promise<Omit<HealthPayload, "requestId">> {
         database: { status: "outage", latencyMs: 0, httpStatus: 0 },
       },
     };
-    return unavailable;
   }
 
   const [auth, database] = await Promise.all([
-    check(`${supabaseUrl}/auth/v1/health`, { apikey: serviceRoleKey }),
-    check(`${supabaseUrl}/rest/v1/account_apps?select=slug&limit=1`, {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      Accept: "application/json",
-    }),
+    checkHttp(`${supabaseUrl}/auth/v1/health`, { apikey: serviceRoleKey }),
+    checkDatabase(supabaseUrl, serviceRoleKey),
   ]);
 
   const checks = { auth, database };
@@ -109,7 +127,8 @@ async function evaluate(): Promise<Omit<HealthPayload, "requestId">> {
 }
 
 Deno.serve(async (request) => {
-  const requestId = request.headers.get("x-request-id")?.slice(0, 128) || crypto.randomUUID();
+  const incoming = request.headers.get("x-request-id") || "";
+  const requestId = /^[A-Za-z0-9._:-]{8,128}$/.test(incoming) ? incoming : crypto.randomUUID();
   const headers = jsonHeaders(requestId);
 
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
