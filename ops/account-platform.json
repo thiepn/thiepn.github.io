@@ -1,0 +1,40 @@
+{
+  "contractVersion": "1.0",
+  "operationsVersion": "A7.1",
+  "environment": "production",
+  "supabaseProjectRef": "hycegznamzjhwinegaai",
+  "healthEndpoint": "https://hycegznamzjhwinegaai.supabase.co/functions/v1/platform-health",
+  "consumers": [
+    {
+      "id": "notes",
+      "name": "Notes",
+      "url": "https://thiepn.dev/notes/",
+      "expectedMarker": "Notes",
+      "degradedMode": "local-first"
+    },
+    {
+      "id": "diet",
+      "name": "Diet Copilot",
+      "url": "https://thiepn.dev/diet/",
+      "expectedMarker": "Diet Copilot",
+      "degradedMode": "cached-read-only"
+    },
+    {
+      "id": "wordstrike",
+      "name": "WORDSTRIKE",
+      "url": "https://thiepn.dev/wordstrike/",
+      "expectedMarker": "WORDSTRIKE",
+      "degradedMode": "local-gameplay"
+    }
+  ],
+  "legacy": {
+    "dietProjectRef": "mrrqsqawwxwebsdmrnre",
+    "state": "rollback-only",
+    "deleteOnlyAfter": [
+      "production account smoke passes",
+      "canonical Diet reads and writes verified",
+      "no legacy writes observed",
+      "recovery snapshot retained"
+    ]
+  }
+}
