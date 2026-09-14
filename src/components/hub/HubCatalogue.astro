@@ -1,0 +1,29 @@
+---
+import HubCard from './HubCard.astro';
+import HubFilters from './HubFilters.astro';
+import { getHubCategoryCounts, type HubProjectEntry } from '../../lib/hub';
+interface Props { entries: HubProjectEntry[]; }
+const { entries } = Astro.props;
+const counts = getHubCategoryCounts(entries);
+---
+<section class="hub-catalogue" id="apps" aria-labelledby="apps-heading" data-hub-catalogue>
+  <header class="hub-catalogue__heading">
+    <div>
+      <p class="hub-kicker">The app collection</p>
+      <h2 id="apps-heading">All apps.</h2>
+    </div>
+    <p>Everything here opens directly. Filters only narrow the list; they never hide the catalogue behind another page.</p>
+  </header>
+
+  <HubFilters total={entries.length} counts={counts} />
+
+  <div class="hub-grid" data-hub-grid>
+    {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
+  </div>
+
+  <div class="hub-empty" data-hub-empty hidden>
+    <h3>No matching apps.</h3>
+    <p>Try a shorter search or switch back to All.</p>
+    <button type="button" class="button" data-hub-reset>Show all apps</button>
+  </div>
+</section>
