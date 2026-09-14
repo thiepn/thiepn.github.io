@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="THIEPN Account Platform — Developer" description="SDK 1.x and future-app onboarding contract." noindex={true}>
+  <article class="account-dev shell-wide">
+    <header>
+      <p class="section-kicker">DEV / ACCOUNT PLATFORM / A8</p>
+      <h1>THIEPN Account<br/>Developer Platform</h1>
+      <p>One canonical identity, one browser SDK, one manifest contract. New apps integrate the platform instead of rebuilding authentication.</p>
+    </header>
+    <section>
+      <h2>Frozen contract</h2>
+      <dl><div><dt>SDK</dt><dd>1.0.0 / 1.x</dd></div><div><dt>Account</dt><dd>1.0</dd></div><div><dt>Operations</dt><dd>A7.1</dd></div><div><dt>Authority</dt><dd>thiepn-account</dd></div></dl>
+    </section>
+    <section>
+      <h2>Minimal integration</h2>
+      <pre><code>{`import { createThiepnAccount } from '/account-platform/sdk/v1/index.js';
+
+const account = createThiepnAccount({
+  createClient: window.supabase.createClient,
+  appSlug: 'my-app',
+  redirectTo: new URL('./', location.href).href,
+});`}</code></pre>
+      <p>The SDK owns canonical project/storage configuration, safe redirect validation, normalized auth state and local sign-out defaults.</p>
+    </section>
+    <section>
+      <h2>Onboard a new app</h2>
+      <ol><li>Reserve a slug and <code>/app/</code> path.</li><li>Publish <code>.well-known/thiepn-app.json</code>.</li><li>Import SDK 1.x.</li><li>Define degraded behavior.</li><li>Enforce app-data ownership server-side.</li><li>Register the existing account app/manifest rows.</li><li>Run conformance CI, deploy, smoke and certify.</li></ol>
+    </section>
+    <section>
+      <h2>Published developer assets</h2>
+      <ul><li><code>/account-platform/sdk/v1/index.js</code></li><li><code>/account-platform/sdk/v1/index.d.ts</code></li><li><code>/account-platform/sdk/v1/manifest.json</code></li><li><code>/account-platform/contracts/thiepn-app.schema.json</code></li></ul>
+    </section>
+  </article>
+</BaseLayout>
+<style>
+.account-dev{padding:var(--space-8) 0 var(--space-10);max-width:1120px}.account-dev>header{padding:var(--space-8) 0 var(--space-9);border-bottom:1px solid var(--line-strong)}.account-dev h1{font-size:clamp(3.5rem,8vw,8rem);line-height:.84;letter-spacing:-.065em}.account-dev header>p:last-child{max-width:62ch;margin-top:var(--space-5);color:var(--ink-secondary)}.account-dev section{padding:var(--space-7) 0;border-bottom:1px solid var(--line)}.account-dev h2{font-size:clamp(1.6rem,3vw,2.6rem);margin-bottom:var(--space-4)}.account-dev dl{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-strong)}.account-dev dl div{padding:var(--space-4);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.account-dev dt{font-size:.72rem;color:var(--ink-muted);text-transform:uppercase}.account-dev dd{margin-top:8px}.account-dev pre{overflow:auto;padding:var(--space-5);border:1px solid var(--line);background:var(--surface-1);font-size:.82rem;line-height:1.7}.account-dev ol,.account-dev ul{display:grid;gap:12px;padding-left:1.4rem;max-width:72ch}.account-dev section>p{max-width:68ch;margin-top:var(--space-4);color:var(--ink-secondary)}@media(max-width:760px){.account-dev dl{grid-template-columns:repeat(2,1fr)}}
+</style>

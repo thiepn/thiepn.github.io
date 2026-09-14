@@ -1,0 +1,40 @@
+name: Account Platform Developer Contract
+
+on:
+  pull_request:
+    paths:
+      - 'public/account-platform/**'
+      - 'examples/account-consumer/**'
+      - 'scripts/validate-account-consumer.mjs'
+      - 'tests/account-platform/**'
+      - 'docs/account-platform/**'
+      - 'src/pages/dev/account-platform/**'
+      - '.github/workflows/account-platform-developer.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'public/account-platform/**'
+      - 'examples/account-consumer/**'
+      - 'scripts/validate-account-consumer.mjs'
+      - 'tests/account-platform/**'
+      - 'docs/account-platform/**'
+      - 'src/pages/dev/account-platform/**'
+      - '.github/workflows/account-platform-developer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  developer-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: SDK syntax
+        run: node --check public/account-platform/sdk/v1/index.js
+      - name: SDK and contract tests
+        run: node --test tests/account-platform/developer-contract.test.mjs
+      - name: Reference consumer conformance
+        run: node scripts/validate-account-consumer.mjs examples/account-consumer

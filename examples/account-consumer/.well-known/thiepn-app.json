@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "app": "reference-app",
+  "displayName": "THIEPN Account Reference App",
+  "path": "/reference-app/",
+  "accountContract": "1.0",
+  "sdkContract": "1.x",
+  "integrationMode": "sdk-1.x",
+  "operationsVersion": "A7.1",
+  "sessionAuthority": "thiepn-account",
+  "degradedMode": "local-first",
+  "authEntryPoints": ["email-password", "google", "password-recovery"],
+  "health": {
+    "networkFailureLogsOutUser": false,
+    "localDataPreservedOnBackendFailure": true
+  }
+}

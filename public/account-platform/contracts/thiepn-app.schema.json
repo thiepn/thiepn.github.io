@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thiepn.dev/account-platform/contracts/thiepn-app.schema.json",
+  "title": "THIEPN Account Consumer Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schemaVersion", "app", "displayName", "path", "accountContract", "sdkContract", "integrationMode", "operationsVersion", "sessionAuthority", "degradedMode", "health"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "app": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "path": { "type": "string", "pattern": "^/[a-z0-9][a-z0-9/-]*/$" },
+    "accountContract": { "const": "1.0" },
+    "sdkContract": { "const": "1.x" },
+    "integrationMode": { "enum": ["sdk-1.x", "certified-legacy"] },
+    "operationsVersion": { "const": "A7.1" },
+    "sessionAuthority": { "const": "thiepn-account" },
+    "degradedMode": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "authEntryPoints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["email-password", "google", "password-recovery"] }
+    },
+    "health": {
+      "type": "object",
+      "required": ["networkFailureLogsOutUser"],
+      "properties": { "networkFailureLogsOutUser": { "const": false } },
+      "additionalProperties": true
+    }
+  }
+}

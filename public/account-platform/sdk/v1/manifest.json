@@ -1,0 +1,17 @@
+{
+  "name": "THIEPN Account Browser SDK",
+  "version": "1.0.0",
+  "sdkContract": "1.x",
+  "accountContract": "1.0",
+  "operationsVersion": "A7.1",
+  "sessionAuthority": "thiepn-account",
+  "projectRef": "hycegznamzjhwinegaai",
+  "module": "/account-platform/sdk/v1/index.js",
+  "types": "/account-platform/sdk/v1/index.d.ts",
+  "manifestSchema": "/account-platform/contracts/thiepn-app.schema.json",
+  "compatibility": {
+    "sameOrigin": "https://thiepn.dev",
+    "storageKey": "sb-hycegznamzjhwinegaai-auth-token",
+    "defaultSignOutScope": "local"
+  }
+}
