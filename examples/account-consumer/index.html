@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>THIEPN Account Reference App</title>
+</head>
+<body>
+  <main>
+    <h1>THIEPN Account Reference App</h1>
+    <p id="account-state">Checking account…</p>
+    <form id="email-form">
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <button id="google" type="button">Continue with Google</button>
+    <button id="sign-out" type="button">Sign out locally</button>
+    <p id="message" role="status"></p>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

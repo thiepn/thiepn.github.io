@@ -1,0 +1,59 @@
+name: Account Platform Developer Contract
+
+on:
+  pull_request:
+    paths:
+      - 'public/account-platform/**'
+      - 'examples/account-consumer/**'
+      - 'scripts/validate-account-consumer.mjs'
+      - 'tests/account-platform/**'
+      - 'docs/account-platform/**'
+      - 'src/pages/dev/account-platform/**'
+      - '.github/workflows/account-platform-developer.yml'
+      - '.github/workflows/account-consumer-conformance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'public/account-platform/**'
+      - 'examples/account-consumer/**'
+      - 'scripts/validate-account-consumer.mjs'
+      - 'tests/account-platform/**'
+      - 'docs/account-platform/**'
+      - 'src/pages/dev/account-platform/**'
+      - '.github/workflows/account-platform-developer.yml'
+      - '.github/workflows/account-consumer-conformance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  developer-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: SDK and UI syntax
+        run: |
+          node --check public/account-platform/sdk/v1/index.js
+          node --check public/account-platform/ui/v1/index.js
+      - name: SDK and contract tests
+        run: node --test tests/account-platform/developer-contract.test.mjs
+      - name: Reference consumer conformance
+        run: node scripts/validate-account-consumer.mjs examples/account-consumer
+      - name: Reusable conformance workflow contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const workflow=fs.readFileSync('.github/workflows/account-consumer-conformance.yml','utf8');
+          for(const required of ['workflow_call:','repository: thiepn/thiepn.github.io','scripts/validate-account-consumer.mjs','platform_ref:']){
+            if(!workflow.includes(required))throw new Error(`Reusable conformance workflow missing: ${required}`);
+          }
+          NODE
+
+  reusable-reference-consumer:
+    uses: ./.github/workflows/account-consumer-conformance.yml
+    with:
+      consumer_path: examples/account-consumer
+      platform_ref: ${{ github.event.pull_request.head.sha || github.sha }}

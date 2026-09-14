@@ -1,0 +1,45 @@
+name: THIEPN Account Consumer Conformance
+
+on:
+  workflow_call:
+    inputs:
+      consumer_path:
+        description: Relative path to the consumer root in the caller repository.
+        required: false
+        default: '.'
+        type: string
+      platform_ref:
+        description: Account Platform ref containing the validator. Future consumers should normally use main until A9 publishes the immutable v1 tag.
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consumer repository
+        uses: actions/checkout@v6
+        with:
+          path: consumer
+
+      - name: Checkout Account Platform validator
+        uses: actions/checkout@v6
+        with:
+          repository: thiepn/thiepn.github.io
+          ref: ${{ inputs.platform_ref }}
+          path: account-platform
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Validate THIEPN Account consumer
+        shell: bash
+        env:
+          CONSUMER_PATH: ${{ inputs.consumer_path }}
+        run: node account-platform/scripts/validate-account-consumer.mjs "consumer/${CONSUMER_PATH}"

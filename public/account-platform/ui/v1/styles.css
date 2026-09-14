@@ -1,0 +1,1 @@
+.thiepn-account-control{display:flex;align-items:center;gap:.75rem;min-width:0}.thiepn-account-control__status{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.thiepn-account-control__action{font:inherit;cursor:pointer}.thiepn-account-control__action:disabled{cursor:default;opacity:.6}

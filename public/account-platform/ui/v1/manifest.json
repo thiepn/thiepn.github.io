@@ -1,0 +1,13 @@
+{
+  "name": "THIEPN Account UI",
+  "version": "1.0.0",
+  "sdkContract": "1.x",
+  "module": "/account-platform/ui/v1/index.js",
+  "styles": "/account-platform/ui/v1/styles.css",
+  "events": ["thiepn-account:signin-request"],
+  "behavior": {
+    "signedOutAction": "request-sign-in",
+    "signedInAction": "local-sign-out",
+    "networkFailureAppearsSignedOut": false
+  }
+}
