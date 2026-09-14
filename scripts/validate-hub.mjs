@@ -20,7 +20,6 @@ const EXPECTED_CATEGORY_COUNTS = {
 };
 const EXPECTED_EXCLUDED = ['pflegelern', 'wordfall', 'curio', 'nebula-foundry'];
 const EXPECTED_ORDER = [
-  'signal-earth',
   'notes',
   'canvas',
   'tiny-tools',
@@ -28,6 +27,7 @@ const EXPECTED_ORDER = [
   'atelier',
   'manuscript',
   'pdf-studio',
+  'signal-earth',
   'steadybar',
   'wordstrike',
   'mathlab',
