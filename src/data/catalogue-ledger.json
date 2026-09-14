@@ -31,7 +31,14 @@
     "R-001": "markdown-guide",
     "V-001": "unreached",
     "X-001": "ubf-koeln-website",
-    "T-006": "tiny-tools"
+    "T-006": "tiny-tools",
+    "T-007": "notes",
+    "T-008": "canvas",
+    "T-009": "atelier",
+    "L-010": "steadybar",
+    "G-013": "duel",
+    "G-014": "gomoku",
+    "V-002": "signal-earth"
   },
   "collections": {
     "C-001": "french-learning",
