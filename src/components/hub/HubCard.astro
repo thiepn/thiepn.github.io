@@ -1,7 +1,7 @@
 ---
 import HubMedia from './HubMedia.astro';
 import { presentation } from '../../lib/showcase';
-import { getHubSearchText, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
+import { HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
 interface Props { entry: HubProjectEntry; priority?: boolean; }
 const { entry, priority = false } = Astro.props;
 const { project, hub } = entry;
@@ -15,13 +15,11 @@ const liveUrl = parsedLiveUrl.origin === 'https://thiepn.dev'
   ? `${parsedLiveUrl.pathname}${parsedLiveUrl.search}${parsedLiveUrl.hash}`
   : canonicalLiveUrl;
 const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : hub.badge === 'new' ? 'New' : null;
-const searchText = getHubSearchText(entry);
 ---
 <article
   class="hub-card"
   data-hub-item
-  data-hub-category={hub.category}
-  data-hub-search={searchText}
+  data-hub-item-category={hub.category}
   style={`--hub-accent-light:${p.accent.light};--hub-accent-dark:${p.accent.dark};`}
 >
   <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>
