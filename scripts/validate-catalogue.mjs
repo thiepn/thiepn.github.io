@@ -110,3 +110,4 @@ console.log(`Statuses: ${stats.status.live} live / ${stats.status.beta} beta / $
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
 
 await import('./validate-hub.mjs');
+await import('./validate-hub-media.mjs');
