@@ -10,6 +10,7 @@ on:
       - 'docs/account-platform/**'
       - 'src/pages/dev/account-platform/**'
       - '.github/workflows/account-platform-developer.yml'
+      - '.github/workflows/account-consumer-conformance.yml'
   push:
     branches: [main]
     paths:
@@ -20,6 +21,7 @@ on:
       - 'docs/account-platform/**'
       - 'src/pages/dev/account-platform/**'
       - '.github/workflows/account-platform-developer.yml'
+      - '.github/workflows/account-consumer-conformance.yml'
 
 permissions:
   contents: read
@@ -40,3 +42,12 @@ jobs:
         run: node --test tests/account-platform/developer-contract.test.mjs
       - name: Reference consumer conformance
         run: node scripts/validate-account-consumer.mjs examples/account-consumer
+      - name: Reusable conformance workflow contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const workflow=fs.readFileSync('.github/workflows/account-consumer-conformance.yml','utf8');
+          for(const required of ['workflow_call:','repository: thiepn/thiepn.github.io','scripts/validate-account-consumer.mjs']){
+            if(!workflow.includes(required))throw new Error(`Reusable conformance workflow missing: ${required}`);
+          }
+          NODE
