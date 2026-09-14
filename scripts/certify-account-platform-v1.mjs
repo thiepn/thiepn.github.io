@@ -55,8 +55,12 @@ for (const consumer of CONSUMERS) {
 }
 
 const sdk = await fetchJson('SDK manifest', 'https://thiepn.dev/account-platform/sdk/v1/manifest.json');
-if (sdk.version !== '1.0.0' || sdk.contract !== '1.x') throw new Error('Published SDK manifest is not v1.0.0 / 1.x.');
+if (sdk.version !== '1.0.0' || sdk.sdkContract !== '1.x' || sdk.accountContract !== '1.0' || sdk.sessionAuthority !== 'thiepn-account') {
+  throw new Error('Published SDK manifest does not match v1 Account/SDK/session contracts.');
+}
 const ui = await fetchJson('UI manifest', 'https://thiepn.dev/account-platform/ui/v1/manifest.json');
-if (ui.version !== '1.0.0') throw new Error('Published shared UI manifest is not v1.0.0.');
+if (ui.version !== '1.0.0' || ui.sdkContract !== '1.x' || ui.behavior?.networkFailureAppearsSignedOut !== false) {
+  throw new Error('Published shared UI manifest does not match v1 behavior.');
+}
 
 console.log('THIEPN Account Platform v1 cross-repository certification PASS.');
