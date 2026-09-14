@@ -18,11 +18,11 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
     const catalogue = page.locator('[data-hub-catalogue]');
     await expect(catalogue).toBeVisible();
     await expect(catalogue.locator('[data-hub-item]')).toHaveCount(26);
-    await expect(catalogue.locator('[data-hub-category]')).toHaveCount(7);
-    await expect(catalogue.locator('[data-hub-search]')).toBeVisible();
+    await expect(catalogue.locator('.hub-category')).toHaveCount(7);
+    await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
     for (const [category, count] of Object.entries(expectedCounts)) {
-      const button = catalogue.locator(`[data-hub-category="${category}"]`);
+      const button = catalogue.locator(`button[data-hub-category="${category}"]`);
       await expect(button).toBeVisible();
       await expect(button).toContainText(String(count));
     }
@@ -55,8 +55,9 @@ test('each category filter reveals exactly its locked app count', async ({ page 
   await page.goto('/');
   const visibleCards = page.locator('[data-hub-item]:visible');
   for (const [category, count] of Object.entries(expectedCounts)) {
-    await page.locator(`[data-hub-category="${category}"]`).click();
+    const button = page.locator(`button[data-hub-category="${category}"]`);
+    await button.click();
     await expect(visibleCards).toHaveCount(count);
-    await expect(page.locator(`[data-hub-category="${category}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
   }
 });
