@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   classifyHttpStatus,
   overallStatus,
+  probeJsonApi,
   shouldRetryStatus,
   withRetry,
 } from '../../scripts/account-platform-health.mjs';
@@ -41,6 +42,40 @@ test('A7 retry helper does not exceed its configured bound', async () => {
   }, { attempts: 3, baseDelayMs: 0, sleep: async () => {} });
   assert.equal(calls, 3);
   assert.equal(result.status, 503);
+});
+
+test('A7 JSON API probe validates response contract and captures only request correlation', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(init.method, 'POST');
+    assert.equal(init.headers.Origin, 'https://thiepn.dev');
+    return new Response(JSON.stringify({ ok: true, data: { privateLookingPayload: 'not-retained' } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Request-ID': 'probe-test-1234' },
+    });
+  };
+  try {
+    const result = await probeJsonApi({
+      id: 'api',
+      url: 'https://example.invalid/api',
+      method: 'POST',
+      origin: 'https://thiepn.dev',
+      body: { boardKey: 'endless-v1' },
+      expectedOk: true,
+    }, { attempts: 1, baseDelayMs: 0, sleep: async () => {} });
+    assert.deepEqual(result, {
+      id: 'api',
+      status: 'healthy',
+      category: 'healthy',
+      httpStatus: 200,
+      latencyMs: result.latencyMs,
+      detail: 'json-contract-ok',
+      requestId: 'probe-test-1234',
+    });
+    assert.equal('payload' in result, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('A7 overall health distinguishes degraded and outage states', () => {
