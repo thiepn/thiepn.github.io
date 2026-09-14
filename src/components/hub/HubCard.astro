@@ -1,0 +1,38 @@
+---
+import ProjectMedia from '../studio/ProjectMedia.astro';
+import { presentation } from '../../lib/showcase';
+import { getHubSearchText, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
+interface Props { entry: HubProjectEntry; priority?: boolean; }
+const { entry, priority = false } = Astro.props;
+const { project, hub } = entry;
+const p = project.data;
+const view = presentation(project);
+const categoryLabel = HUB_CATEGORY_CONFIG.find((category) => category.id === hub.category)?.label ?? hub.category;
+const details = `/project/${p.slug}/`;
+const liveUrl = p.liveUrl!;
+const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : hub.badge === 'new' ? 'New' : null;
+const searchText = getHubSearchText(entry);
+---
+<article
+  class="hub-card"
+  data-hub-item
+  data-hub-category={hub.category}
+  data-hub-search={searchText}
+  style={`--hub-accent-light:${p.accent.light};--hub-accent-dark:${p.accent.dark};`}
+>
+  <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>
+    <ProjectMedia src={view.media} alt={view.caption} priority={priority} sizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1050px) 48vw, 31vw" />
+  </a>
+  <div class="hub-card__body">
+    <div class="hub-card__meta">
+      <span>{categoryLabel}</span>
+      {badgeLabel && <span class="hub-card__badge">{badgeLabel}</span>}
+    </div>
+    <h2><a href={liveUrl}>{p.title}</a></h2>
+    <p>{hub.description}</p>
+    <div class="hub-card__actions">
+      <a class="hub-card__open" href={liveUrl}>Open app <span aria-hidden="true">↗</span></a>
+      <a class="hub-card__details" href={details}>Details</a>
+    </div>
+  </div>
+</article>
