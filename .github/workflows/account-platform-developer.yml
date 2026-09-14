@@ -47,7 +47,13 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const workflow=fs.readFileSync('.github/workflows/account-consumer-conformance.yml','utf8');
-          for(const required of ['workflow_call:','repository: thiepn/thiepn.github.io','scripts/validate-account-consumer.mjs']){
+          for(const required of ['workflow_call:','repository: thiepn/thiepn.github.io','scripts/validate-account-consumer.mjs','platform_ref:']){
             if(!workflow.includes(required))throw new Error(`Reusable conformance workflow missing: ${required}`);
           }
           NODE
+
+  reusable-reference-consumer:
+    uses: ./.github/workflows/account-consumer-conformance.yml
+    with:
+      consumer_path: examples/account-consumer
+      platform_ref: ${{ github.event.pull_request.head.sha || github.sha }}
