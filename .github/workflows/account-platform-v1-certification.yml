@@ -1,0 +1,29 @@
+name: Account Platform v1 Certification
+
+on:
+  pull_request:
+    paths:
+      - 'docs/account-platform/A9-CERTIFICATION.md'
+      - 'scripts/certify-account-platform-v1.mjs'
+      - '.github/workflows/account-platform-v1-certification.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/account-platform/A9-CERTIFICATION.md'
+      - 'scripts/certify-account-platform-v1.mjs'
+      - '.github/workflows/account-platform-v1-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-cross-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Verify production Platform v1 release alignment
+        run: node scripts/certify-account-platform-v1.mjs
