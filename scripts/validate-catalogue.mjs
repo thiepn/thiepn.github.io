@@ -108,3 +108,5 @@ if (failures.length) {
 console.log(`Catalogue validation passed: ${stats.totalRegistered} registered / ${stats.totalListed} listed.`);
 console.log(`Statuses: ${stats.status.live} live / ${stats.status.beta} beta / ${stats.status.experiment} experiment / ${stats.status.archived} archived.`);
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
+
+await import('./validate-hub.mjs');
