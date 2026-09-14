@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-14T08:20:35.652Z",
+  "width": 1440,
+  "height": 900,
+  "format": "webp",
+  "captures": {
+    "signal-earth": {
+      "file": "/src/assets/hub/signal-earth.webp",
+      "url": "https://thiepn.dev/signal-earth/",
+      "bytes": 47142
+    },
+    "notes": {
+      "file": "/src/assets/hub/notes.webp",
+      "url": "https://thiepn.dev/notes/",
+      "bytes": 22550
+    },
+    "canvas": {
+      "file": "/src/assets/hub/canvas.webp",
+      "url": "https://thiepn.dev/canvas/",
+      "bytes": 52780
+    },
+    "tiny-tools": {
+      "file": "/src/assets/hub/tiny-tools.webp",
+      "url": "https://thiepn.dev/tools/",
+      "bytes": 69184
+    },
+    "thiepn-library": {
+      "file": "/src/assets/hub/thiepn-library.webp",
+      "url": "https://thiepn.dev/library",
+      "bytes": 90042
+    },
+    "atelier": {
+      "file": "/src/assets/hub/atelier.webp",
+      "url": "https://thiepn.dev/atelier/",
+      "bytes": 111130
+    },
+    "manuscript": {
+      "file": "/src/assets/hub/manuscript.webp",
+      "url": "https://thiepn.dev/manuscript/",
+      "bytes": 35202
+    },
+    "pdf-studio": {
+      "file": "/src/assets/hub/pdf-studio.webp",
+      "url": "https://thiepn.dev/pdf/",
+      "bytes": 42952
+    },
+    "steadybar": {
+      "file": "/src/assets/hub/steadybar.webp",
+      "url": "https://thiepn.dev/steadybar/",
+      "bytes": 46028
+    },
+    "wordstrike": {
+      "file": "/src/assets/hub/wordstrike.webp",
+      "url": "https://thiepn.dev/wordstrike/",
+      "bytes": 41686
+    },
+    "mathlab": {
+      "file": "/src/assets/hub/mathlab.webp",
+      "url": "https://thiepn.dev/mathlab/",
+      "bytes": 50290
+    },
+    "the-bible-challenge": {
+      "file": "/src/assets/hub/the-bible-challenge.webp",
+      "url": "https://thiepn.dev/tbc/",
+      "bytes": 58862
+    },
+    "duel": {
+      "file": "/src/assets/hub/duel.webp",
+      "url": "https://thiepn.dev/duel/",
+      "bytes": 19474
+    },
+    "biblical-greek": {
+      "file": "/src/assets/hub/biblical-greek.webp",
+      "url": "https://thiepn.dev/greek/",
+      "bytes": 45062
+    },
+    "tms60": {
+      "file": "/src/assets/hub/tms60.webp",
+      "url": "https://thiepn.dev/tms60/",
+      "bytes": 16988
+    },
+    "unreached": {
+      "file": "/src/assets/hub/unreached.webp",
+      "url": "https://thiepn.dev/unreached/",
+      "bytes": 80538
+    },
+    "clean30": {
+      "file": "/src/assets/hub/clean30.webp",
+      "url": "https://thiepn.dev/clean30/",
+      "bytes": 23124
+    },
+    "markdown-guide": {
+      "file": "/src/assets/hub/markdown-guide.webp",
+      "url": "https://thiepn.dev/markdown/",
+      "bytes": 55014
+    },
+    "gomoku": {
+      "file": "/src/assets/hub/gomoku.webp",
+      "url": "https://thiepn.dev/gomoku/",
+      "bytes": 23444
+    },
+    "artikelwerk": {
+      "file": "/src/assets/hub/artikelwerk.webp",
+      "url": "https://thiepn.dev/artikelwerk/",
+      "bytes": 40048
+    },
+    "le-carnet-francais": {
+      "file": "/src/assets/hub/le-carnet-francais.webp",
+      "url": "https://thiepn.dev/french-a1-a2/",
+      "bytes": 71718
+    },
+    "french-3000": {
+      "file": "/src/assets/hub/french-3000.webp",
+      "url": "https://thiepn.dev/french3000/",
+      "bytes": 40734
+    },
+    "micro-arcade": {
+      "file": "/src/assets/hub/micro-arcade.webp",
+      "url": "https://thiepn.dev/arcade/",
+      "bytes": 18280
+    },
+    "voidcut": {
+      "file": "/src/assets/hub/voidcut.webp",
+      "url": "https://thiepn.dev/voidcut/",
+      "bytes": 9680
+    },
+    "impossible-transit": {
+      "file": "/src/assets/hub/impossible-transit.webp",
+      "url": "https://thiepn.dev/impossible-transit/",
+      "bytes": 21450
+    },
+    "skyspire": {
+      "file": "/src/assets/hub/skyspire.webp",
+      "url": "https://thiepn.dev/skyspire/",
+      "bytes": 19054
+    }
+  }
+}
