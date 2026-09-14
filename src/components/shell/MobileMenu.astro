@@ -2,26 +2,26 @@
 import ThemeControl from './ThemeControl.astro';
 const path = Astro.url.pathname;
 const active = (href: string) => {
-  if (href === '/') return path === '/';
+  if (href === '/#apps' || href === '/') return path === '/';
   if (href === '/projects/') return path.startsWith('/projects/') || path.startsWith('/project/');
   if (href === '/collections/') return path.startsWith('/collections/') || path.startsWith('/collection/');
   if (href === '/about/') return path.startsWith('/about/');
   return path.startsWith(href);
 };
-const items: [string,string][] = [['Work', '/work/'], ['Library', '/library/'], ['About', '/about/'], ['All projects', '/projects/']];
+const items: [string,string][] = [['Apps', '/#apps'], ['Work', '/work/'], ['About', '/about/'], ['Project archive', '/projects/']];
 ---
 <div class="mobile-menu" data-mobile-menu>
   <button class="mobile-menu__trigger" type="button" data-mobile-menu-open aria-haspopup="dialog" aria-controls="mobile-navigation">Menu</button>
   <dialog class="mobile-menu__dialog" id="mobile-navigation" data-mobile-menu-dialog aria-labelledby="mobile-menu-title">
     <div class="mobile-menu__surface">
       <header class="mobile-menu__header">
-        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN portfolio home">THIEPN.</a>
+        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN home">THIEPN.</a>
         <button class="mobile-menu__close" type="button" data-mobile-menu-close aria-label="Close navigation menu">Close</button>
       </header>
       <div class="mobile-menu__index">
         <p class="meta" id="mobile-menu-title">Navigation</p>
         <a class="mobile-menu__search" href="/projects/" data-catalogue-search-open>
-          <span><small>Find anything</small><strong>Search the work</strong></span>
+          <span><small>Find anything</small><strong>Search apps & projects</strong></span>
           <i aria-hidden="true">⌕</i>
         </a>
         <nav aria-label="Mobile navigation">
@@ -40,7 +40,7 @@ const items: [string,string][] = [['Work', '/work/'], ['Library', '/library/'], 
   </dialog>
   <noscript>
     <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
-      <a href="/work/">Work</a><a href="/library/">Library</a><a href="/about/">About</a>
+      <a href="/#apps">Apps</a><a href="/work/">Work</a><a href="/about/">About</a><a href="/projects/">Project archive</a>
     </nav>
   </noscript>
 </div>
