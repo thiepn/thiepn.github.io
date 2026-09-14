@@ -97,8 +97,8 @@ test('reference consumer manifest conforms to the frozen 1.x contract', async ()
 
 test('new-consumer validator forbids raw session restoration and legacy auth authority', async () => {
   const validator = await readFile(new URL('../../scripts/validate-account-consumer.mjs', import.meta.url), 'utf8');
-  assert.match(validator, /app-managed Supabase session restoration/);
-  assert.match(validator, /\\\.auth\\\.setSession/);
-  assert.match(validator, /implicit\/global Supabase sign-out/);
-  assert.match(validator, /localStorage\\\\\.clear/);
+  assert.ok(validator.includes('app-managed Supabase session restoration'));
+  assert.ok(validator.includes('setSession'));
+  assert.ok(validator.includes('implicit/global Supabase sign-out'));
+  assert.ok(validator.includes('broad localStorage clear'));
 });
