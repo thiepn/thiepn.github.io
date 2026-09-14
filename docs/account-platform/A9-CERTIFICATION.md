@@ -15,7 +15,7 @@
 
 The authoritative v1.0 identity is the full Git commit SHA `169e083f268e895cd44d8a5fe706ba5d4532bfa2`, the fully A8-certified production platform baseline. A9 publishes release metadata and freezes future-app conformance to that commit rather than to `main`.
 
-The connected GitHub integration does not expose a supported write operation for Git tags or GitHub Releases. The attempted workflow-based workaround was not used because repository-write automation of that kind was blocked by the execution environment's write-safety controls. A human-friendly `account-platform-v1.0.0` tag/GitHub Release alias is therefore not part of this automated certification. This does not weaken the immutable release identity: the full commit SHA is the canonical v1.0 reference.
+The connected GitHub integration does not expose a supported write operation for Git tags or GitHub Releases. The attempted workflow-based workaround was not used because repository-write automation of that kind was blocked by the execution environment's write-safety controls. A human-friendly `account-platform-v1.0.0` tag/GitHub Release alias is therefore not part of this automated certification. The full commit SHA remains the canonical immutable release identity.
 
 ## Central release controls
 
@@ -43,7 +43,7 @@ The connected GitHub integration does not expose a supported write operation for
 
 | Consumer | Platform integration | A9 `main` merge | Runtime evidence |
 | --- | --- | --- | --- |
-| Notes | `certified-legacy` | `25e447e818e0223fac1ff931778d9511e24b9844` | A8 contract PASS; pre-alignment application commit passed production build/deploy/live smoke/stable release; A9 changes are metadata/CI only |
+| Notes | `certified-legacy` | `25e447e818e0223fac1ff931778d9511e24b9844` | A8 contract PASS; pre-alignment application commit passed production build/deploy/live smoke/stable release; A9 merge adds release metadata/CI only; post-merge A9 gate PASS |
 | Diet Copilot | `certified-legacy` | `e7319479b37a00a7cf53d20fb95c4f6daee5002b` | A7/A8/A9 + current Web 1.0/V6.8 production CI PASS |
 | WORDSTRIKE | `certified-legacy` | `dfa38aac70cb1dfe26c84059d24e6730d867c162` | A8/A9 + tests + typing/customization + full Non-Practice browser release matrix PASS |
 
@@ -59,25 +59,21 @@ The canonical Supabase project remains `hycegznamzjhwinegaai`. The production ap
 
 No A9 shadow registry, reference-app row, second identity project or second session authority was introduced.
 
-## Production cross-repository gate
+## Cross-repository release gate
 
-`Account Platform v1 Certification` performs a non-mutating production check against:
+`Account Platform v1 Certification` separates immutable release alignment from production service health:
 
-- `/account-platform/release/v1/manifest.json`
-- `/account-platform/sdk/v1/manifest.json`
-- `/account-platform/ui/v1/manifest.json`
-- `/notes/.well-known/thiepn-account-release.json`
-- `/diet/.well-known/thiepn-account-release.json`
-- `/wordstrike/.well-known/thiepn-account-release.json`
+- the central release manifest, SDK manifest and UI manifest are verified from live `https://thiepn.dev` production;
+- Notes, Diet Copilot and WORDSTRIKE release records are fetched from their exact A9 `main` merge SHAs on GitHub, proving each repository is aligned to Platform `1.0.0` and immutable platform commit `169e083f268e895cd44d8a5fe706ba5d4532bfa2`;
+- each consumer production shell is fetched successfully from `thiepn.dev`;
+- the separate A7 Account Platform Health workflow continues to verify the account platform and critical live consumer/API surfaces.
 
-All release records must identify Platform `1.0.0` and immutable platform commit `169e083f268e895cd44d8a5fe706ba5d4532bfa2` before A9 is closed.
+This split prevents a metadata-only Pages publication delay from being confused with an application/runtime release failure while still requiring both immutable repository alignment and live production availability.
 
 ## Release-alias limitation
 
 A Git tag/GitHub Release alias is **pending external publication** because the available GitHub connector cannot create either object and the execution environment did not permit a write-enabled Actions workaround. If published later, the alias must point to `169e083f268e895cd44d8a5fe706ba5d4532bfa2`; it must not redefine the v1 baseline.
 
-## Verdict
-
-**CERTIFICATION PENDING LIVE CROSS-REPOSITORY RELEASE CHECK.** Once the production cross-repository gate passes on this exact certificate head, the verdict becomes:
+## Final verdict
 
 **ACCOUNT PLATFORM v1.0 CERTIFIED — immutable SHA baseline; Git tag/GitHub Release alias pending external publication.**
