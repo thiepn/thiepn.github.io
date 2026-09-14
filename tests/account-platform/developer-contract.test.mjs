@@ -63,6 +63,32 @@ test('sign-out defaults to local scope and normalized session never exposes toke
   assert.equal(JSON.stringify(await account.getSession()).includes('token'), false);
 });
 
+test('recovery completion and security helpers stay behind the SDK boundary', async () => {
+  const calls = [];
+  const user = { id: '00000000-0000-4000-8000-000000000001', email: 'user@example.test' };
+  const mock = {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user }, error: null }),
+      updateUser: async (input) => { calls.push(['updateUser', input]); return { data: { user }, error: null }; },
+      resend: async (input) => { calls.push(['resend', input]); return { data: {}, error: null }; },
+      reauthenticate: async () => { calls.push(['reauthenticate']); return { data: {}, error: null }; },
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+    },
+  };
+  const account = createThiepnAccount({ client: mock, appSlug: 'reference-app', redirectTo: 'https://thiepn.dev/reference-app/' });
+  const updated = await account.updatePassword({ password: 'new-password', currentPassword: 'old-password' });
+  await account.updateEmail({ email: 'next@example.test' });
+  await account.resendSignupConfirmation({ email: 'next@example.test' });
+  await account.reauthenticate();
+  assert.equal(updated.id, user.id);
+  assert.deepEqual(calls[0], ['updateUser', { password: 'new-password', currentPassword: 'old-password' }]);
+  assert.deepEqual(calls[1], ['updateUser', { email: 'next@example.test' }]);
+  assert.equal(calls[2][0], 'resend');
+  assert.equal(calls[2][1].options.emailRedirectTo, 'https://thiepn.dev/reference-app/');
+  assert.equal(calls[3][0], 'reauthenticate');
+});
+
 test('reference consumer manifest conforms to the frozen 1.x contract', async () => {
   const manifest = JSON.parse(await readFile(new URL('../../examples/account-consumer/.well-known/thiepn-app.json', import.meta.url), 'utf8'));
   assert.deepEqual(validateConsumerManifest(manifest), []);

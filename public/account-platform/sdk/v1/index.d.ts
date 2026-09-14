@@ -27,6 +27,10 @@ export function createThiepnAccount(options: {
   signUpWithPassword(input: { email: string; password: string; redirectTo?: string }): Promise<Readonly<{ session: ThiepnSession | null; user: ThiepnUser | null }>>;
   signInWithGoogle(input?: { redirectTo?: string }): Promise<any>;
   requestPasswordReset(input: { email: string; redirectTo?: string }): Promise<true>;
+  resendSignupConfirmation(input: { email: string; redirectTo?: string }): Promise<true>;
+  updatePassword(input: { password: string; currentPassword?: string }): Promise<ThiepnUser | null>;
+  updateEmail(input: { email: string }): Promise<ThiepnUser | null>;
+  reauthenticate(): Promise<true>;
   refreshSession(): Promise<ThiepnSession | null>;
   signOut(input?: { scope?: SignOutScope }): Promise<true>;
   diagnostics(): Promise<Readonly<ThiepnDiagnostics>>;

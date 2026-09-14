@@ -124,6 +124,32 @@ export function createThiepnAccount({ client, createClient, appSlug, redirectTo 
     return true;
   }
 
+  async function resendSignupConfirmation({ email, redirectTo: nextRedirect } = {}) {
+    unwrap(await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: resolveRedirect(nextRedirect) },
+    }));
+    return true;
+  }
+
+  async function updatePassword({ password, currentPassword } = {}) {
+    const attributes = { password };
+    if (currentPassword) attributes.currentPassword = currentPassword;
+    const data = unwrap(await supabase.auth.updateUser(attributes));
+    return publicUser(data?.user ?? null);
+  }
+
+  async function updateEmail({ email } = {}) {
+    const data = unwrap(await supabase.auth.updateUser({ email }));
+    return publicUser(data?.user ?? null);
+  }
+
+  async function reauthenticate() {
+    unwrap(await supabase.auth.reauthenticate());
+    return true;
+  }
+
   async function refreshSession() {
     const data = unwrap(await supabase.auth.refreshSession());
     return publicSession(data?.session ?? null);
@@ -168,6 +194,10 @@ export function createThiepnAccount({ client, createClient, appSlug, redirectTo 
     signUpWithPassword,
     signInWithGoogle,
     requestPasswordReset,
+    resendSignupConfirmation,
+    updatePassword,
+    updateEmail,
+    reauthenticate,
     refreshSession,
     signOut,
     diagnostics,

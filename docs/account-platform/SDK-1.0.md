@@ -35,16 +35,22 @@ The returned object exposes `client` for application data calls. Authentication/
 
 - `getSession()` — normalized session metadata; never returns access/refresh tokens.
 - `getUser()` — canonical account ID/email for in-app identity display/ownership.
-- `onAuthStateChange(callback)` — normalized account state events.
+- `onAuthStateChange(callback)` — normalized account state events, including Supabase `PASSWORD_RECOVERY` when applicable.
 - `signInWithPassword()`.
 - `signUpWithPassword()`.
 - `signInWithGoogle()`.
-- `requestPasswordReset()`.
+- `requestPasswordReset()` — sends the recovery email to an approved redirect.
+- `resendSignupConfirmation()` — resends signup confirmation to an approved redirect.
+- `updatePassword()` — completes recovery or changes the signed-in user's password; optional `currentPassword` is supported by the pinned Supabase JS line.
+- `updateEmail()` — requests a signed-in account email change.
+- `reauthenticate()` — requests the provider reauthentication nonce for sensitive account actions.
 - `refreshSession()`.
 - `signOut({ scope })` — defaults to `local`; explicit `others`/`global` are allowed.
 - `diagnostics()` — non-sensitive SDK/app/session-presence metadata.
 - `classifyError()` — A7-compatible network/auth/authz/rate-limit/service/request taxonomy.
 - `assertAllowedRedirect()` — permits `thiepn.dev` plus localhost/127.0.0.1 development origins only.
+
+Password recovery is a two-step flow: call `requestPasswordReset()`, then when the app receives the recovery auth state, collect the new password and call `updatePassword()`.
 
 ## Forbidden consumer behavior
 
