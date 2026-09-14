@@ -243,6 +243,8 @@ test('portfolio publication sources remain explicit, not invented', () => {
   expect(showcase.hero).toBe('micro-arcade');
   for (const slug of showcase.work) {
     const data = showcase.projects[slug];
+    expect(data).toBeDefined();
+    if (!data) continue;
     expect(fs.existsSync(`public${data.media}`)).toBe(true);
   }
 });
