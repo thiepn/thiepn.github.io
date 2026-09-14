@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HubHero from '../components/hub/HubHero.astro';
 import HubCatalogue from '../components/hub/HubCatalogue.astro';
 import HubClosing from '../components/hub/HubClosing.astro';
 import { getHubProjects } from '../lib/hub';
@@ -13,7 +12,6 @@ const apps = await getHubProjects();
   description="Open all 26 THIEPN apps from one place: tools, creative apps, learning projects, Bible and faith resources, explorations and games by Jonathan."
 >
   <div class="hub-home page-shell">
-    <HubHero />
     <HubCatalogue entries={apps} />
     <HubClosing />
   </div>
