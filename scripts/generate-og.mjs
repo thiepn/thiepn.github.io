@@ -30,8 +30,8 @@ function wrapCopy(value, limit, maxLines = 3) {
 }
 function svg({ file, title, subtitle, accent = '#356142', kind = 'PROJECT' }) {
   const home = file === 'index.svg';
-  const slug = home ? 'micro-arcade' : file.replace(/\.svg$/, '');
-  const media = showcase.projects?.[slug]?.media;
+  const slug = file.replace(/\.svg$/, '');
+  const media = home ? null : showcase.projects?.[slug]?.media;
   const mediaPath = media ? path.join(PATHS.public, media.replace(/^\//,'')) : null;
   const hasMedia = mediaPath && existsSync(mediaPath);
   const lines = wrapCopy(title, hasMedia ? 19 : 30);
@@ -52,7 +52,7 @@ function svg({ file, title, subtitle, accent = '#356142', kind = 'PROJECT' }) {
   <rect width="1200" height="630" fill="${paper}"/>
   <text x="64" y="85" fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.5">THIEPN.</text>
   <path d="M64 115H1136" stroke="${home?'#354239':'#ccd5c9'}"/>
-  <text x="64" y="164" fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="18">${home?'Independent projects by Jonathan':kind==='PROJECT'?'A project by Jonathan':kind==='LIBRARY'?'From the Library':'Explore the work'}</text>
+  <text x="64" y="164" fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="18">${home?'Apps, tools and projects by Jonathan':kind==='PROJECT'?'A project by Jonathan':kind==='LIBRARY'?'From the Library':'Explore the work'}</text>
   <text fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="${hasMedia?62:76}" font-weight="600" letter-spacing="-2.8">${lines.map((line,i)=>`<tspan x="64" y="${titleY+i*72}">${xmlEscape(line)}</tspan>`).join('')}</text>
   <text fill="${muted}" font-family="Arial, Helvetica, sans-serif" font-size="24">${subtitleLines.map((line,i)=>`<tspan x="66" y="${subtitleY+i*33}">${xmlEscape(line)}</tspan>`).join('')}</text>
   ${picture}
@@ -62,8 +62,8 @@ function svg({ file, title, subtitle, accent = '#356142', kind = 'PROJECT' }) {
 }
 
 const cards = [
-  { file: 'index.svg', code: 'HOME', title: 'A few things worth opening.', subtitle: 'Games to play. Tools to use. Ideas to explore.', kind: 'PORTFOLIO', accent: '#555650' },
-  { file: 'projects.svg', code: 'PROJECTS', title: 'Projects', subtitle: 'The complete THIEPN project catalogue: games, tools, learning systems, resources and experiments.', kind: 'DIRECTORY', accent: '#555650' },
+  { file: 'index.svg', code: 'HOME', title: '26 apps. One place.', subtitle: 'Tools, creative software, learning projects, faith resources, explorations and games.', kind: 'HUB', accent: '#555650' },
+  { file: 'projects.svg', code: 'PROJECTS', title: 'Project archive', subtitle: 'Current apps, older projects, learning systems, resources and experiments kept in one historical catalogue.', kind: 'DIRECTORY', accent: '#555650' },
   { file: 'books.svg', code: 'BOOKS', title: 'Books', subtitle: 'Published long-form works available through the THIEPN Library.', kind: 'LIBRARY', accent: '#555650' },
   { file: 'collections.svg', code: 'COLLECTIONS', title: 'Collections', subtitle: 'Editorial paths through related THIEPN projects, subjects and experiments.', kind: 'DIRECTORY', accent: '#555650' },
   ...projects.map((project) => ({ file: `${project.data.slug}.svg`, code: project.data.code, title: project.data.title, subtitle: project.data.subtitle, kind: 'PROJECT', accent: project.data.accent.light })),
