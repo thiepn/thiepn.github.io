@@ -94,3 +94,11 @@ test('reference consumer manifest conforms to the frozen 1.x contract', async ()
   assert.deepEqual(validateConsumerManifest(manifest), []);
   assert.equal(manifest.integrationMode, 'sdk-1.x');
 });
+
+test('new-consumer validator forbids raw session restoration and legacy auth authority', async () => {
+  const validator = await readFile(new URL('../../scripts/validate-account-consumer.mjs', import.meta.url), 'utf8');
+  assert.match(validator, /app-managed Supabase session restoration/);
+  assert.match(validator, /\\\.auth\\\.setSession/);
+  assert.match(validator, /implicit\/global Supabase sign-out/);
+  assert.match(validator, /localStorage\\\\\.clear/);
+});
