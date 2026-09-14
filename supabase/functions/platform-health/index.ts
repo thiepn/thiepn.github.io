@@ -90,7 +90,7 @@ async function evaluate(): Promise<Omit<HealthPayload, "requestId">> {
 
   const [auth, database] = await Promise.all([
     check(`${supabaseUrl}/auth/v1/health`, { apikey: serviceRoleKey }),
-    check(`${supabaseUrl}/rest/v1/account_apps?select=app_id&limit=1`, {
+    check(`${supabaseUrl}/rest/v1/account_apps?select=slug&limit=1`, {
       apikey: serviceRoleKey,
       Authorization: `Bearer ${serviceRoleKey}`,
       Accept: "application/json",
