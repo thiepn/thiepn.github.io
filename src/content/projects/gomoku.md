@@ -18,8 +18,7 @@ tags:
 - game
 - board-game
 - strategy
-capabilityTags:
-- pwa
+capabilityTags: []
 platforms:
 - desktop
 - tablet
