@@ -10,6 +10,7 @@ const SDK_MARKER = '/account-platform/sdk/v1/index.js';
 const FORBIDDEN_SOURCE = [
   ['broad localStorage clear', /localStorage\.clear\s*\(/],
   ['implicit/global Supabase sign-out', /\.auth\.signOut\s*\(\s*\)/],
+  ['app-managed Supabase session restoration', /\.auth\.setSession\s*\(/],
   ['retired Diet backend', /mrrqsqawwxwebsdmrnre/],
   ['retired Notes session key', /notes\.supabase\.session\.v1/],
   ['retired Diet auth backup', /diet-copilot-thiepn-auth-token-backup-v2/],
