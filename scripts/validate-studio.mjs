@@ -28,20 +28,21 @@ for (const file of ['src/pages/index.astro', 'src/pages/work/index.astro', 'src/
 const homepage = fs.readFileSync('src/pages/index.astro', 'utf8');
 assert(homepage.includes('getHubProjects'), 'Homepage must resolve the canonical Hub registry');
 assert(homepage.includes('<HubCatalogue'), 'Homepage must render the complete Hub catalogue');
-assert(homepage.includes('<HubHero'), 'Homepage must render the compact Hub hero');
+assert(!homepage.includes('<HubHero'), 'Homepage must begin with apps instead of a hero landing section');
 assert(!homepage.includes('ArcadeShowcase'), 'Micro Arcade must not have a privileged homepage showcase');
 assert(!homepage.includes('TinyToolsSpotlight'), 'Tiny Tools must not have a privileged homepage spotlight');
 assert.equal(hub.projects.length, 26, 'Homepage Hub contract must expose exactly 26 apps');
 assert(hub.projects.some((entry) => entry.slug === 'thiepn-library'), 'THIEPN Library must remain directly available in the Hub');
+assert.notEqual([...hub.projects].sort((a, b) => a.order - b.order)[0]?.slug, 'signal-earth', 'Signal Earth must not occupy the first Hub slot');
 
 const hubCatalogue = fs.readFileSync('src/components/hub/HubCatalogue.astro', 'utf8');
 const hubCard = fs.readFileSync('src/components/hub/HubCard.astro', 'utf8');
 const hubFilters = fs.readFileSync('src/components/hub/HubFilters.astro', 'utf8');
 assert(hubCatalogue.includes('entries.map'), 'Hub catalogue must render all entries at build time');
-assert(hubCatalogue.includes('HubFilters'), 'Hub catalogue must expose search/category controls');
+assert(hubCatalogue.includes('HubFilters'), 'Hub catalogue must expose category controls');
 assert(hubCard.includes('Open app'), 'Hub cards must make launching the app a primary action');
 assert(hubCard.includes('Details'), 'Hub cards must retain project details as a secondary action');
-assert(hubFilters.includes('data-hub-search'), 'Hub search input is missing');
+assert(!hubFilters.includes('data-hub-search'), 'Homepage must not expose a redundant app search bar');
 assert(hubFilters.includes('data-hub-category'), 'Hub category filters are missing');
 
 assert(fs.readFileSync('src/pages/projects/index.astro', 'utf8').includes('data-simple-item'), 'Archive must render real rows without JS');
