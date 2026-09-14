@@ -1,0 +1,26 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import ProjectMedia from '../studio/ProjectMedia.astro';
+interface Props { slug: string; fallback: string; alt: string; priority?: boolean; sizes?: string; }
+const { slug, fallback, alt, priority = false, sizes = '(max-width: 700px) calc(100vw - 40px), (max-width: 1050px) 48vw, 31vw' } = Astro.props;
+const captures = import.meta.glob<{ default: ImageMetadata }>('/src/assets/hub/*.webp', { eager: true });
+const capture = captures[`/src/assets/hub/${slug}.webp`]?.default;
+---
+{capture ? (
+  <Image
+    src={capture}
+    alt={alt}
+    widths={[480, 800, 1280]}
+    sizes={sizes}
+    width={capture.width}
+    height={capture.height}
+    format="webp"
+    quality={84}
+    loading={priority ? 'eager' : 'lazy'}
+    fetchpriority={priority ? 'high' : 'auto'}
+    decoding="async"
+  />
+) : (
+  <ProjectMedia src={fallback} alt={alt} priority={priority} sizes={sizes} />
+)}
