@@ -1,15 +1,10 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-14T08:20:35.652Z",
+  "capturedAt": "2026-09-14T09:27:03.684Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
   "captures": {
-    "signal-earth": {
-      "file": "/src/assets/hub/signal-earth.webp",
-      "url": "https://thiepn.dev/signal-earth/",
-      "bytes": 47142
-    },
     "notes": {
       "file": "/src/assets/hub/notes.webp",
       "url": "https://thiepn.dev/notes/",
@@ -18,7 +13,7 @@
     "canvas": {
       "file": "/src/assets/hub/canvas.webp",
       "url": "https://thiepn.dev/canvas/",
-      "bytes": 52780
+      "bytes": 52624
     },
     "tiny-tools": {
       "file": "/src/assets/hub/tiny-tools.webp",
@@ -44,6 +39,11 @@
       "file": "/src/assets/hub/pdf-studio.webp",
       "url": "https://thiepn.dev/pdf/",
       "bytes": 42952
+    },
+    "signal-earth": {
+      "file": "/src/assets/hub/signal-earth.webp",
+      "url": "https://thiepn.dev/signal-earth/",
+      "bytes": 48186
     },
     "steadybar": {
       "file": "/src/assets/hub/steadybar.webp",
@@ -78,12 +78,12 @@
     "tms60": {
       "file": "/src/assets/hub/tms60.webp",
       "url": "https://thiepn.dev/tms60/",
-      "bytes": 16988
+      "bytes": 16990
     },
     "unreached": {
       "file": "/src/assets/hub/unreached.webp",
       "url": "https://thiepn.dev/unreached/",
-      "bytes": 80538
+      "bytes": 71902
     },
     "clean30": {
       "file": "/src/assets/hub/clean30.webp",
@@ -118,12 +118,12 @@
     "micro-arcade": {
       "file": "/src/assets/hub/micro-arcade.webp",
       "url": "https://thiepn.dev/arcade/",
-      "bytes": 18280
+      "bytes": 18152
     },
     "voidcut": {
       "file": "/src/assets/hub/voidcut.webp",
       "url": "https://thiepn.dev/voidcut/",
-      "bytes": 9680
+      "bytes": 9584
     },
     "impossible-transit": {
       "file": "/src/assets/hub/impossible-transit.webp",
@@ -133,7 +133,7 @@
     "skyspire": {
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
-      "bytes": 19054
+      "bytes": 19114
     }
   }
 }
