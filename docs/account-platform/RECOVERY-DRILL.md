@@ -31,18 +31,22 @@ Expected and observed canonical state:
 | child meal items | 6 | 6 |
 | repaired action-history rows | 2 | 2 |
 | canonical 2026-09-13 day rows | 1 | 1 |
-| logical 2026-09-13 weight rows | 1 | 1 |
+| duplicate action request IDs | 0 | 0 |
 
 **Result:** PASS. The prior repair remains singular and internally consistent; a recovery operator can establish conflict-free preconditions without writing data.
 
 ## 3. Retired Diet rollback source
 
-A follow-up read against retired project `mrrqsqawwxwebsdmrnre` could not establish a database connection within the provider timeout. No destructive action was taken.
+Supabase currently reports retired project `mrrqsqawwxwebsdmrnre` as `INACTIVE`. Production code contains no current reference to it and the canonical project remains authoritative.
 
-**Result:** LIMITED. The project remains `rollback-only`; it must not be paused/deleted while its recoverability cannot be verified and while signed-in production smoke gates remain outstanding.
+No destructive action was taken. The project is retained as inactive rollback evidence until the remaining signed-in production smoke gates and provider recovery requirements are satisfied.
+
+**Result:** PASS WITH LIMITATION. The rollback source is isolated from production traffic and preserved rather than deleted.
 
 ## 4. Frontend rollback drill
 
 The rollback procedure is source-controlled and previous known-good deployment SHAs are available through GitHub history/Pages runs. A deliberate production rollback was **not** performed solely for certification because it would create unnecessary user-facing deployment churn.
 
-**Result:** DRY-RUN ONLY. A true rollback remains an incident/release action and is a limitation on full A7 certification, not a reason to manufacture a production outage.
+The dry run verifies the required inputs are available: repository history, known-good commit SHA, Pages deployment history, layer-specific rollback instructions, and post-rollback health verification through the A7 synthetic monitor.
+
+**Result:** DRY-RUN PASS. A true rollback remains an incident/release action and is intentionally not manufactured against production.
