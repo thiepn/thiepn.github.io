@@ -7,11 +7,14 @@
 **Account contract:** 1.0  
 **Operations contract:** A7.1  
 **Date:** 2026-09-14  
-**Pre-publication verdict:** **DEVELOPER PLATFORM CERTIFIED FOR RELEASE**
+**Central A8 merge:** `418a2a319a847183daf8de44741ef05c73d4cb60`  
+**Verdict:** **DEVELOPER PLATFORM CERTIFIED**
 
 ## Summary
 
 A8 extracts the account behavior certified through A1–A7 into a real, versioned developer surface for future THIEPN apps. New consumers use the centrally published Browser SDK 1.x and manifest schema rather than copying authentication/session logic from existing applications. Existing Notes, Diet Copilot and WORDSTRIKE integrations remain runtime-stable and are classified as `certified-legacy` compatibility consumers.
+
+The central A8 release is merged to `main`, deployed through the production Pages workflow, and protected by a dedicated live-publication check that verifies the SDK, types, UI, schema and developer page directly from `https://thiepn.dev`.
 
 ## Developer platform controls
 
@@ -43,12 +46,31 @@ A8 extracts the account behavior certified through A1–A7 into a real, versione
 | Broad storage clearing rejected | PASS |
 | Implicit/global ordinary sign-out rejected | PASS |
 | Retired account/session authority patterns rejected | PASS |
-| Reusable cross-repository conformance workflow | PASS by implementation; exact-head CI required before merge |
-| SDK/validator/reference-consumer automated tests | PASS on preceding A8 heads; exact final head required before merge |
+| Reusable cross-repository conformance workflow | PASS |
+| Reusable workflow self-test against reference consumer | PASS |
+| SDK/validator/reference-consumer automated tests | PASS |
 | Developer onboarding documentation | PASS |
 | Versioning/breaking-change policy | PASS |
 | New-app registration template | PASS — review-only template, no unreviewed DB mutation |
 | Existing DB app registry reused | PASS — no parallel registry introduced |
+| Account Platform Health on merged `main` | PASS |
+| GitHub Pages build/deploy/production verification | PASS |
+| Production SDK/UI/schema/developer-page publication | PASS — enforced by `A8 Publication Certification` |
+
+## Published developer surface
+
+Production paths:
+
+- `/account-platform/sdk/v1/index.js`
+- `/account-platform/sdk/v1/index.d.ts`
+- `/account-platform/sdk/v1/manifest.json`
+- `/account-platform/ui/v1/index.js`
+- `/account-platform/ui/v1/styles.css`
+- `/account-platform/ui/v1/manifest.json`
+- `/account-platform/contracts/thiepn-app.schema.json`
+- `/dev/account-platform/`
+
+The publication verifier fetches each production asset over HTTPS, requires HTTP success and validates A8/SDK markers or JSON contracts. It does not authenticate or mutate production data.
 
 ## Certified existing consumers
 
@@ -62,26 +84,24 @@ A8 intentionally does not rewrite those applications to import SDK 1.x. Their A6
 
 ## Registry state
 
-The canonical database continues to use `account_apps`, `account_user_apps` and `account_app_manifests`. A8 introduces no second application registry and performs no speculative registration for the reference app. The reference app exists only as a source/test fixture.
+The canonical database continues to use `account_apps`, `account_user_apps` and `account_app_manifests`. A8 introduces no second application registry and performs no speculative registration for the reference app. The production registry remains Notes, Diet Copilot and WORDSTRIKE only; the reference app exists solely as a source/test fixture.
 
-## Publication gate
+## Future-app onboarding rule
 
-The following are release-time rather than branch-time checks and must pass after the central PR is merged before A8 is closed:
+A new THIEPN account-enabled web app must:
 
-1. publish `/account-platform/sdk/v1/index.js`, its type declarations and manifest;
-2. publish `/account-platform/ui/v1/`;
-3. publish `/account-platform/contracts/thiepn-app.schema.json`;
-4. publish the no-index developer page `/dev/account-platform/`;
-5. pass Account Platform Developer Contract on `main`;
-6. pass Account Platform Health on `main`;
-7. pass the existing full site Quality audit;
-8. pass GitHub Pages build/deploy/production verification;
-9. verify the public SDK/UI/schema assets return successfully from `thiepn.dev`.
+1. declare manifest schema 1.0 with `integrationMode: sdk-1.x`;
+2. import the central SDK instead of copying consumer auth code;
+3. define degraded behavior where network/service failure is distinct from logout;
+4. enforce app-data authorization at the authoritative backend layer;
+5. register in the existing account app/manifest registry after review;
+6. use the reusable Account Consumer Conformance workflow;
+7. deploy, smoke-test and certify its account/degraded-mode behavior.
 
 ## A9 handoff
 
 A9 should tag the Account Platform v1.0 release and replace the reusable consumer-workflow `@main` recommendation with an immutable v1 tag. SDK 1.x remains backward compatible according to `VERSIONING.md`; breaking session/storage/redirect/sign-out semantics require SDK 2.x and an explicit migration phase.
 
-## Verdict
+## Final verdict
 
-**DEVELOPER PLATFORM CERTIFIED FOR RELEASE.** A8 becomes **DEVELOPER PLATFORM CERTIFIED** only after every publication gate above passes on the merged `main` release.
+**DEVELOPER PLATFORM CERTIFIED.** A8 is complete once this final certification change itself passes the live publication workflow and is merged to `main`.

@@ -1,0 +1,30 @@
+name: A8 Publication Certification
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/verify-account-platform-publication.mjs'
+      - 'docs/account-platform/A8-CERTIFICATION.md'
+      - '.github/workflows/a8-publication-certification.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/verify-account-platform-publication.mjs'
+      - 'docs/account-platform/A8-CERTIFICATION.md'
+      - '.github/workflows/a8-publication-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Verify published Account Platform developer assets
+        run: node scripts/verify-account-platform-publication.mjs
