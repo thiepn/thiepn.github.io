@@ -31,6 +31,16 @@ export const PREVIEW_TIERS = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'] as const;
 export const PREVIEW_TYPES = ['auto', 'static', 'synthetic', 'video'] as const;
 export const PREVIEW_PROVENANCE = ['static', 'synthetic', 'captured', 'reconstructed'] as const;
 
+export const HUB_CATEGORIES = [
+  'tools',
+  'create',
+  'learn',
+  'faith',
+  'explore',
+  'games',
+] as const;
+export const HUB_BADGES = ['beta', 'rc', 'new'] as const;
+
 export const TOPIC_TAGS = [
   'action',
   'algorithms',
@@ -38,10 +48,13 @@ export const TOPIC_TAGS = [
   'arcade',
   'auction',
   'bible',
+  'board-game',
   'cleaning',
   'community',
   'computer-science',
+  'design',
   'documents',
+  'earth',
   'exam-prep',
   'french',
   'game',
@@ -51,17 +64,24 @@ export const TOPIC_TAGS = [
   'markdown',
   'mathematics',
   'memorization',
-  'platformer',
+  'multiplayer',
+  'music',
+  'notes',
   'pdf',
+  'platformer',
+  'practice',
   'productivity',
   'quiz',
   'reference',
   'roguelite',
   'routines',
+  'science',
+  'space',
   'strategy',
   'study',
   'typing',
   'vocabulary',
+  'whiteboard',
 ] as const;
 
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
@@ -75,4 +95,6 @@ export type CapabilityTag = (typeof CAPABILITY_TAGS)[number];
 export type PreviewTier = (typeof PREVIEW_TIERS)[number];
 export type PreviewType = (typeof PREVIEW_TYPES)[number];
 export type PreviewProvenance = (typeof PREVIEW_PROVENANCE)[number];
+export type HubCategory = (typeof HUB_CATEGORIES)[number];
+export type HubBadge = (typeof HUB_BADGES)[number];
 export type TopicTag = (typeof TOPIC_TAGS)[number];
