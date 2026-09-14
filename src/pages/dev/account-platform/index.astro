@@ -21,7 +21,7 @@ const account = createThiepnAccount({
   appSlug: 'my-app',
   redirectTo: new URL('./', location.href).href,
 });`}</code></pre>
-      <p>The SDK owns canonical project/storage configuration, safe redirect validation, normalized auth state and local sign-out defaults.</p>
+      <p>The SDK owns canonical project/storage configuration, safe redirect validation, normalized auth state and local sign-out defaults. An optional shared account control is available under <code>/account-platform/ui/v1/</code>; apps still own their visual sign-in panel.</p>
     </section>
     <section>
       <h2>Onboard a new app</h2>
@@ -29,7 +29,7 @@ const account = createThiepnAccount({
     </section>
     <section>
       <h2>Published developer assets</h2>
-      <ul><li><code>/account-platform/sdk/v1/index.js</code></li><li><code>/account-platform/sdk/v1/index.d.ts</code></li><li><code>/account-platform/sdk/v1/manifest.json</code></li><li><code>/account-platform/contracts/thiepn-app.schema.json</code></li></ul>
+      <ul><li><code>/account-platform/sdk/v1/index.js</code></li><li><code>/account-platform/sdk/v1/index.d.ts</code></li><li><code>/account-platform/sdk/v1/manifest.json</code></li><li><code>/account-platform/ui/v1/index.js</code> + <code>styles.css</code></li><li><code>/account-platform/contracts/thiepn-app.schema.json</code></li></ul>
     </section>
   </article>
 </BaseLayout>

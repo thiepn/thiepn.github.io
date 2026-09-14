@@ -8,6 +8,8 @@
   "projectRef": "hycegznamzjhwinegaai",
   "module": "/account-platform/sdk/v1/index.js",
   "types": "/account-platform/sdk/v1/index.d.ts",
+  "uiModule": "/account-platform/ui/v1/index.js",
+  "uiStyles": "/account-platform/ui/v1/styles.css",
   "manifestSchema": "/account-platform/contracts/thiepn-app.schema.json",
   "compatibility": {
     "sameOrigin": "https://thiepn.dev",

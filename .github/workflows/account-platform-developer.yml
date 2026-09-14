@@ -32,8 +32,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - name: SDK syntax
-        run: node --check public/account-platform/sdk/v1/index.js
+      - name: SDK and UI syntax
+        run: |
+          node --check public/account-platform/sdk/v1/index.js
+          node --check public/account-platform/ui/v1/index.js
       - name: SDK and contract tests
         run: node --test tests/account-platform/developer-contract.test.mjs
       - name: Reference consumer conformance

@@ -1,6 +1,22 @@
 # Account UI Patterns
 
-A8 standardizes behavior, not one visual design. Consumers may style account UI to match the app while preserving these labels/states.
+A8 standardizes behavior, not one visual design. Consumers may style account UI to match the app while preserving the platform states below.
+
+## Shared control
+
+The optional UI helper is published at `/account-platform/ui/v1/index.js` with minimal structural CSS at `/account-platform/ui/v1/styles.css`.
+
+```js
+import { mountThiepnAccountControl } from '/account-platform/ui/v1/index.js';
+
+const control = mountThiepnAccountControl({
+  account,
+  root: document.querySelector('#account-control'),
+  onSignInRequest: () => openAppSpecificSignInPanel(),
+});
+```
+
+The control shows normalized account state, performs **local** sign-out through the SDK when signed in, and requests sign-in rather than inventing its own credential flow when signed out. Without a callback it dispatches `thiepn-account:signin-request` from the root element. Network/service failure disables the action and displays `Account temporarily unavailable`; it never renders that condition as signed out.
 
 ## Required states
 
