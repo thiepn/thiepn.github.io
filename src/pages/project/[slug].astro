@@ -21,7 +21,7 @@ const related=note ? selectProjects(await getPublicProjects(),note.related) : (a
 const gallery=(p.gallery ?? []).filter(item=>item.source && item.source!==view.media);
 const lifecycle=p.status==='beta'?'In beta — still being developed':p.status==='archived'?'Archived project':p.status==='experiment'?'An experiment':null;
 const isHubApp=HUB_PROJECT_CONFIG.some((entry)=>entry.slug===p.slug);
-const backHref=isHubApp?'/?view=all#apps':'/work/';
+const backHref=isHubApp?'/#apps':'/work/';
 const backLabel=isHubApp?'Back to apps':'Back to the work';
 let projectLiveUrl=p.liveUrl;
 if(projectLiveUrl){const parsed=new URL(projectLiveUrl);if(parsed.origin==='https://thiepn.dev')projectLiveUrl=`${parsed.pathname}${parsed.search}${parsed.hash}`;}
