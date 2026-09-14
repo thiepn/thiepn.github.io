@@ -7,6 +7,10 @@
       "png": "artikelwerk.png",
       "sha256": "236b67f86802fe35496eba4c6fdb4d52708d98c1a0f3511de54ec88b94387c17"
     },
+    "atelier.svg": {
+      "png": "atelier.png",
+      "sha256": "04fbd2cbd8521e2ca242aba5633b0184b31d9b274a6076898f787be74bf4cab7"
+    },
     "biblical-greek.svg": {
       "png": "biblical-greek.png",
       "sha256": "ed0d8afefa7652ffb06050209278c82ba0fe23863c8769f8d31899ff8ec9b8f8"
@@ -14,6 +18,10 @@
     "books.svg": {
       "png": "books.png",
       "sha256": "1de4c3d51b2d49b58b994fd1830599e99a9b856464f4191a04c2a999567767a3"
+    },
+    "canvas.svg": {
+      "png": "canvas.png",
+      "sha256": "25000e22004ff46d6581dc19cf6fe747d3d7cc33c07e59c9d45962f81f09da8a"
     },
     "clean30.svg": {
       "png": "clean30.png",
@@ -47,9 +55,17 @@
       "png": "curio.png",
       "sha256": "91942a1449a6a8241436e84d99cc67560d353e9925a291aeb6de28209ba7380b"
     },
+    "duel.svg": {
+      "png": "duel.png",
+      "sha256": "e3201774129683d7e9c37c4646d5aa54bb23c2a1a3a5813a4ba19357c2d1876d"
+    },
     "french-3000.svg": {
       "png": "french-3000.png",
       "sha256": "cd6ab0d9a12a0cf256068885eb2626ea7f664bb097a040180ece1f00fece4f36"
+    },
+    "gomoku.svg": {
+      "png": "gomoku.png",
+      "sha256": "eb0e34a0819532eb3d732258dc546eafc321b08ea8aa78b71737f42505f28585"
     },
     "impossible-transit.svg": {
       "png": "impossible-transit.png",
@@ -67,6 +83,10 @@
       "png": "manuscript.png",
       "sha256": "b728ae58eb4b0b973c257c4c09d15343c8835752b3bf3d0de6a81eae76e96ad5"
     },
+    "markdown-guide.svg": {
+      "png": "markdown-guide.png",
+      "sha256": "be9fa03f5496275192f19505e806d5379177d417cd6ce6d98612c99b1a739a0d"
+    },
     "mathlab.svg": {
       "png": "mathlab.png",
       "sha256": "3c6ae250c06b5329e39960c1b05de3c6a95113bbce81a1a26d36b2f96e59b983"
@@ -78,6 +98,10 @@
     "nebula-foundry.svg": {
       "png": "nebula-foundry.png",
       "sha256": "dcab9ce71059f721ec885d38ea2e8d028b713c231b179764d8739e98921ef83d"
+    },
+    "notes.svg": {
+      "png": "notes.png",
+      "sha256": "e15e01d300f9f529c9c8910de3c7e0cc8e4cf292dcd9ef4350bad735bebfff1a"
     },
     "pdf-studio.svg": {
       "png": "pdf-studio.png",
@@ -91,9 +115,17 @@
       "png": "projects.png",
       "sha256": "46d30c09d486a3a11664d66f960e14a449e1392c1a4991b12bdea64c473641f5"
     },
+    "signal-earth.svg": {
+      "png": "signal-earth.png",
+      "sha256": "59df2abbfae1bd85c5ed9cfbb560a96557b6421ce7b93dc7a6d4a022b92e1215"
+    },
     "skyspire.svg": {
       "png": "skyspire.png",
       "sha256": "aae36756edf871c937f7a084e329eebc6f93aaf4c1a86efa18548521b4716040"
+    },
+    "steadybar.svg": {
+      "png": "steadybar.png",
+      "sha256": "6ac1917793107b819e0ccc163a87beb546ab8e7329a50bb62e27ecb80580a4de"
     },
     "the-bible-challenge.svg": {
       "png": "the-bible-challenge.png",

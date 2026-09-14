@@ -37,6 +37,39 @@
     },
     {
       "kind": "project",
+      "code": "T-009",
+      "slug": "atelier",
+      "title": "Atelier",
+      "subtitle": "Local-first spatial planning and room design",
+      "summary": "A local-first spatial planning studio for arranging rooms, objects and environments through an interactive visual workspace.",
+      "aliases": [
+        "room planner",
+        "space planner"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "design",
+        "productivity"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/atelier",
+      "liveUrl": "https://thiepn.dev/atelier/",
+      "accentLight": "#7C3AED",
+      "accentDark": "#A78BFA",
+      "updatedAt": "2026-09-14"
+    },
+    {
+      "kind": "project",
       "code": "L-901",
       "slug": "biblical-greek",
       "title": "Koinē Path",
@@ -72,6 +105,40 @@
       "accentLight": "#8A5B20",
       "accentDark": "#D5B075",
       "updatedAt": "2026-08-21"
+    },
+    {
+      "kind": "project",
+      "code": "T-008",
+      "slug": "canvas",
+      "title": "Canvas",
+      "subtitle": "A realtime infinite whiteboard for freeform creation",
+      "summary": "A realtime infinite canvas for drawing, writing, diagramming, arranging ideas and collaborating in a shared space.",
+      "aliases": [
+        "whiteboard",
+        "infinite canvas"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "whiteboard",
+        "design",
+        "productivity",
+        "documents"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/canvas",
+      "liveUrl": "https://thiepn.dev/canvas/",
+      "accentLight": "#2563EB",
+      "accentDark": "#60A5FA",
+      "updatedAt": "2026-09-14"
     },
     {
       "kind": "project",
@@ -147,6 +214,40 @@
     },
     {
       "kind": "project",
+      "code": "G-013",
+      "slug": "duel",
+      "title": "DUEL",
+      "subtitle": "Local two-player arcade games on one screen",
+      "summary": "A collection of 25 local two-player arcade games built for quick same-screen competition with keyboard and touch controls.",
+      "aliases": [
+        "local multiplayer",
+        "two player games"
+      ],
+      "category": "games",
+      "status": "beta",
+      "tags": [
+        "game",
+        "arcade",
+        "multiplayer",
+        "action"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/duel",
+      "liveUrl": "https://thiepn.dev/duel/",
+      "accentLight": "#E11D48",
+      "accentDark": "#FB7185",
+      "updatedAt": "2026-09-14"
+    },
+    {
+      "kind": "project",
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -183,6 +284,37 @@
       "accentLight": "#B63C3C",
       "accentDark": "#FF7777",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "G-014",
+      "slug": "gomoku",
+      "title": "Gomoku",
+      "subtitle": "Focused five-in-a-row strategy in the browser",
+      "summary": "A focused browser implementation of Gomoku for quick five-in-a-row strategy play with a clean board-first interface.",
+      "aliases": [
+        "five in a row",
+        "gomoku game"
+      ],
+      "category": "games",
+      "status": "live",
+      "tags": [
+        "game",
+        "board-game",
+        "strategy"
+      ],
+      "collections": [],
+      "capabilityTags": [],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/gomoku",
+      "liveUrl": "https://thiepn.dev/gomoku/",
+      "accentLight": "#8B5E3C",
+      "accentDark": "#D6A86C",
+      "updatedAt": "2026-09-14"
     },
     {
       "kind": "project",
@@ -290,6 +422,39 @@
       "accentLight": "#765328",
       "accentDark": "#D5AF6C",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "R-001",
+      "slug": "markdown-guide",
+      "title": "Markdown: Final Form",
+      "subtitle": "Interactive Markdown reference and rendering showcase",
+      "summary": "An extensive interactive showcase and reference for modern Markdown, GitHub rendering and advanced document syntax.",
+      "aliases": [
+        "markdown",
+        "gfm",
+        "markdown tutorial",
+        "markdown final form"
+      ],
+      "category": "resources",
+      "status": "live",
+      "tags": [
+        "markdown",
+        "reference",
+        "documents"
+      ],
+      "collections": [],
+      "capabilityTags": [],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/markdown",
+      "liveUrl": "https://thiepn.dev/markdown/",
+      "accentLight": "#53565B",
+      "accentDark": "#B6BBC1",
+      "updatedAt": "2026-09-14"
     },
     {
       "kind": "project",
@@ -404,6 +569,42 @@
     },
     {
       "kind": "project",
+      "code": "T-007",
+      "slug": "notes",
+      "title": "Notes",
+      "subtitle": "Fast local-first capture, organization and recall",
+      "summary": "A local-first notes app with rich text, checklists, reminders, attachments, drawings, voice, search and sync support.",
+      "aliases": [
+        "thiepn notes",
+        "notes app"
+      ],
+      "category": "tools",
+      "status": "live",
+      "tags": [
+        "notes",
+        "productivity",
+        "documents",
+        "reference"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/notes",
+      "liveUrl": "https://thiepn.dev/notes/",
+      "accentLight": "#D97706",
+      "accentDark": "#FBBF24",
+      "updatedAt": "2026-09-14"
+    },
+    {
+      "kind": "project",
       "code": "T-001",
       "slug": "pdf-studio",
       "title": "PDF Studio",
@@ -478,6 +679,41 @@
     },
     {
       "kind": "project",
+      "code": "V-002",
+      "slug": "signal-earth",
+      "title": "Signal Earth",
+      "subtitle": "Earth, orbit and time in one interactive observatory",
+      "summary": "An interactive 3D Earth observatory combining natural events, satellites, space weather, astronomy and time.",
+      "aliases": [
+        "earth observatory",
+        "satellites",
+        "space weather"
+      ],
+      "category": "visualizations",
+      "status": "live",
+      "tags": [
+        "earth",
+        "science",
+        "space",
+        "reference"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/signal-earth",
+      "liveUrl": "https://thiepn.dev/signal-earth/",
+      "accentLight": "#2563EB",
+      "accentDark": "#60A5FA",
+      "updatedAt": "2026-09-14"
+    },
+    {
+      "kind": "project",
       "code": "G-008",
       "slug": "skyspire",
       "title": "Skyspire",
@@ -510,6 +746,42 @@
       "accentLight": "#28717B",
       "accentDark": "#62CEDB",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "kind": "project",
+      "code": "L-010",
+      "slug": "steadybar",
+      "title": "Steadybar",
+      "subtitle": "Practice planning and progress for musicians",
+      "summary": "A music-practice system for planning sessions, following routines, using practice tools and tracking progress across instruments.",
+      "aliases": [
+        "music practice",
+        "instrument practice"
+      ],
+      "category": "learning",
+      "status": "live",
+      "tags": [
+        "music",
+        "practice",
+        "routines",
+        "study"
+      ],
+      "collections": [],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "repo": "thiepn/steadybar",
+      "liveUrl": "https://thiepn.dev/steadybar/",
+      "accentLight": "#059669",
+      "accentDark": "#34D399",
+      "updatedAt": "2026-09-14"
     },
     {
       "kind": "project",

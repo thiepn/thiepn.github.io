@@ -1,18 +1,18 @@
 {
-  "totalRegistered": 31,
-  "totalListed": 22,
+  "totalRegistered": 38,
+  "totalListed": 30,
   "status": {
-    "live": 17,
-    "beta": 5,
+    "live": 24,
+    "beta": 6,
     "experiment": 0,
     "archived": 0
   },
   "categories": {
-    "tools": 6,
-    "learning": 6,
-    "games": 9,
-    "resources": 0,
-    "visualizations": 1,
+    "tools": 9,
+    "learning": 7,
+    "games": 11,
+    "resources": 1,
+    "visualizations": 2,
     "experiments": 0
   }
 }

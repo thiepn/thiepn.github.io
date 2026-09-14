@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Notes">
+  <rect width="1200" height="630" fill="#f6f7f2"/>
+  <text x="64" y="85" fill="#18231f" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.5">THIEPN.</text>
+  <path d="M64 115H1136" stroke="#ccd5c9"/>
+  <text x="64" y="164" fill="#526057" font-family="Arial, Helvetica, sans-serif" font-size="18">A project by Jonathan</text>
+  <text fill="#18231f" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="600" letter-spacing="-2.8"><tspan x="64" y="306">Notes</tspan></text>
+  <text fill="#526057" font-family="Arial, Helvetica, sans-serif" font-size="24"><tspan x="66" y="368">Fast local-first capture, organization and recall</tspan></text>
+  
+  <rect x="64" y="555" width="34" height="3" fill="#D97706"/>
+  <text x="64" y="595" fill="#526057" font-family="Arial, Helvetica, sans-serif" font-size="18">thiepn.dev</text>
+</svg>

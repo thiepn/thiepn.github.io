@@ -34,6 +34,37 @@
       "updatedAt": "2026-08-28"
     },
     {
+      "code": "T-009",
+      "slug": "atelier",
+      "title": "Atelier",
+      "subtitle": "Local-first spatial planning and room design",
+      "summary": "A local-first spatial planning studio for arranging rooms, objects and environments through an interactive visual workspace.",
+      "category": "tools",
+      "type": "app",
+      "status": "live",
+      "route": "/project/atelier/",
+      "liveUrl": "https://thiepn.dev/atelier/",
+      "repo": "thiepn/atelier",
+      "tags": [
+        "design",
+        "productivity"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
+    },
+    {
       "code": "L-901",
       "slug": "biblical-greek",
       "title": "Koinē Path",
@@ -66,6 +97,38 @@
       "previewType": "static",
       "previewProvenance": "static",
       "updatedAt": "2026-08-21"
+    },
+    {
+      "code": "T-008",
+      "slug": "canvas",
+      "title": "Canvas",
+      "subtitle": "A realtime infinite whiteboard for freeform creation",
+      "summary": "A realtime infinite canvas for drawing, writing, diagramming, arranging ideas and collaborating in a shared space.",
+      "category": "tools",
+      "type": "app",
+      "status": "live",
+      "route": "/project/canvas/",
+      "liveUrl": "https://thiepn.dev/canvas/",
+      "repo": "thiepn/canvas",
+      "tags": [
+        "whiteboard",
+        "design",
+        "productivity",
+        "documents"
+      ],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
     },
     {
       "code": "T-003",
@@ -134,6 +197,38 @@
       "updatedAt": "2026-08-18"
     },
     {
+      "code": "G-013",
+      "slug": "duel",
+      "title": "DUEL",
+      "subtitle": "Local two-player arcade games on one screen",
+      "summary": "A collection of 25 local two-player arcade games built for quick same-screen competition with keyboard and touch controls.",
+      "category": "games",
+      "type": "game",
+      "status": "beta",
+      "route": "/project/duel/",
+      "liveUrl": "https://thiepn.dev/duel/",
+      "repo": "thiepn/duel",
+      "tags": [
+        "game",
+        "arcade",
+        "multiplayer",
+        "action"
+      ],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
+    },
+    {
       "code": "L-001",
       "slug": "french-3000",
       "title": "French 3000",
@@ -167,6 +262,35 @@
       "previewType": "synthetic",
       "previewProvenance": "synthetic",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "G-014",
+      "slug": "gomoku",
+      "title": "Gomoku",
+      "subtitle": "Focused five-in-a-row strategy in the browser",
+      "summary": "A focused browser implementation of Gomoku for quick five-in-a-row strategy play with a clean board-first interface.",
+      "category": "games",
+      "type": "game",
+      "status": "live",
+      "route": "/project/gomoku/",
+      "liveUrl": "https://thiepn.dev/gomoku/",
+      "repo": "thiepn/gomoku",
+      "tags": [
+        "game",
+        "board-game",
+        "strategy"
+      ],
+      "capabilityTags": [],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
     },
     {
       "code": "G-010",
@@ -265,6 +389,35 @@
       "previewType": "synthetic",
       "previewProvenance": "synthetic",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "R-001",
+      "slug": "markdown-guide",
+      "title": "Markdown: Final Form",
+      "subtitle": "Interactive Markdown reference and rendering showcase",
+      "summary": "An extensive interactive showcase and reference for modern Markdown, GitHub rendering and advanced document syntax.",
+      "category": "resources",
+      "type": "guide",
+      "status": "live",
+      "route": "/project/markdown-guide/",
+      "liveUrl": "https://thiepn.dev/markdown/",
+      "repo": "thiepn/markdown",
+      "tags": [
+        "markdown",
+        "reference",
+        "documents"
+      ],
+      "capabilityTags": [],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
     },
     {
       "code": "T-004",
@@ -370,6 +523,40 @@
       "updatedAt": "2026-08-18"
     },
     {
+      "code": "T-007",
+      "slug": "notes",
+      "title": "Notes",
+      "subtitle": "Fast local-first capture, organization and recall",
+      "summary": "A local-first notes app with rich text, checklists, reminders, attachments, drawings, voice, search and sync support.",
+      "category": "tools",
+      "type": "app",
+      "status": "live",
+      "route": "/project/notes/",
+      "liveUrl": "https://thiepn.dev/notes/",
+      "repo": "thiepn/notes",
+      "tags": [
+        "notes",
+        "productivity",
+        "documents",
+        "reference"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
+    },
+    {
       "code": "T-001",
       "slug": "pdf-studio",
       "title": "PDF Studio",
@@ -437,6 +624,38 @@
       "updatedAt": "2026-08-25"
     },
     {
+      "code": "V-002",
+      "slug": "signal-earth",
+      "title": "Signal Earth",
+      "subtitle": "Earth, orbit and time in one interactive observatory",
+      "summary": "An interactive 3D Earth observatory combining natural events, satellites, space weather, astronomy and time.",
+      "category": "visualizations",
+      "type": "visualization",
+      "status": "live",
+      "route": "/project/signal-earth/",
+      "liveUrl": "https://thiepn.dev/signal-earth/",
+      "repo": "thiepn/signal-earth",
+      "tags": [
+        "earth",
+        "science",
+        "space",
+        "reference"
+      ],
+      "capabilityTags": [
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
+    },
+    {
       "code": "G-008",
       "slug": "skyspire",
       "title": "Skyspire",
@@ -467,6 +686,40 @@
       "previewType": "static",
       "previewProvenance": "static",
       "updatedAt": "2026-08-18"
+    },
+    {
+      "code": "L-010",
+      "slug": "steadybar",
+      "title": "Steadybar",
+      "subtitle": "Practice planning and progress for musicians",
+      "summary": "A music-practice system for planning sessions, following routines, using practice tools and tracking progress across instruments.",
+      "category": "learning",
+      "type": "app",
+      "status": "live",
+      "route": "/project/steadybar/",
+      "liveUrl": "https://thiepn.dev/steadybar/",
+      "repo": "thiepn/steadybar",
+      "tags": [
+        "music",
+        "practice",
+        "routines",
+        "study"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline",
+        "pwa"
+      ],
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "collections": [],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-14"
     },
     {
       "code": "G-005",
