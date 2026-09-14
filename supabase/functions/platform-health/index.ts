@@ -1,3 +1,4 @@
+// @ts-nocheck -- Supabase Edge Function is compiled/deployed by the Deno runtime, not Astro/Node.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CACHE_TTL_MS = 30_000;
