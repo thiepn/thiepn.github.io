@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "expectedCount": 26,
+  "categories": [
+    { "id": "tools", "label": "Tools" },
+    { "id": "create", "label": "Create" },
+    { "id": "learn", "label": "Learn" },
+    { "id": "faith", "label": "Faith" },
+    { "id": "explore", "label": "Explore" },
+    { "id": "games", "label": "Games" }
+  ],
+  "expectedCategoryCounts": {
+    "tools": 4,
+    "create": 4,
+    "learn": 6,
+    "faith": 3,
+    "explore": 2,
+    "games": 7
+  },
+  "excluded": [
+    "pflegelern",
+    "wordfall",
+    "curio",
+    "nebula-foundry"
+  ],
+  "projects": [
+    {
+      "slug": "signal-earth",
+      "order": 1,
+      "category": "explore",
+      "description": "Explore Earth events, satellites, space weather and the planet through an interactive 3D observatory.",
+      "badge": null
+    },
+    {
+      "slug": "notes",
+      "order": 2,
+      "category": "tools",
+      "description": "Fast, local-first notes with checklists, search, reminders, attachments, drawings, voice and offline support.",
+      "badge": null
+    },
+    {
+      "slug": "canvas",
+      "order": 3,
+      "category": "create",
+      "description": "A shared infinite canvas for drawing, writing, diagramming and realtime collaboration.",
+      "badge": null
+    },
+    {
+      "slug": "tiny-tools",
+      "order": 4,
+      "category": "tools",
+      "description": "Hundreds of browser utilities for documents, media, data, code, calculations and everyday tasks.",
+      "badge": null
+    },
+    {
+      "slug": "thiepn-library",
+      "order": 5,
+      "category": "faith",
+      "description": "Browse, search and read books and research editions in a native web library.",
+      "badge": null
+    },
+    {
+      "slug": "atelier",
+      "order": 6,
+      "category": "create",
+      "description": "A local-first space-planning studio for designing and arranging rooms and environments.",
+      "badge": null
+    },
+    {
+      "slug": "manuscript",
+      "order": 7,
+      "category": "create",
+      "description": "Write in Markdown and turn structured source into polished documents.",
+      "badge": null
+    },
+    {
+      "slug": "pdf-studio",
+      "order": 8,
+      "category": "tools",
+      "description": "Edit, organize, annotate and transform PDFs directly in the browser.",
+      "badge": null
+    },
+    {
+      "slug": "steadybar",
+      "order": 9,
+      "category": "learn",
+      "description": "Plan, practice and track drums, guitar, bass, piano, voice and other instruments.",
+      "badge": null
+    },
+    {
+      "slug": "wordstrike",
+      "order": 10,
+      "category": "games",
+      "description": "An arcade typing game where speed and accuracy keep you alive.",
+      "badge": null
+    },
+    {
+      "slug": "mathlab",
+      "order": 11,
+      "category": "learn",
+      "description": "An interactive workbench for university mathematics, calculation, visualization and practice.",
+      "badge": "beta"
+    },
+    {
+      "slug": "the-bible-challenge",
+      "order": 12,
+      "category": "faith",
+      "description": "Test Bible knowledge across collections, modes and replayable challenges.",
+      "badge": null
+    },
+    {
+      "slug": "duel",
+      "order": 13,
+      "category": "games",
+      "description": "25 local two-player arcade games for keyboard and touch on one screen.",
+      "badge": "rc"
+    },
+    {
+      "slug": "biblical-greek",
+      "order": 14,
+      "category": "learn",
+      "description": "Learn Biblical Greek through grammar, vocabulary, parsing and guided New Testament reading.",
+      "badge": "beta"
+    },
+    {
+      "slug": "tms60",
+      "order": 15,
+      "category": "faith",
+      "description": "Memorize and review a structured collection of Bible verses.",
+      "badge": null
+    },
+    {
+      "slug": "unreached",
+      "order": 16,
+      "category": "explore",
+      "description": "Explore unreached peoples, languages, Scripture access and global mission context.",
+      "badge": "beta"
+    },
+    {
+      "slug": "clean30",
+      "order": 17,
+      "category": "tools",
+      "description": "Turn household cleaning into clear, timed sequences with visible progress.",
+      "badge": null
+    },
+    {
+      "slug": "markdown-guide",
+      "order": 18,
+      "category": "create",
+      "description": "An extensive interactive showcase and reference for modern Markdown and GitHub rendering.",
+      "badge": null
+    },
+    {
+      "slug": "gomoku",
+      "order": 19,
+      "category": "games",
+      "description": "Play Gomoku in the browser with a focused board-game interface.",
+      "badge": null
+    },
+    {
+      "slug": "artikelwerk",
+      "order": 20,
+      "category": "learn",
+      "description": "Train German noun genders through fast article recall and repeated practice.",
+      "badge": "beta"
+    },
+    {
+      "slug": "le-carnet-francais",
+      "order": 21,
+      "category": "learn",
+      "description": "Learn French through structured grammar, vocabulary and course-oriented practice.",
+      "badge": null
+    },
+    {
+      "slug": "french-3000",
+      "order": 22,
+      "category": "learn",
+      "description": "Build practical French vocabulary with focused flashcards and review.",
+      "badge": null
+    },
+    {
+      "slug": "micro-arcade",
+      "order": 23,
+      "category": "games",
+      "description": "A collection of small browser games built for immediate play.",
+      "badge": null
+    },
+    {
+      "slug": "voidcut",
+      "order": 24,
+      "category": "games",
+      "description": "A precision arcade game about cutting space while protecting moving nodes.",
+      "badge": null
+    },
+    {
+      "slug": "impossible-transit",
+      "order": 25,
+      "category": "games",
+      "description": "Navigate a surreal first-person transit system where space and architecture stop behaving normally.",
+      "badge": null
+    },
+    {
+      "slug": "skyspire",
+      "order": 26,
+      "category": "games",
+      "description": "Climb through a vertical precision-platforming challenge where mistakes cost height.",
+      "badge": "beta"
+    }
+  ]
+}
