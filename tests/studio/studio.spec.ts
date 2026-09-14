@@ -26,10 +26,10 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
     await page.goto('/');
 
     await expect(page.locator('h1')).toHaveCount(1);
-    await expect(page.locator('h1')).toContainText("Things I've built.");
+    await expect(page.locator('h1')).toHaveText('Apps');
     await expect(page.locator('[data-hub-item]')).toHaveCount(26);
-    await expect(page.locator('[data-hub-search]')).toBeVisible();
-    await expect(page.locator('[data-hub-category]')).toHaveCount(7);
+    await expect(page.locator('[data-hub-search]')).toHaveCount(0);
+    await expect(page.locator('.hub-category')).toHaveCount(7);
     await expect(page.locator('[data-project="micro-arcade"]')).toHaveCount(0);
     await expect(page.locator('#tiny-tools')).toHaveCount(0);
 
@@ -37,7 +37,7 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
     await expect(firstCard).toBeVisible();
     const firstRect = await firstCard.boundingBox();
     expect(firstRect).not.toBeNull();
-    expect(firstRect!.y).toBeLessThan(900);
+    expect(firstRect!.y).toBeLessThan(500);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
@@ -53,14 +53,15 @@ test('Hub renders the locked app membership, order, direct launch and details li
 
   const titles = await cards.locator('h2').allTextContents();
   expect(titles.length).toBe(26);
-  expect(titles[0]).toBe('Signal Earth');
-  expect(titles[1]).toBe('Notes');
-  expect(titles[2]).toBe('Canvas');
+  expect(titles[0]).toBe('Notes');
+  expect(titles[1]).toBe('Canvas');
+  expect(titles[2]).toBe('Tiny Tools');
+  expect(titles[7]).toBe('Signal Earth');
   expect(titles.at(-1)).toBe('Skyspire');
 
   for (const entry of orderedHub) {
     const card = cards.nth(entry.order - 1);
-    await expect(card).toHaveAttribute('data-hub-category', entry.category);
+    await expect(card).toHaveAttribute('data-hub-item-category', entry.category);
     await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
     await expect(card.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('href', `/project/${entry.slug}/`);
   }
@@ -70,41 +71,28 @@ test('Hub renders the locked app membership, order, direct launch and details li
   }
 });
 
-test('Hub search, category filters, empty state and URL state work', async ({ page }) => {
+test('Hub category filters and URL state work without a redundant search bar', async ({ page }) => {
   await page.goto('/');
   const visibleCards = page.locator('[data-hub-item]:visible');
-  const search = page.locator('[data-hub-search]');
 
   await expect(visibleCards).toHaveCount(26);
-  await page.locator('[data-hub-category="games"]').click();
+  await expect(page.locator('[data-hub-search]')).toHaveCount(0);
+
+  const gamesButton = page.locator('button[data-hub-category="games"]');
+  await gamesButton.click();
   await expect(visibleCards).toHaveCount(categories.games);
   await expect(page).toHaveURL(/category=games/);
-  await expect(page.locator('[data-hub-category="games"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(gamesButton).toHaveAttribute('aria-pressed', 'true');
 
-  await search.fill('gomoku');
-  await expect(visibleCards).toHaveCount(1);
-  await expect(visibleCards.first()).toContainText('Gomoku');
-  await expect(page).toHaveURL(/q=gomoku/);
-
-  await search.fill('zzzz-no-such-app');
-  await expect(visibleCards).toHaveCount(0);
-  await expect(page.locator('[data-hub-empty]')).toBeVisible();
-
-  await page.locator('[data-hub-reset]').click();
+  const allButton = page.locator('button[data-hub-category="all"]');
+  await allButton.click();
   await expect(visibleCards).toHaveCount(26);
-  await expect(search).toBeFocused();
-  await expect(page.locator('[data-hub-category="all"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(allButton).toHaveAttribute('aria-pressed', 'true');
   await expect(page).not.toHaveURL(/category=/);
-  await expect(page).not.toHaveURL(/[?&]q=/);
 
   await page.goto('/?category=faith');
   await expect(visibleCards).toHaveCount(categories.faith);
-  await expect(page.locator('[data-hub-category="faith"]')).toHaveAttribute('aria-pressed', 'true');
-
-  await page.goto('/?q=signal');
-  await expect(search).toHaveValue('signal');
-  await expect(visibleCards).toHaveCount(1);
-  await expect(visibleCards.first()).toContainText('Signal Earth');
+  await expect(page.locator('button[data-hub-category="faith"]')).toHaveAttribute('aria-pressed', 'true');
 });
 
 for (const route of routes.routes.filter((route) => !route.endsWith('.json'))) {
