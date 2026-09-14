@@ -1,0 +1,87 @@
+name: Account Platform Health
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ops/**'
+      - 'scripts/account-platform-health.mjs'
+      - 'tests/ops/**'
+      - 'supabase/functions/platform-health/**'
+      - 'docs/account-platform/**'
+      - '.github/workflows/account-platform-health.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ops/**'
+      - 'scripts/account-platform-health.mjs'
+      - 'tests/ops/**'
+      - 'supabase/functions/platform-health/**'
+      - 'docs/account-platform/**'
+      - '.github/workflows/account-platform-health.yml'
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-platform-health
+  cancel-in-progress: true
+
+jobs:
+  synthetic-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Operations contract tests
+        run: node --test tests/ops/account-platform-health.test.mjs
+
+      - name: Probe production account platform
+        id: health
+        continue-on-error: true
+        run: node scripts/account-platform-health.mjs
+
+      - name: Publish health summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/account-platform-health.json ]; then
+            node --input-type=module <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync('artifacts/account-platform-health.json', 'utf8'));
+          console.log(`# THIEPN Account Platform — ${report.status.toUpperCase()}`);
+          console.log(`\nChecked: ${report.checkedAt}`);
+          console.log('\n| Service | Status | HTTP | Latency |');
+          console.log('| --- | --- | ---: | ---: |');
+          for (const check of report.checks) {
+            console.log(`| ${check.id} | ${check.status} | ${check.httpStatus} | ${check.latencyMs} ms |`);
+          }
+          NODE
+          else
+            echo '# THIEPN Account Platform — UNKNOWN' >> "$GITHUB_STEP_SUMMARY"
+            echo 'The synthetic probe did not produce a report.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-platform-health
+          path: artifacts/account-platform-health.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce healthy production state
+        if: steps.health.outcome != 'success'
+        run: |
+          echo 'THIEPN Account Platform synthetic health is not healthy.' >&2
+          exit 1
