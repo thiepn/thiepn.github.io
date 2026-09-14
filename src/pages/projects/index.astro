@@ -5,9 +5,9 @@ import { typeLabels, presentation } from '../../lib/showcase';
 const projects = (await getPublicProjects()).sort((a,b) => a.data.title.localeCompare(b.data.title));
 const types = [...new Set(projects.map(p=>p.data.category))];
 ---
-<BaseLayout title="All projects — THIEPN" description="Search the complete archive of games, useful tools, learning systems and experiments by Jonathan.">
-<div class="page-shell page-content"><header class="page-intro"><p class="eyebrow">The complete archive</p><h1>All projects.</h1><div class="page-intro__bottom"><p>The useful, the playful, and the works in progress.</p><a class="action-link" href="/work/">Back to selected work <span aria-hidden="true">→</span></a></div></header>
-<section class="simple-archive" id="archive-catalogue" data-simple-archive aria-label="Find a project">
+<BaseLayout title="Project archive — THIEPN" description="The complete THIEPN project archive: current apps, older projects, learning systems, experiments and portfolio work by Jonathan.">
+<div class="page-shell page-content"><header class="page-intro"><p class="eyebrow">Portfolio archive</p><h1>Project archive.</h1><div class="page-intro__bottom"><p>Current apps, older projects, experiments and work kept for its development history. For the app launcher, every current app is available directly from the homepage.</p><a class="action-link" href="/#apps">Open the app Hub <span aria-hidden="true">→</span></a></div></header>
+<section class="simple-archive" id="archive-catalogue" data-simple-archive aria-label="Find a project in the archive">
 <form class="archive-filter" method="get" action="/projects/"><label>Search<input name="q" type="search" placeholder="A name, a topic, an idea…" data-archive-query autocomplete="off"/></label><label>Type<select name="category" data-archive-type><option value="all">All types</option>{types.map(type=><option value={type}>{typeLabels[type]}</option>)}</select></label><label>Sort<select name="sort" data-archive-sort><option value="az">A–Z</option><option value="newest">Newest additions</option></select></label><button class="button" type="submit">Find projects</button></form>
 <p class="archive-count" data-simple-count aria-live="polite" aria-atomic="true">{projects.length} projects</p>
 <div class="archive-empty" data-simple-empty hidden><h2>No matching projects.</h2><p>Try a shorter search or a different type.</p><button class="button" data-simple-reset type="button">Clear search and filters</button></div>
