@@ -25,59 +25,59 @@
   ],
   "projects": [
     {
-      "slug": "signal-earth",
-      "order": 1,
-      "category": "explore",
-      "description": "Explore Earth events, satellites, space weather and the planet through an interactive 3D observatory.",
-      "badge": null
-    },
-    {
       "slug": "notes",
-      "order": 2,
+      "order": 1,
       "category": "tools",
       "description": "Fast, local-first notes with checklists, search, reminders, attachments, drawings, voice and offline support.",
       "badge": null
     },
     {
       "slug": "canvas",
-      "order": 3,
+      "order": 2,
       "category": "create",
       "description": "A shared infinite canvas for drawing, writing, diagramming and realtime collaboration.",
       "badge": null
     },
     {
       "slug": "tiny-tools",
-      "order": 4,
+      "order": 3,
       "category": "tools",
       "description": "Hundreds of browser utilities for documents, media, data, code, calculations and everyday tasks.",
       "badge": null
     },
     {
       "slug": "thiepn-library",
-      "order": 5,
+      "order": 4,
       "category": "faith",
       "description": "Browse, search and read books and research editions in a native web library.",
       "badge": null
     },
     {
       "slug": "atelier",
-      "order": 6,
+      "order": 5,
       "category": "create",
       "description": "A local-first space-planning studio for designing and arranging rooms and environments.",
       "badge": null
     },
     {
       "slug": "manuscript",
-      "order": 7,
+      "order": 6,
       "category": "create",
       "description": "Write in Markdown and turn structured source into polished documents.",
       "badge": null
     },
     {
       "slug": "pdf-studio",
-      "order": 8,
+      "order": 7,
       "category": "tools",
       "description": "Edit, organize, annotate and transform PDFs directly in the browser.",
+      "badge": null
+    },
+    {
+      "slug": "signal-earth",
+      "order": 8,
+      "category": "explore",
+      "description": "Explore Earth events, satellites, space weather and the planet through an interactive 3D observatory.",
       "badge": null
     },
     {
