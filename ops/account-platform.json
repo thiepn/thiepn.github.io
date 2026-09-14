@@ -27,9 +27,19 @@
       "degradedMode": "local-gameplay"
     }
   ],
+  "apiChecks": [
+    {
+      "id": "wordstrike-leaderboard-api",
+      "url": "https://hycegznamzjhwinegaai.supabase.co/functions/v1/get-leaderboard",
+      "method": "POST",
+      "origin": "https://thiepn.dev",
+      "body": { "boardKey": "endless-v1" },
+      "expectedOk": true
+    }
+  ],
   "legacy": {
     "dietProjectRef": "mrrqsqawwxwebsdmrnre",
-    "state": "rollback-only",
+    "state": "inactive-rollback",
     "deleteOnlyAfter": [
       "production account smoke passes",
       "canonical Diet reads and writes verified",
