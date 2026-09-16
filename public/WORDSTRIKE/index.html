@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Redirecting…</title>
+</head>
+<body>
+  <p>Redirecting…</p>
+  <script>
+  (() => {
+    'use strict';
+
+    // Compatibility endpoint for the historical uppercase Supabase Site URL.
+    // Diet Copilot uses PKCE query parameters. WORDSTRIKE itself uses its
+    // canonical lowercase path and may receive fragment-based auth results.
+    const TARGET_KEY = 'diet-copilot:oauth-target-v2';
+    const FLOW_KEY = 'diet-copilot:oauth-flow-v2';
+    const source = new URL(location.href);
+    const authKeys = ['code', 'error', 'error_code', 'error_description'];
+    const isDietPkceCallback = authKeys.some((key) => source.searchParams.has(key));
+
+    if (isDietPkceCallback) {
+      let targetKind = null;
+      let storedFlow = null;
+      try {
+        targetKind = sessionStorage.getItem(TARGET_KEY);
+        storedFlow = sessionStorage.getItem(FLOW_KEY);
+      } catch {}
+
+      const target = new URL(
+        targetKind === 'native'
+          ? '/diet/native-auth-callback.html'
+          : '/diet/web-auth-callback.html',
+        source.origin
+      );
+
+      for (const key of authKeys) {
+        const value = source.searchParams.get(key);
+        if (value !== null) target.searchParams.set(key, value);
+      }
+
+      const flowId = source.searchParams.get('sb_flow_id') || storedFlow;
+      if (flowId) target.searchParams.set('sb_flow_id', flowId);
+
+      try {
+        sessionStorage.removeItem(TARGET_KEY);
+        sessionStorage.removeItem(FLOW_KEY);
+        history.replaceState(null, '', source.pathname);
+      } catch {}
+
+      location.replace(target.href);
+      return;
+    }
+
+    // Preserve ordinary WORDSTRIKE navigation and its fragment-based auth.
+    const canonical = new URL('/wordstrike/', source.origin);
+    canonical.search = source.search;
+    canonical.hash = source.hash;
+    location.replace(canonical.href);
+  })();
+  </script>
+  <noscript><a href="/wordstrike/">Continue to WORDSTRIKE</a></noscript>
+</body>
+</html>
