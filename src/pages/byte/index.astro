@@ -853,6 +853,30 @@ const modes = [
 
     .faq{padding-top:clamp(85px,9vw,130px);padding-bottom:clamp(90px,10vw,140px);display:grid;grid-template-columns:.6fr 1.4fr;gap:clamp(45px,8vw,115px)}.faq__intro h2{margin:0;font-size:clamp(2.3rem,4vw,3.8rem)}.faq__items{border-top:1px solid #d9e3ee}.faq details{border-bottom:1px solid #d9e3ee;padding:0}.faq summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:68px;color:#354b65;font-size:.94rem;font-weight:650}.faq summary::-webkit-details-marker{display:none}.faq summary::after{content:'+';font-size:1.25rem;color:#70839b}.faq details[open] summary::after{content:'−'}.faq details p{margin:-3px 0 22px;max-width:70ch;color:#6d7c90;font-size:.84rem;line-height:1.7}
 
+    /* Small product-demo labels need full WCAG AA contrast on their light surfaces. */
+    .showcase-index,
+    .showcase-card__copy p,
+    .panel-demo__top small,
+    .panel-demo__message p,
+    .panel-demo__meters span,
+    .nav-row,
+    .app-demo__body > small,
+    .app-demo__body > p,
+    .app-demo__cards small,
+    .feature-card p,
+    .section-intro:not(.section-intro--light) > p,
+    .use-steps p,
+    .mode-guide__rows p {
+      color:#435975;
+    }
+    .feature-mark,
+    .nav-row.active {
+      color:#315d98;
+    }
+    .panel-demo button {
+      background:#2b66c2;
+    }
+
     .closing-cta{border-top:1px solid #dce5ef;background:#f2f7fd}.closing-cta__inner{min-height:220px;display:grid;grid-template-columns:110px 1fr auto;gap:28px;align-items:center}.closing-cta img{width:100px;height:100px;object-fit:contain;image-rendering:pixelated}.closing-cta h2{margin:0;font-size:clamp(2rem,3.3vw,3rem)}.closing-cta .byte-kicker{margin-bottom:6px}
 
     @media (max-width: 1080px) {
