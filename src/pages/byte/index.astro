@@ -1,0 +1,896 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const version = '0.1.0';
+const releaseUrl = 'https://github.com/thiepn/byte/releases/tag/v0.1.0';
+const installerUrl = 'https://github.com/thiepn/byte/releases/download/v0.1.0/Byte-v0.1.0-windows-x64-setup.exe';
+const portableUrl = 'https://github.com/thiepn/byte/releases/download/v0.1.0/Byte-v0.1.0-windows-x64-portable.zip';
+const sourceUrl = 'https://github.com/thiepn/byte';
+const characterRoot = 'https://raw.githubusercontent.com/thiepn/byte/v0.1.0/public/assets/characters';
+
+const characters = [
+  {
+    id: 'byte',
+    name: 'Byte',
+    note: 'The original compact robot. Calm, expressive, and built for tiny desktop spaces.',
+    image: characterRoot + '/byte/preview.png',
+    className: 'byte'
+  },
+  {
+    id: 'mochi',
+    name: 'Mochi',
+    note: 'A round cat-like companion with big paws, bouncy reactions, and Bongo-Cat energy.',
+    image: characterRoot + '/mochi/preview.png',
+    className: 'mochi'
+  },
+  {
+    id: 'pip',
+    name: 'Pip',
+    note: 'A soft blob companion with simple expressions and playful squash-and-stretch motion.',
+    image: characterRoot + '/pip/preview.png',
+    className: 'pip'
+  },
+  {
+    id: 'kiwi',
+    name: 'Kiwi',
+    note: 'A lively bird companion with pecking typing reactions and energetic movement.',
+    image: characterRoot + '/kiwi/preview.png',
+    className: 'kiwi'
+  }
+];
+
+const features = [
+  {
+    title: 'System health, without the dashboard',
+    body: 'Byte watches CPU, memory, storage, network, battery and best-effort temperature locally, then turns them into plain-language states: Calm, Busy, Stressed, or Needs attention.',
+    mark: '01'
+  },
+  {
+    title: 'Click Byte for the useful part',
+    body: 'The Quick Panel explains the most important issue, shows a compact resource overview, and offers safe shortcuts like Task Manager or Windows storage settings.',
+    mark: '02'
+  },
+  {
+    title: 'A deeper view when you need it',
+    body: 'Open the full app for Overview, Activity history, point-in-time app diagnostics, customization, notification controls, accessibility options, and settings.',
+    mark: '03'
+  },
+  {
+    title: 'Four characters, six habitats',
+    body: 'Choose Byte, Mochi, Pip or Kiwi, then place them in Meadow, Cozy Desk, Bedroom, Space, Aquarium or Rooftop. Add palettes, cosmetics, decorations and a personality.',
+    mark: '04'
+  },
+  {
+    title: 'Desktop-aware by design',
+    body: 'Byte can hide for fullscreen games, movies and presentations, pause heavier work during lock and sleep states, and restore itself when your desktop returns.',
+    mark: '05'
+  },
+  {
+    title: 'Private by default',
+    body: 'There is no account or cloud analytics. Byte does not collect typed text, key identity, browser history, clipboard content or mouse-coordinate history.',
+    mark: '06'
+  }
+];
+
+const modes = [
+  ['Habitat', 'The full little world around your companion.'],
+  ['Perch', 'A smaller companion that sits against the Windows work area.'],
+  ['Mini', 'Character-only mode for the smallest footprint.'],
+  ['Edge', 'Keeps Byte snapped to the side of your screen.'],
+  ['Tray', 'Hide the companion while Byte keeps monitoring locally.']
+];
+---
+
+<BaseLayout
+  title="Byte — Cute system health for Windows"
+  description="Download Byte, a privacy-first Windows desktop companion that turns system health into a cute customizable character."
+  ogImage="/og/index.png"
+>
+  <div class="byte-page">
+    <section class="byte-hero page-shell" aria-labelledby="byte-title">
+      <div class="byte-hero__copy">
+        <div class="byte-chip-row">
+          <span class="byte-chip byte-chip--blue">Windows app</span>
+          <span class="byte-chip">v{version}</span>
+          <span class="byte-chip">Privacy-first</span>
+        </div>
+
+        <p class="byte-kicker">A desktop companion that understands your PC.</p>
+        <h1 id="byte-title">Meet Byte.</h1>
+        <p class="byte-hero__lead">
+          Byte turns system health into a small, expressive character on your desktop—so you can tell when your PC is calm, busy, stressed, or actually needs attention without living inside a hardware dashboard.
+        </p>
+
+        <div class="byte-hero__actions">
+          <a class="byte-button byte-button--primary" href={installerUrl}>
+            <span class="byte-button__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+            </span>
+            Download for Windows
+          </a>
+          <a class="byte-button byte-button--quiet" href="#how-to-use">See how it works</a>
+        </div>
+
+        <div class="byte-hero__meta" aria-label="Download information">
+          <span>Windows x64</span>
+          <i aria-hidden="true"></i>
+          <span>Current-user install</span>
+          <i aria-hidden="true"></i>
+          <span>No account</span>
+          <i aria-hidden="true"></i>
+          <span>Open source</span>
+        </div>
+      </div>
+
+      <div class="byte-hero__visual" aria-label="Illustration of Byte running on a Windows desktop">
+        <div class="desktop-scene">
+          <div class="desktop-glow desktop-glow--one"></div>
+          <div class="desktop-glow desktop-glow--two"></div>
+
+          <div class="window-card window-card--main" aria-hidden="true">
+            <div class="window-titlebar">
+              <span class="window-appmark">
+                <img src={characterRoot + '/byte/preview.png'} alt="" />
+              </span>
+              <strong>Byte</strong>
+              <span class="window-dots"><i></i><i></i><i></i></span>
+            </div>
+            <div class="window-layout">
+              <div class="window-sidebar">
+                <span class="side-pill active"></span>
+                <span class="side-pill"></span>
+                <span class="side-pill"></span>
+                <span class="side-pill"></span>
+              </div>
+              <div class="window-content">
+                <p class="mini-label">Your PC feels</p>
+                <div class="status-line"><span class="status-orb"></span><strong>Calm</strong></div>
+                <p class="status-copy">Everything looks comfortable right now.</p>
+                <div class="resource-grid">
+                  <div><span>CPU</span><strong>24%</strong><i><b style="width:24%"></b></i></div>
+                  <div><span>Memory</span><strong>48%</strong><i><b style="width:48%"></b></i></div>
+                  <div><span>Storage</span><strong>61%</strong><i><b style="width:61%"></b></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="habitat-card" aria-hidden="true">
+            <div class="habitat-sky"></div>
+            <span class="habitat-cloud cloud-a"></span>
+            <span class="habitat-cloud cloud-b"></span>
+            <span class="habitat-hill hill-a"></span>
+            <span class="habitat-hill hill-b"></span>
+            <span class="habitat-flower flower-a"></span>
+            <span class="habitat-flower flower-b"></span>
+            <img src={characterRoot + '/byte/preview.png'} alt="" />
+            <span class="habitat-label">Habitat mode</span>
+          </div>
+
+          <div class="quick-card" aria-hidden="true">
+            <div class="quick-card__head">
+              <span class="status-orb"></span>
+              <div><small>BYTE SAYS</small><strong>Everything looks calm.</strong></div>
+            </div>
+            <div class="quick-card__resources">
+              <span>CPU <b>24%</b></span>
+              <span>RAM <b>48%</b></span>
+            </div>
+            <div class="quick-card__action">Open Byte <span>→</span></div>
+          </div>
+        </div>
+
+        <p class="visual-note">Companion, Quick Panel, and full app—three levels of detail instead of one giant monitoring screen.</p>
+      </div>
+    </section>
+
+    <nav class="byte-subnav" aria-label="Byte page sections">
+      <div class="page-shell byte-subnav__inner">
+        <a href="#showcase">Showcase</a>
+        <a href="#characters">Characters</a>
+        <a href="#features">Features</a>
+        <a href="#how-to-use">How to use</a>
+        <a href="#download">Download</a>
+      </div>
+    </nav>
+
+    <section class="byte-section page-shell" id="showcase" aria-labelledby="showcase-title">
+      <div class="section-intro">
+        <div>
+          <p class="byte-kicker">Three layers, one tiny companion</p>
+          <h2 id="showcase-title">Glance. Click. Investigate.</h2>
+        </div>
+        <p>
+          Byte stays quiet until you need more detail. Most of the time, the character and its environment are enough. One click opens the explanation. The full app is there for the deeper stuff.
+        </p>
+      </div>
+
+      <div class="showcase-grid">
+        <article class="showcase-card showcase-card--companion">
+          <div class="showcase-card__copy">
+            <span class="showcase-index">01 · Companion</span>
+            <h3>System health you can read at a glance.</h3>
+            <p>
+              Byte reacts to typing, clicks, charging, network activity, heat, memory pressure, low battery and more—while still behaving like a character, not a gauge.
+            </p>
+          </div>
+          <div class="companion-demo" aria-hidden="true">
+            <div class="companion-demo__world">
+              <span class="demo-star star-a"></span><span class="demo-star star-b"></span>
+              <span class="demo-moon"></span>
+              <span class="demo-building building-a"></span>
+              <span class="demo-building building-b"></span>
+              <span class="demo-building building-c"></span>
+              <img src={characterRoot + '/byte/preview.png'} alt="" />
+              <span class="demo-speech">all calm</span>
+            </div>
+            <div class="mode-strip">
+              {modes.map(([name]) => <span class:list={[name === 'Habitat' && 'active']}>{name}</span>)}
+            </div>
+          </div>
+        </article>
+
+        <article class="showcase-card showcase-card--panel">
+          <div class="showcase-card__copy">
+            <span class="showcase-index">02 · Quick Panel</span>
+            <h3>The useful explanation, one click away.</h3>
+            <p>
+              Get the current status, primary issue, resource overview, companion controls and safe Windows actions without opening a large application.
+            </p>
+          </div>
+          <div class="panel-demo" aria-hidden="true">
+            <div class="panel-demo__top">
+              <span class="panel-avatar"><img src={characterRoot + '/byte/preview.png'} alt="" /></span>
+              <div><small>CURRENT STATE</small><strong><span></span> Calm</strong></div>
+            </div>
+            <div class="panel-demo__message">
+              <strong>Your PC looks comfortable.</strong>
+              <p>No sustained issues need your attention.</p>
+            </div>
+            <div class="panel-demo__meters">
+              <div><span>CPU</span><b>24%</b><i><em style="width:24%"></em></i></div>
+              <div><span>Memory</span><b>48%</b><i><em style="width:48%"></em></i></div>
+              <div><span>Storage</span><b>61%</b><i><em style="width:61%"></em></i></div>
+            </div>
+            <button type="button" tabindex="-1">Open full Byte</button>
+          </div>
+        </article>
+
+        <article class="showcase-card showcase-card--app">
+          <div class="showcase-card__copy">
+            <span class="showcase-index">03 · Full app</span>
+            <h3>Details when you actually want details.</h3>
+            <p>
+              Review activity, inspect current app resource usage, change the companion, tune notifications and accessibility, or revisit privacy and startup settings.
+            </p>
+          </div>
+          <div class="app-demo" aria-hidden="true">
+            <div class="app-demo__sidebar">
+              <span class="app-brand"><img src={characterRoot + '/byte/preview.png'} alt="" /><b>Byte</b></span>
+              <span class="nav-row active"><i></i>Overview</span>
+              <span class="nav-row"><i></i>Activity</span>
+              <span class="nav-row"><i></i>Apps</span>
+              <span class="nav-row"><i></i>Customize</span>
+              <span class="nav-row"><i></i>Settings</span>
+            </div>
+            <div class="app-demo__body">
+              <small>OVERVIEW</small>
+              <h4>Your PC feels calm.</h4>
+              <p>Nothing needs attention.</p>
+              <div class="app-demo__cards">
+                <span><small>CPU</small><b>24%</b></span>
+                <span><small>Memory</small><b>48%</b></span>
+                <span><small>Storage</small><b>61%</b></span>
+              </div>
+              <div class="trend-line"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="character-band" id="characters" aria-labelledby="characters-title">
+      <div class="page-shell">
+        <div class="section-intro section-intro--light">
+          <div>
+            <p class="byte-kicker">Pick your desktop roommate</p>
+            <h2 id="characters-title">Four characters. Very different energy.</h2>
+          </div>
+          <p>
+            They share the same system intelligence, but not the same personality on screen. Every character has its own authored poses, reactions, rare idles and palettes.
+          </p>
+        </div>
+
+        <div class="character-grid">
+          {characters.map((character) => (
+            <article class:list={['character-card', 'character-card--' + character.className]}>
+              <div class="character-card__stage">
+                <span class="pixel-grid" aria-hidden="true"></span>
+                <img src={character.image} alt={character.name + ' character preview'} loading="lazy" />
+              </div>
+              <div class="character-card__copy">
+                <h3>{character.name}</h3>
+                <p>{character.note}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div class="character-facts">
+          <span><b>26</b> authored poses each</span>
+          <span><b>8+</b> palettes each</span>
+          <span><b>12</b> cosmetic slots/items across the studio</span>
+          <span><b>6</b> habitats</span>
+          <span><b>3</b> personalities</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="byte-section page-shell" id="features" aria-labelledby="features-title">
+      <div class="section-intro">
+        <div>
+          <p class="byte-kicker">What Byte actually does</p>
+          <h2 id="features-title">Cute outside. Serious boundaries underneath.</h2>
+        </div>
+        <p>
+          The point is not to add another technical dashboard to your desktop. Byte filters local system signals into something understandable, then stays out of the way.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+        {features.map((feature) => (
+          <article class="feature-card">
+            <span class="feature-mark">{feature.mark}</span>
+            <h3>{feature.title}</h3>
+            <p>{feature.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="privacy-panel">
+        <div class="privacy-panel__visual" aria-hidden="true">
+          <span class="lock-shape">
+            <i></i>
+            <b></b>
+          </span>
+          <span class="privacy-pulse pulse-a"></span>
+          <span class="privacy-pulse pulse-b"></span>
+        </div>
+        <div class="privacy-panel__copy">
+          <p class="byte-kicker">Local means local</p>
+          <h3>Byte watches your PC, not you.</h3>
+          <p>
+            System monitoring and interaction reactions stay on your machine. Global input is anonymous activity only: Byte does not store which keys you pressed, what you typed, your clipboard, window titles, browsing history or cursor coordinates.
+          </p>
+          <ul>
+            <li>No account or sign-in</li>
+            <li>No cloud analytics</li>
+            <li>No uploaded process history</li>
+            <li>No generic shell or arbitrary command access</li>
+          </ul>
+          <a href={sourceUrl + '/blob/v0.1.0/docs/SECURITY_PRIVACY.md'}>Read the security &amp; privacy model ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="use-band" id="how-to-use" aria-labelledby="use-title">
+      <div class="page-shell">
+        <div class="section-intro">
+          <div>
+            <p class="byte-kicker">Your first five minutes</p>
+            <h2 id="use-title">Download it. Meet your character. Put it where you want.</h2>
+          </div>
+          <p>
+            Byte is designed so you should not need a manual, but here is the complete start-to-finish path.
+          </p>
+        </div>
+
+        <ol class="use-steps">
+          <li>
+            <span class="step-number">1</span>
+            <div>
+              <h3>Install Byte</h3>
+              <p>Download the Windows installer below and run it. It installs for your current Windows user, so administrator elevation is not normally required.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">2</span>
+            <div>
+              <h3>Finish the 30-second setup</h3>
+              <p>Byte explains what it can read locally, lets you enable or disable system monitoring, and keeps Smart Notifications off unless you explicitly opt in.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">3</span>
+            <div>
+              <h3>Choose your companion</h3>
+              <p>Pick Byte, Mochi, Pip or Kiwi, select a habitat and decide whether you want the full Habitat, Perch, Mini, Edge or Tray-only display mode.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">4</span>
+            <div>
+              <h3>Move Byte into place</h3>
+              <p>Use <strong>Move Byte</strong> from the Quick Panel or tray menu, drag the companion once, and Byte remembers a safe monitor-relative position for that mode.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">5</span>
+            <div>
+              <h3>Click Byte when you want an explanation</h3>
+              <p>The Quick Panel shows the current state, key resources and the most important issue. Open the full app only when you want history, app diagnostics or settings.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">6</span>
+            <div>
+              <h3>Make it yours</h3>
+              <p>Open Customize to change palettes, habitats, cosmetics, decorations, personality, size and interaction level. Changes save locally and apply immediately.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div class="mode-guide" aria-labelledby="mode-guide-title">
+          <div class="mode-guide__title">
+            <p class="byte-kicker">Display modes</p>
+            <h3 id="mode-guide-title">How much Byte do you want on screen?</h3>
+          </div>
+          <div class="mode-guide__rows">
+            {modes.map(([name, description]) => (
+              <div>
+                <strong>{name}</strong>
+                <p>{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="byte-section page-shell" aria-labelledby="notifications-title">
+      <div class="split-feature">
+        <div class="split-feature__copy">
+          <p class="byte-kicker">Smart Notifications</p>
+          <h2 id="notifications-title">Alerts only when something has stayed wrong long enough to matter.</h2>
+          <p>
+            Byte uses sustained timing, recovery rules and per-category cooldowns instead of firing notifications for every temporary spike. You choose which categories are allowed, and you can use Quiet mode or snooze them.
+          </p>
+          <div class="micro-list">
+            <span>Memory pressure</span>
+            <span>Thermal pressure</span>
+            <span>Storage pressure</span>
+            <span>Battery</span>
+            <span>Confident runaway process</span>
+          </div>
+        </div>
+        <div class="notification-stack" aria-hidden="true">
+          <div class="notification-card notification-card--back">
+            <span class="notif-icon">B</span>
+            <div><strong>Byte</strong><p>System status update</p></div>
+          </div>
+          <div class="notification-card">
+            <span class="notif-icon">B</span>
+            <div>
+              <div class="notif-heading"><strong>Byte noticed sustained memory pressure</strong><small>now</small></div>
+              <p>Open Byte to see the current cause and next step.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="download-band" id="download" aria-labelledby="download-title">
+      <div class="page-shell download-layout">
+        <div class="download-copy">
+          <p class="byte-kicker">Byte {version}</p>
+          <h2 id="download-title">Put a tiny system companion on your desktop.</h2>
+          <p>
+            The installer is the recommended option. The portable ZIP contains a standalone <code>Byte.exe</code> if you prefer not to install the app.
+          </p>
+
+          <div class="download-actions">
+            <a class="byte-button byte-button--primary byte-button--large" href={installerUrl}>
+              <span class="byte-button__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+              </span>
+              Download installer
+            </a>
+            <a class="byte-button byte-button--outline" href={portableUrl}>Portable ZIP</a>
+          </div>
+
+          <p class="download-meta">Windows x64 · v{version} · current-user NSIS installer · open source</p>
+        </div>
+
+        <aside class="install-card" aria-labelledby="install-card-title">
+          <span class="install-card__eyebrow">Before you run it</span>
+          <h3 id="install-card-title">Windows may show an unknown-publisher warning.</h3>
+          <p>
+            Byte v0.1.0 is fully release-certified but is not Authenticode-signed yet. If SmartScreen appears, first make sure the file came from this page or the official GitHub release.
+          </p>
+          <ol>
+            <li>Confirm the filename is <code>Byte-v0.1.0-windows-x64-setup.exe</code>.</li>
+            <li>Optionally verify its SHA-256 checksum below.</li>
+            <li>On the SmartScreen dialog, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+          </ol>
+          <details>
+            <summary>Verify the installer checksum</summary>
+            <code class="hash">effef85d352a283634433e22ecc80b7e5440e11a18e5e84002fb103bd5f0526e</code>
+            <p>PowerShell: <code>Get-FileHash .\Byte-v0.1.0-windows-x64-setup.exe -Algorithm SHA256</code></p>
+          </details>
+        </aside>
+      </div>
+
+      <div class="page-shell release-footer">
+        <div>
+          <strong>Release certification</strong>
+          <p>Three packaged launches, duplicate-launch handoff, install/reinstall/uninstall, data preservation, x64/version checks and GitHub build provenance all passed before publication.</p>
+        </div>
+        <div class="release-links">
+          <a href={releaseUrl}>Release v{version} ↗</a>
+          <a href={sourceUrl}>Source code ↗</a>
+          <a href={sourceUrl + '/blob/v0.1.0/docs/RELEASE_CERTIFICATION.md'}>Certification details ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq page-shell" aria-labelledby="faq-title">
+      <div class="faq__intro">
+        <p class="byte-kicker">A few useful answers</p>
+        <h2 id="faq-title">Before Byte moves in.</h2>
+      </div>
+      <div class="faq__items">
+        <details open>
+          <summary>Does Byte upload my system data?</summary>
+          <p>No. System telemetry, customization and activity history stay local. Byte does not use cloud analytics or require an account.</p>
+        </details>
+        <details>
+          <summary>Can I hide Byte during games or presentations?</summary>
+          <p>Yes. Byte can automatically suppress the companion during fullscreen and presentation states, then restore it afterward. You can also use Tray mode whenever you want it completely out of the way.</p>
+        </details>
+        <details>
+          <summary>Can Byte clean RAM or kill processes for me?</summary>
+          <p>No. Byte intentionally avoids generic process killing, RAM trimming and “optimizer” behavior. It explains issues and can open a small allowlist of safe Windows destinations such as Task Manager.</p>
+        </details>
+        <details>
+          <summary>How do updates work?</summary>
+          <p>Byte does not silently poll, download or install updates. You choose Stable or Beta in Settings and use Check for updates when you want to open the corresponding official GitHub release page.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="closing-cta">
+      <div class="page-shell closing-cta__inner">
+        <img src={characterRoot + '/byte/preview.png'} alt="" aria-hidden="true" />
+        <div>
+          <p class="byte-kicker">Ready?</p>
+          <h2>Byte is waiting on the desktop.</h2>
+        </div>
+        <a class="byte-button byte-button--primary" href={installerUrl}>Download Byte {version}</a>
+      </div>
+    </section>
+  </div>
+
+  <style>
+    .byte-page {
+      --byte-blue: #4f8cff;
+      --byte-blue-strong: #2565e8;
+      --byte-blue-soft: #eaf2ff;
+      --byte-navy: #10203a;
+      --byte-ink: #1c2b42;
+      --byte-muted: #627089;
+      --byte-line: #d9e3ef;
+      --byte-panel: #f7faff;
+      --byte-green: #55c69a;
+      --byte-warm: #ffbf69;
+      --byte-deep: #0b1424;
+      --byte-radius: 22px;
+      overflow: hidden;
+      color: var(--byte-ink);
+      background:
+        radial-gradient(circle at 6% 4%, rgb(104 166 255 / 14%), transparent 25rem),
+        linear-gradient(180deg, #fbfdff 0%, #f7faff 36%, #fff 100%);
+    }
+
+    .byte-page :where(h1,h2,h3,h4) {
+      color: var(--byte-navy);
+      letter-spacing: -.045em;
+    }
+
+    .byte-page :where(p) { text-wrap: pretty; }
+
+    .byte-hero {
+      min-height: 690px;
+      padding-top: clamp(64px, 8vw, 116px);
+      padding-bottom: clamp(70px, 8vw, 112px);
+      display: grid;
+      grid-template-columns: minmax(0, .88fr) minmax(520px, 1.12fr);
+      align-items: center;
+      gap: clamp(48px, 7vw, 104px);
+    }
+
+    .byte-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .byte-chip {
+      display: inline-flex; align-items: center; min-height: 30px; padding: 5px 11px;
+      border: 1px solid var(--byte-line); border-radius: 999px;
+      background: rgb(255 255 255 / 74%);
+      font: 600 .72rem/1.2 var(--font-meta);
+      color: var(--byte-muted);
+      letter-spacing: .025em;
+    }
+    .byte-chip--blue { border-color: #bed2ff; background: var(--byte-blue-soft); color: #315fae; }
+
+    .byte-kicker {
+      margin: 0 0 13px;
+      color: #4770aa;
+      font-size: .83rem;
+      font-weight: 650;
+      letter-spacing: .025em;
+    }
+
+    .byte-hero h1 {
+      margin: 0;
+      max-width: 8ch;
+      font-size: clamp(4.5rem, 9vw, 8rem);
+      line-height: .86;
+      font-weight: 650;
+      letter-spacing: -.075em;
+    }
+
+    .byte-hero__lead {
+      max-width: 59ch;
+      margin-top: 30px;
+      color: #4f6078;
+      font-size: clamp(1.08rem, 1.35vw, 1.3rem);
+      line-height: 1.7;
+    }
+
+    .byte-hero__actions, .download-actions {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+      margin-top: 34px;
+    }
+
+    .byte-button {
+      min-height: 50px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 11px;
+      padding: 12px 18px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      font-size: .92rem;
+      font-weight: 650;
+      text-decoration: none;
+      transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+    .byte-button:hover { text-decoration: none; transform: translateY(-1px); }
+    .byte-button--primary {
+      color: #fff;
+      background: linear-gradient(180deg, #5a94ff, #3377f0);
+      border-color: #2d6fe6;
+      box-shadow: 0 10px 28px rgb(47 112 232 / 24%), inset 0 1px rgb(255 255 255 / 25%);
+    }
+    .byte-button--primary:hover {
+      color: #fff;
+      background: linear-gradient(180deg, #6ba0ff, #2a6ee8);
+      box-shadow: 0 13px 32px rgb(47 112 232 / 30%), inset 0 1px rgb(255 255 255 / 28%);
+    }
+    .byte-button--quiet { color: #40526b; background: transparent; border-color: #dce5f0; }
+    .byte-button--quiet:hover, .byte-button--outline:hover { color: #235cb6; border-color: #9fbee9; background: #fff; }
+    .byte-button--outline { color: #334760; border-color: #cbd9ea; background: rgb(255 255 255 / 76%); }
+    .byte-button--large { min-height: 58px; padding-inline: 23px; font-size: 1rem; }
+    .byte-button__icon { width: 20px; height: 20px; display: inline-grid; place-items: center; }
+    .byte-button__icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .byte-hero__meta {
+      display: flex; flex-wrap: wrap; gap: 8px 11px; align-items: center;
+      margin-top: 24px; color: #718098; font-size: .78rem;
+    }
+    .byte-hero__meta i { width: 3px; height: 3px; border-radius: 50%; background: #a9b7c9; }
+
+    .byte-hero__visual { min-width: 0; }
+    .desktop-scene {
+      position: relative;
+      height: clamp(460px, 43vw, 590px);
+      border: 1px solid #cbdcf2;
+      border-radius: 32px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgb(255 255 255 / 45%), transparent 40%),
+        linear-gradient(145deg, #dbe9ff 0%, #bcd7ff 47%, #d5ebed 100%);
+      box-shadow: 0 38px 90px rgb(43 80 134 / 21%), inset 0 1px rgb(255 255 255 / 70%);
+      isolation: isolate;
+    }
+    .desktop-scene::after {
+      content: '';
+      position: absolute; inset: auto 0 0; height: 22%;
+      background: linear-gradient(180deg, transparent, rgb(46 72 105 / 12%));
+      pointer-events: none;
+    }
+    .desktop-glow { position:absolute; border-radius:50%; filter:blur(2px); opacity:.8; }
+    .desktop-glow--one { width: 260px; height:260px; background:#ecf6ff; right:-30px; top:-60px; }
+    .desktop-glow--two { width: 190px; height:190px; background:#d7f0de; left:20px; bottom:-80px; }
+
+    .window-card {
+      position: absolute;
+      border: 1px solid rgb(132 159 194 / 44%);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgb(251 253 255 / 91%);
+      box-shadow: 0 18px 46px rgb(39 72 116 / 18%);
+      backdrop-filter: blur(18px);
+    }
+    .window-card--main { width: 70%; height: 57%; top: 12%; left: 8%; transform: rotate(-1.7deg); }
+    .window-titlebar { height: 42px; display:flex; align-items:center; gap:8px; padding:0 13px; border-bottom:1px solid #e5edf6; color:#344760; font-size:.72rem; }
+    .window-appmark { width:24px; height:24px; display:grid; place-items:center; border-radius:7px; background:#edf4ff; overflow:hidden; }
+    .window-appmark img { width:22px; height:22px; image-rendering:pixelated; object-fit:contain; }
+    .window-dots { display:flex; gap:5px; margin-left:auto; }
+    .window-dots i { width:7px; height:7px; border-radius:50%; background:#bcc8d6; }
+    .window-layout { height:calc(100% - 42px); display:grid; grid-template-columns:54px 1fr; }
+    .window-sidebar { padding:18px 12px; border-right:1px solid #e5edf6; display:flex; flex-direction:column; gap:12px; }
+    .side-pill { width:29px; height:9px; border-radius:999px; background:#dfe7f0; }
+    .side-pill.active { background:#8cb4ff; }
+    .window-content { padding:22px 25px; }
+    .mini-label { margin:0; color:#8390a4; font-size:.6rem; font-weight:700; letter-spacing:.08em; }
+    .status-line { display:flex; align-items:center; gap:9px; margin-top:6px; }
+    .status-line strong { color:#233753; font-size:1.7rem; letter-spacing:-.04em; }
+    .status-orb { width:10px; height:10px; border-radius:50%; background:#55c69a; box-shadow:0 0 0 5px rgb(85 198 154 / 12%); }
+    .status-copy { margin:5px 0 0; color:#75849a; font-size:.68rem; }
+    .resource-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }
+    .resource-grid div { padding:10px; border:1px solid #e2eaf3; border-radius:10px; background:#fff; }
+    .resource-grid span { color:#8a98aa; font-size:.53rem; }
+    .resource-grid strong { display:block; margin-top:4px; color:#344760; font-size:.8rem; }
+    .resource-grid i { display:block; height:3px; margin-top:7px; border-radius:3px; background:#eef2f6; overflow:hidden; }
+    .resource-grid b { display:block; height:100%; border-radius:inherit; background:#77a9ff; }
+
+    .habitat-card {
+      position:absolute; width:32%; aspect-ratio:1; right:7%; bottom:8%;
+      overflow:hidden; border:1px solid rgb(103 135 174 / 35%); border-radius:23px;
+      background:linear-gradient(#bfe1ff 0 55%, #88c984 55% 100%);
+      box-shadow:0 18px 44px rgb(36 70 111 / 20%);
+      transform:rotate(3deg);
+    }
+    .habitat-sky { position:absolute; inset:0 0 45%; background:linear-gradient(#a9d8ff,#e7f5ff); }
+    .habitat-cloud { position:absolute; width:33%; height:9%; border-radius:999px; background:#fff; opacity:.86; }
+    .habitat-cloud::before,.habitat-cloud::after { content:''; position:absolute; border-radius:50%; background:inherit; }
+    .habitat-cloud::before { width:36%; aspect-ratio:1; left:17%; bottom:10%; }
+    .habitat-cloud::after { width:46%; aspect-ratio:1; right:13%; bottom:7%; }
+    .cloud-a { top:14%; left:10%; }
+    .cloud-b { top:28%; right:8%; transform:scale(.72); }
+    .habitat-hill { position:absolute; border-radius:50% 50% 0 0; }
+    .hill-a { width:90%; height:39%; left:-32%; bottom:18%; background:#78b879; }
+    .hill-b { width:105%; height:42%; right:-45%; bottom:12%; background:#67aa6d; }
+    .habitat-card img { position:absolute; width:39%; height:auto; left:31%; bottom:17%; image-rendering:pixelated; z-index:4; filter:drop-shadow(0 5px 3px rgb(31 66 76 / 16%)); }
+    .habitat-flower { position:absolute; width:4px; height:4px; border-radius:50%; background:#ffe8a8; box-shadow:0 6px #fff, 5px 3px #ffd3df,-4px 3px #fff; z-index:3; }
+    .flower-a{left:18%;bottom:17%}.flower-b{right:17%;bottom:27%}
+    .habitat-label { position:absolute; left:10px; top:9px; z-index:5; padding:4px 7px; border-radius:999px; background:rgb(255 255 255 / 70%); color:#40607b; font-size:.52rem; font-weight:700; backdrop-filter:blur(7px); }
+
+    .quick-card {
+      position:absolute; width:37%; right:12%; top:13%; padding:16px;
+      border:1px solid rgb(139 162 193 / 50%); border-radius:17px;
+      background:rgb(255 255 255 / 90%);
+      box-shadow:0 15px 40px rgb(53 79 115 / 18%);
+      transform:rotate(2.2deg);
+      backdrop-filter:blur(16px);
+    }
+    .quick-card__head{display:flex;gap:10px;align-items:flex-start}.quick-card__head .status-orb{margin-top:8px;flex:0 0 auto}.quick-card__head small{display:block;color:#8b98a9;font-size:.48rem;font-weight:700;letter-spacing:.08em}.quick-card__head strong{display:block;margin-top:3px;color:#31445d;font-size:.72rem;line-height:1.3}.quick-card__resources{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:13px}.quick-card__resources span{padding:8px;border-radius:8px;background:#f1f5f9;color:#748399;font-size:.52rem}.quick-card__resources b{float:right;color:#3c5069}.quick-card__action{margin-top:11px;padding-top:9px;border-top:1px solid #e8eef4;color:#416ba9;font-size:.55rem;font-weight:700}.quick-card__action span{float:right}
+    .visual-note { max-width:58ch; margin:18px auto 0; color:#78869a; text-align:center; font-size:.78rem; }
+
+    .byte-subnav {
+      position: sticky;
+      top: 76px;
+      z-index: 20;
+      border-block: 1px solid #dfE8f2;
+      background: rgb(250 253 255 / 88%);
+      backdrop-filter: blur(16px);
+    }
+    .byte-subnav__inner { min-height: 52px; display:flex; align-items:center; justify-content:center; gap:clamp(18px,4vw,46px); overflow-x:auto; scrollbar-width:none; }
+    .byte-subnav__inner::-webkit-scrollbar{display:none}
+    .byte-subnav a { flex:0 0 auto; color:#68778c; font-size:.78rem; font-weight:600; text-decoration:none; }
+    .byte-subnav a:hover{color:#2f67ba;text-decoration:none}
+
+    .byte-section { padding-top:clamp(86px,9vw,132px); padding-bottom:clamp(86px,9vw,132px); }
+    .section-intro { display:grid; grid-template-columns:1fr .78fr; gap:clamp(40px,8vw,120px); align-items:end; margin-bottom:52px; }
+    .section-intro h2 { margin:0; max-width:14ch; font-size:clamp(2.6rem,4.8vw,4.8rem); line-height:.98; font-weight:600; }
+    .section-intro>p { margin:0; max-width:52ch; color:#64738a; line-height:1.7; font-size:1rem; }
+    .section-intro--light h2{color:#f5f8ff}.section-intro--light>p{color:#aebbd1}.section-intro--light .byte-kicker{color:#8db9ff}
+
+    .showcase-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    .showcase-card { min-width:0; border:1px solid #dce6f0; border-radius:var(--byte-radius); overflow:hidden; background:#fff; box-shadow:0 16px 45px rgb(48 78 117 / 7%); }
+    .showcase-card--app { grid-column:1 / -1; display:grid; grid-template-columns:.72fr 1.28fr; align-items:stretch; }
+    .showcase-card__copy { padding:32px 32px 29px; }
+    .showcase-index { color:#5a7dac; font:600 .7rem/1.3 var(--font-meta); letter-spacing:.05em; }
+    .showcase-card h3 { margin:14px 0 0; font-size:clamp(1.55rem,2.3vw,2.25rem); line-height:1.08; font-weight:600; }
+    .showcase-card__copy p { margin:15px 0 0; color:#6a788c; line-height:1.65; font-size:.91rem; }
+
+    .companion-demo { margin:0 24px 24px; border:1px solid #dce6f0; border-radius:17px; overflow:hidden; background:#0d1a2b; }
+    .companion-demo__world { position:relative; height:270px; overflow:hidden; background:linear-gradient(#152d55 0 48%, #233958 48% 59%, #25313a 59%); }
+    .companion-demo__world::after{content:'';position:absolute;inset:auto 0 0;height:26%;background:linear-gradient(#25313a,#1a232a)}
+    .demo-moon{position:absolute;width:46px;height:46px;border-radius:50%;right:26px;top:25px;background:#f2efd8;box-shadow:0 0 35px rgb(242 239 216 / 30%)}
+    .demo-star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;box-shadow:25px 12px #fff,70px 30px #afcaff,113px -4px #fff,146px 22px #fff,188px 4px #cbe0ff}
+    .star-a{left:24px;top:28px}.star-b{left:58px;top:75px;transform:scale(.7)}
+    .demo-building{position:absolute;bottom:41%;background:#172638;border-top:2px solid #375172;z-index:1}.demo-building::after{content:'';position:absolute;inset:8px 5px;background:repeating-linear-gradient(90deg,#ffd78a 0 3px,transparent 3px 10px);opacity:.6}
+    .building-a{width:29%;height:34%;left:-3%}.building-b{width:39%;height:26%;left:31%}.building-c{width:27%;height:39%;right:-4%}
+    .companion-demo__world img{position:absolute;z-index:4;width:122px;left:50%;bottom:15px;transform:translateX(-50%);image-rendering:pixelated;filter:drop-shadow(0 9px 4px rgb(0 0 0 / 20%))}
+    .demo-speech{position:absolute;z-index:5;left:calc(50% + 55px);bottom:105px;padding:7px 10px;border-radius:11px 11px 11px 3px;background:#fff;color:#465a76;font-size:.61rem;font-weight:700;box-shadow:0 7px 20px rgb(0 0 0 / 14%)}
+    .mode-strip{min-height:48px;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;background:#111c28;border-top:1px solid #293a4a}
+    .mode-strip span{padding:5px 8px;border-radius:7px;color:#8595a7;font-size:.57rem}.mode-strip span.active{background:#24446c;color:#cfe1ff}
+
+    .panel-demo { margin:0 24px 24px;padding:20px;border:1px solid #dce6f0;border-radius:17px;background:#f8fbff;box-shadow:inset 0 1px #fff; }
+    .panel-demo__top{display:flex;align-items:center;gap:12px}.panel-avatar{width:42px;height:42px;border-radius:13px;background:#e8f1ff;display:grid;place-items:center}.panel-avatar img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated}.panel-demo__top small{display:block;color:#8a96a7;font-size:.52rem;letter-spacing:.09em;font-weight:700}.panel-demo__top strong{display:flex;align-items:center;gap:7px;margin-top:3px;color:#34465f;font-size:.9rem}.panel-demo__top strong span{width:8px;height:8px;border-radius:50%;background:#55c69a}.panel-demo__message{margin-top:15px;padding:14px;border-radius:12px;background:#fff;border:1px solid #e6edf4}.panel-demo__message strong{color:#354963;font-size:.78rem}.panel-demo__message p{margin:4px 0 0;color:#8190a3;font-size:.62rem}.panel-demo__meters{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.panel-demo__meters div{padding:9px;border-radius:9px;background:#eef4fa}.panel-demo__meters span{font-size:.5rem;color:#8794a4}.panel-demo__meters b{float:right;font-size:.54rem;color:#40536b}.panel-demo__meters i{display:block;height:3px;margin-top:8px;border-radius:5px;background:#dce5ed;overflow:hidden}.panel-demo__meters em{display:block;height:100%;border-radius:inherit;background:#6ba1fb}.panel-demo button{width:100%;min-height:37px;margin-top:12px;border:0;border-radius:9px;background:#3979e6;color:#fff;font-size:.62rem;font-weight:700}
+
+    .app-demo { min-width:0;margin:24px;display:grid;grid-template-columns:150px 1fr;min-height:330px;border:1px solid #dce6f0;border-radius:17px;overflow:hidden;background:#f8fbff; }
+    .app-demo__sidebar{padding:17px 12px;border-right:1px solid #e2eaf2;background:#f4f8fc}.app-brand{display:flex;align-items:center;gap:8px;margin-bottom:21px;padding:0 6px;color:#32465f;font-size:.72rem}.app-brand img{width:27px;height:27px;object-fit:contain;image-rendering:pixelated}.nav-row{display:flex;align-items:center;gap:8px;margin:4px 0;padding:8px;border-radius:8px;color:#76869a;font-size:.62rem}.nav-row i{width:9px;height:9px;border:1.5px solid currentColor;border-radius:3px}.nav-row.active{background:#e5efff;color:#376ebd;font-weight:700}.app-demo__body{padding:28px}.app-demo__body>small{color:#8b98aa;font-size:.52rem;font-weight:700;letter-spacing:.1em}.app-demo__body h4{margin:10px 0 0;color:#30445d;font-size:1.6rem}.app-demo__body>p{margin:6px 0 0;color:#8795a6;font-size:.68rem}.app-demo__cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:22px}.app-demo__cards span{padding:14px;border-radius:10px;background:#fff;border:1px solid #e3ebf3}.app-demo__cards small{display:block;color:#8b99aa;font-size:.5rem}.app-demo__cards b{display:block;margin-top:6px;color:#3a4d65;font-size:.92rem}.trend-line{height:74px;margin-top:12px;display:flex;align-items:end;gap:6px;padding:11px 12px;border-radius:10px;background:#fff;border:1px solid #e3ebf3}.trend-line i{flex:1;border-radius:4px 4px 2px 2px;background:linear-gradient(#80afff,#5c8fe7)}.trend-line i:nth-child(1){height:34%}.trend-line i:nth-child(2){height:52%}.trend-line i:nth-child(3){height:43%}.trend-line i:nth-child(4){height:69%}.trend-line i:nth-child(5){height:47%}.trend-line i:nth-child(6){height:39%}.trend-line i:nth-child(7){height:58%}
+
+    .character-band { padding:clamp(90px,10vw,144px) 0; background:linear-gradient(180deg,#0d1829,#101c31 74%,#12213a); }
+    .character-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .character-card { overflow:hidden; border:1px solid rgb(179 204 241 / 16%); border-radius:20px; background:rgb(255 255 255 / 5%); }
+    .character-card__stage { position:relative; aspect-ratio:1.12; display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgb(120 164 255 / 19%),transparent 54%) }
+    .character-card--mochi .character-card__stage{background:radial-gradient(circle at 50% 42%,rgb(255 195 151 / 21%),transparent 54%)}.character-card--pip .character-card__stage{background:radial-gradient(circle at 50% 42%,rgb(157 224 211 / 18%),transparent 54%)}.character-card--kiwi .character-card__stage{background:radial-gradient(circle at 50% 42%,rgb(178 226 136 / 18%),transparent 54%)}
+    .character-card__stage::after{content:'';position:absolute;width:54%;height:14%;bottom:16%;border-radius:50%;background:rgb(0 0 0 / 18%);filter:blur(12px)}
+    .character-card img { position:relative;z-index:2;width:min(58%,155px);height:auto;image-rendering:pixelated;filter:drop-shadow(0 10px 8px rgb(0 0 0 / 20%));transition:transform 220ms ease; }
+    .character-card:hover img{transform:translateY(-5px) scale(1.035)}
+    .pixel-grid{position:absolute;inset:0;opacity:.11;background-image:linear-gradient(rgb(255 255 255 / 24%) 1px,transparent 1px),linear-gradient(90deg,rgb(255 255 255 / 24%) 1px,transparent 1px);background-size:16px 16px;mask-image:linear-gradient(to bottom,black,transparent 78%)}
+    .character-card__copy{padding:20px 20px 22px;border-top:1px solid rgb(179 204 241 / 12%)}.character-card h3{margin:0;color:#f2f6ff;font-size:1.35rem}.character-card p{margin:8px 0 0;color:#aab7cb;font-size:.82rem;line-height:1.55}
+    .character-facts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:34px;overflow:hidden;border:1px solid rgb(173 199 236 / 16%);border-radius:16px;background:rgb(173 199 236 / 14%)}.character-facts span{padding:18px;background:#13233b;color:#aebbd0;font-size:.72rem;text-align:center}.character-facts b{display:block;margin-bottom:4px;color:#f3f7ff;font-size:1.18rem}
+
+    .feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .feature-card { min-height:250px;padding:27px;border:1px solid #dde7f1;border-radius:18px;background:#fff;box-shadow:0 12px 35px rgb(53 84 121 / 5%) }
+    .feature-mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:26px;border-radius:999px;background:#edf4ff;color:#4874b4;font:700 .64rem var(--font-meta)}
+    .feature-card h3{margin:42px 0 0;font-size:1.42rem;line-height:1.12}.feature-card p{margin:13px 0 0;color:#6d7b8e;font-size:.88rem;line-height:1.66}
+
+    .privacy-panel{margin-top:68px;display:grid;grid-template-columns:.7fr 1.3fr;overflow:hidden;border:1px solid #d7e3ef;border-radius:24px;background:#f5f9ff}.privacy-panel__visual{position:relative;min-height:390px;display:grid;place-items:center;background:radial-gradient(circle,#d9e9ff 0 17%,#edf5ff 17% 31%,#f6faff 31% 100%);overflow:hidden}.lock-shape{position:relative;width:126px;height:112px;border:2px solid #87abe3;border-radius:24px;background:linear-gradient(#fff,#e9f2ff);box-shadow:0 20px 55px rgb(45 89 153 / 17%)}.lock-shape i{position:absolute;width:68px;height:58px;left:50%;top:-40px;transform:translateX(-50%);border:12px solid #76a1df;border-bottom:0;border-radius:34px 34px 0 0}.lock-shape b{position:absolute;width:15px;height:15px;left:50%;top:42px;transform:translateX(-50%);border-radius:50%;background:#4f82d0;box-shadow:0 16px 0 -5px #4f82d0}.privacy-pulse{position:absolute;border:1px solid rgb(91 139 205 / 22%);border-radius:50%}.pulse-a{width:250px;height:250px}.pulse-b{width:330px;height:330px}.privacy-panel__copy{padding:clamp(38px,5vw,70px)}.privacy-panel__copy h3{margin:0;font-size:clamp(2rem,3.2vw,3.2rem)}.privacy-panel__copy>p{margin:18px 0 0;color:#62728a;line-height:1.7;max-width:62ch}.privacy-panel ul{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin:24px 0 0;padding:0;list-style:none}.privacy-panel li{position:relative;padding-left:20px;color:#50647f;font-size:.84rem}.privacy-panel li::before{content:'✓';position:absolute;left:0;color:#3b8a6b;font-weight:800}.privacy-panel a{display:inline-flex;margin-top:28px;color:#3169bc;font-size:.82rem;font-weight:650;text-decoration:none}.privacy-panel a:hover{text-decoration:underline}
+
+    .use-band { padding:clamp(90px,10vw,144px) 0; background:#f0f5fb;border-block:1px solid #dce6f1; }
+    .use-steps{counter-reset:none;display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid #cedbe9}.use-steps li{display:grid;grid-template-columns:50px 1fr;gap:18px;padding:27px 26px 30px 0;border-bottom:1px solid #cedbe9}.use-steps li:nth-child(odd){padding-right:34px;border-right:1px solid #cedbe9}.use-steps li:nth-child(even){padding-left:34px}.step-number{width:38px;height:38px;display:grid;place-items:center;border:1px solid #b7c9dd;border-radius:12px;background:#fff;color:#527199;font:700 .7rem var(--font-meta)}.use-steps h3{margin:2px 0 0;font-size:1.23rem}.use-steps p{margin:9px 0 0;color:#65758a;font-size:.85rem;line-height:1.67}.use-steps strong{color:#3d5068}
+    .mode-guide{margin-top:58px;display:grid;grid-template-columns:.7fr 1.3fr;gap:60px;padding:34px;border:1px solid #cedbe9;border-radius:20px;background:#fff}.mode-guide__title h3{margin:0;font-size:2rem}.mode-guide__rows{border-top:1px solid #dbe5ee}.mode-guide__rows>div{display:grid;grid-template-columns:110px 1fr;gap:18px;padding:14px 0;border-bottom:1px solid #dbe5ee}.mode-guide__rows strong{color:#3b516d;font-size:.82rem}.mode-guide__rows p{margin:0;color:#6c7c90;font-size:.8rem}
+
+    .split-feature{display:grid;grid-template-columns:1fr .9fr;gap:clamp(50px,8vw,110px);align-items:center}.split-feature__copy h2{margin:0;max-width:13ch;font-size:clamp(2.4rem,4.2vw,4.1rem);line-height:1}.split-feature__copy>p{max-width:57ch;margin:22px 0 0;color:#65758a;line-height:1.7}.micro-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:25px}.micro-list span{padding:8px 10px;border:1px solid #d6e2ef;border-radius:999px;background:#f8fbff;color:#617089;font-size:.72rem}
+    .notification-stack{position:relative;min-height:330px;display:grid;place-items:center}.notification-stack::before{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:#e9f2ff;filter:blur(1px)}.notification-card{position:relative;z-index:2;width:min(100%,440px);display:flex;gap:13px;padding:18px;border:1px solid #cfdbe8;border-radius:18px;background:rgb(255 255 255 / 94%);box-shadow:0 21px 50px rgb(49 80 119 / 15%)}.notification-card--back{position:absolute;z-index:1;transform:translate(18px,-58px) scale(.93);opacity:.47}.notif-icon{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;background:#3e7be7;color:#fff;font-weight:800}.notification-card strong{color:#34475f;font-size:.78rem}.notification-card p{margin:6px 0 0;color:#7b899b;font-size:.68rem;line-height:1.5}.notif-heading{display:flex;gap:18px;align-items:flex-start}.notif-heading small{margin-left:auto;color:#9aa6b5;font-size:.6rem}
+
+    .download-band{padding:clamp(90px,10vw,142px) 0 55px;background:linear-gradient(145deg,#0b1627,#122440 62%,#173052);color:#eef5ff}.download-band .byte-kicker{color:#8db9ff}.download-layout{display:grid;grid-template-columns:1fr .8fr;gap:clamp(46px,8vw,110px);align-items:center}.download-copy h2{margin:0;max-width:12ch;color:#f4f8ff;font-size:clamp(2.7rem,5vw,5rem);line-height:.97}.download-copy>p{max-width:57ch;margin:23px 0 0;color:#aebbd0;line-height:1.7}.download-band .byte-button--outline{color:#dce8f7;border-color:#456280;background:rgb(255 255 255 / 4%)}.download-band .byte-button--outline:hover{background:rgb(255 255 255 / 9%);color:#fff;border-color:#7190af}.download-meta{font-size:.74rem!important;color:#8296b1!important}
+    .install-card{padding:31px;border:1px solid #35516f;border-radius:20px;background:rgb(8 22 38 / 58%);box-shadow:inset 0 1px rgb(255 255 255 / 6%)}.install-card__eyebrow{color:#8db9ff;font:700 .68rem var(--font-meta);letter-spacing:.06em}.install-card h3{margin:12px 0 0;color:#f1f6fd;font-size:1.65rem;line-height:1.12}.install-card>p,.install-card li,.install-card details p{color:#a6b6ca;font-size:.8rem;line-height:1.65}.install-card>p{margin:13px 0 0}.install-card ol{margin:18px 0 0;padding-left:20px}.install-card li+li{margin-top:7px}.install-card code{color:#d9e7fa;background:#172b44;border-radius:5px;padding:2px 5px;font-size:.7rem;word-break:break-all}.install-card details{margin-top:20px;border-top:1px solid #324a65;padding-top:16px}.install-card summary{cursor:pointer;color:#dce8f8;font-size:.8rem;font-weight:650}.install-card .hash{display:block;margin-top:13px;padding:10px;line-height:1.55}.release-footer{display:flex;align-items:flex-start;justify-content:space-between;gap:45px;margin-top:72px;padding-top:28px;border-top:1px solid #29435f}.release-footer>div:first-child{max-width:62ch}.release-footer strong{color:#e9f2ff;font-size:.8rem}.release-footer p{margin:7px 0 0;color:#8295ad;font-size:.75rem;line-height:1.6}.release-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 22px}.release-links a{color:#aec8ec;font-size:.75rem;text-decoration:none}.release-links a:hover{color:#fff;text-decoration:underline}
+
+    .faq{padding-top:clamp(85px,9vw,130px);padding-bottom:clamp(90px,10vw,140px);display:grid;grid-template-columns:.6fr 1.4fr;gap:clamp(45px,8vw,115px)}.faq__intro h2{margin:0;font-size:clamp(2.3rem,4vw,3.8rem)}.faq__items{border-top:1px solid #d9e3ee}.faq details{border-bottom:1px solid #d9e3ee;padding:0}.faq summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:68px;color:#354b65;font-size:.94rem;font-weight:650}.faq summary::-webkit-details-marker{display:none}.faq summary::after{content:'+';font-size:1.25rem;color:#70839b}.faq details[open] summary::after{content:'−'}.faq details p{margin:-3px 0 22px;max-width:70ch;color:#6d7c90;font-size:.84rem;line-height:1.7}
+
+    .closing-cta{border-top:1px solid #dce5ef;background:#f2f7fd}.closing-cta__inner{min-height:220px;display:grid;grid-template-columns:110px 1fr auto;gap:28px;align-items:center}.closing-cta img{width:100px;height:100px;object-fit:contain;image-rendering:pixelated}.closing-cta h2{margin:0;font-size:clamp(2rem,3.3vw,3rem)}.closing-cta .byte-kicker{margin-bottom:6px}
+
+    @media (max-width: 1080px) {
+      .byte-hero{grid-template-columns:1fr;min-height:0}.byte-hero__copy{max-width:760px}.byte-hero__visual{max-width:850px;width:100%;margin-inline:auto}.desktop-scene{height:min(64vw,570px)}
+      .feature-grid{grid-template-columns:1fr 1fr}.character-grid{grid-template-columns:1fr 1fr}.character-facts{grid-template-columns:repeat(3,1fr)}
+      .download-layout{grid-template-columns:1fr;}.install-card{max-width:700px}.split-feature{grid-template-columns:1fr 1fr;gap:48px}
+    }
+
+    @media (max-width: 760px) {
+      .byte-page{--byte-radius:18px}
+      .byte-hero{padding-top:58px;padding-bottom:70px;gap:42px}.byte-hero h1{font-size:clamp(4rem,21vw,6rem)}.byte-hero__lead{margin-top:22px;font-size:1rem}.byte-hero__actions{align-items:stretch}.byte-button{width:100%}.byte-hero__meta{font-size:.7rem}
+      .desktop-scene{height:470px;border-radius:23px}.window-card--main{width:85%;height:50%;top:8%;left:5%}.quick-card{width:48%;right:5%;top:51%}.habitat-card{width:39%;right:54%;bottom:8%}.resource-grid{grid-template-columns:repeat(3,1fr)}.visual-note{text-align:left}
+      .byte-subnav{top:76px}.byte-subnav__inner{justify-content:flex-start}
+      .byte-section,.character-band,.use-band{padding-top:78px;padding-bottom:78px}.section-intro{grid-template-columns:1fr;gap:20px;margin-bottom:36px}.section-intro h2{max-width:12ch;font-size:clamp(2.35rem,11vw,3.7rem)}.section-intro>p{font-size:.9rem}
+      .showcase-grid{grid-template-columns:1fr}.showcase-card--app{grid-column:auto;display:block}.showcase-card__copy{padding:25px}.app-demo{margin:0 20px 20px;grid-template-columns:96px 1fr;min-height:290px}.app-demo__sidebar{padding:13px 7px}.app-brand b{display:none}.nav-row{font-size:.52rem;gap:5px;padding:7px 5px}.app-demo__body{padding:20px 15px}.app-demo__cards{grid-template-columns:1fr}.app-demo__cards span:nth-child(n+2){display:none}
+      .character-grid{grid-template-columns:1fr 1fr;gap:10px}.character-card__copy{padding:16px}.character-card p{font-size:.75rem}.character-facts{grid-template-columns:1fr 1fr}.character-facts span:last-child{grid-column:1/-1}
+      .feature-grid{grid-template-columns:1fr}.feature-card{min-height:0}.feature-card h3{margin-top:30px}.privacy-panel{grid-template-columns:1fr}.privacy-panel__visual{min-height:280px}.privacy-panel__copy{padding:28px}.privacy-panel ul{grid-template-columns:1fr}
+      .use-steps{grid-template-columns:1fr}.use-steps li,.use-steps li:nth-child(odd),.use-steps li:nth-child(even){padding:22px 0;border-right:0}.mode-guide{grid-template-columns:1fr;gap:25px;padding:25px}.mode-guide__rows>div{grid-template-columns:80px 1fr}
+      .split-feature{grid-template-columns:1fr;gap:32px}.notification-stack{min-height:250px}.notification-card--back{transform:translate(7px,-42px) scale(.93)}
+      .download-band{padding-top:78px}.download-copy h2{font-size:clamp(2.6rem,12vw,4rem)}.download-actions{align-items:stretch}.download-band .byte-button{width:100%}.install-card{padding:24px}.release-footer{display:block}.release-links{justify-content:flex-start;margin-top:20px}
+      .faq{grid-template-columns:1fr;gap:26px;padding-top:78px;padding-bottom:78px}
+      .closing-cta__inner{grid-template-columns:70px 1fr;min-height:240px;padding-block:35px}.closing-cta img{width:66px;height:66px}.closing-cta .byte-button{grid-column:1/-1}
+    }
+
+    @media (max-width: 430px) {
+      .desktop-scene{height:430px}.window-card--main{width:91%;left:4%;height:47%}.window-content{padding:16px}.resource-grid div{padding:7px}.status-line strong{font-size:1.35rem}.quick-card{width:55%;right:4%;top:50%;padding:12px}.habitat-card{width:42%;right:55%;bottom:9%}
+      .character-grid{grid-template-columns:1fr}.character-card__stage{aspect-ratio:1.45}.character-card img{width:42%}
+      .character-facts{grid-template-columns:1fr 1fr}
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .byte-button,.character-card img{transition:none}
+      .byte-button:hover,.character-card:hover img{transform:none}
+    }
+
+    @media (forced-colors: active) {
+      .desktop-scene,.window-card,.showcase-card,.feature-card,.privacy-panel,.mode-guide,.install-card,.character-card{forced-color-adjust:auto}
+      .status-orb{outline:2px solid CanvasText}
+    }
+  </style>
+</BaseLayout>
