@@ -122,6 +122,48 @@ for (const route of routes.routes.filter((route) => !route.endsWith('.json'))) {
   });
 }
 
+
+test('Byte download page keeps readable product-card geometry', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/byte/');
+
+  const featureCards = page.locator('.feature-card');
+  await expect(featureCards).toHaveCount(6);
+  const featureWidths = await featureCards.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().width),
+  );
+  for (const width of featureWidths) expect(width).toBeGreaterThan(250);
+
+  const featureMark = page.locator('.feature-mark').first();
+  const featureMarkBox = await featureMark.boundingBox();
+  expect(featureMarkBox).not.toBeNull();
+  expect(featureMarkBox!.width).toBeLessThan(80);
+
+  const privacyBox = await page.locator('.privacy-panel').boundingBox();
+  expect(privacyBox).not.toBeNull();
+  expect(privacyBox!.width).toBeGreaterThan(900);
+
+  const lockBox = await page.locator('.lock-shape').boundingBox();
+  expect(lockBox).not.toBeNull();
+  expect(lockBox!.width).toBeGreaterThan(100);
+
+  const notificationBox = await page.locator('.notification-card').last().boundingBox();
+  expect(notificationBox).not.toBeNull();
+  expect(notificationBox!.width).toBeGreaterThan(320);
+
+  const installBox = await page.locator('.install-card').boundingBox();
+  expect(installBox).not.toBeNull();
+  expect(installBox!.width).toBeGreaterThan(350);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.reload();
+  const mobileFeatureWidth = await page.locator('.feature-card').first().evaluate((element) => element.getBoundingClientRect().width);
+  expect(mobileFeatureWidth).toBeGreaterThan(300);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});
+
 test('archive search, empty state, filters and browser Back', async ({ page }) => {
   await page.goto('/projects/');
   const rows = page.locator('[data-simple-item]:visible');
@@ -214,7 +256,7 @@ test('app Hub and archive survive JavaScript disabled', async ({ browser }) => {
   await context.close();
 });
 
-for (const route of ['/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/privacy/']) for (const theme of ['light', 'dark'] as const) {
+for (const route of ['/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/privacy/', '/byte/']) for (const theme of ['light', 'dark'] as const) {
   test(`accessibility ${route} ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
