@@ -8,10 +8,10 @@ const projectFiles = await readFrontmatterDirectory(resolve(root, 'src/content/p
 const projects = new Map(projectFiles.map(({ data }) => [data.slug, data]));
 const failures = [];
 
-const EXPECTED_COUNT = 26;
+const EXPECTED_COUNT = 27;
 const EXPECTED_CATEGORIES = ['tools', 'create', 'learn', 'faith', 'explore', 'games'];
 const EXPECTED_CATEGORY_COUNTS = {
-  tools: 4,
+  tools: 5,
   create: 4,
   learn: 6,
   faith: 3,
@@ -27,6 +27,7 @@ const EXPECTED_ORDER = [
   'atelier',
   'manuscript',
   'pdf-studio',
+  'scan',
   'signal-earth',
   'steadybar',
   'wordstrike',
