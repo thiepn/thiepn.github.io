@@ -596,7 +596,11 @@ const qaItems = [
             aab: releaseAssets.find((asset) => asset?.name === expected.aab),
             checksums: releaseAssets.find((asset) => asset?.name === expected.checksums)
           };
-          if (!assets.apk?.browser_download_url) return;
+          if (
+            !assets.apk?.browser_download_url ||
+            !assets.aab?.browser_download_url ||
+            !assets.checksums?.browser_download_url
+          ) return;
           showPublished(release, assets);
         })
         .catch(() => {});
