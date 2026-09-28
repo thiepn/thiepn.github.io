@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-28T15:53:12.641Z",
+  "capturedAt": "2026-09-28T19:03:00.543Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
@@ -8,12 +8,12 @@
     "notes": {
       "file": "/src/assets/hub/notes.webp",
       "url": "https://thiepn.dev/notes/",
-      "bytes": 24754
+      "bytes": 22574
     },
     "canvas": {
       "file": "/src/assets/hub/canvas.webp",
       "url": "https://thiepn.dev/canvas/",
-      "bytes": 52666
+      "bytes": 52648
     },
     "tiny-tools": {
       "file": "/src/assets/hub/tiny-tools.webp",
@@ -38,17 +38,17 @@
     "pdf-studio": {
       "file": "/src/assets/hub/pdf-studio.webp",
       "url": "https://thiepn.dev/pdf/",
-      "bytes": 42952
+      "bytes": 48680
     },
     "scan": {
       "file": "/src/assets/hub/scan.webp",
       "url": "https://thiepn.dev/scan/",
-      "bytes": 53714
+      "bytes": 63880
     },
     "signal-earth": {
       "file": "/src/assets/hub/signal-earth.webp",
       "url": "https://thiepn.dev/signal-earth/",
-      "bytes": 40770
+      "bytes": 38818
     },
     "steadybar": {
       "file": "/src/assets/hub/steadybar.webp",
@@ -58,7 +58,7 @@
     "wordstrike": {
       "file": "/src/assets/hub/wordstrike.webp",
       "url": "https://thiepn.dev/wordstrike/",
-      "bytes": 45818
+      "bytes": 2886
     },
     "mathlab": {
       "file": "/src/assets/hub/mathlab.webp",
@@ -83,7 +83,7 @@
     "tms60": {
       "file": "/src/assets/hub/tms60.webp",
       "url": "https://thiepn.dev/tms60/",
-      "bytes": 16988
+      "bytes": 16986
     },
     "unreached": {
       "file": "/src/assets/hub/unreached.webp",
@@ -103,7 +103,7 @@
     "gomoku": {
       "file": "/src/assets/hub/gomoku.webp",
       "url": "https://thiepn.dev/gomoku/",
-      "bytes": 23032
+      "bytes": 22898
     },
     "artikelwerk": {
       "file": "/src/assets/hub/artikelwerk.webp",
@@ -123,12 +123,12 @@
     "micro-arcade": {
       "file": "/src/assets/hub/micro-arcade.webp",
       "url": "https://thiepn.dev/arcade/",
-      "bytes": 18244
+      "bytes": 18278
     },
     "voidcut": {
       "file": "/src/assets/hub/voidcut.webp",
       "url": "https://thiepn.dev/voidcut/",
-      "bytes": 9592
+      "bytes": 9612
     },
     "impossible-transit": {
       "file": "/src/assets/hub/impossible-transit.webp",
@@ -138,7 +138,7 @@
     "skyspire": {
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
-      "bytes": 18940
+      "bytes": 19032
     }
   }
 }
