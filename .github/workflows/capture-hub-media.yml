@@ -9,6 +9,8 @@ on:
       - 'scripts/capture-hub-media.mjs'
       - 'src/data/hub.json'
       - 'src/content/projects/**'
+      - 'src/pages/scan/**'
+      - 'public/scan/**'
 
 permissions:
   contents: write
