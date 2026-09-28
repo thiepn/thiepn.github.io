@@ -5,7 +5,14 @@ const routes: { routes: string[] } = JSON.parse(fs.readFileSync('src/generated/r
 const showcase: { hero: string; work: string[]; projects: Record<string, { media: string }> } = JSON.parse(fs.readFileSync('src/data/showcase.json', 'utf8'));
 const hub: {
   expectedCount: number;
-  expectedCategoryCounts: Record<string, number>;
+  expectedCategoryCounts: {
+    tools: number;
+    create: number;
+    learn: number;
+    faith: number;
+    explore: number;
+    games: number;
+  };
   excluded: string[];
   projects: { slug: string; order: number; category: string; description: string; badge: string | null }[];
 } = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
