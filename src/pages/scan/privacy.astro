@@ -1,0 +1,187 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const sourceUrl = 'https://github.com/thiepn/scan';
+const issuesUrl = sourceUrl + '/issues';
+---
+
+<BaseLayout
+  title="Scan Privacy Policy — THIEPN"
+  description="Privacy policy for Scan, the local-first Android document scanner."
+  ogImage="/og/scan.png"
+>
+  <main class="policy-page">
+    <div class="policy-shell">
+      <a class="policy-back" href="/scan/">← Back to Scan</a>
+      <header class="policy-header">
+        <p class="policy-kicker">Scan · Android · com.thiepn.scan</p>
+        <h1>Privacy Policy</h1>
+        <p class="policy-lead">
+          Scan is designed as a local-first document scanner. This policy explains what the app accesses,
+          what stays on your device, what third-party SDK infrastructure may collect, and how you can delete your data.
+        </p>
+        <p class="policy-date">Last updated: September 28, 2026</p>
+      </header>
+
+      <article class="policy-content">
+        <section>
+          <h2>1. Scope and developer</h2>
+          <p>
+            This policy applies to <strong>Scan</strong>, package <code>com.thiepn.scan</code>, developed under the
+            THIEPN project. Scan does not require a THIEPN account and does not provide an app-managed cloud document service.
+          </p>
+          <p>
+            Privacy questions can be submitted through the public
+            <a href={issuesUrl}>Scan GitHub issue tracker</a>. Do not include confidential document content in a public issue.
+          </p>
+        </section>
+
+        <section>
+          <h2>2. Documents and content you choose to process</h2>
+          <p>
+            Scan can work with document scans, imported images, imported PDFs, OCR text, annotations, signatures,
+            form values, folders, tags, document types, export settings, security settings and encrypted backups.
+            These are used to provide the features you request.
+          </p>
+          <p>
+            Scan's own document library, OCR results and editing metadata are stored locally in app-private storage
+            and a local Room/SQLite database. Scan's application manifest removes the app-level
+            <code>INTERNET</code> permission.
+          </p>
+        </section>
+
+        <section>
+          <h2>3. Camera and document scanner</h2>
+          <p>
+            Camera capture is provided through Google Play services' ML Kit Document Scanner. Scan itself does not request
+            Android's camera permission for that flow. Google states that the document-scanner flow and document image
+            processing operate on-device; the files you choose to accept are returned to Scan for local storage and processing.
+          </p>
+          <p>
+            Google Play services may download or update scanner models, logic and other resources before first use.
+          </p>
+        </section>
+
+        <section>
+          <h2>4. ML Kit diagnostics and SDK data</h2>
+          <p>
+            Scan uses ML Kit components. Google's ML Kit disclosure documentation states that ML Kit SDKs may collect
+            limited technical data for diagnostics and usage analytics, including device information, app/package information,
+            identifiers, performance metrics, API configuration, feature input/output size, feature version, event type and
+            error codes. Google states that this listed diagnostic data is encrypted in transit and is not shared with third parties.
+          </p>
+          <p>
+            Google also states that ML Kit feature input content such as images and text, and the resulting ML output,
+            is processed on-device rather than sent to Google servers as feature content.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. Data Scan does not send to THIEPN servers</h2>
+          <p>
+            Scan does not upload your scanned pages, imported PDFs, OCR text, document titles, folders, tags, annotations,
+            signatures, form values or backups to THIEPN servers. Scan has no first-party analytics, advertising SDK,
+            account system or cloud synchronization service in v1.0.0.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Sharing and exports you initiate</h2>
+          <p>
+            When you choose Save, Share, export, or a workflow destination, Android may give another app or document provider
+            access to the file you selected. That transfer is initiated by you and is then governed by the receiving service's
+            privacy practices.
+          </p>
+          <p>
+            Encrypted <code>.scanbak</code> backups are created only when you request them and are saved or shared to a destination
+            you choose.
+          </p>
+        </section>
+
+        <section>
+          <h2>7. Device authentication and security</h2>
+          <p>
+            Secure-vault features can use Android's biometric or device-credential authentication APIs. Scan receives the
+            authentication result; it does not receive or store your biometric template.
+          </p>
+          <p>
+            Scan can encrypt protected document binaries and encrypted backup archives. No software can guarantee absolute
+            security, and best-effort secure deletion cannot guarantee physical erasure on flash storage because of wear leveling.
+          </p>
+        </section>
+
+        <section>
+          <h2>8. Retention and deletion</h2>
+          <p>
+            Local Scan data remains on your device until you delete it, clear the app's data, or uninstall the app.
+            Documents moved to Trash remain recoverable until you choose Delete forever. Files you previously exported outside
+            Scan's app-private storage are not removed when you delete the Scan copy.
+          </p>
+          <p>
+            Uninstalling Scan normally removes its app-private working library. If you want to preserve documents before
+            uninstalling or moving devices, export them or create a verified encrypted backup first.
+          </p>
+        </section>
+
+        <section>
+          <h2>9. Accounts, advertising and sales of data</h2>
+          <p>
+            Scan v1.0.0 does not provide user accounts, does not display ads, and does not sell personal information.
+          </p>
+        </section>
+
+        <section>
+          <h2>10. Changes to this policy</h2>
+          <p>
+            If Scan's data handling changes—for example through cloud sync, accounts, analytics, crash reporting or remote
+            document processing—this policy and the Google Play Data Safety disclosure must be reviewed before that version ships.
+            The date at the top of this page identifies the current policy revision.
+          </p>
+        </section>
+
+        <section>
+          <h2>11. Contact</h2>
+          <p>
+            For privacy questions or correction requests, use the
+            <a href={issuesUrl}>Scan GitHub issue tracker</a>. If the question includes sensitive information, first open a
+            minimal issue requesting a private contact channel rather than posting the sensitive material publicly.
+          </p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <style>
+    .policy-page {
+      min-height:100vh;
+      background:var(--color-bg,#f7f8f5);
+      color:var(--color-text,#17211d);
+      padding:clamp(46px,7vw,92px) 20px 110px;
+    }
+    .policy-shell { width:min(860px,100%); margin:0 auto; }
+    .policy-back {
+      display:inline-flex; color:var(--color-muted,#59645e); font-size:.82rem; font-weight:700;
+      text-decoration:none; margin-bottom:clamp(48px,7vw,84px);
+    }
+    .policy-back:hover { text-decoration:underline; }
+    .policy-header { padding-bottom:42px; border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent); }
+    .policy-kicker {
+      margin:0 0 14px; color:#5059c8; font-size:.69rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+    }
+    .policy-header h1 { margin:0; font-size:clamp(3rem,8vw,6rem); letter-spacing:-.065em; line-height:.92; }
+    .policy-lead { max-width:720px; margin:26px 0 0; color:var(--color-muted,#59645e); font-size:clamp(1rem,2vw,1.22rem); line-height:1.68; }
+    .policy-date { margin:22px 0 0; color:var(--color-muted,#59645e); font-size:.76rem; }
+    .policy-content { display:grid; gap:0; }
+    .policy-content section { padding:36px 0; border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent); }
+    .policy-content h2 { margin:0 0 14px; font-size:1.24rem; letter-spacing:-.025em; }
+    .policy-content p { margin:0; color:var(--color-muted,#59645e); line-height:1.75; font-size:.94rem; }
+    .policy-content p+p { margin-top:14px; }
+    .policy-content a { color:#5059c8; }
+    .policy-content code { font-size:.86em; padding:.12em .34em; border-radius:5px; background:color-mix(in srgb,currentColor 7%,transparent); }
+    :global(html[data-theme="dark"]) .policy-page { background:#111318; color:#edf0f6; }
+    :global(html[data-theme="dark"]) .policy-lead,
+    :global(html[data-theme="dark"]) .policy-date,
+    :global(html[data-theme="dark"]) .policy-content p,
+    :global(html[data-theme="dark"]) .policy-back { color:#b6bdc8; }
+  </style>
+</BaseLayout>

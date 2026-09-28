@@ -129,3 +129,62 @@ test('Scan mobile gallery stays horizontally contained', async ({ page }) => {
   expect(first!.width).toBeGreaterThan(250);
   expect(first!.width).toBeLessThan(375);
 });
+
+
+test('Scan keeps Google Play non-public until distribution state is published', async ({ page }) => {
+  await page.route(releaseApi, (route) => route.fulfill({ status: 404, body: '{}' }));
+  await page.goto('/scan/');
+
+  await expect(page.getByRole('heading', { name: 'One app. Clear distribution paths.' })).toBeVisible();
+  await expect(page.locator('[data-play-status]')).toHaveAttribute('data-play-status', 'planned');
+  await expect(page.locator('[data-play-download]')).toHaveCount(0);
+  await expect(page.getByText('Store listing package is prepared; public Play listing not published yet.')).toBeVisible();
+});
+
+test('Scan privacy policy is public and names ML Kit diagnostics explicitly', async ({ page }) => {
+  await page.goto('/scan/privacy/');
+
+  await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible();
+  await expect(page.getByText('Scan · Android · com.thiepn.scan')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '4. ML Kit diagnostics and SDK data' })).toBeVisible();
+  await expect(page.getByText(/device information, app\/package information/)).toBeVisible();
+  await expect(page.getByRole('link', { name: /Scan GitHub issue tracker/ }).first()).toHaveAttribute(
+    'href',
+    'https://github.com/thiepn/scan/issues',
+  );
+});
+
+test('published GitHub release updates direct channel history without falsely enabling Play', async ({ page }) => {
+  const checksum = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  const checksumsUrl = 'https://downloads.example/release-checksums.sha256';
+
+  await page.route(releaseApi, (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      tag_name: 'v1.0.0',
+      draft: false,
+      prerelease: false,
+      html_url: 'https://github.com/thiepn/scan/releases/tag/v1.0.0',
+      published_at: '2026-09-28T18:00:00Z',
+      assets: [
+        { name: 'Scan-v1.0.0.apk', browser_download_url: 'https://downloads.example/Scan-v1.0.0.apk', size: 22 * 1024 * 1024 },
+        { name: 'Scan-v1.0.0.aab', browser_download_url: 'https://downloads.example/Scan-v1.0.0.aab', size: 20 * 1024 * 1024 },
+        { name: 'release-checksums.sha256', browser_download_url: checksumsUrl, size: 256 },
+      ],
+    }),
+  }));
+  await page.route(checksumsUrl, (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/plain',
+    body: `${checksum}  Scan-v1.0.0.apk\n`,
+  }));
+
+  await page.goto('/scan/');
+
+  await expect(page.locator('[data-release-history-state]')).toHaveText('Published');
+  await expect(page.locator('[data-release-history-link]')).toBeVisible();
+  await expect(page.locator('[data-scan-release-download]').first()).toBeVisible();
+  await expect(page.locator('[data-play-download]')).toHaveCount(0);
+  await expect(page.locator('[data-play-status]')).toHaveAttribute('data-play-status', 'planned');
+});

@@ -5,7 +5,7 @@ const args = parseArgs();
 const projects = publicProjects(await readProjects());
 const collections = await readCollections();
 const routes = [
-  '/', '/about/', '/work/', '/projects/', '/books/', '/byte/', '/scan/', '/collections/', '/privacy/',
+  '/', '/about/', '/work/', '/projects/', '/books/', '/byte/', '/scan/', '/scan/privacy/', '/collections/', '/privacy/',
   ...projects.map(projectRoute),
   ...collections.map(collectionRoute),
   '/catalogue.json',
