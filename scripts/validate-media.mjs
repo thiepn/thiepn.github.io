@@ -43,6 +43,36 @@ for (const { data } of projects) {
   }
 }
 
+const scanScreenshotNames = [
+  '01-library.webp',
+  '02-scan-modes.webp',
+  '03-sort-filter.webp',
+  '04-automation-center.webp',
+  '05-document-view.webp',
+  '06-export-pdf.webp',
+  '07-document-search.webp',
+  '08-markup-redaction.webp',
+  '09-form-filling.webp',
+];
+const scanScreenshotDirectory = path.join(PATHS.public, 'scan', 'screenshots');
+let scanEntries = [];
+try {
+  scanEntries = (await fs.readdir(scanScreenshotDirectory))
+    .filter((name) => name.endsWith('.webp'))
+    .sort();
+} catch {
+  failures.push('scan: missing public/scan/screenshots directory.');
+}
+if (scanEntries.length && JSON.stringify(scanEntries) !== JSON.stringify(scanScreenshotNames)) {
+  failures.push(`scan: screenshot set drifted; expected ${scanScreenshotNames.join(', ')}.`);
+}
+for (const name of scanScreenshotNames) {
+  const bytes = await size(path.join(scanScreenshotDirectory, name));
+  if (bytes == null) failures.push(`scan: missing authentic screenshot ${name}.`);
+  else if (bytes > 150 * 1024) failures.push(`scan: ${name} exceeds 150 KB screenshot hard limit.`);
+  else if (bytes < 10 * 1024) failures.push(`scan: ${name} is unexpectedly small and may be corrupt.`);
+}
+
 if (failures.length) {
   console.error('Media validation failed:\n');
   failures.forEach((item) => console.error(`- ${item}`));
