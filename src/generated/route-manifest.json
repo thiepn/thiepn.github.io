@@ -32,6 +32,7 @@
     "/project/notes/",
     "/project/pdf-studio/",
     "/project/pflegelern/",
+    "/project/scan/",
     "/project/signal-earth/",
     "/project/skyspire/",
     "/project/steadybar/",
@@ -44,6 +45,7 @@
     "/project/wordfall/",
     "/project/wordstrike/",
     "/projects/",
+    "/scan/",
     "/work/"
   ]
 }
