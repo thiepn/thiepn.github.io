@@ -862,7 +862,8 @@ const qaItems = [
     .distribution-card__head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .distribution-card__head strong { font-size:1.08rem; }
     .distribution-status { display:inline-flex; padding:5px 8px; border:1px solid var(--scan-line); border-radius:999px; color:var(--scan-muted); font:800 .58rem var(--font-meta); letter-spacing:.08em; }
-    .distribution-status--planned { color:#9a681d; border-color:rgb(182 128 47 / 28%); background:rgb(209 156 79 / 9%); }
+    .distribution-status--planned { color:#704600; border-color:#a77928; background:#fff4df; }
+    :global(html[data-theme="dark"]) .distribution-status--planned { color:#ffd28a; border-color:#8b662b; background:#2a2115; }
     .distribution-status--live { color:#147c62; border-color:rgb(33 143 112 / 25%); background:rgb(57 177 143 / 9%); }
     .distribution-status--direct { color:var(--scan-accent); border-color:color-mix(in srgb,var(--scan-accent) 26%,var(--scan-line)); background:var(--scan-accent-soft); }
     .distribution-card p { margin:22px 0 0; color:var(--scan-ink-2); font-size:.84rem; line-height:1.68; }
