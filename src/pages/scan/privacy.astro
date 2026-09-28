@@ -178,9 +178,10 @@ const issuesUrl = sourceUrl + '/issues';
     .policy-content p+p { margin-top:14px; }
     .policy-content a { color:#5059c8; }
     .policy-content code { font-size:.86em; padding:.12em .34em; border-radius:5px; background:color-mix(in srgb,currentColor 7%,transparent); }
-    @media (prefers-color-scheme:dark) {
-      .policy-page { background:#111318; color:#edf0f6; }
-      .policy-lead,.policy-date,.policy-content p,.policy-back { color:#b6bdc8; }
-    }
+    :global(html[data-theme="dark"]) .policy-page { background:#111318; color:#edf0f6; }
+    :global(html[data-theme="dark"]) .policy-lead,
+    :global(html[data-theme="dark"]) .policy-date,
+    :global(html[data-theme="dark"]) .policy-content p,
+    :global(html[data-theme="dark"]) .policy-back { color:#b6bdc8; }
   </style>
 </BaseLayout>
