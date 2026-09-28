@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: capture-project-media
@@ -80,7 +79,6 @@ jobs:
         run: npm run catalogue:refresh
 
       - name: Commit canonical media and generated outputs
-        id: commit
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -88,16 +86,8 @@ jobs:
           git add public/projects/the-bible-challenge public/projects/pdf-studio public/projects/wordstrike public/projects/micro-arcade public/projects/voidcut src/generated
           if git diff --cached --quiet; then
             echo "Canonical media and generated outputs are unchanged."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "Refresh featured project media and catalogue"
           git pull --rebase origin main
           git push origin HEAD:main
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy refreshed main
-        if: steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref main
