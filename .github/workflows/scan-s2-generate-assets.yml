@@ -76,13 +76,28 @@ jobs:
             window.scrollTo(0, 0);
           });
           await page.waitForTimeout(500);
-          await page.screenshot({
-            path: 'src/assets/hub/scan.webp',
-            type: 'webp',
-            quality: 82,
+          const png = await page.screenshot({
+            type: 'png',
             fullPage: false,
             animations: 'disabled',
           });
+          const source = `data:image/png;base64,${png.toString('base64')}`;
+          const webpDataUrl = await page.evaluate(async (imageSource) => {
+            const image = new Image();
+            image.src = imageSource;
+            await image.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            const context2d = canvas.getContext('2d', { alpha: false });
+            if (!context2d) throw new Error('Could not create screenshot conversion canvas.');
+            context2d.drawImage(image, 0, 0);
+            return canvas.toDataURL('image/webp', 0.82);
+          }, source);
+          await writeFile(
+            'src/assets/hub/scan.webp',
+            Buffer.from(webpDataUrl.slice(webpDataUrl.indexOf(',') + 1), 'base64'),
+          );
           await context.close();
           await browser.close();
 
@@ -110,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
-          git config user.email "4189825+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/og src/generated src/assets/hub/scan.webp
           if git diff --cached --quiet; then
             echo "S2 generated assets are already current."
