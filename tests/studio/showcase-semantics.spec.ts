@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+
+const hub: { expectedCount: number } = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
 
 test('Hub app cards use native article/link semantics without ARIA-role violations', async ({ page }) => {
   await page.goto('/');
   await page.addScriptTag({ path: process.env.AXE_PATH || '/tmp/audit-tools/node_modules/axe-core/axe.min.js' });
   const result = await page.evaluate(async () => await (window as any).axe.run(document, { runOnly: { type: 'rule', values: ['aria-allowed-role'] } }));
   expect(result.violations).toEqual([]);
-  await expect(page.locator('[data-hub-item]')).toHaveCount(26);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
   expect(await page.locator('[data-hub-item]').evaluateAll((elements) => elements.every((element) => element.tagName === 'ARTICLE'))).toBe(true);
   await expect(page.locator('[data-hub-item]').first().locator('h2 a')).toBeVisible();
 });

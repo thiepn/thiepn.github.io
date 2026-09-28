@@ -8,12 +8,17 @@ type: persistent
 projects:
 - tiny-tools
 - pdf-studio
+- scan
 - manuscript
 - clean30
 anchors:
 - pdf-studio
 - manuscript
 relationships:
+- from: scan
+  to: pdf-studio
+  label: Capture ↔ document editing
+  note: Scan turns paper and imported files into searchable mobile documents; PDF Studio continues deeper browser-based PDF editing and transformation.
 - from: pdf-studio
   to: manuscript
   label: Finished documents ↔ source publishing
@@ -26,9 +31,9 @@ relationships:
   to: pdf-studio
   label: Local task completion
   note: Both emphasize direct local control, clear completion states, and practical work over account-driven collaboration.
-editorialNote: 'Three tools built around turning messy inputs into controlled outputs: PDF Studio manipulates finished documents,
-  Manuscript turns source text into publication-ready pages, and Clean30 turns an everyday environment into a finite workflow.
-  The shared idea is structured transformation.'
+editorialNote: 'Five tools built around turning messy inputs into controlled outputs: Tiny Tools handles focused utility work,
+  Scan captures and organizes physical documents, PDF Studio manipulates finished PDFs, Manuscript turns source text into publication-ready
+  pages, and Clean30 turns an everyday environment into a finite workflow. The shared idea is structured transformation.'
 keywords:
 - documents
 - publishing

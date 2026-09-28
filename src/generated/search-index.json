@@ -679,6 +679,43 @@
     },
     {
       "kind": "project",
+      "code": "T-010",
+      "slug": "scan",
+      "title": "Scan",
+      "subtitle": "Private document scanning for Android",
+      "summary": "Scan paper and PDFs into a local searchable Android library with OCR, page editing, organization, secure export and encrypted backup.",
+      "aliases": [
+        "document scanner",
+        "android scanner",
+        "pdf scanner",
+        "receipt scanner",
+        "OCR scanner"
+      ],
+      "category": "tools",
+      "status": "beta",
+      "tags": [
+        "documents",
+        "pdf",
+        "productivity"
+      ],
+      "collections": [
+        "Productivity & Creation"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "mobile"
+      ],
+      "repo": "thiepn/scan",
+      "liveUrl": "https://thiepn.dev/scan/",
+      "accentLight": "#4D57C8",
+      "accentDark": "#AEB2FF",
+      "updatedAt": "2026-09-28"
+    },
+    {
+      "kind": "project",
       "code": "V-002",
       "slug": "signal-earth",
       "title": "Signal Earth",
@@ -1199,16 +1236,18 @@
       "slug": "productivity-creation",
       "title": "Productivity & Creation",
       "summary": "Practical tools for documents, publishing, and structured everyday workflows.",
-      "editorialNote": "Three tools built around turning messy inputs into controlled outputs: PDF Studio manipulates finished documents, Manuscript turns source text into publication-ready pages, and Clean30 turns an everyday environment into a finite workflow. The shared idea is structured transformation.",
+      "editorialNote": "Five tools built around turning messy inputs into controlled outputs: Tiny Tools handles focused utility work, Scan captures and organizes physical documents, PDF Studio manipulates finished PDFs, Manuscript turns source text into publication-ready pages, and Clean30 turns an everyday environment into a finite workflow. The shared idea is structured transformation.",
       "projects": [
         "tiny-tools",
         "pdf-studio",
+        "scan",
         "manuscript",
         "clean30"
       ],
       "projectTitles": [
         "Tiny Tools",
         "PDF Studio",
+        "Scan",
         "Manuscript",
         "Clean30"
       ],
@@ -1221,6 +1260,8 @@
         "creation"
       ],
       "relationshipLabels": [
+        "Capture ↔ document editing",
+        "Scan turns paper and imported files into searchable mobile documents; PDF Studio continues deeper browser-based PDF editing and transformation.",
         "Finished documents ↔ source publishing",
         "PDF Studio operates on existing documents; Manuscript creates polished documents from structured source.",
         "Structured workflow",

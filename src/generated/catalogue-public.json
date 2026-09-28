@@ -624,6 +624,38 @@
       "updatedAt": "2026-08-25"
     },
     {
+      "code": "T-010",
+      "slug": "scan",
+      "title": "Scan",
+      "subtitle": "Private document scanning for Android",
+      "summary": "Scan paper and PDFs into a local searchable Android library with OCR, page editing, organization, secure export and encrypted backup.",
+      "category": "tools",
+      "type": "app",
+      "status": "beta",
+      "route": "/project/scan/",
+      "liveUrl": "https://thiepn.dev/scan/",
+      "repo": "thiepn/scan",
+      "tags": [
+        "documents",
+        "pdf",
+        "productivity"
+      ],
+      "capabilityTags": [
+        "local-first",
+        "offline"
+      ],
+      "platforms": [
+        "mobile"
+      ],
+      "collections": [
+        "productivity-creation"
+      ],
+      "previewTier": "P1",
+      "previewType": "auto",
+      "previewProvenance": null,
+      "updatedAt": "2026-09-28"
+    },
+    {
       "code": "V-002",
       "slug": "signal-earth",
       "title": "Signal Earth",
@@ -1038,6 +1070,7 @@
       "projects": [
         "tiny-tools",
         "pdf-studio",
+        "scan",
         "manuscript",
         "clean30"
       ]

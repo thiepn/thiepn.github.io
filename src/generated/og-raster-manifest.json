@@ -73,7 +73,7 @@
     },
     "index.svg": {
       "png": "index.png",
-      "sha256": "a17ac45c68f018bc2819727138bbab96a09937c1663f6b35a450d6f82928089b"
+      "sha256": "e15d2864f58d4fb953379c0c961ee7e4f60bf82a7608786050f0e4e94763c64c"
     },
     "le-carnet-francais.svg": {
       "png": "le-carnet-francais.png",
@@ -114,6 +114,10 @@
     "projects.svg": {
       "png": "projects.png",
       "sha256": "b2c4016f8fdbb556fd2bc840ae467c96d094a48be2409ad8a699ad7049b76fac"
+    },
+    "scan.svg": {
+      "png": "scan.png",
+      "sha256": "424b2efc5798c94f4ebe982a7ab95f7a7e754deed6245d5c89d1b0c5fb7d34d9"
     },
     "signal-earth.svg": {
       "png": "signal-earth.png",

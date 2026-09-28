@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-14T09:27:03.684Z",
+  "capturedAt": "2026-09-28T14:54:28.151Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
@@ -134,6 +134,11 @@
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
       "bytes": 19114
+    },
+    "scan": {
+      "file": "/src/assets/hub/scan.webp",
+      "url": "https://thiepn.dev/scan/",
+      "bytes": 53450
     }
   }
 }

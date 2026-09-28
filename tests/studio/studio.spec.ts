@@ -5,19 +5,20 @@ const routes: { routes: string[] } = JSON.parse(fs.readFileSync('src/generated/r
 const showcase: { hero: string; work: string[]; projects: Record<string, { media: string }> } = JSON.parse(fs.readFileSync('src/data/showcase.json', 'utf8'));
 const hub: {
   expectedCount: number;
+  expectedCategoryCounts: {
+    tools: number;
+    create: number;
+    learn: number;
+    faith: number;
+    explore: number;
+    games: number;
+  };
   excluded: string[];
   projects: { slug: string; order: number; category: string; description: string; badge: string | null }[];
 } = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
 
 const orderedHub = [...hub.projects].sort((a, b) => a.order - b.order);
-const categories = {
-  tools: 4,
-  create: 4,
-  learn: 6,
-  faith: 3,
-  explore: 2,
-  games: 7,
-} as const;
+const categories = hub.expectedCategoryCounts;
 
 for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub hierarchy and layout ${width} ${theme}`, async ({ page }) => {
@@ -27,7 +28,7 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
 
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('h1')).toHaveText('Apps');
-    await expect(page.locator('[data-hub-item]')).toHaveCount(26);
+    await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
     await expect(page.locator('[data-hub-search]')).toHaveCount(0);
     await expect(page.locator('.hub-category')).toHaveCount(7);
     await expect(page.locator('[data-project="micro-arcade"]')).toHaveCount(0);
@@ -52,11 +53,12 @@ test('Hub renders the locked app membership, order, direct launch and details li
   await expect(cards).toHaveCount(hub.expectedCount);
 
   const titles = await cards.locator('h2').allTextContents();
-  expect(titles.length).toBe(26);
+  expect(titles.length).toBe(hub.expectedCount);
   expect(titles[0]).toBe('Notes');
   expect(titles[1]).toBe('Canvas');
   expect(titles[2]).toBe('Tiny Tools');
-  expect(titles[7]).toBe('Signal Earth');
+  expect(titles[7]).toBe('Scan');
+  expect(titles[8]).toBe('Signal Earth');
   expect(titles.at(-1)).toBe('Skyspire');
 
   for (const entry of orderedHub) {
@@ -75,7 +77,7 @@ test('Hub category filters and URL state work without a redundant search bar', a
   await page.goto('/');
   const visibleCards = page.locator('[data-hub-item]:visible');
 
-  await expect(visibleCards).toHaveCount(26);
+  await expect(visibleCards).toHaveCount(hub.expectedCount);
   await expect(page.locator('[data-hub-search]')).toHaveCount(0);
 
   const gamesButton = page.locator('button[data-hub-category="games"]');
@@ -86,7 +88,7 @@ test('Hub category filters and URL state work without a redundant search bar', a
 
   const allButton = page.locator('button[data-hub-category="all"]');
   await allButton.click();
-  await expect(visibleCards).toHaveCount(26);
+  await expect(visibleCards).toHaveCount(hub.expectedCount);
   await expect(allButton).toHaveAttribute('aria-pressed', 'true');
   await expect(page).not.toHaveURL(/category=/);
 
@@ -248,7 +250,7 @@ test('app Hub and archive survive JavaScript disabled', async ({ browser }) => {
   await expect(page.locator('.mobile-menu__noscript')).toBeVisible();
 
   await page.goto('http://127.0.0.1:4321/');
-  await expect(page.locator('[data-hub-item]')).toHaveCount(26);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
   await expect(page.getByRole('heading', { name: 'Tiny Tools', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Micro Arcade', exact: true })).toBeVisible();
   await expect(page.locator('#tiny-tools')).toHaveCount(0);
@@ -256,7 +258,7 @@ test('app Hub and archive survive JavaScript disabled', async ({ browser }) => {
   await context.close();
 });
 
-for (const route of ['/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/privacy/', '/byte/']) for (const theme of ['light', 'dark'] as const) {
+for (const route of ['/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/scan/', '/privacy/', '/byte/']) for (const theme of ['light', 'dark'] as const) {
   test(`accessibility ${route} ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });

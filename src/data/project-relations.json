@@ -1,5 +1,6 @@
 {
   "pdf-studio": [
+    "scan",
     "manuscript",
     "tiny-tools"
   ],
@@ -64,11 +65,17 @@
     "analysis-ii-lernsystem"
   ],
   "tiny-tools": [
+    "scan",
     "pdf-studio",
     "manuscript"
   ],
   "micro-arcade": [
     "wordstrike",
     "voidcut"
+  ],
+  "scan": [
+    "pdf-studio",
+    "tiny-tools",
+    "manuscript"
   ]
 }

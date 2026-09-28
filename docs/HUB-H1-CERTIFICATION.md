@@ -4,9 +4,9 @@
 
 The public Hub is intentionally separate from the historical portfolio catalogue.
 
-- Hub apps: 26
+- Hub apps: 27
 - Hub categories: 6
-- Tools: 4
+- Tools: 5
 - Create: 4
 - Learn: 6
 - Faith: 3
@@ -14,6 +14,8 @@ The public Hub is intentionally separate from the historical portfolio catalogue
 - Games: 7
 
 The canonical app membership, order, descriptions, categories, badges, and exclusions live in `src/data/hub.json`.
+
+Scan is registered as a `Tools` app with an `RC` badge directly after PDF Studio. Its public route is `/scan/`; the native Android release remains gated independently in `thiepn/scan`.
 
 ## Explicit Hub exclusions
 
@@ -28,8 +30,8 @@ These projects remain registered in the historical project catalogue but are int
 
 `scripts/validate-hub.mjs` protects the Hub against accidental drift. It verifies:
 
-- exactly 26 Hub apps;
-- unique and contiguous order positions 1–26;
+- exactly 27 Hub apps;
+- unique and contiguous order positions 1–27;
 - the locked membership and canonical ordering;
 - the six allowed Hub categories and their expected counts;
 - supported Hub badges;
@@ -41,7 +43,7 @@ These projects remain registered in the historical project catalogue but are int
 
 ## Catalogue relationship
 
-The project catalogue remains the canonical portfolio/archive dataset. The Hub registry resolves its 26 app entries against those project records rather than duplicating full project metadata.
+The project catalogue remains the canonical portfolio/archive dataset. The Hub registry resolves its 27 app entries against those project records rather than duplicating full project metadata.
 
 This allows `/projects/` and `/work/` to retain portfolio-oriented classification while the homepage can use the simpler Hub categories `Tools`, `Create`, `Learn`, `Faith`, `Explore`, and `Games`.
 
@@ -51,4 +53,4 @@ The generated-catalogue workflow now rasterizes Open Graph cards before running 
 
 ## H1 acceptance criteria
 
-H1 is accepted when the post-refresh repository state passes catalogue/Hub validation, type checking, unit tests, build, and deployment checks. H2 may then replace the existing curated homepage with the 26-app Hub interface.
+H1 is accepted when the post-refresh repository state passes catalogue/Hub validation, type checking, unit tests, build, and deployment checks. H2 may then replace the existing curated homepage with the 27-app Hub interface.

@@ -1,13 +1,9 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 
-const expectedCounts: Record<string, number> = {
-  tools: 4,
-  create: 4,
-  learn: 6,
-  faith: 3,
-  explore: 2,
-  games: 7,
-};
+const hub: { expectedCount: number; expectedCategoryCounts: Record<string, number> } =
+  JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+const expectedCounts = hub.expectedCategoryCounts;
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -17,7 +13,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
 
     const catalogue = page.locator('[data-hub-catalogue]');
     await expect(catalogue).toBeVisible();
-    await expect(catalogue.locator('[data-hub-item]')).toHaveCount(26);
+    await expect(catalogue.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
     await expect(catalogue.locator('.hub-category')).toHaveCount(7);
     await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
