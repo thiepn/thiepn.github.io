@@ -1,0 +1,129 @@
+name: S2 Scan asset generation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [scan-hub-integration-v2]
+    paths:
+      - '.github/workflows/scan-s2-generate-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout S2 branch
+        uses: actions/checkout@v7
+        with:
+          ref: scan-hub-integration-v2
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Regenerate canonical catalogue and OG assets
+        run: |
+          node scripts/rasterize-og.mjs
+          npm run catalogue:refresh
+
+      - name: Build S2 branch
+        run: npm run build
+
+      - name: Start local production preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run preview -- --host 127.0.0.1 --port 4321 > /tmp/scan-s2-preview.log 2>&1 &
+          echo $! > /tmp/scan-s2-preview.pid
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --show-error http://127.0.0.1:4321/scan/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/scan-s2-preview.log
+          exit 1
+
+      - name: Capture canonical Scan Hub media
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from '@playwright/test';
+          import { readFile, stat, writeFile } from 'node:fs/promises';
+
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({
+            viewport: { width: 1440, height: 900 },
+            deviceScaleFactor: 1,
+            colorScheme: 'light',
+            reducedMotion: 'reduce',
+          });
+          const page = await context.newPage();
+          await page.goto('http://127.0.0.1:4321/scan/', { waitUntil: 'networkidle' });
+          await page.evaluate(async () => {
+            if (document.fonts?.ready) await document.fonts.ready;
+            window.scrollTo(0, 0);
+          });
+          await page.waitForTimeout(500);
+          await page.screenshot({
+            path: 'src/assets/hub/scan.webp',
+            type: 'webp',
+            quality: 82,
+            fullPage: false,
+            animations: 'disabled',
+          });
+          await context.close();
+          await browser.close();
+
+          const manifestPath = 'src/generated/hub-media.json';
+          const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+          const bytes = (await stat('src/assets/hub/scan.webp')).size;
+          manifest.capturedAt = new Date().toISOString();
+          manifest.captures.scan = {
+            file: '/src/assets/hub/scan.webp',
+            url: 'https://thiepn.dev/scan/',
+            bytes,
+          };
+          await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+          console.log(`Captured Scan Hub media: ${bytes} bytes.`);
+          NODE
+
+      - name: Verify generated asset contracts
+        run: |
+          node scripts/refresh-catalogue.mjs --check
+          node scripts/validate-hub-media.mjs
+          node scripts/validate-media.mjs
+
+      - name: Commit generated S2 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "4189825+github-actions[bot]@users.noreply.github.com"
+          git add public/og src/generated src/assets/hub/scan.webp
+          if git diff --cached --quiet; then
+            echo "S2 generated assets are already current."
+            exit 0
+          fi
+          git commit -m "Refresh Scan S2 generated assets"
+          git pull --rebase origin scan-hub-integration-v2
+          git push origin HEAD:scan-hub-integration-v2
+
+      - name: Stop local preview
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/scan-s2-preview.pid ]; then
+            kill "$(cat /tmp/scan-s2-preview.pid)" 2>/dev/null || true
+          fi
