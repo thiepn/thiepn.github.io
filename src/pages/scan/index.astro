@@ -5,7 +5,6 @@ const version = '1.0.0';
 const sourceUrl = 'https://github.com/thiepn/scan';
 const releaseUrl = sourceUrl + '/releases/tag/v1.0.0';
 const apkUrl = sourceUrl + '/releases/download/v1.0.0/Scan-v1.0.0.apk';
-const releasePublished = false;
 
 const highlights = [
   {
@@ -121,7 +120,7 @@ const qaItems = [
       <div class="scan-hero__copy">
         <div class="scan-chips" aria-label="Scan app facts">
           <span class="scan-chip scan-chip--accent">Android app</span>
-          <span class="scan-chip">v{version} RC</span>
+          <span class="scan-chip" data-scan-version-state>v{version} RC</span>
           <span class="scan-chip">Local-first</span>
         </div>
 
@@ -132,21 +131,18 @@ const qaItems = [
         </p>
 
         <div class="scan-hero__actions">
-          {releasePublished ? (
-            <a class="scan-button scan-button--primary" href={apkUrl}>
-              <span class="scan-button__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
-              </span>
-              Download APK
-            </a>
-          ) : (
-            <span class="scan-button scan-button--disabled" aria-disabled="true">
-              <span class="scan-button__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
-              </span>
-              v1.0.0 release pending
+          <a class="scan-button scan-button--primary" href={apkUrl} data-scan-release-download hidden>
+            <span class="scan-button__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
             </span>
-          )}
+            Download APK
+          </a>
+          <span class="scan-button scan-button--disabled" aria-disabled="true" data-scan-release-pending>
+            <span class="scan-button__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+            </span>
+            v1.0.0 release pending
+          </span>
           <a class="scan-button scan-button--quiet" href="#how-it-works">See how it works</a>
           <a class="scan-button scan-button--quiet" href={sourceUrl}>Source code ↗</a>
         </div>
@@ -158,12 +154,10 @@ const qaItems = [
           <span>No INTERNET permission</span>
         </div>
 
-        {!releasePublished && (
-          <div class="release-notice" role="status">
-            <strong>Release candidate certified.</strong>
-            <span>The public APK will unlock here after production signing and final physical-device acceptance.</span>
-          </div>
-        )}
+        <div class="release-notice" role="status" data-scan-release-notice>
+          <strong data-scan-release-title>Release candidate certified.</strong>
+          <span data-scan-release-copy>The public APK will unlock here after production signing and final physical-device acceptance.</span>
+        </div>
       </div>
 
       <div class="scan-hero__visual" aria-label="Illustration of Scan's document workflow">
@@ -319,6 +313,41 @@ const qaItems = [
       </div>
     </section>
 
+    <section class="tool-relationship-band" aria-labelledby="tool-relationship-title">
+      <div class="page-shell">
+        <div class="scan-section__intro">
+          <div>
+            <p class="scan-kicker">Part of the THIEPN document toolkit</p>
+            <h2 id="tool-relationship-title">Use the tool that matches where the document is.</h2>
+          </div>
+          <p>
+            Scan, PDF Studio and Tiny Tools overlap intentionally at the edges, but they solve different stages of the document workflow.
+          </p>
+        </div>
+
+        <div class="tool-relationship-grid">
+          <article class="tool-card tool-card--scan">
+            <span>ANDROID · CAPTURE</span>
+            <h3>Scan</h3>
+            <p>Start here when the document is paper, a receipt, a form, a book spread, an ID, or something you need to capture and keep searchable on your phone.</p>
+            <strong>Camera → OCR → local library → searchable PDF</strong>
+          </article>
+          <a class="tool-card" href="/pdf/">
+            <span>WEB · PDF WORKSPACE</span>
+            <h3>PDF Studio</h3>
+            <p>Use it when the document already exists as a PDF and the job is deeper page organization, annotation, redaction, conversion or browser-based editing.</p>
+            <strong>Existing PDF → edit → transform → export ↗</strong>
+          </a>
+          <a class="tool-card" href="/tools/">
+            <span>WEB · QUICK UTILITIES</span>
+            <h3>Tiny Tools</h3>
+            <p>Use it for focused one-off jobs such as conversion, formatting, inspection or small document utilities without opening a larger workspace.</p>
+            <strong>Small task → direct utility → result ↗</strong>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <section class="privacy-band" id="privacy" aria-labelledby="privacy-title">
       <div class="page-shell privacy-layout">
         <div class="privacy-visual" aria-hidden="true">
@@ -390,9 +419,9 @@ const qaItems = [
           <small>Install / update / accessibility certified</small>
         </div>
         <div>
-          <span class="cert-dot cert-dot--pending"></span>
+          <span class="cert-dot cert-dot--pending" data-scan-cert-dot></span>
           <strong>Production release</strong>
-          <small>Signing + physical-device acceptance pending</small>
+          <small data-scan-cert-copy>Signing + physical-device acceptance pending</small>
         </div>
       </div>
     </section>
@@ -401,25 +430,16 @@ const qaItems = [
       <div class="page-shell install-layout">
         <div class="install-copy">
           <p class="scan-kicker">Install Scan</p>
-          <h2 id="install-title">{releasePublished ? 'Download the official Android build.' : 'The official APK is almost ready.'}</h2>
-          <p>
-            {releasePublished
-              ? 'Download the production-signed APK from the official GitHub release. Android may ask you to allow installs from your browser or file manager if you are sideloading.'
-              : 'The source candidate is certified, but the public download remains intentionally locked until the permanent production signing identity and physical-device release gates are complete.'}
+          <h2 id="install-title" data-scan-install-title>The official APK is almost ready.</h2>
+          <p data-scan-install-copy>
+            The source candidate is certified, but the public download remains intentionally locked until the permanent production signing identity and physical-device release gates are complete.
           </p>
 
           <div class="install-actions">
-            {releasePublished ? (
-              <>
-                <a class="scan-button scan-button--primary scan-button--large" href={apkUrl}>Download Scan v{version}</a>
-                <a class="scan-button scan-button--outline" href={releaseUrl}>Release notes ↗</a>
-              </>
-            ) : (
-              <>
-                <span class="scan-button scan-button--disabled scan-button--large" aria-disabled="true">Production APK pending</span>
-                <a class="scan-button scan-button--outline" href={sourceUrl}>View repository ↗</a>
-              </>
-            )}
+            <a class="scan-button scan-button--primary scan-button--large" href={apkUrl} data-scan-release-download hidden>Download Scan v{version}</a>
+            <a class="scan-button scan-button--outline" href={releaseUrl} data-scan-release-link hidden>Release notes ↗</a>
+            <span class="scan-button scan-button--disabled scan-button--large" aria-disabled="true" data-scan-release-pending>Production APK pending</span>
+            <a class="scan-button scan-button--outline" href={sourceUrl} data-scan-pending-source>View repository ↗</a>
           </div>
 
           <p class="install-meta">Android 8.0+ · package <code>com.thiepn.scan</code> · open source</p>
@@ -471,8 +491,8 @@ const qaItems = [
           <p>Scan can create AES-256 password-protected PDF copies, offers secure-vault controls, and supports encrypted portable backup with password and tamper validation.</p>
         </details>
         <details>
-          <summary>Why is the download button disabled right now?</summary>
-          <p>The v1.0.0 source candidate has passed automated certification, but the official public APK is intentionally withheld until permanent production signing and final physical-device acceptance are complete.</p>
+          <summary>Where do I download Scan?</summary>
+          <p>This page checks the official GitHub v1.0.0 release. Before publication it shows the certified release candidate as pending; once the production-signed release exists, the same download controls automatically point to the official APK.</p>
         </details>
       </div>
     </section>
@@ -490,6 +510,64 @@ const qaItems = [
       </div>
     </section>
   </div>
+
+  <script is:inline>
+    (() => {
+      const api = 'https://api.github.com/repos/thiepn/scan/releases/tags/v1.0.0';
+      const expectedAsset = 'Scan-v1.0.0.apk';
+
+      const setPublished = (release, asset) => {
+        document.querySelectorAll('[data-scan-release-download]').forEach((node) => {
+          node.hidden = false;
+          if (node instanceof HTMLAnchorElement) node.href = asset.browser_download_url;
+        });
+        document.querySelectorAll('[data-scan-release-link]').forEach((node) => {
+          node.hidden = false;
+          if (node instanceof HTMLAnchorElement) node.href = release.html_url;
+        });
+        document.querySelectorAll('[data-scan-release-pending]').forEach((node) => { node.hidden = true; });
+        document.querySelectorAll('[data-scan-pending-source]').forEach((node) => { node.hidden = true; });
+
+        const versionState = document.querySelector('[data-scan-version-state]');
+        if (versionState) versionState.textContent = 'v1.0.0';
+
+        const title = document.querySelector('[data-scan-release-title]');
+        const copy = document.querySelector('[data-scan-release-copy]');
+        if (title) title.textContent = 'Scan v1.0.0 is published.';
+        if (copy) copy.textContent = 'The production-signed APK is available from the official THIEPN GitHub release.';
+
+        const installTitle = document.querySelector('[data-scan-install-title]');
+        const installCopy = document.querySelector('[data-scan-install-copy]');
+        if (installTitle) installTitle.textContent = 'Download the official Android build.';
+        if (installCopy) installCopy.textContent = 'Download the production-signed APK from the official GitHub release. Android may ask you to allow installs from your browser or file manager if you are sideloading.';
+
+        const certDot = document.querySelector('[data-scan-cert-dot]');
+        const certCopy = document.querySelector('[data-scan-cert-copy]');
+        if (certDot) {
+          certDot.classList.remove('cert-dot--pending');
+          certDot.classList.add('cert-dot--ok');
+        }
+        if (certCopy) certCopy.textContent = 'Production-signed v1.0.0 published';
+      };
+
+      fetch(api, {
+        headers: { Accept: 'application/vnd.github+json' },
+        referrerPolicy: 'no-referrer'
+      })
+        .then((response) => response.ok ? response.json() : null)
+        .then((release) => {
+          if (!release || release.draft || release.prerelease || release.tag_name !== 'v1.0.0') return;
+          const asset = Array.isArray(release.assets)
+            ? release.assets.find((candidate) => candidate?.name === expectedAsset)
+            : null;
+          if (!asset?.browser_download_url) return;
+          setPublished(release, asset);
+        })
+        .catch(() => {
+          // Fail closed: the page remains in release-candidate state when GitHub is unavailable.
+        });
+    })();
+  </script>
 
   <style>
     .scan-page {
@@ -698,6 +776,16 @@ const qaItems = [
     .feature-group li { position:relative; padding:11px 0 11px 20px; border-bottom:1px solid var(--scan-line); color:var(--scan-ink-2); font-size:.79rem; line-height:1.45; }
     .feature-group li::before { content:'✓'; position:absolute; left:0; color:var(--scan-teal); font-weight:800; }
 
+    .tool-relationship-band { padding:clamp(88px,9vw,136px) 0; border-block:1px solid var(--scan-line); background:var(--scan-surface); }
+    .tool-relationship-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .tool-card { min-height:260px; display:flex; flex-direction:column; padding:27px; border:1px solid var(--scan-line); border-radius:18px; background:var(--scan-bg); color:inherit; text-decoration:none; transition:transform 160ms ease,border-color 160ms ease,background 160ms ease; }
+    a.tool-card:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--scan-accent) 42%,var(--scan-line)); background:var(--scan-surface-soft); text-decoration:none; }
+    .tool-card--scan { border-color:color-mix(in srgb,var(--scan-accent) 34%,var(--scan-line)); background:var(--scan-accent-soft); }
+    .tool-card>span { color:var(--scan-accent); font:700 .65rem var(--font-meta); letter-spacing:.08em; }
+    .tool-card h3 { margin:36px 0 0; font-size:1.65rem; }
+    .tool-card p { margin:13px 0 0; color:var(--scan-ink-2); font-size:.84rem; line-height:1.67; }
+    .tool-card strong { margin-top:auto; padding-top:24px; color:var(--scan-ink); font-size:.74rem; line-height:1.5; }
+
     .privacy-band { padding:clamp(92px,10vw,148px) 0; background:var(--scan-surface-soft); border-block:1px solid var(--scan-line); }
     .privacy-layout { display:grid; grid-template-columns:.72fr 1.28fr; gap:clamp(48px,8vw,110px); align-items:center; }
     .privacy-visual { position:relative; min-height:470px; display:grid; place-items:center; overflow:hidden; }
@@ -814,6 +902,7 @@ const qaItems = [
       .workflow-steps { grid-template-columns:1fr; }
       .workflow-steps li { min-height:250px; }
       .feature-groups { grid-template-columns:1fr; }
+      .tool-relationship-grid { grid-template-columns:1fr; }
       .privacy-layout { grid-template-columns:1fr; gap:28px; }
       .privacy-visual { min-height:330px; }
       .privacy-copy h2 { font-size:clamp(2.45rem,11vw,3.8rem); }
