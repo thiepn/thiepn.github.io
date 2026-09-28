@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'public/projects/**'
+      - 'public/scan/**'
       - 'src/content/projects/**'
       - 'scripts/validate-media.mjs'
   workflow_dispatch:
