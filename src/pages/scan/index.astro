@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import scanDistribution from '../../data/scan-distribution.json';
 
 const version = '1.0.0';
 const sourceUrl = 'https://github.com/thiepn/scan';
@@ -7,6 +8,12 @@ const releaseUrl = sourceUrl + '/releases/tag/v1.0.0';
 const apkUrl = sourceUrl + '/releases/download/v1.0.0/Scan-v1.0.0.apk';
 const aabUrl = sourceUrl + '/releases/download/v1.0.0/Scan-v1.0.0.aab';
 const checksumsUrl = sourceUrl + '/releases/download/v1.0.0/release-checksums.sha256';
+const playStoreStatus = scanDistribution.googlePlay.status;
+const playStorePublished = playStoreStatus === 'published';
+const playStoreTesting = playStoreStatus === 'testing';
+const playStoreUrl = scanDistribution.googlePlay.url;
+const playBadgeUrl = scanDistribution.googlePlay.badgeUrl;
+const privacyUrl = '/scan/privacy/';
 
 const screenshots = [
   { src: '/scan/screenshots/01-library.webp', title: 'Library', eyebrow: 'ORGANIZE', alt: 'Scan Android library showing OCR search, smart collections, a Travel Expenses document, and the primary Scan action.', body: 'Search OCR, switch smart collections, and keep captured documents in a local library.' },
@@ -145,11 +152,20 @@ const qaItems = [
         </p>
 
         <div class="scan-hero__actions">
+          {playStorePublished ? (
+            <a class="play-badge-link" href={playStoreUrl} aria-label="Get Scan on Google Play">
+              <img src={playBadgeUrl} alt="Get it on Google Play" width="195" height="58" />
+            </a>
+          ) : (
+            <span class="scan-button scan-button--play-pending" aria-disabled="true" data-play-status={playStoreStatus}>
+              {playStoreTesting ? 'Google Play testing' : 'Google Play planned'}
+            </span>
+          )}
           <a class="scan-button scan-button--primary" href={apkUrl} data-scan-release-download hidden>
             <span class="scan-button__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
             </span>
-            Download APK
+            Direct APK
           </a>
           <span class="scan-button scan-button--disabled" aria-disabled="true" data-scan-release-pending>
             <span class="scan-button__icon" aria-hidden="true">
@@ -202,6 +218,7 @@ const qaItems = [
         <a href="#how-it-works">Workflow</a>
         <a href="#features">Features</a>
         <a href="#privacy">Privacy</a>
+        <a href="#distribution">Distribution</a>
         <a href="#install">Install</a>
         <a href="#faq">FAQ</a>
       </div>
@@ -373,7 +390,94 @@ const qaItems = [
             <p>Google Play services supplies the ML Kit document-scanner UI and may download or update that scanner module before first use. Scan's own library, OCR, editing and document processing remain local-first.</p>
           </div>
 
-          <a class="text-link" href={sourceUrl + '/blob/main/README.md'}>Read the technical architecture ↗</a>
+          <div class="privacy-links">
+            <a class="text-link" href={privacyUrl}>Read the privacy policy →</a>
+            <a class="text-link" href={sourceUrl + '/blob/main/README.md'}>Technical architecture ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="distribution-band" id="distribution" aria-labelledby="distribution-title">
+      <div class="page-shell">
+        <div class="scan-section__intro">
+          <div>
+            <p class="scan-kicker">Install channels</p>
+            <h2 id="distribution-title">One app. Clear distribution paths.</h2>
+          </div>
+          <p>
+            Google Play is the preferred long-term channel because it handles trusted installation and updates.
+            The signed GitHub APK remains available as an explicit direct-install option.
+          </p>
+        </div>
+
+        <div class="distribution-grid">
+          <article class:list={['distribution-card','distribution-card--primary', playStorePublished && 'is-live']}>
+            <div class="distribution-card__head">
+              <span class:list={['distribution-status', playStorePublished ? 'distribution-status--live' : 'distribution-status--planned']}>
+                {playStorePublished ? 'PUBLIC' : playStoreTesting ? 'TESTING' : 'PLANNED'}
+              </span>
+              <strong>Google Play</strong>
+            </div>
+            <p>
+              Recommended for most users. Play manages installation, app updates and Play Protect checks without requiring users to sideload files.
+            </p>
+            {playStorePublished ? (
+              <a class="play-badge-link play-badge-link--card" href={playStoreUrl} aria-label="Get Scan on Google Play">
+                <img src={playBadgeUrl} alt="Get it on Google Play" width="172" height="51" loading="lazy" />
+              </a>
+            ) : (
+              <span class="distribution-card__note">
+                {playStoreTesting ? 'Store testing is in progress; no public install link yet.' : 'Store listing package is prepared; public Play listing not published yet.'}
+              </span>
+            )}
+          </article>
+
+          <article class="distribution-card">
+            <div class="distribution-card__head">
+              <span class="distribution-status distribution-status--direct">DIRECT</span>
+              <strong>Signed APK</strong>
+            </div>
+            <p>
+              Alternative install path from the official GitHub Release. Updates are manual: install the newer APK over the existing app using the same signing identity.
+            </p>
+            <a class="text-link" href="#install">Direct-install instructions ↓</a>
+          </article>
+
+          <article class="distribution-card">
+            <div class="distribution-card__head">
+              <span class="distribution-status">PUBLISHING</span>
+              <strong>Android App Bundle</strong>
+            </div>
+            <p>
+              The AAB is produced for Google Play Console. It is a publishing artifact, not the file end users should download to install Scan.
+            </p>
+            <span class="distribution-card__note">Play Console artifact · not an end-user CTA</span>
+          </article>
+
+          <article class="distribution-card">
+            <div class="distribution-card__head">
+              <span class="distribution-status">SOURCE</span>
+              <strong>GitHub</strong>
+            </div>
+            <p>
+              Source code, release notes, checksums and technical documentation remain public for inspection and independent verification.
+            </p>
+            <a class="text-link" href={sourceUrl}>Open repository ↗</a>
+          </article>
+        </div>
+
+        <div class="update-model">
+          <div>
+            <span>Installed from Google Play</span>
+            <strong>Updates through Google Play</strong>
+            <small>Preferred once the public listing is live.</small>
+          </div>
+          <div>
+            <span>Installed from direct APK</span>
+            <strong>Manual signed APK updates</strong>
+            <small>Install over the existing app; do not uninstall first if local data matters.</small>
+          </div>
         </div>
       </div>
     </section>
@@ -423,6 +527,10 @@ const qaItems = [
       <div class="page-shell install-layout">
         <div class="install-copy">
           <p class="scan-kicker">Download & install</p>
+          <div class="install-channel-note">
+            <span>{playStorePublished ? 'Recommended: Google Play' : 'Current public channel: direct release'}</span>
+            <a href={privacyUrl}>Privacy policy</a>
+          </div>
           <h2 id="install-title" data-scan-install-title>The official APK is almost ready.</h2>
           <p data-scan-install-copy>The source candidate is certified, but the public build stays locked until production signing and final physical-device acceptance are complete.</p>
 
@@ -440,6 +548,11 @@ const qaItems = [
               <div><dt>SHA-256</dt><dd class="checksum-value"><span data-scan-checksum>Pending</span><button type="button" data-copy-checksum hidden>Copy</button></dd></div>
             </dl>
             <div class="release-downloads">
+              {playStorePublished && (
+                <a class="play-badge-link play-badge-link--download" href={playStoreUrl} aria-label="Get Scan on Google Play" data-play-download>
+                  <img src={playBadgeUrl} alt="Get it on Google Play" width="172" height="51" loading="lazy" />
+                </a>
+              )}
               <a class="scan-button scan-button--primary scan-button--large" href={apkUrl} data-scan-release-download hidden>Download APK</a>
               <a class="scan-button scan-button--outline" href={checksumsUrl} data-scan-checksums-download hidden>SHA-256 checksums ↗</a>
               <a class="scan-button scan-button--outline" href={releaseUrl} data-scan-release-link hidden>Release notes ↗</a>
@@ -452,13 +565,24 @@ const qaItems = [
         </div>
 
         <aside class="install-guide" aria-labelledby="install-guide-title">
-          <span class="install-guide__eyebrow">Safe sideload</span>
-          <h3 id="install-guide-title">Install without losing your local library.</h3>
+          <span class="install-guide__eyebrow">{playStorePublished ? 'Install & update' : 'Safe direct install'}</span>
+          <h3 id="install-guide-title">{playStorePublished ? 'Use Play by default; direct APK stays available.' : 'Install without losing your local library.'}</h3>
           <ol class="install-steps">
-            <li><span>1</span><div><strong>Download the official APK.</strong><p>Use this page or the matching GitHub Release. Avoid third-party mirrors.</p></div></li>
-            <li><span>2</span><div><strong>Allow this source once.</strong><p>Android may ask your browser or file manager for permission to install unknown apps.</p></div></li>
-            <li><span>3</span><div><strong>Install over the existing app for updates.</strong><p>Do not uninstall first unless you have a verified encrypted backup—Scan's working library is local.</p></div></li>
-            <li><span>4</span><div><strong>Let Play services prepare capture.</strong><p>The ML Kit document-scanner module may download or update before the first camera scan.</p></div></li>
+            {playStorePublished ? (
+              <>
+                <li><span>1</span><div><strong>Install from Google Play.</strong><p>Use the public Play listing for the simplest trusted install and update path.</p></div></li>
+                <li><span>2</span><div><strong>Let Play manage updates.</strong><p>Automatic or manual Play updates preserve Scan's app data under the normal Android update model.</p></div></li>
+                <li><span>3</span><div><strong>Use the APK only when you need the direct channel.</strong><p>The official GitHub APK remains signed with the release identity and can be installed over a compatible existing build.</p></div></li>
+                <li><span>4</span><div><strong>Back up before uninstalling.</strong><p>Uninstalling removes Scan's app-private working library; exported files and backups you saved elsewhere are separate.</p></div></li>
+              </>
+            ) : (
+              <>
+                <li><span>1</span><div><strong>Download the official APK.</strong><p>Use this page or the matching GitHub Release. Avoid third-party mirrors.</p></div></li>
+                <li><span>2</span><div><strong>Allow this source once.</strong><p>Android may ask your browser or file manager for permission to install unknown apps.</p></div></li>
+                <li><span>3</span><div><strong>Install over the existing app for updates.</strong><p>Do not uninstall first unless you have a verified encrypted backup—Scan's working library is local.</p></div></li>
+                <li><span>4</span><div><strong>Let Play services prepare capture.</strong><p>The ML Kit document-scanner module may download or update before the first camera scan.</p></div></li>
+              </>
+            )}
           </ol>
           <div class="verify-box">
             <strong>Verify the APK</strong>
@@ -471,6 +595,31 @@ const qaItems = [
       </div>
     </section>
 
+    <section class="release-history page-shell" aria-labelledby="release-history-title">
+      <div class="scan-section__intro">
+        <div>
+          <p class="scan-kicker">Release history</p>
+          <h2 id="release-history-title">A visible chain from source to install.</h2>
+        </div>
+        <p>
+          Public distribution stays tied to signed release artifacts. Google Play receives the verified AAB;
+          direct installs use the matching signed APK and published checksum.
+        </p>
+      </div>
+
+      <div class="release-history__list">
+        <article>
+          <div>
+            <span class="release-history__version">v1.0.0</span>
+            <strong data-release-history-state>Release candidate</strong>
+            <small data-release-history-date>Production publication pending</small>
+          </div>
+          <p>First public Scan release: document capture, OCR/search, editing, organization, secure export, backup and automation.</p>
+          <a href={releaseUrl} data-release-history-link hidden>GitHub Release ↗</a>
+        </article>
+      </div>
+    </section>
+
     <section class="faq page-shell" id="faq" aria-labelledby="faq-title">
       <div class="faq__intro">
         <p class="scan-kicker">Useful answers</p>
@@ -478,6 +627,16 @@ const qaItems = [
       </div>
 
       <div class="faq__items">
+        <details>
+          <summary>Will Scan be available on Google Play?</summary>
+          <p>
+            {playStorePublished
+              ? 'Yes. Google Play is the recommended install and update channel; the signed direct APK remains available as an alternative.'
+              : playStoreTesting
+                ? 'The Google Play listing is in testing and is not being presented as a public install channel yet.'
+                : 'Yes. The Play listing package is prepared, but the public listing is not published yet. This page will only show the official Play badge after publication is explicitly verified.'}
+          </p>
+        </details>
         <details>
           <summary>Does Scan upload my documents?</summary>
           <p>No app-managed cloud document service is part of Scan v1, and the release APK does not request Android's INTERNET permission. The Google Play services document-scanner module is a separate capture dependency and may be downloaded or updated by Play services.</p>
@@ -557,6 +716,12 @@ const qaItems = [
         setText('[data-scan-apk-size]', formatBytes(assets.apk.size));
         setText('[data-scan-release-date]', formatDate(release.published_at || release.created_at));
         setText('[data-scan-cert-copy]', 'Production-signed v1.0.0 published');
+        setText('[data-release-history-state]', 'Published');
+        setText('[data-release-history-date]', formatDate(release.published_at || release.created_at));
+        all('[data-release-history-link]').forEach((node) => {
+          node.hidden = false;
+          if (node instanceof HTMLAnchorElement) node.href = release.html_url;
+        });
 
         one('[data-scan-release-panel]')?.classList.add('is-published');
         const releaseDot = one('[data-scan-release-state-dot]');
@@ -684,6 +849,41 @@ const qaItems = [
     .scan-button--primary:hover { color:#fff; background:linear-gradient(180deg,#7079e8,#3f4aba); }
     .scan-button--quiet,.scan-button--outline { color:var(--scan-ink-2); border-color:var(--scan-line); background:color-mix(in srgb,var(--scan-surface) 72%,transparent); }
     .scan-button--quiet:hover,.scan-button--outline:hover { color:var(--scan-accent-strong); border-color:color-mix(in srgb,var(--scan-accent) 45%,var(--scan-line)); background:var(--scan-surface); }
+    .play-badge-link { display:inline-flex; align-items:center; min-height:46px; text-decoration:none; }
+    .play-badge-link img { display:block; width:auto; height:54px; }
+    .play-badge-link--card img,.play-badge-link--download img { height:51px; }
+    .scan-button--play-pending { border:1px dashed color-mix(in srgb,var(--scan-accent) 44%,var(--scan-line)); background:var(--scan-accent-soft); color:var(--scan-accent); cursor:default; }
+    .privacy-links { display:flex; flex-wrap:wrap; gap:16px; margin-top:22px; }
+    .distribution-band { padding:clamp(88px,9vw,136px) 0; border-block:1px solid var(--scan-line); background:var(--scan-surface-soft); }
+    .distribution-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .distribution-card { min-height:230px; display:flex; flex-direction:column; padding:24px; border:1px solid var(--scan-line); border-radius:18px; background:var(--scan-surface); }
+    .distribution-card--primary { border-color:color-mix(in srgb,var(--scan-accent) 34%,var(--scan-line)); }
+    .distribution-card--primary.is-live { box-shadow:0 14px 36px color-mix(in srgb,var(--scan-accent) 12%,transparent); }
+    .distribution-card__head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .distribution-card__head strong { font-size:1.08rem; }
+    .distribution-status { display:inline-flex; padding:5px 8px; border:1px solid var(--scan-line); border-radius:999px; color:var(--scan-muted); font:800 .58rem var(--font-meta); letter-spacing:.08em; }
+    .distribution-status--planned { color:#9a681d; border-color:rgb(182 128 47 / 28%); background:rgb(209 156 79 / 9%); }
+    .distribution-status--live { color:#147c62; border-color:rgb(33 143 112 / 25%); background:rgb(57 177 143 / 9%); }
+    .distribution-status--direct { color:var(--scan-accent); border-color:color-mix(in srgb,var(--scan-accent) 26%,var(--scan-line)); background:var(--scan-accent-soft); }
+    .distribution-card p { margin:22px 0 0; color:var(--scan-ink-2); font-size:.84rem; line-height:1.68; }
+    .distribution-card>.text-link,.distribution-card>.play-badge-link,.distribution-card__note { margin-top:auto; padding-top:24px; }
+    .distribution-card__note { display:block; color:var(--scan-muted); font-size:.71rem; line-height:1.5; }
+    .update-model { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-top:14px; overflow:hidden; border:1px solid var(--scan-line); border-radius:16px; background:var(--scan-line); }
+    .update-model>div { padding:18px 20px; background:var(--scan-surface); }
+    .update-model span,.update-model strong,.update-model small { display:block; }
+    .update-model span { color:var(--scan-accent); font:800 .61rem var(--font-meta); letter-spacing:.06em; text-transform:uppercase; }
+    .update-model strong { margin-top:6px; font-size:.88rem; }
+    .update-model small { margin-top:4px; color:var(--scan-muted); font-size:.68rem; line-height:1.45; }
+    .install-channel-note { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:18px 0 0; padding:10px 12px; border:1px solid #33445c; border-radius:11px; background:#101d2f; color:#b9c5d5; font-size:.68rem; }
+    .install-channel-note a { color:#dce4ef; }
+    .release-history { padding-top:clamp(88px,9vw,136px); padding-bottom:clamp(88px,9vw,136px); }
+    .release-history__list article { display:grid; grid-template-columns:minmax(180px,.55fr) 1.4fr auto; gap:24px; align-items:center; padding:22px 0; border-block:1px solid var(--scan-line); }
+    .release-history__list article>div span,.release-history__list article>div strong,.release-history__list article>div small { display:block; }
+    .release-history__version { color:var(--scan-accent); font:800 .64rem var(--font-meta); letter-spacing:.07em; }
+    .release-history__list article strong { margin-top:5px; }
+    .release-history__list article small { margin-top:3px; color:var(--scan-muted); }
+    .release-history__list article p { margin:0; color:var(--scan-ink-2); font-size:.82rem; line-height:1.6; }
+    .release-history__list article>a { color:var(--scan-accent); font-size:.75rem; font-weight:750; white-space:nowrap; }
     .scan-button--disabled { color:var(--scan-muted); border-color:var(--scan-line); background:var(--scan-surface-soft); cursor:not-allowed; }
     .scan-button--large { min-height:58px; padding-inline:23px; font-size:1rem; }
     .scan-button__icon { width:20px; height:20px; display:grid; place-items:center; }
@@ -923,6 +1123,9 @@ const qaItems = [
       .workflow-steps li { min-height:250px; }
       .feature-groups { grid-template-columns:1fr; }
       .tool-relationship-grid { grid-template-columns:1fr; }
+      .distribution-grid { grid-template-columns:1fr; }
+      .update-model { grid-template-columns:1fr; }
+      .release-history__list article { grid-template-columns:1fr; gap:12px; }
       .privacy-layout { grid-template-columns:1fr; gap:28px; }
       .privacy-visual { min-height:330px; }
       .privacy-copy h2 { font-size:clamp(2.45rem,11vw,3.8rem); }
@@ -933,6 +1136,8 @@ const qaItems = [
       .release-data { grid-template-columns:1fr; }
       .release-data>div:nth-child(odd) { border-right:0; }
       .release-downloads .scan-button { width:100%; }
+      .play-badge-link--download { width:100%; justify-content:center; }
+      .install-channel-note { align-items:flex-start; flex-direction:column; }
       .install-guide { padding:24px; }
       .faq { grid-template-columns:1fr; gap:26px; padding-top:78px; padding-bottom:78px; }
       .scan-closing__inner { min-height:250px; grid-template-columns:65px 1fr; padding-block:34px; }
