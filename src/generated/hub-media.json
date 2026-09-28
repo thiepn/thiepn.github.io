@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-28T14:54:28.151Z",
+  "capturedAt": "2026-09-28T15:25:43.343Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
@@ -8,12 +8,12 @@
     "notes": {
       "file": "/src/assets/hub/notes.webp",
       "url": "https://thiepn.dev/notes/",
-      "bytes": 22550
+      "bytes": 24754
     },
     "canvas": {
       "file": "/src/assets/hub/canvas.webp",
       "url": "https://thiepn.dev/canvas/",
-      "bytes": 52624
+      "bytes": 52678
     },
     "tiny-tools": {
       "file": "/src/assets/hub/tiny-tools.webp",
@@ -23,7 +23,7 @@
     "thiepn-library": {
       "file": "/src/assets/hub/thiepn-library.webp",
       "url": "https://thiepn.dev/library",
-      "bytes": 90042
+      "bytes": 93662
     },
     "atelier": {
       "file": "/src/assets/hub/atelier.webp",
@@ -40,20 +40,25 @@
       "url": "https://thiepn.dev/pdf/",
       "bytes": 42952
     },
+    "scan": {
+      "file": "/src/assets/hub/scan.webp",
+      "url": "https://thiepn.dev/scan/",
+      "bytes": 53714
+    },
     "signal-earth": {
       "file": "/src/assets/hub/signal-earth.webp",
       "url": "https://thiepn.dev/signal-earth/",
-      "bytes": 48186
+      "bytes": 41144
     },
     "steadybar": {
       "file": "/src/assets/hub/steadybar.webp",
       "url": "https://thiepn.dev/steadybar/",
-      "bytes": 46028
+      "bytes": 33998
     },
     "wordstrike": {
       "file": "/src/assets/hub/wordstrike.webp",
       "url": "https://thiepn.dev/wordstrike/",
-      "bytes": 41686
+      "bytes": 45818
     },
     "mathlab": {
       "file": "/src/assets/hub/mathlab.webp",
@@ -78,12 +83,12 @@
     "tms60": {
       "file": "/src/assets/hub/tms60.webp",
       "url": "https://thiepn.dev/tms60/",
-      "bytes": 16990
+      "bytes": 16988
     },
     "unreached": {
       "file": "/src/assets/hub/unreached.webp",
       "url": "https://thiepn.dev/unreached/",
-      "bytes": 71902
+      "bytes": 81170
     },
     "clean30": {
       "file": "/src/assets/hub/clean30.webp",
@@ -98,7 +103,7 @@
     "gomoku": {
       "file": "/src/assets/hub/gomoku.webp",
       "url": "https://thiepn.dev/gomoku/",
-      "bytes": 23444
+      "bytes": 22898
     },
     "artikelwerk": {
       "file": "/src/assets/hub/artikelwerk.webp",
@@ -118,12 +123,12 @@
     "micro-arcade": {
       "file": "/src/assets/hub/micro-arcade.webp",
       "url": "https://thiepn.dev/arcade/",
-      "bytes": 18152
+      "bytes": 18280
     },
     "voidcut": {
       "file": "/src/assets/hub/voidcut.webp",
       "url": "https://thiepn.dev/voidcut/",
-      "bytes": 9584
+      "bytes": 9598
     },
     "impossible-transit": {
       "file": "/src/assets/hub/impossible-transit.webp",
@@ -133,12 +138,7 @@
     "skyspire": {
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
-      "bytes": 19114
-    },
-    "scan": {
-      "file": "/src/assets/hub/scan.webp",
-      "url": "https://thiepn.dev/scan/",
-      "bytes": 53450
+      "bytes": 18938
     }
   }
 }
