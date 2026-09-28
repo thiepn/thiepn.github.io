@@ -62,7 +62,7 @@ function svg({ file, title, subtitle, accent = '#356142', kind = 'PROJECT' }) {
 }
 
 const cards = [
-  { file: 'index.svg', code: 'HOME', title: '26 apps. One place.', subtitle: 'Tools, creative software, learning projects, faith resources, explorations and games.', kind: 'HUB', accent: '#555650' },
+  { file: 'index.svg', code: 'HOME', title: '27 apps. One place.', subtitle: 'Tools, creative software, learning projects, faith resources, explorations and games.', kind: 'HUB', accent: '#555650' },
   { file: 'projects.svg', code: 'PROJECTS', title: 'Project archive', subtitle: 'Current apps, older projects, learning systems, resources and experiments kept in one historical catalogue.', kind: 'DIRECTORY', accent: '#555650' },
   { file: 'books.svg', code: 'BOOKS', title: 'Books', subtitle: 'Published long-form works available through the THIEPN Library.', kind: 'LIBRARY', accent: '#555650' },
   { file: 'collections.svg', code: 'COLLECTIONS', title: 'Collections', subtitle: 'Editorial paths through related THIEPN projects, subjects and experiments.', kind: 'DIRECTORY', accent: '#555650' },
