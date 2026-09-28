@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-28T19:03:00.543Z",
+  "capturedAt": "2026-09-28T19:56:51.127Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
@@ -13,7 +13,7 @@
     "canvas": {
       "file": "/src/assets/hub/canvas.webp",
       "url": "https://thiepn.dev/canvas/",
-      "bytes": 52648
+      "bytes": 52640
     },
     "tiny-tools": {
       "file": "/src/assets/hub/tiny-tools.webp",
@@ -43,12 +43,12 @@
     "scan": {
       "file": "/src/assets/hub/scan.webp",
       "url": "https://thiepn.dev/scan/",
-      "bytes": 63880
+      "bytes": 62762
     },
     "signal-earth": {
       "file": "/src/assets/hub/signal-earth.webp",
       "url": "https://thiepn.dev/signal-earth/",
-      "bytes": 38818
+      "bytes": 38522
     },
     "steadybar": {
       "file": "/src/assets/hub/steadybar.webp",
@@ -58,7 +58,7 @@
     "wordstrike": {
       "file": "/src/assets/hub/wordstrike.webp",
       "url": "https://thiepn.dev/wordstrike/",
-      "bytes": 2886
+      "bytes": 45818
     },
     "mathlab": {
       "file": "/src/assets/hub/mathlab.webp",
@@ -83,7 +83,7 @@
     "tms60": {
       "file": "/src/assets/hub/tms60.webp",
       "url": "https://thiepn.dev/tms60/",
-      "bytes": 16986
+      "bytes": 16990
     },
     "unreached": {
       "file": "/src/assets/hub/unreached.webp",
@@ -123,12 +123,12 @@
     "micro-arcade": {
       "file": "/src/assets/hub/micro-arcade.webp",
       "url": "https://thiepn.dev/arcade/",
-      "bytes": 18278
+      "bytes": 18386
     },
     "voidcut": {
       "file": "/src/assets/hub/voidcut.webp",
       "url": "https://thiepn.dev/voidcut/",
-      "bytes": 9612
+      "bytes": 9582
     },
     "impossible-transit": {
       "file": "/src/assets/hub/impossible-transit.webp",
@@ -138,7 +138,7 @@
     "skyspire": {
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
-      "bytes": 19032
+      "bytes": 19116
     }
   }
 }
