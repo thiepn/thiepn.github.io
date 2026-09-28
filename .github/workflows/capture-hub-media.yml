@@ -8,6 +8,7 @@ on:
       - '.github/workflows/capture-hub-media.yml'
       - 'scripts/capture-hub-media.mjs'
       - 'src/data/hub.json'
+      - 'src/data/scan-distribution.json'
       - 'src/content/projects/**'
       - 'src/pages/scan/**'
       - 'public/scan/**'
