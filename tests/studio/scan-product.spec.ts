@@ -25,10 +25,20 @@ test('Scan product page uses authentic Android media', async ({ page }) => {
     '/scan/screenshots/09-form-filling.webp',
   ]);
 
-  for (const image of await page.locator('.scan-shot__image img').all()) {
+  const expectedDimensions = [
+    [1080, 2146], [1080, 2146], [1080, 2146],
+    [1080, 2146], [1080, 2146], [1080, 2146],
+    [1080, 2400], [1080, 2400], [1080, 2400],
+  ];
+  const images = await page.locator('.scan-shot__image img').all();
+  for (const [index, image] of images.entries()) {
     await image.scrollIntoViewIfNeeded();
     await expect(image).toHaveJSProperty('complete', true);
-    expect(await image.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(1000);
+    const dimensions = await image.evaluate((node) => [
+      (node as HTMLImageElement).naturalWidth,
+      (node as HTMLImageElement).naturalHeight,
+    ]);
+    expect(dimensions).toEqual(expectedDimensions[index]);
   }
 });
 
@@ -43,7 +53,29 @@ test('Scan download experience fails closed before v1.0.0 is published', async (
   await expect(page.locator('[data-scan-checksum]')).toHaveText('Pending');
 });
 
-test('Scan download experience unlocks only official release assets', async ({ page }) => {
+test('Scan download experience stays locked for incomplete official release assets', async ({ page }) => {
+  await page.route(releaseApi, (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      tag_name: 'v1.0.0',
+      draft: false,
+      prerelease: false,
+      html_url: 'https://github.com/thiepn/scan/releases/tag/v1.0.0',
+      published_at: '2026-09-28T18:00:00Z',
+      assets: [
+        { name: 'Scan-v1.0.0.apk', browser_download_url: 'https://downloads.example/Scan-v1.0.0.apk', size: 21 * 1024 * 1024 },
+      ],
+    }),
+  }));
+
+  await page.goto('/scan/');
+  await expect(page.locator('[data-scan-release-status]')).toHaveText('v1.0.0 release candidate');
+  await expect(page.locator('[data-scan-release-download]').first()).toBeHidden();
+  await expect(page.locator('[data-scan-release-pending]').first()).toBeVisible();
+});
+
+test('Scan download experience unlocks only complete official release assets', async ({ page }) => {
   const checksum = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   const apkUrl = 'https://downloads.example/Scan-v1.0.0.apk';
   const aabUrl = 'https://downloads.example/Scan-v1.0.0.aab';
