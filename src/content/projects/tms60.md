@@ -15,7 +15,7 @@ status: live
 visibility: listed
 summary: Memorize and maintain a structured set of Bible verses through focused recall and review.
 repo: thiepn/tms60
-liveUrl: https://thiepn.dev/tms60/
+liveUrl: https://tms60.thiepn.dev/
 tags:
 - bible
 - memorization
