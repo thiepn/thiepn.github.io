@@ -3,6 +3,14 @@ import path from 'node:path';
 
 const failures = [];
 const fail = (m) => failures.push(m);
+const isProductionProjectUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && (url.hostname === 'thiepn.dev' || url.hostname.endsWith('.thiepn.dev'));
+  } catch {
+    return false;
+  }
+};
 const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
 const rc = JSON.parse(fs.readFileSync('release-candidate.json','utf8'));
 const prod = JSON.parse(fs.readFileSync('release-production.json','utf8'));
