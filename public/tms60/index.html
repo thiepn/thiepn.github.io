@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Returning to TMS 60</title>
+</head>
+<body>
+<p>Returning to TMS 60…</p>
+<script>
+(()=>{
+  const source=new URL(window.location.href);
+  const target=new URL('https://tms60.thiepn.dev/');
+  const allowed=['code','sb_flow_id','error','error_code','error_description','tms60_auth'];
+  for(const key of allowed){
+    for(const value of source.searchParams.getAll(key))target.searchParams.append(key,value);
+  }
+  if(!target.searchParams.has('tms60_auth'))target.searchParams.set('tms60_auth','1');
+  window.location.replace(target.toString());
+})();
+</script>
+<noscript>JavaScript is required to complete sign-in.</noscript>
+</body>
+</html>
