@@ -861,7 +861,7 @@
       "type": "study-system",
       "status": "live",
       "route": "/project/tms60/",
-      "liveUrl": "https://thiepn.dev/tms60/",
+      "liveUrl": "https://tms60.thiepn.dev/",
       "repo": "thiepn/tms60",
       "tags": [
         "bible",
