@@ -31,12 +31,12 @@ for (const name of fs.readdirSync('src/content/projects')) {
   if (!name.endsWith('.md')) continue;
   const text = fs.readFileSync(path.join('src/content/projects',name),'utf8');
   const match = /^liveUrl:\s*(\S+)/m.exec(text);
-  if (match && !match[1].startsWith('https://thiepn.dev/')) fail(`${name}: liveUrl must use thiepn.dev`);
+  if (match && !isProductionProjectUrl(match[1])) fail(`${name}: liveUrl must use thiepn.dev or a thiepn.dev subdomain`);
 }
 if (fs.existsSync('src/generated/catalogue-public.json')) {
   const catalogue = JSON.parse(fs.readFileSync('src/generated/catalogue-public.json','utf8'));
   for (const project of catalogue.projects ?? []) {
-    if (!project.liveUrl?.startsWith('https://thiepn.dev/')) fail(`${project.code}: generated liveUrl is not production-domain canonical`);
+    if (!isProductionProjectUrl(project.liveUrl)) fail(`${project.code}: generated liveUrl is not production-domain canonical`);
   }
 }
 if (failures.length) {
