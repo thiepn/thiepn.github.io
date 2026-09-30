@@ -897,7 +897,8 @@ function genTexture(kind){
 }
 SUN._tex=genTexture('sun');
 PLANETS.forEach(function(p){ p._tex=genTexture(p.tex); });
-PLUTO._tex=genTexture('pluto');MOON._tex=genTexture('moon');
+PLUTO._tex=genTexture('pluto');
+MOON._tex=genTexture('moon');
 
 var APP_VERSION='1.4.0'; /* P8 visual excellence */
 var DAY_MS=864e5;
@@ -1796,7 +1797,8 @@ function drawBezel(a){
   ctx.strokeStyle=INK;ctx.lineWidth=1;
   ctx.globalAlpha=0.5*a;
   ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.stroke();
-  for(var d=0;d<360;d+=2){    var major=d%30===0,mid=d%10===0;
+  for(var d=0;d<360;d+=2){
+    var major=d%30===0,mid=d%10===0;
     var len=major?11:mid?7:4;
     var al=major?0.55:mid?0.4:0.22;
     var ang=d*Math.PI/180-Math.PI/2;
