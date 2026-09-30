@@ -1,4 +1,4 @@
-const CACHE='orrery-v1.4.0';
+const CACHE='orrery-v1.4.0-visual1';
 const ROOT=new URL('./',self.location.href).href;
 const CORE=['','index.html','manifest.webmanifest','icons/icon.svg','icons/icon-maskable.svg'].map(p=>new URL(p,ROOT).href);
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));});
