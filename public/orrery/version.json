@@ -1,0 +1,7 @@
+{
+  "version": "1.4.0",
+  "release": "P9-production",
+  "route": "https://thiepn.dev/orrery/",
+  "precision": "https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision",
+  "sourceCommit": "ec8b781f0c524712a586a456a42dc0b7e146344e"
+}
