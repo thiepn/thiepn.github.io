@@ -897,8 +897,7 @@ function genTexture(kind){
 }
 SUN._tex=genTexture('sun');
 PLANETS.forEach(function(p){ p._tex=genTexture(p.tex); });
-PLUTO._tex=genTexture('pluto');
-MOON._tex=genTexture('moon');
+PLUTO._tex=genTexture('pluto');MOON._tex=genTexture('moon');
 
 var APP_VERSION='1.4.0'; /* P8 visual excellence */
 var DAY_MS=864e5;
@@ -997,7 +996,158 @@ function resize(){
 addEventListener('resize',resize);
 resize();
 
-function norm180(a){return ((a+Math.PI)%TAU+TAU)%TAU-Math.PI;}  det.setAttribute('aria-valuenow',String(speedIx));
+function norm180(a){return ((a+Math.PI)%TAU+TAU)%TAU-Math.PI;}
+function simDayToJD(day){return MODEL_EPOCH_JD+day;}
+function planetElementsAt(p,day){
+  var T=(simDayToJD(day)-J2000_JD)/36525;
+  var useShort=T>=-2&&T<=0.5;
+  var row=(useShort?JPL_SHORT:JPL_LONG)[p.name];
+  if(!row)throw new Error('No JPL elements for '+p.name);
+  var v=[];for(var i=0;i<6;i++)v[i]=row.b[i]+row.r[i]*T;
+  var M=v[3]-v[4];
+  if(!useShort&&JPL_LONG_EXTRA[p.name]){
+    var ex=JPL_LONG_EXTRA[p.name];
+    M+=ex.b*T*T+ex.c*Math.cos(ex.f*T*D2R)+ex.s*Math.sin(ex.f*T*D2R);
+  }
+  return {a:v[0],e:v[1],I:v[2]*D2R,L:v[3]*D2R,peri:v[4]*D2R,node:v[5]*D2R,M:M*D2R,fit:useShort?'1800–2050':'3000 BC–3000 AD'};
+}
+function orbitalCartesian(a,e,I,node,omega,M){
+  var E=keplerE(M,e),xp=a*(Math.cos(E)-e),yp=a*Math.sqrt(1-e*e)*Math.sin(E);
+  var cw=Math.cos(omega),sw=Math.sin(omega),cO=Math.cos(node),sO=Math.sin(node),cI=Math.cos(I),sI=Math.sin(I);
+  var x=(cw*cO-sw*sO*cI)*xp+(-sw*cO-cw*sO*cI)*yp;
+  var y=(cw*sO+sw*cO*cI)*xp+(-sw*sO+cw*cO*cI)*yp;
+  var z=(sw*sI)*xp+(cw*sI)*yp;
+  return {x:x,y:y,z:z,E:E,r:Math.hypot(x,y,z)};
+}
+function helioPhysical(p,day){
+  var el=planetElementsAt(p,day),q=orbitalCartesian(el.a,el.e,el.I,el.node,el.peri-el.node,el.M);
+  q.elements=el;return q;
+}
+function plutoElementsAt(day){
+  var T=(simDayToJD(day)-J2000_JD)/36525,v=[];for(var i=0;i<6;i++)v[i]=PLUTO_ELEMENTS.b[i]+PLUTO_ELEMENTS.r[i]*T;
+  return {a:v[0],e:v[1],I:v[2]*D2R,L:v[3]*D2R,peri:v[4]*D2R,node:v[5]*D2R,M:(v[3]-v[4])*D2R,fit:'legacy J2000 approximate fit'};
+}
+function plutoPhysical(day){var el=plutoElementsAt(day),q=orbitalCartesian(el.a,el.e,el.I,el.node,el.peri-el.node,el.M);q.elements=el;return q;}
+function halleyPhysical(day){
+  var jd=simDayToJD(day),a=COMET.au;
+  var period=365.2568983*Math.pow(a,1.5),M=TAU*(jd-COMET.periJD)/period;
+  return orbitalCartesian(a,COMET.e,COMET.i,COMET.node,COMET.w,M);
+}
+/* Perturbation-corrected analytical lunar position. Good for planning/visualization, not precision astrometry. */
+function moonGeocentric(day){
+  var jd=simDayToJD(day),d=jd-2451543.5;
+  function rad(x){return ((x%360)+360)%360*D2R;}
+  var N=rad(125.1228-0.0529538083*d),I=5.1454*D2R,w=rad(318.0634+0.1643573223*d),e=.0549,M=rad(115.3654+13.0649929509*d),aER=60.2666;
+  var E=keplerE(M,e),xv=aER*(Math.cos(E)-e),yv=aER*Math.sqrt(1-e*e)*Math.sin(E),v=Math.atan2(yv,xv),r=Math.hypot(xv,yv),lonOrb=v+w;
+  var xh=r*(Math.cos(N)*Math.cos(lonOrb)-Math.sin(N)*Math.sin(lonOrb)*Math.cos(I));
+  var yh=r*(Math.sin(N)*Math.cos(lonOrb)+Math.cos(N)*Math.sin(lonOrb)*Math.cos(I));
+  var zh=r*(Math.sin(lonOrb)*Math.sin(I));
+  var lon=Math.atan2(yh,xh),lat=Math.atan2(zh,Math.hypot(xh,yh));
+  var ws=rad(282.9404+4.70935e-5*d),Ms=rad(356.0470+0.9856002585*d),Ls=ws+Ms,Lm=N+w+M,D=Lm-Ls,F=Lm-N;
+  lon+=D2R*(-1.274*Math.sin(M-2*D)+0.658*Math.sin(2*D)-0.186*Math.sin(Ms)-0.059*Math.sin(2*M-2*D)-0.057*Math.sin(M-2*D+Ms)+0.053*Math.sin(M+2*D)+0.046*Math.sin(2*D-Ms)+0.041*Math.sin(M-Ms)-0.035*Math.sin(D)-0.031*Math.sin(M+Ms)-0.015*Math.sin(2*F-2*D)+0.011*Math.sin(M-4*D));
+  lat+=D2R*(-0.173*Math.sin(F-2*D)-0.055*Math.sin(M-F-2*D)-0.046*Math.sin(M+F-2*D)+0.033*Math.sin(F+2*D)+0.017*Math.sin(2*M+F));
+  r+=-0.58*Math.cos(M-2*D)-0.46*Math.cos(2*D);
+  var rAU=r*EARTH_RADIUS_KM/AU_KM,cl=Math.cos(lat);
+  return {x:rAU*cl*Math.cos(lon),y:rAU*cl*Math.sin(lon),z:rAU*Math.sin(lat),r:rAU,lon:((lon/TAU)%1+1)%1*TAU,lat:lat,distanceKm:r*EARTH_RADIUS_KM};
+}
+function moonPhysical(day){var e=helioPhysical(PLANETS[2],day),m=moonGeocentric(day);return {x:e.x+m.x,y:e.y+m.y,z:e.z+m.z,r:Math.hypot(e.x+m.x,e.y+m.y,e.z+m.z),geo:m};}
+function bodyPhysical(p,day){if(p===COMET)return halleyPhysical(day);if(p===PLUTO)return plutoPhysical(day);if(p===MOON)return moonPhysical(day);if(p===SUN)return {x:0,y:0,z:0,r:0};return helioPhysical(p,day);}
+function geocentricVector(p,day){
+  var e=helioPhysical(PLANETS[2],day);if(p===SUN)return {x:-e.x,y:-e.y,z:-e.z,r:Math.hypot(e.x,e.y,e.z)};if(p===MOON){var m=moonGeocentric(day);return {x:m.x,y:m.y,z:m.z,r:m.r};}if(p===PLANETS[2])return {x:0,y:0,z:0,r:0};var q=bodyPhysical(p,day),x=q.x-e.x,y=q.y-e.y,z=q.z-e.z;return {x:x,y:y,z:z,r:Math.hypot(x,y,z)};
+}
+function displayA(p){if(!p||!p.A)return 0;if(p===MOON)return displayA(PLANETS[2]);if(scaleMode==='true'){var maxA=PLANETS[7].A,maxAU=PLANETS[7].au;return maxA*(p.au/maxAU);}return p.A;}
+function beltDisplayR(b){return scaleMode==='true'?PLANETS[7].A*(b.au/PLANETS[7].au):b.r;}
+function projectDisplay(x,y,z){
+  var c=Math.cos(spin),ss=Math.sin(spin),xr=x*c-y*ss,yr=x*ss+y*c,zr=z||0;
+  if(viewMode==='3d'){var t=55*D2R,ct=Math.cos(t),st=Math.sin(t);return {x:xr,y:yr*ct-zr*st,depth:yr*st+zr*ct};}
+  return {x:xr,y:yr,depth:zr};
+}
+function displayState(p,day){
+  var q,k,x,y,z;
+  if(p===MOON){var e=helioPhysical(PLANETS[2],day),m=moonGeocentric(day),ek=displayA(PLANETS[2])/PLANETS[2].au;x=e.x*ek+m.x*ek*MOON_VISUAL_MAG;y=e.y*ek+m.y*ek*MOON_VISUAL_MAG;z=e.z*ek+m.z*ek*MOON_VISUAL_MAG;q=moonPhysical(day);}
+  else{q=bodyPhysical(p,day);k=displayA(p)/(p.au||1);x=q.x*k;y=q.y*k;z=q.z*k;}
+  var pr=projectDisplay(x,y,z),geo=p===MOON?moonGeocentric(day):null;
+  return {x:pr.x,y:pr.y,z:pr.depth,r:p===MOON?geo.r:q.r,E:q.E,lon:p===MOON?(geo.lon/D2R):((Math.atan2(q.y,q.x)/D2R+360)%360),lat:p===MOON?(geo.lat/D2R):Math.atan2(q.z,Math.hypot(q.x,q.y))/D2R};
+}
+function rebuildOrbitPath(p,segments,day){
+  var pts=[],ref=isFinite(day)?day:0,k=displayA(p)/(p.au||1),el;
+  if(p===COMET){for(var i=0;i<=segments;i++){var M=TAU*i/segments,q=orbitalCartesian(COMET.au,COMET.e,COMET.i,COMET.node,COMET.w,M);pts.push({x:q.x*k,y:q.y*k,z:q.z*k});}}
+  else{el=p===PLUTO?plutoElementsAt(ref):planetElementsAt(p,ref);for(var j=0;j<=segments;j++){var q2=orbitalCartesian(el.a,el.e,el.I,el.node,el.peri-el.node,TAU*j/segments);pts.push({x:q2.x*k,y:q2.y*k,z:q2.z*k});}}
+  p._orbitPath=pts;
+}
+var orbitPathEpoch=0;
+function refreshOrbitPaths(day){orbitPathEpoch=day;PLANETS.forEach(function(p){rebuildOrbitPath(p,120,day);});rebuildOrbitPath(PLUTO,140,day);rebuildOrbitPath(COMET,160,day);}
+function ensureOrbitPaths(day){if(Math.abs(day-orbitPathEpoch)>3652.5)refreshOrbitPaths(day);}
+refreshOrbitPaths(0);
+
+function $(id){return document.getElementById(id);}
+var card=$('card'),elOver=$('cardOver'),elName=$('cardName'),elMean=$('cardMean'),
+    elEcc=$('cardEcc'),elPeriod=$('cardPeriod'),elLive=$('cardLive'),elNote=$('cardNote'),
+    elDay=$('dayN'),elDate=$('dateStr'),
+    almanac=$('almanac'),alList=$('alList'),alBtn=$('almanacBtn'),
+    secondaryActions=$('secondaryActions'),moreBtn=$('moreBtn'),planetBtn=$('planetBtn'),sceneStatus=$('sceneStatus'),
+    helpBtn=$('helpBtn'),helpPanel=$('helpPanel'),helpClose=$('helpClose'),alRefresh=$('alRefresh'),alBaseText=$('alBaseText'),
+    dateBtn=$('dateBtn'),datePanel=$('datePanel'),dateClose=$('dateClose'),dateInput=$('dateInput'),dateGo=$('dateGo'),dateToday=$('dateToday'),timeline=$('timeline'),timelineSpan=$('timelineSpan'),timelineStart=$('timelineStart'),timelineCenter=$('timelineCenter'),timelineEnd=$('timelineEnd'),
+    settingsBtn=$('settingsBtn'),settingsPanel=$('settingsPanel'),settingsClose=$('settingsClose'),scaleBtn=$('scaleBtn'),lookBtn=$('lookBtn'),exportBtn=$('exportBtn'),fullscreenBtn=$('fullscreenBtn'),installBtn=$('installBtn'),appearanceSetting=$('appearanceSetting'),labelSetting=$('labelSetting'),showEclipticSetting=$('showEclipticSetting'),showTrailsSetting=$('showTrailsSetting'),
+    cardDetailsBtn=$('cardDetailsBtn'),cardExtra=$('cardExtra'),cardEarthDist=$('cardEarthDist'),cardSpeed=$('cardSpeed'),cardIncl=$('cardIncl'),cardRotation=$('cardRotation'),cardFit=$('cardFit'),
+    alHorizon=$('alHorizon'),alBody=$('alBody'),alType=$('alType'),onboarding=$('onboarding'),onboardSkip=$('onboardSkip'),onboardNext=$('onboardNext'),onboardDots=$('onboardDots'),
+    viewBtn=$('viewBtn'),modeBtn=$('modeBtn'),modeTabs=$('modeTabs'),timeInput=$('timeInput'),
+    observerPanel=$('observerPanel'),observerClose=$('observerClose'),observerTarget=$('observerTarget'),observerLat=$('observerLat'),observerLon=$('observerLon'),observerOffset=$('observerOffset'),useLocationBtn=$('useLocationBtn'),followObserverTarget=$('followObserverTarget'),observerVisibility=$('observerVisibility'),
+    obsLocalTime=$('obsLocalTime'),obsRaDec=$('obsRaDec'),obsAltAz=$('obsAltAz'),obsDistance=$('obsDistance'),obsMagnitude=$('obsMagnitude'),obsPhase=$('obsPhase'),obsRise=$('obsRise'),obsTransit=$('obsTransit'),obsSet=$('obsSet'),obsBest=$('obsBest'),
+    precisionEndpointSetting=$('precisionEndpointSetting'),precisionCheckBtn=$('precisionCheckBtn'),precisionTarget=$('precisionTarget'),precisionCommand=$('precisionCommand'),precisionLookupBtn=$('precisionLookupBtn'),precisionLookupResults=$('precisionLookupResults'),precisionRefresh=$('precisionRefresh'),precisionElementsBtn=$('precisionElementsBtn'),precisionBadge=$('precisionBadge'),precisionStatus=$('precisionStatus'),precisionData=$('precisionData'),precisionElements=$('precisionElements'),precisionElementsData=$('precisionElementsData'),precisionEventType=$('precisionEventType'),precisionEventScan=$('precisionEventScan'),precisionEventResults=$('precisionEventResults'),precisionExportJson=$('precisionExportJson'),precisionExportCsv=$('precisionExportCsv'),
+    precRaDec=$('precRaDec'),precAltAz=$('precAltAz'),precRange=$('precRange'),precRangeRate=$('precRangeRate'),precLightTime=$('precLightTime'),precMagnitude=$('precMagnitude'),precIllum=$('precIllum'),precDiameter=$('precDiameter'),precElong=$('precElong'),precPhase=$('precPhase'),precConstellation=$('precConstellation'),precSkyMotion=$('precSkyMotion'),
+    learnPanel=$('learnPanel'),learnClose=$('learnClose'),learnTopics=$('learnTopics'),learnContent=$('learnContent'),learnDemo=$('learnDemo'),educationBanner=$('educationBanner'),educationTitle=$('educationTitle'),educationText=$('educationText'),educationDismiss=$('educationDismiss');
+
+function mark(p){
+  switch(p.style){
+    case 'sun':return '<circle cx="8" cy="8" r="3.4" fill="none" stroke="currentColor"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/>';
+    case 'filled':return '<circle cx="8" cy="8" r="3" fill="currentColor"/>';
+    case 'open':return '<circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.1"/>';
+    case 'earth':return '<circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="8" cy="8" r=".9" fill="currentColor"/>';
+    case 'banded':return '<circle cx="8" cy="8" r="4.2" fill="currentColor"/><path d="M4.6 6.7h6.8M4.1 9.3h7.8" stroke="#f2ead9"/>';
+    case 'ringed':return '<g transform="rotate(-18 8 8)"><circle cx="8" cy="8" r="2.7" fill="currentColor"/><ellipse cx="8" cy="8" rx="6.4" ry="2.3" fill="none" stroke="currentColor"/></g>';
+    case 'dwarf':return '<circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor"/><path d="M5.5 8h5" stroke="currentColor"/>';
+    case 'moon':return '<path d="M9.7 4.8a3.8 3.8 0 1 0 0 6.4A3.2 3.2 0 0 1 9.7 4.8Z" fill="currentColor"/>';
+    case 'comet':return '<circle cx="5.2" cy="10.2" r="1.7" fill="currentColor"/><path d="M6.8 8.6 12 3.6" stroke="currentColor"/>';
+  }
+  return '';
+}
+function perTxt(p){return p===SUN?'\u2014':(p.period<400?Math.round(p.period)+' d':(p.period/365.25).toFixed(1)+' y');}
+function bodyAccent(p){return ({Sun:'#d99a35',Mercury:'#9a9188',Venus:'#d9bd84',Earth:'#5f98b8',Mars:'#b85d3e',Jupiter:'#b99878',Saturn:'#c7aa6d',Uranus:'#82b9c0',Neptune:'#5a78b7',Pluto:'#9f8a75',Moon:'#bbb5aa',Halley:'#8fc8dc'})[p.name]||'#8f7b68';}
+function isBodyShown(p){return p!==PLUTO||!!prefs.showPluto;}
+var legend=$('legend');
+legend.innerHTML='<div class="lg-title">Table of Wanderers</div>';
+var rows=BODIES.map(function(p,i){
+  var b=document.createElement('button'),code=i===0?'00':p===PLUTO?'D1':p===MOON?'L':p===COMET?'C':String(PLANETS.indexOf(p)+1).padStart(2,'0');
+  b.className='lg-row'+((p===PLUTO||p===MOON||p===COMET)?' minor':'');b.style.setProperty('--body-color',bodyAccent(p));
+  b.innerHTML='<span class="lg-i">'+code+'</span><svg width="16" height="16" viewBox="0 0 16 16">'+mark(p)+'</svg><span class="lg-name">'+p.name+'</span><span class="lg-per">'+perTxt(p)+'</span>';
+  b.addEventListener('mouseenter',function(){legendHover=p;});b.addEventListener('mouseleave',function(){legendHover=null;});b.setAttribute('aria-pressed','false');
+  b.addEventListener('click',function(){var returnFocus=legend.classList.contains('mobile-open');tracked=(tracked===p)?null:p;syncLegend();setPlanetPanelOpen(false,returnFocus);syncSceneStatus(true);if(appMode==='observe'&&tracked){observerTarget.value=tracked.name;prefs.observerTarget=tracked.name;savePrefs();updateObserver(true);}});
+  legend.appendChild(b);return b;
+});
+function syncLegend(){rows.forEach(function(r,i){var p=BODIES[i],active=tracked===p;r.classList.toggle('active',active);r.setAttribute('aria-pressed',active?'true':'false');r.dataset.hidden=isBodyShown(p)?'false':'true';});}
+syncLegend();
+[['playBtn','Pause or play simulation'],['dateBtn','Open date and timeline controls'],['todayBtn','Jump to now'],['almanacBtn','Open astronomical almanac'],['copyBtn','Share or copy this exact view'],['exportBtn','Save the current orrery drawing as PNG'],['scaleBtn','Toggle logarithmic or true-distance orbit scale'],['viewBtn','Toggle flat or 3D orbital-plane projection'],['lookBtn','Toggle antique or natural rendering'],['fullscreenBtn','Toggle fullscreen'],['settingsBtn','Open preferences'],['resetBtn','Reset camera'],['modeBtn','Switch Explore, Observe and Learn modes'],['planetBtn','Choose a celestial body'],['helpBtn','Open help and keyboard shortcuts']].forEach(function(x){var el=$(x[0]);if(el)el.title=x[1];});
+
+var det=$('detents'),knob=document.createElement('span');
+det.setAttribute('role','slider');
+det.setAttribute('tabindex','0');
+det.setAttribute('aria-label','Simulation speed');
+det.setAttribute('aria-valuemin','0');
+det.setAttribute('aria-valuemax',String(SPEEDS.length-1));
+knob.className='knob';det.appendChild(knob);
+var notches=[];
+for(var ni=0;ni<SPEEDS.length;ni++){
+  var n2=document.createElement('span');
+  n2.className='notch';n2.style.left=(ni/(SPEEDS.length-1)*100)+'%';
+  det.appendChild(n2);notches.push(n2);
+}
+function setSpeed(i){
+  speedIx=clamp(Math.round(i),0,SPEEDS.length-1);
+  knob.style.left=(speedIx/(SPEEDS.length-1)*100)+'%';
+  notches.forEach(function(n,k){n.classList.toggle('active',k===speedIx);});
+  $('speedLabel').textContent=SPEED_LABELS[speedIx];
+  det.setAttribute('aria-valuenow',String(speedIx));
   det.setAttribute('aria-valuetext',SPEED_LABELS[speedIx]);
 }
 var detDrag=false;
@@ -1646,8 +1796,7 @@ function drawBezel(a){
   ctx.strokeStyle=INK;ctx.lineWidth=1;
   ctx.globalAlpha=0.5*a;
   ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.stroke();
-  for(var d=0;d<360;d+=2){
-    var major=d%30===0,mid=d%10===0;
+  for(var d=0;d<360;d+=2){    var major=d%30===0,mid=d%10===0;
     var len=major?11:mid?7:4;
     var al=major?0.55:mid?0.4:0.22;
     var ang=d*Math.PI/180-Math.PI/2;
@@ -1997,3 +2146,26 @@ function runUnitTests(){
   if(panel){panel.hidden=false;panel.innerHTML='<h2>Orrery P6 tests</h2><p><b>'+passed+'/'+results.length+'</b> passed'+(failed?' · '+failed+' failed':' · ALL TESTS PASSED')+'</p>'+results.map(function(r){return '<div class="'+(r.ok?'test-pass':'test-fail')+'">'+(r.ok?'PASS':'FAIL')+' — '+r.name+(r.ok?'':' — '+r.error)+'</div>';}).join('');}
   if(window.console&&console.table)console.table(results);return window.__ORRERY_TEST_RESULTS__;
 }
+window.OrreryTests={run:runUnitTests};
+populateObserverTargets();populatePrecisionTargets();syncPrecisionUI();selectLearnTopic('ellipses');setAppMode('explore');syncSettings();
+syncSceneStatus(true);
+if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)document.body.classList.add('standalone');
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstallPrompt=e;if(installBtn)installBtn.hidden=false;});
+window.addEventListener('appinstalled',function(){deferredInstallPrompt=null;if(installBtn)installBtn.hidden=true;document.body.classList.add('standalone');toast('THE ORRERY INSTALLED');});
+if(installBtn)installBtn.addEventListener('click',async function(){setMoreOpen(false);if(!deferredInstallPrompt){toast('USE YOUR BROWSER’S INSTALL / ADD TO HOME SCREEN COMMAND');return;}deferredInstallPrompt.prompt();try{await deferredInstallPrompt.userChoice;}catch(e){}deferredInstallPrompt=null;installBtn.hidden=true;});
+if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(e){if(console&&console.warn)console.warn('Service worker registration failed',e);});});
+setTimeout(maybeShowOnboarding,350);
+markActivity();
+if(new URLSearchParams(location.search).has('tests'))setTimeout(runUnitTests,0);
+
+function scheduleFrame(){if(!document.hidden&&!rafId)rafId=requestAnimationFrame(function(t){rafId=0;frame(t);});}
+document.addEventListener('visibilitychange',function(){if(!document.hidden){lastT=performance.now();scheduleFrame();}});
+scheduleFrame();
+var bt=document.getElementById('boot');
+if(bt)bt.style.display='none';
+}catch(err){
+  fail(err.message);
+}
+</script>
+</body>
+</html>
