@@ -1,0 +1,19 @@
+---
+import ThemeControl from '../shell/ThemeControl.astro';
+import type { HubProjectEntry } from '../../lib/hub';
+interface Props { entries: HubProjectEntry[]; }
+const { entries } = Astro.props;
+---
+<dialog class="portal-customize" id="portal-customize" aria-labelledby="customize-title" data-portal-customize>
+  <header class="portal-section-heading"><h2 id="customize-title">Customize Home</h2><button type="button" data-customize-close>Done</button></header>
+  <p class="portal-muted">Choose up to 12 pins. These preferences stay in this browser.</p>
+  <ThemeControl />
+  <fieldset class="portal-density"><legend>Spacing</legend><label><input type="radio" name="density" value="compact" /> Compact</label><label><input type="radio" name="density" value="comfortable" /> Comfortable</label></fieldset>
+  <h3>Pin order</h3><p class="portal-muted">Use the arrows to reorder your shortcuts.</p>
+  <ol class="portal-pin-order" data-pin-order></ol>
+  <h3>Choose apps</h3>
+  <div class="portal-pin-choices">
+    {entries.map(({ project }) => <label><input type="checkbox" value={project.data.slug} data-pin-choice /><span>{project.data.title}</span></label>)}
+  </div>
+  <footer><button type="button" data-pins-reset>Reset pins & spacing</button><p role="status" data-customize-status aria-live="polite"></p></footer>
+</dialog>

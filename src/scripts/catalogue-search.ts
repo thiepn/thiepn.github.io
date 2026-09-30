@@ -20,7 +20,8 @@ let payloadPromise: Promise<SearchPayload> | null = null;
 let controllerPromise: Promise<SearchController | null> | null = null;
 
 function getPayload(): Promise<SearchPayload> {
-  payloadPromise ??= fetch('/search-index.json', {
+  const appsOnly = getSearchRoot()?.dataset.searchScope === 'apps';
+  payloadPromise ??= fetch(appsOnly ? '/hub-search.json' : '/search-index.json', {
     headers: { Accept: 'application/json' },
     credentials: 'same-origin',
   }).then(async (response) => {
@@ -47,6 +48,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   const resultsEl = results;
   const statusEl = status;
   const closeEl = close;
+  const appsOnly = root.dataset.searchScope === 'apps';
 
   let payload: SearchPayload | null = null;
   let items: SearchableItem[] = [];
@@ -55,7 +57,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   let returnFocus: HTMLElement | null = null;
 
   const itemUrl = (item: SearchableItem) => {
-    if (item.kind === 'project') return `/project/${item.slug}/`;
+    if (item.kind === 'project') return appsOnly && item.liveUrl ? item.liveUrl : `/project/${item.slug}/`;
     if (item.kind === 'collection') return `/collection/${item.slug}/`;
     return item.libraryUrl;
   };
@@ -126,11 +128,11 @@ async function createController(root: HTMLElement): Promise<SearchController | n
   function buildEmpty(query: string) {
     const empty = document.createElement('div');
     empty.className = 'catalogue-search__empty';
-    const title = document.createElement('strong'); title.textContent = 'No matching work.';
+    const title = document.createElement('strong'); title.textContent = appsOnly ? 'No matching apps.' : 'No matching work.';
     const copy = document.createElement('p'); copy.textContent = query
       ? `Nothing matched “${query}”. Try a project name or a broader topic.`
       : 'Search by project name or topic.';
-    const browse = document.createElement('a'); browse.href = '/projects/'; browse.textContent = 'Browse all projects →';
+    const browse = document.createElement('a'); browse.href = appsOnly ? '/search/' : '/projects/'; browse.textContent = appsOnly ? 'Browse all apps →' : 'Browse all projects →';
     empty.append(title, copy, browse);
     return empty;
   }
@@ -143,7 +145,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
     if (ranked.length) resultsEl.replaceChildren(...ranked.map(({ item }, index) => buildResult(item, index)));
     else resultsEl.replaceChildren(buildEmpty(query));
 
-    if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} suggested projects`;
+    if (!query) statusEl.textContent = `${String(ranked.length).padStart(2, '0')} suggested ${appsOnly ? 'apps' : 'projects'}`;
     else if (!ranked.length) statusEl.textContent = '0 matches';
     else {
       const counts = ranked.reduce((current, { item }) => {
@@ -190,7 +192,7 @@ async function createController(root: HTMLElement): Promise<SearchController | n
       statusEl.textContent = 'Search is temporarily unavailable. Close it and try again, or browse all projects.';
       resultsEl.replaceChildren(buildEmpty(inputEl.value.trim()));
     }
-    requestAnimationFrame(() => inputEl.focus());
+    requestAnimationFrame(() => { if (dialogEl.open) inputEl.focus(); });
   }
 
   document.addEventListener('keydown', (event) => {

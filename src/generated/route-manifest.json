@@ -12,6 +12,7 @@
     "/collection/productivity-creation/",
     "/collection/typing-games/",
     "/collections/",
+    "/hub-search.json",
     "/privacy/",
     "/project/artikelwerk/",
     "/project/atelier/",
@@ -47,6 +48,7 @@
     "/projects/",
     "/scan/",
     "/scan/privacy/",
+    "/search/",
     "/work/"
   ]
 }

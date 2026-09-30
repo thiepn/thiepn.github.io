@@ -1,0 +1,17 @@
+---
+import type { HubProjectEntry } from '../../lib/hub';
+import { DEFAULT_HUB_PINS } from '../../lib/hub-preferences';
+interface Props { entries: HubProjectEntry[]; }
+const { entries } = Astro.props;
+const pins = DEFAULT_HUB_PINS.flatMap(slug => entries.filter(entry => entry.hub.slug === slug));
+---
+<section class="portal-pins" aria-labelledby="pins-heading" data-personal-pins>
+  <header class="portal-section-heading">
+    <h2 id="pins-heading">Pinned apps</h2>
+    <a href="#apps">All apps <span aria-hidden="true">↓</span></a>
+  </header>
+  <div class="portal-pin-grid" data-pin-list>
+    {pins.map(({ project }) => <a class="portal-pin" href={project.data.liveUrl!} data-pin-slug={project.data.slug}><span class="portal-pin-icon" aria-hidden="true">{project.data.title.slice(0, 2)}</span><strong>{project.data.title}</strong></a>)}
+  </div>
+  <p class="portal-pin-empty" data-pin-empty hidden>No pinned apps yet. Choose Customize to add your shortcuts.</p>
+</section>

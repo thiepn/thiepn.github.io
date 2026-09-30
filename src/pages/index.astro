@@ -9,7 +9,8 @@ const apps = await getHubProjects();
 ---
 <BaseLayout
   title="THIEPN — Apps, tools, games and learning projects"
-  description="Open all 27 THIEPN apps from one place: tools, creative apps, learning projects, Bible and faith resources, explorations and games by Jonathan."
+  description={`Open all ${apps.length} THIEPN apps from one place: tools, creative apps, learning projects, Bible and faith resources, explorations and games by Jonathan.`}
+  portal
 >
   <div class="hub-home page-shell">
     <HubCatalogue entries={apps} />

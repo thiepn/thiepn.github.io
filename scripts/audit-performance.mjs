@@ -94,7 +94,7 @@ function pageBudget(relativeHtml) {
 if (sourceOnly) {
   sourceAudit();
 } else {
-  const pages = ['index.html', 'projects/index.html', 'project/pdf-studio/index.html', 'collection/browser-games/index.html'];
+  const pages = ['index.html', 'home/index.html', 'search/index.html', 'projects/index.html', 'project/pdf-studio/index.html', 'collection/browser-games/index.html'];
   const rows = pages.map(pageBudget).filter(Boolean);
   const searchFile = path.join(dist, 'search-index.json');
   if (!fs.existsSync(searchFile)) fail('dist/search-index.json was not generated.');

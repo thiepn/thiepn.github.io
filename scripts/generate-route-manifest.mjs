@@ -5,10 +5,11 @@ const args = parseArgs();
 const projects = publicProjects(await readProjects());
 const collections = await readCollections();
 const routes = [
-  '/', '/about/', '/work/', '/projects/', '/books/', '/byte/', '/scan/', '/scan/privacy/', '/collections/', '/privacy/',
+  '/', '/search/', '/about/', '/work/', '/projects/', '/books/', '/byte/', '/scan/', '/scan/privacy/', '/collections/', '/privacy/',
   ...projects.map(projectRoute),
   ...collections.map(collectionRoute),
   '/catalogue.json',
+  '/hub-search.json',
 ].sort((a, b) => a.localeCompare(b));
 const payload = { schemaVersion: 1, routes };
 await writeJson(path.join(PATHS.generated, 'route-manifest.json'), payload, { check: Boolean(args.check) });

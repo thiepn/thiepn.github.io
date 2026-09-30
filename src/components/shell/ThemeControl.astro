@@ -16,6 +16,7 @@
   const root = document.documentElement;
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const controls = document.querySelectorAll<HTMLElement>('[data-theme-control]');
+  let currentPreference: ThemePreference;
 
   const readPreference = (): ThemePreference => {
     try {
@@ -53,7 +54,7 @@
     root.style.colorScheme = resolved;
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute(
       'content',
-      resolved === 'dark' ? '#101715' : '#F7F7F2',
+      root.dataset.portal ? (resolved === 'dark' ? '#101419' : '#F5F6F8') : (resolved === 'dark' ? '#101715' : '#F7F7F2'),
     );
     syncPressedState(preference);
   };
@@ -64,16 +65,22 @@
       const preference = button?.dataset.themeOption;
       if (!isThemePreference(preference)) return;
       writePreference(preference);
+      currentPreference = preference;
       applyTheme(preference);
     });
   });
 
   media.addEventListener('change', () => {
-    const preference = readPreference();
-    if (preference === 'system') applyTheme(preference);
+    if (currentPreference === 'system') applyTheme(currentPreference);
   });
 
-  applyTheme(readPreference());
+  window.addEventListener('storage', event => {
+    if (event.key !== THEME_STORAGE_KEY && event.key !== null) return;
+    currentPreference = readPreference();
+    applyTheme(currentPreference);
+  });
+  currentPreference = readPreference();
+  applyTheme(currentPreference);
 </script>
 
 <style>

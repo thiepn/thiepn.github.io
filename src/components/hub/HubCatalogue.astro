@@ -2,13 +2,13 @@
 import HubCard from './HubCard.astro';
 import HubFilters from './HubFilters.astro';
 import { getHubCategoryCounts, type HubProjectEntry } from '../../lib/hub';
-interface Props { entries: HubProjectEntry[]; }
-const { entries } = Astro.props;
+interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; }
+const { entries, heading = 'Apps', headingLevel = 1 } = Astro.props;
 const counts = getHubCategoryCounts(entries);
 ---
 <section class="hub-catalogue" id="apps" aria-labelledby="apps-heading" data-hub-catalogue>
   <header class="hub-catalogue__heading">
-    <h1 id="apps-heading">Apps</h1>
+    {headingLevel === 1 ? <h1 id="apps-heading">{heading}</h1> : <h2 id="apps-heading">{heading}</h2>}
   </header>
 
   <HubFilters total={entries.length} counts={counts} />
