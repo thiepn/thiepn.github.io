@@ -80,3 +80,9 @@ jobs:
         env:
           PRODUCTION_URL: https://thiepn.dev/
         run: node scripts/smoke-production.mjs --url https://thiepn.dev/ --retries 12
+
+      - name: Certify The Orrery production route and live JPL precision path
+        env:
+          ORRERY_URL: https://thiepn.dev/orrery/
+          ORRERY_PRECISION_URL: https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision
+        run: node scripts/smoke-orrery-production.mjs
