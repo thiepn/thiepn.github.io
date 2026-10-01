@@ -1,7 +1,7 @@
 {
   "name": "The Orrery",
   "short_name": "Orrery",
-  "description": "An offline-first interactive orrery with Explore, Observer and Learn modes, JPL-based planetary positions, Moon and Pluto layers, astronomical events, and optional JPL Horizons precision data.",
+  "description": "An offline-first interactive Solar System, sky-observation, mission-history and astronomy learning platform.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
