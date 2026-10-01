@@ -1,4 +1,4 @@
-const CACHE='orrery-v2.0.0-prod1';
+const CACHE='orrery-v2.0.1-prod1';
 const ROOT=new URL('./',self.location.href).href;
 const CORE=['','index.html','manifest.webmanifest','version.json','icons/icon.svg','icons/icon-maskable.svg'].map(p=>new URL(p,ROOT).href);
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));});
