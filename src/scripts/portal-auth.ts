@@ -29,7 +29,7 @@ if (root) {
   if (!configured) {
     retry.hidden = true;
     publishIdentity({ status: 'signed-out' });
-    status.textContent = 'Hub sign-in is not enabled yet. Open Account to manage your THIEPN identity.';
+    status.textContent = 'Hub sign-in is not enabled yet.';
   } else {
     void (async () => {
       const { createClient } = await import('@supabase/supabase-js');

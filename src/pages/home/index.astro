@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import HubCatalogue from '../../components/hub/HubCatalogue.astro';
-import ProviderHandoffs from '../../components/hub/ProviderHandoffs.astro';
+import DailyHome from '../../components/hub/DailyHome.astro';
 import PortalAccount from '../../components/hub/PortalAccount.astro';
 import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
@@ -12,12 +12,13 @@ const entries = await getHubProjects();
 <BaseLayout title="Home — THIEPN" description="Your THIEPN apps, shortcuts and tools in one personal home." portal noindex>
   <div class="portal-home page-shell" data-portal-home>
     <header class="portal-home-heading">
-      <div><p class="portal-date" data-local-date>Personal workspace</p><h1>Home</h1></div>
-      <button class="portal-button" type="button" data-customize-open aria-haspopup="dialog" aria-controls="portal-customize" hidden>Customize</button>
+      <p class="portal-date" data-local-date>Personal workspace</p>
+      <div class="portal-home-title-row"><h1>Home</h1><div class="portal-home-controls"><button class="portal-button" type="button" data-home-privacy hidden>Hide Home</button><button class="portal-button" type="button" data-customize-open aria-haspopup="dialog" aria-controls="portal-customize" hidden>Customize</button></div></div>
     </header>
     <PortalAccount />
     <PersonalPins entries={entries} />
-    <ProviderHandoffs />
+    <p class="portal-home-hidden" data-home-hidden hidden>Home is hidden. Choose Show Home to reveal your account, pins and daily modules. All apps remain available below.</p>
+    <DailyHome entries={entries} />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
     <noscript><p class="portal-muted">All app links work without JavaScript. Customization requires JavaScript.</p></noscript>

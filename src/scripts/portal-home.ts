@@ -1,6 +1,7 @@
 import { hubIdentity } from './portal-auth';
 import { preferenceKey, type HubIdentity } from '../lib/hub-auth';
 import { MAX_HUB_PINS, defaultHubPreferences, parseHubPreferences, moveHubPin } from '../lib/hub-preferences';
+import { defaultHomeView, homeDay, visibleHomeModules, type HomeModuleId, type HomeView } from '../lib/home-view';
 
 const root = document.querySelector<HTMLElement>('[data-portal-home]');
 if (root) {
@@ -23,9 +24,34 @@ if (root) {
   if (identity.status === 'signed-out') activeKey = preferenceKey(null);
   if (activeKey) try { initial = parseHubPreferences(localStorage.getItem(activeKey), available); } catch { canPersist = false; }
   let preferences = initial.preferences;
+  let privacyHeld = preferences.home.hidden;
+  const privacy = root.querySelector<HTMLButtonElement>('[data-home-privacy]')!;
+  const moduleChoices = Array.from(root.querySelectorAll<HTMLInputElement>('[data-module-choice]'));
+  const focus = root.querySelector<HTMLSelectElement>('[data-home-focus]')!;
+  const timezone = root.querySelector<HTMLSelectElement>('[data-home-timezone]')!;
+
+  function updateDay() {
+    const day = homeDay(new Date(), preferences.home.timezone);
+    const date = root!.querySelector<HTMLElement>('[data-local-date]')!;
+    date.textContent = day.label; date.dataset.day = day.key;
+    root!.querySelector<HTMLElement>('[data-day-zone]')!.textContent = day.zone;
+  }
 
   function render() {
     root!.dataset.density = preferences.density;
+    privacyHeld ||= preferences.home.hidden;
+    const masked = privacyHeld || preferences.home.hidden;
+    root!.querySelectorAll<HTMLElement>('[data-home-personal]').forEach(panel => { panel.hidden = masked; });
+    root!.querySelector<HTMLElement>('[data-home-hidden]')!.hidden = !masked;
+    privacy.textContent = masked ? 'Show Home' : 'Hide Home';
+    const visible = visibleHomeModules(preferences.home);
+    root!.querySelectorAll<HTMLElement>('[data-home-module]').forEach(module => { module.hidden = !visible.includes(module.dataset.homeModule as HomeModuleId); });
+    root!.querySelector<HTMLElement>('[data-home-modules-empty]')!.hidden = visible.length > 0;
+    moduleChoices.forEach(choice => { choice.checked = preferences.home.modules.includes(choice.value as HomeModuleId); });
+    root!.querySelectorAll<HTMLInputElement>('[name="home-mode"]').forEach(input => { input.checked = input.value === preferences.home.mode; });
+    root!.querySelector<HTMLFieldSetElement>('[data-home-mode-controls]')!.disabled = activeKey === null;
+    focus.value = preferences.home.focus; timezone.value = preferences.home.timezone;
+    updateDay();
     list.replaceChildren(...preferences.pins.flatMap(slug => {
       const app = apps.find(app => app.slug === slug);
       if (!app) return [];
@@ -64,8 +90,12 @@ if (root) {
   }
   if (initial.reset) save('Old or invalid Home preferences were reset.');
   render(); open.hidden = false;
-  const date = root.querySelector<HTMLElement>('[data-local-date]');
-  if (date) date.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  privacy.hidden = false;
+  root.querySelector<HTMLElement>('[data-home-mode-controls]')!.hidden = false;
+  const dayTimer = setInterval(() => { if (!document.hidden) updateDay(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) updateDay(); });
+  window.addEventListener('pageshow', updateDay);
+  window.addEventListener('pagehide', event => { if (!event.persisted) clearInterval(dayTimer); });
   let returnFocus: HTMLElement | null = null;
   open.addEventListener('click', () => { returnFocus = document.activeElement as HTMLElement; dialog.showModal(); root.querySelector<HTMLButtonElement>('[data-customize-close]')!.focus(); });
   root.querySelector('[data-customize-close]')!.addEventListener('click', () => dialog.close());
@@ -77,7 +107,21 @@ if (root) {
     save('Pins saved.');
   }));
   root.querySelectorAll<HTMLInputElement>('[name="density"]').forEach(input => input.addEventListener('change', () => { preferences.density = input.value as 'compact' | 'comfortable'; save('Spacing saved.'); }));
-  root.querySelector('[data-pins-reset]')!.addEventListener('click', () => { preferences = defaultHubPreferences(available); save('Default pins and spacing restored.'); });
+  root.querySelector('[data-pins-reset]')!.addEventListener('click', () => { const defaults = defaultHubPreferences(available); preferences.pins = defaults.pins; preferences.density = defaults.density; save('Default pins and spacing restored.'); });
+  root.querySelector('[data-modules-reset]')!.addEventListener('click', () => { const hidden = preferences.home.hidden; preferences.home = defaultHomeView(); preferences.home.hidden = hidden; save('Default daily modules restored.'); });
+  moduleChoices.forEach(choice => choice.addEventListener('change', () => {
+    const id = choice.value as HomeModuleId;
+    preferences.home.modules = choice.checked ? [...preferences.home.modules, id] : preferences.home.modules.filter(module => module !== id);
+    save('Daily modules saved.');
+  }));
+  root.querySelectorAll<HTMLInputElement>('[name="home-mode"]').forEach(input => input.addEventListener('change', () => { preferences.home.mode = input.value as HomeView['mode']; save('Home view saved.'); }));
+  focus.addEventListener('change', () => { preferences.home.focus = focus.value as HomeView['focus']; save('Focus choice saved.'); });
+  timezone.addEventListener('change', () => { preferences.home.timezone = timezone.value as HomeView['timezone']; save('Home timezone saved.'); });
+  privacy.addEventListener('click', () => {
+    const masked = privacyHeld || preferences.home.hidden;
+    privacyHeld = preferences.home.hidden = !masked;
+    if (activeKey) save(masked ? 'Home shown.' : 'Home hidden.'); else render();
+  });
   window.addEventListener('hub:identity', event => {
     identity = (event as CustomEvent<HubIdentity>).detail;
     const nextKey = identity.status === 'signed-in' ? preferenceKey(identity.id) : identity.status === 'signed-out' ? preferenceKey(null) : null;

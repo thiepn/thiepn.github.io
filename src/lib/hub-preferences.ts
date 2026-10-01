@@ -1,12 +1,13 @@
+import { defaultHomeView, parseHomeView, type HomeView } from './home-view';
 export const HUB_PREFERENCES_KEY = 'thiepn:hub-preferences';
 export const HUB_PREFERENCES_VERSION = 1;
 export const MAX_HUB_PINS = 12;
 export const DEFAULT_HUB_PINS = ['notes', 'thiepn-library', 'french-3000', 'tms60', 'pdf-studio', 'steadybar', 'mathlab', 'clean30'] as const;
-export interface HubPreferences { version: 1; pins: string[]; density: 'compact' | 'comfortable'; }
+export interface HubPreferences { version: 1; pins: string[]; density: 'compact' | 'comfortable'; home: HomeView; }
 
 export function defaultHubPreferences(available: readonly string[]): HubPreferences {
   const allowed = new Set(available);
-  return { version: 1, pins: DEFAULT_HUB_PINS.filter(slug => allowed.has(slug)), density: 'compact' };
+  return { version: 1, pins: DEFAULT_HUB_PINS.filter(slug => allowed.has(slug)), density: 'compact', home: defaultHomeView() };
 }
 
 export function parseHubPreferences(raw: string | null, available: readonly string[]): { preferences: HubPreferences; reset: boolean } {
@@ -22,7 +23,7 @@ export function parseHubPreferences(raw: string | null, available: readonly stri
       || !['compact', 'comfortable'].includes(String(candidate.density))) throw new Error('Invalid preference version or shape');
     const allowed = new Set(available);
     return {
-      preferences: { version: 1, pins: [...new Set(candidate.pins as string[])].filter(slug => allowed.has(slug)), density: candidate.density as HubPreferences['density'] },
+      preferences: { version: 1, pins: [...new Set(candidate.pins as string[])].filter(slug => allowed.has(slug)), density: candidate.density as HubPreferences['density'], home: parseHomeView(candidate.home) },
       reset: false,
     };
   } catch { return { preferences: fallback, reset: true }; }

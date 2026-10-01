@@ -5,7 +5,7 @@ interface Props { entries: HubProjectEntry[]; }
 const { entries } = Astro.props;
 const pins = DEFAULT_HUB_PINS.flatMap(slug => entries.filter(entry => entry.hub.slug === slug));
 ---
-<section class="portal-pins" aria-labelledby="pins-heading" data-personal-pins>
+<section class="portal-pins" aria-labelledby="pins-heading" data-personal-pins data-home-personal>
   <header class="portal-section-heading">
     <h2 id="pins-heading">Pinned apps</h2>
     <a href="#apps">All apps <span aria-hidden="true">↓</span></a>

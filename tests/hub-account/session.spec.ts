@@ -128,3 +128,27 @@ for(const width of [320,1440])test(`Account entry and signed-in Home reflow at $
   await page.screenshot({path:`.cache/h2-account-${width}.png`});
   if(process.env.H2_AXE_PATH){await page.addScriptTag({content:fs.readFileSync(process.env.H2_AXE_PATH,'utf8')});expect(await page.evaluate(async()=>{const result=await (window as any).axe.run();return result.violations.map((v:any)=>({id:v.id,impact:v.impact}));})).toEqual([]);}
 });
+
+test('H4 daily view and timezone stay partitioned across guest, A, B and sign-out',async({page})=>{
+  const f=await fixture(page);
+  const view=(pins:string[],modules:string[],timezone:string,mode='today',focus='study')=>JSON.stringify({version:1,pins,density:'compact',home:{modules,timezone,mode,focus,hidden:false}});
+  await page.addInitScript(({a,b,guest,pa,pb})=>{if(location.origin==='https://thiepn.dev'){localStorage.setItem('thiepn:hub-preferences',guest);localStorage.setItem(`thiepn:hub-preferences:user:${a}:v1`,pa);localStorage.setItem(`thiepn:hub-preferences:user:${b}:v1`,pb);}}, {a,b,guest:view(['mathlab'],['today'],'UTC'),pa:view(['notes'],['today','faith','study'],'Europe/Berlin','focus','faith'),pb:view(['tms60'],['routines'],'Asia/Seoul')});
+  const visible=()=>page.locator('[data-home-module]:visible').evaluateAll(nodes=>nodes.map(node=>(node as HTMLElement).dataset.homeModule));
+  await page.goto(hubOrigin+'/home/');await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();expect(await visible()).toEqual(['today']);
+  await login(page);await expect(page.locator('[data-auth-status]')).toContainText('a@example.test');expect(await visible()).toEqual(['today','faith']);await expect(page.locator('[data-day-zone]')).toHaveText('Europe/Berlin');
+  f.setUser(b);await login(page,'Switch account');await expect(page.locator('[data-auth-status]')).toContainText('b@example.test');expect(await visible()).toEqual(['routines']);
+  await page.getByRole('button',{name:'Customize',exact:true}).click();await expect(page.locator('[data-home-timezone]')).toHaveValue('Asia/Seoul');await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'Sign out of Hub'}).click();await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();expect(await visible()).toEqual(['today']);await expect(page.locator('[data-day-zone]')).toHaveText('UTC');
+  expect(f.requests.some(url=>/rest\/v1|hub\/summary/.test(url))).toBe(false);
+});
+test('H4 privacy stays held during session re-verification and unverified view reset',async({page})=>{
+  const f=await fixture(page);await page.goto(hubOrigin+'/home/');await login(page);
+  await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.failUser();
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await expect(page.locator('[data-auth-status]')).toContainText('unavailable');
+  await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
+  await expect(page.getByRole('radio',{name:'Focus',exact:true})).toBeHidden();
+  await page.getByRole('button',{name:'Show Home',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeDisabled();
+  await expect(page.getByRole('radio',{name:'Focus',exact:true})).toBeDisabled();
+});

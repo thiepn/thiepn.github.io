@@ -91,3 +91,5 @@ do not override the public Hub's reviewed app order. See [showcase maintenance a
 H2 Account entry, session boundaries, release gate and paired validation: [docs/HUB_H2.md](docs/HUB_H2.md).
 
 H3 provider contracts, capability audit and private-data release gates: [docs/HUB_H3.md](docs/HUB_H3.md).
+
+H4 daily board, Focus, timezone and visual privacy behavior: [docs/HUB_H4.md](docs/HUB_H4.md).
