@@ -1,0 +1,57 @@
+name: Orrery Production Burn-In
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orrery-production-burnin
+  cancel-in-progress: true
+
+jobs:
+  burn-in:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run live dependency and API synthetic
+        env:
+          ORRERY_URL: https://thiepn.dev/orrery/
+          ORRERY_PRECISION_URL: https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision
+          ORRERY_EXPECTED_VERSION: 2.0.1
+        run: node scripts/orrery-burnin-live.mjs
+
+      - name: Run live browser and offline-PWA burn-in
+        env:
+          ORRERY_URL: https://thiepn.dev/orrery/
+        run: npx playwright test --config=playwright.orrery-production.config.ts
+
+      - name: Upload burn-in evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orrery-production-burnin
+          path: |
+            test-results/orrery-burnin.json
+            test-results/orrery-playwright.xml
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
