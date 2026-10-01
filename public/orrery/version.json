@@ -1,7 +1,8 @@
 {
-  "version": "2.0.0",
-  "phase": "P16",
+  "version": "2.0.1",
+  "phase": "P17",
   "release_channel": "stable",
   "share_schema": "v9",
-  "production_promoted": true
+  "production_promoted": true,
+  "maintenance_baseline": "2026-10-01"
 }
