@@ -87,3 +87,5 @@ Project details retain the Tiny Tools feature and four direct task routes. Micro
 page uses genuine, keyboard-operable game previews with an opt-in recording. Source-linked build
 notes document three projects without invented outcomes or contribution claims. These features
 do not override the public Hub's reviewed app order. See [showcase maintenance and verification](docs/showcase/README.md) for content, media and lifecycle contracts.
+
+H2 Account entry, session boundaries, release gate and paired validation: [docs/HUB_H2.md](docs/HUB_H2.md).

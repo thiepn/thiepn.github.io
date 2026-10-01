@@ -1,4 +1,6 @@
-import { HUB_PREFERENCES_KEY, MAX_HUB_PINS, defaultHubPreferences, parseHubPreferences, moveHubPin } from '../lib/hub-preferences';
+import { hubIdentity } from './portal-auth';
+import { preferenceKey, type HubIdentity } from '../lib/hub-auth';
+import { MAX_HUB_PINS, defaultHubPreferences, parseHubPreferences, moveHubPin } from '../lib/hub-preferences';
 
 const root = document.querySelector<HTMLElement>('[data-portal-home]');
 if (root) {
@@ -14,9 +16,12 @@ if (root) {
   const status = root.querySelector<HTMLElement>('[data-customize-status]')!;
   const notice = root.querySelector<HTMLElement>('[data-preference-status]')!;
   const choices = Array.from(root.querySelectorAll<HTMLInputElement>('[data-pin-choice]'));
+  let identity: HubIdentity = hubIdentity;
+  let activeKey: string | null = null;
   let canPersist = true;
   let initial = parseHubPreferences(null, available);
-  try { initial = parseHubPreferences(localStorage.getItem(HUB_PREFERENCES_KEY), available); } catch { canPersist = false; }
+  if (identity.status === 'signed-out') activeKey = preferenceKey(null);
+  if (activeKey) try { initial = parseHubPreferences(localStorage.getItem(activeKey), available); } catch { canPersist = false; }
   let preferences = initial.preferences;
 
   function render() {
@@ -48,11 +53,13 @@ if (root) {
       }
       return row;
     }));
-    notice.textContent = canPersist ? 'Home preferences are saved in this browser. Account sync is not enabled.' : 'Browser storage is unavailable. Changes last for this visit.';
+    open.disabled = activeKey === null;
+    notice.textContent = activeKey === null ? 'Account preferences are hidden until your Hub session is verified.' : !canPersist ? 'Browser storage is unavailable. Changes last for this visit.' : identity.status === 'signed-in' ? 'Home preferences are saved for this account in this browser. Cloud sync is not enabled.' : 'Home preferences are saved in this browser. Account sync is not enabled.';
   }
 
   function save(message: string) {
-    try { localStorage.setItem(HUB_PREFERENCES_KEY, JSON.stringify(preferences)); canPersist = true; } catch { canPersist = false; }
+    if (!activeKey) return;
+    try { localStorage.setItem(activeKey, JSON.stringify(preferences)); canPersist = true; } catch { canPersist = false; }
     render(); status.textContent = canPersist ? message : 'Changes last for this visit because browser storage is unavailable.';
   }
   if (initial.reset) save('Old or invalid Home preferences were reset.');
@@ -71,8 +78,18 @@ if (root) {
   }));
   root.querySelectorAll<HTMLInputElement>('[name="density"]').forEach(input => input.addEventListener('change', () => { preferences.density = input.value as 'compact' | 'comfortable'; save('Spacing saved.'); }));
   root.querySelector('[data-pins-reset]')!.addEventListener('click', () => { preferences = defaultHubPreferences(available); save('Default pins and spacing restored.'); });
+  window.addEventListener('hub:identity', event => {
+    identity = (event as CustomEvent<HubIdentity>).detail;
+    const nextKey = identity.status === 'signed-in' ? preferenceKey(identity.id) : identity.status === 'signed-out' ? preferenceKey(null) : null;
+    if (nextKey !== activeKey) {
+      dialog.close(); status.textContent = ''; activeKey = nextKey; canPersist = true;
+      preferences = defaultHubPreferences(available);
+      if (activeKey) try { preferences = parseHubPreferences(localStorage.getItem(activeKey), available).preferences; } catch { canPersist = false; }
+    }
+    render();
+  });
   window.addEventListener('storage', event => {
-    if (event.key !== HUB_PREFERENCES_KEY && event.key !== null) return;
+    if (!activeKey || (event.key !== activeKey && event.key !== null)) return;
     preferences = parseHubPreferences(event.key === null ? null : event.newValue, available).preferences; render();
   });
 }

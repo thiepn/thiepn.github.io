@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import HubCatalogue from '../../components/hub/HubCatalogue.astro';
+import PortalAccount from '../../components/hub/PortalAccount.astro';
 import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
 import { getHubProjects } from '../../lib/hub';
@@ -13,6 +14,7 @@ const entries = await getHubProjects();
       <div><p class="portal-date" data-local-date>Personal workspace</p><h1>Home</h1></div>
       <button class="portal-button" type="button" data-customize-open aria-haspopup="dialog" aria-controls="portal-customize" hidden>Customize</button>
     </header>
+    <PortalAccount />
     <PersonalPins entries={entries} />
     <section class="portal-launch-actions" aria-label="Quick actions">
       <a class="portal-quick-capture" href="https://thiepn.dev/notes/"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v16M4 12h16" /></svg><span><strong>Capture a thought</strong><small>Open Notes to write and save</small></span><span aria-hidden="true">↗</span></a>
@@ -24,4 +26,4 @@ const entries = await getHubProjects();
     <PortalCustomize entries={entries} />
   </div>
 </BaseLayout>
-<script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home';</script>
+<script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home'; import '../../scripts/portal-auth';</script>
