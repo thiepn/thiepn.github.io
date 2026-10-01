@@ -89,3 +89,5 @@ notes document three projects without invented outcomes or contribution claims. 
 do not override the public Hub's reviewed app order. See [showcase maintenance and verification](docs/showcase/README.md) for content, media and lifecycle contracts.
 
 H2 Account entry, session boundaries, release gate and paired validation: [docs/HUB_H2.md](docs/HUB_H2.md).
+
+H3 provider contracts, capability audit and private-data release gates: [docs/HUB_H3.md](docs/HUB_H3.md).

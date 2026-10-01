@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import HubCatalogue from '../../components/hub/HubCatalogue.astro';
+import ProviderHandoffs from '../../components/hub/ProviderHandoffs.astro';
 import PortalAccount from '../../components/hub/PortalAccount.astro';
 import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
@@ -16,10 +17,7 @@ const entries = await getHubProjects();
     </header>
     <PortalAccount />
     <PersonalPins entries={entries} />
-    <section class="portal-launch-actions" aria-label="Quick actions">
-      <a class="portal-quick-capture" href="https://thiepn.dev/notes/"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v16M4 12h16" /></svg><span><strong>Capture a thought</strong><small>Open Notes to write and save</small></span><span aria-hidden="true">↗</span></a>
-      <p class="portal-muted">App activity will appear here when connected. <a href="https://account.thiepn.dev/apps">Manage connected apps</a></p>
-    </section>
+    <ProviderHandoffs />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
     <noscript><p class="portal-muted">All app links work without JavaScript. Customization requires JavaScript.</p></noscript>

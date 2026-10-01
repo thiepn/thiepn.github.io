@@ -1,0 +1,554 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thiepn.dev/hub-provider-schema.json",
+  "title": "THIEPN Hub provider response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "providerId": {
+      "enum": [
+        "notes",
+        "library",
+        "tms60"
+      ]
+    },
+    "operation": {
+      "enum": [
+        "summary",
+        "continue",
+        "search"
+      ]
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    },
+    "context": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/accountContext"
+        },
+        {
+          "$ref": "#/$defs/deviceContext"
+        }
+      ]
+    },
+    "privacy": {
+      "const": "private"
+    },
+    "coverage": {
+      "enum": [
+        "cloud-snapshot",
+        "device-local",
+        "translation-cloud-snapshot"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "empty",
+        "unconnected",
+        "unsupported",
+        "offline",
+        "stale",
+        "error"
+      ]
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "sourceUpdatedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "data": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/notesData"
+        },
+        {
+          "$ref": "#/$defs/libraryData"
+        },
+        {
+          "$ref": "#/$defs/tms60Data"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "providerId",
+    "operation",
+    "requestId",
+    "context",
+    "privacy",
+    "coverage",
+    "status",
+    "observedAt",
+    "expiresAt",
+    "sourceUpdatedAt",
+    "data"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "notes"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "cloud-snapshot"
+          },
+          "context": {
+            "$ref": "#/$defs/accountContext"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/notesData"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "library"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "device-local"
+          },
+          "context": {
+            "$ref": "#/$defs/deviceContext"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/libraryData"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "tms60"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "translation-cloud-snapshot"
+          },
+          "context": {
+            "$ref": "#/$defs/accountContext"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/tms60Data"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "empty"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": [
+              "summary",
+              "continue"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "items": {
+                "maxItems": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "tms60"
+          },
+          "operation": {
+            "const": "summary"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "items",
+              "dueTaskCount",
+              "dueVerseCount",
+              "newVerseCount"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "data": {
+            "properties": {
+              "dueTaskCount": false,
+              "dueVerseCount": false,
+              "newVerseCount": false
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "Runtime validation additionally enforces matching request/scope/revision/translation, timestamps/TTL, unique item IDs, progress relationships, due task/verse relationships, status semantics, UTF-8 byte limits and cancellation. This schema is structural validation, not authorization.",
+  "$defs": {
+    "token": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "accountContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "accountId",
+        "workspaceId",
+        "grantRevision",
+        "translationId"
+      ],
+      "properties": {
+        "scope": {
+          "const": "account"
+        },
+        "accountId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workspaceId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-zA-Z0-9:_-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grantRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        },
+        "translationId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 16,
+              "pattern": "^[a-z][a-z0-9-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "deviceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "deviceId",
+        "consentRevision"
+      ],
+      "properties": {
+        "scope": {
+          "const": "device"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        },
+        "consentRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        }
+      }
+    },
+    "notesData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "resourceId",
+              "title",
+              "updatedAt"
+            ],
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "libraryData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "resourceId",
+              "title",
+              "updatedAt",
+              "format",
+              "edition",
+              "releaseVersion",
+              "current",
+              "furthest"
+            ],
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9:_-]+$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "format": {
+                "enum": [
+                  "epub",
+                  "pdf",
+                  "web"
+                ]
+              },
+              "edition": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "releaseVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9:_-]+$"
+              },
+              "current": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "furthest": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "tms60Data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "resourceId",
+              "title",
+              "updatedAt",
+              "dimension"
+            ],
+            "properties": {
+              "resourceId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]+:([1-9]|[1-5][0-9]|60):(wording|reference|learning)$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "dimension": {
+                "enum": [
+                  "wording",
+                  "reference",
+                  "learning"
+                ]
+              }
+            }
+          }
+        },
+        "dueTaskCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 180
+        },
+        "dueVerseCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "newVerseCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60
+        }
+      }
+    }
+  }
+}

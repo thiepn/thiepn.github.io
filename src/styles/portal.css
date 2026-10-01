@@ -27,3 +27,10 @@ html[data-portal] .hub-catalogue{padding-top:20px}html[data-portal] .hub-catalog
 
 .portal-account .portal-button { font-size:.8125rem; padding:6px 10px; }
 .portal-account small { font-size:.8125rem; }
+
+.portal-provider-handoffs { margin:20px 0; }
+.portal-provider-handoffs h2 { font-size:1rem; margin-bottom:12px; }
+.portal-handoff-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.portal-provider-action { display:flex; flex-direction:column; gap:4px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); color:var(--ink); text-decoration:none; min-height:64px; }
+.portal-provider-action small { color:var(--ink-secondary); font-size:.8125rem; }
+@media(max-width:639px) { .portal-handoff-grid { grid-template-columns:1fr; gap:8px; } }

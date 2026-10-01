@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "contract": "thiepn.hub.provider",
+  "contractVersion": {
+    "major": 1,
+    "minor": 0
+  },
+  "budgets": {
+    "visible": 6,
+    "concurrency": 3,
+    "deadlineMs": 2000,
+    "summaryItems": 10,
+    "summaryBytes": 32768,
+    "searchItems": 20,
+    "searchBytes": 65536
+  },
+  "providers": [
+    {
+      "id": "notes",
+      "appSlug": "notes",
+      "scope": "account",
+      "coverage": "cloud-snapshot",
+      "sourceRevision": "a14d671bebe8715640c11ad5c8c5988749bfd820",
+      "status": "handoff-only",
+      "transport": null,
+      "privateReadsEnabled": false,
+      "inlineWritesEnabled": false,
+      "operations": {
+        "summary": false,
+        "continue": false,
+        "search": false,
+        "capture": false,
+        "inbox": false
+      },
+      "requiredPermissions": {
+        "summary": "notes.hub.summary.read",
+        "continue": "notes.hub.continue.read",
+        "search": "notes.hub.search.read"
+      },
+      "actions": {
+        "open": "https://thiepn.dev/notes/",
+        "capture-text": "https://thiepn.dev/notes/?capture=text",
+        "capture-checklist": "https://thiepn.dev/notes/?capture=checklist"
+      }
+    },
+    {
+      "id": "library",
+      "appSlug": "thiepn-library",
+      "scope": "device",
+      "coverage": "device-local",
+      "sourceRevision": "f8ccec78d2290d1b3dfde7343d5e19db32ccdf43",
+      "status": "handoff-only",
+      "transport": null,
+      "privateReadsEnabled": false,
+      "inlineWritesEnabled": false,
+      "operations": {
+        "summary": false,
+        "continue": false,
+        "search": false,
+        "capture": false,
+        "inbox": false
+      },
+      "requiredPermissions": {
+        "summary": "library.hub.summary.read",
+        "continue": "library.hub.continue.read",
+        "search": "library.hub.search.read"
+      },
+      "actions": {
+        "open": "https://thiepn.dev/library/",
+        "continue-in-app": "https://thiepn.dev/library/saved/"
+      }
+    },
+    {
+      "id": "tms60",
+      "appSlug": "tms60",
+      "scope": "account",
+      "coverage": "translation-cloud-snapshot",
+      "sourceRevision": "be068d9476fe045680d59113d8adfa40f2ce2b80",
+      "status": "handoff-only",
+      "transport": null,
+      "privateReadsEnabled": false,
+      "inlineWritesEnabled": false,
+      "operations": {
+        "summary": false,
+        "continue": false,
+        "search": false,
+        "capture": false,
+        "inbox": false
+      },
+      "requiredPermissions": {
+        "summary": "tms60.hub.summary.read",
+        "continue": "tms60.hub.continue.read",
+        "search": "tms60.hub.search.read"
+      },
+      "actions": {
+        "open": "https://tms60.thiepn.dev/"
+      }
+    }
+  ],
+  "responseSchema": "https://thiepn.dev/hub-provider-schema.json"
+}
