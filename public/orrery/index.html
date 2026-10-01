@@ -872,7 +872,7 @@ body.appearance-natural .p14-lesson-stepper,body.appearance-natural .p14-lab-sta
       <div><h3>Mouse & touch</h3><p>Use EXPLORE for the heliocentric system, SKY for observer coordinates, LEARN for guided demonstrations, and MISSIONS for spacecraft routes and exploration history.</p><p>Drag the plate to rotate it. Scroll or pinch to zoom. Select a world to follow it; select it again to release the camera.</p><p>The drawn orbit radii are logarithmically compressed so all eight planets fit on one plate. Event calculations use physical JPL-based coordinates instead.</p><div class="orbit-key"><i></i> Followed orbit + apsides/nodes</div></div>
       <div><h3>Keyboard</h3><div class="shortcut"><span>Rotate</span><kbd>← →</kbd></div><div class="shortcut"><span>Zoom</span><kbd>↑ ↓</kbd></div><div class="shortcut"><span>Step date</span><kbd>PgUp/Dn</kbd></div><div class="shortcut"><span>Pause / play</span><kbd>Space</kbd></div><div class="shortcut"><span>Cycle bodies</span><kbd>[ ]</kbd></div><div class="shortcut"><span>Time panel</span><kbd>D</kbd></div><div class="shortcut"><span>Almanac</span><kbd>A</kbd></div><div class="shortcut"><span>Today</span><kbd>T</kbd></div><div class="shortcut"><span>Reset view</span><kbd>R</kbd></div><div class="shortcut"><span>Missions</span><kbd>M</kbd></div><div class="shortcut"><span>Help</span><kbd>?</kbd></div></div>
     </div>
-    <div class="help-foot">THE ORRERY · v2.0.0-alpha.4 · Missions & Solar-System History · offline-first PWA · optional JPL Horizons precision service · offline observer engine remains the fallback.</div>
+    <div class="help-foot">THE ORRERY · v2.0.1 · STABLE · offline-first astronomy platform · optional JPL Horizons precision · offline observer engine remains the fallback.</div>
   </div>
 </section>
 
@@ -1172,7 +1172,7 @@ PLANETS.forEach(function(p){ p._tex=genTexture(p.tex); });
 PLUTO._tex=genTexture('pluto');
 MOON._tex=genTexture('moon');
 
-var APP_VERSION='2.0.0'; /* P16 v2 Production Promotion & Certification */
+var APP_VERSION='2.0.1'; /* P17 post-release maintenance patch */
 var DAY_MS=864e5;
 var J2000_JD=2451545.0, MODEL_EPOCH_JD=2461312.5;
 var MIN_SIM_DAY=(J2000_JD-50*36525)-MODEL_EPOCH_JD;   /* approx 3000 BC */
@@ -2748,7 +2748,7 @@ function runUnitTests(){
   test('Node markers lie on ecliptic plane',function(){var p=PLANETS[5],a=markerPhysical(p,'asc',0),d=markerPhysical(p,'desc',0);assert(Math.abs(a.z)<1e-9,'ascending node z');assert(Math.abs(d.z)<1e-9,'descending node z');});
   test('Live display coordinates remain finite',function(){PLANETS.concat([COMET]).forEach(function(p){var q=displayState(p,0);assert(isFinite(q.lon)&&isFinite(q.lat)&&isFinite(q.x)&&isFinite(q.y),p.name);});});
   test('DOM IDs are unique and ARIA controls resolve',function(){var ids={},dup=[];document.querySelectorAll('[id]').forEach(function(el){if(ids[el.id])dup.push(el.id);ids[el.id]=1;});assert(!dup.length,'duplicate '+dup.join(','));document.querySelectorAll('[aria-controls]').forEach(function(el){el.getAttribute('aria-controls').split(/\s+/).forEach(function(id){assert(document.getElementById(id),'missing '+id);});});});
-  test('Release version is defined',function(){assert(APP_VERSION==='2.0.0',APP_VERSION);});
+  test('Release version is defined',function(){assert(APP_VERSION==='2.0.1',APP_VERSION);});
   test('Reverse speeds exist symmetrically',function(){assert(SPEEDS[0]<0&&SPEEDS[SPEEDS.length-1]>0,'missing reverse/forward');assert(SPEEDS.indexOf(-30)>=0&&SPEEDS.indexOf(30)>=0,'month speeds');});
   test('v4 URL state round trip preserves scale and view',function(){var h=stateHash({day:123.25,speed:2,zoom:1.3,tracked:4,spin:-.7,playing:false,scale:'true',view:'3d'}),st=parseStateHash(h,0);near(st.day,123.25,.001);assert(st.speed===2&&st.scale==='true'&&st.view==='3d'&&!st.playing,h);});
   test('Legacy v2 speed maps into forward half',function(){var st=parseStateHash('#v2d0s2z1.00t-1r-1.150',0);assert(st.speed===7,'mapped '+st.speed);});
@@ -2799,7 +2799,7 @@ function runUnitTests(){
   test('Earth to Mars Hohmann transfer is physically plausible',function(){var t=hohmannTransfer('Earth','Mars');assert(t.tof>240&&t.tof<280,'tof '+t.tof);assert(t.phase>40&&t.phase<50,'phase '+t.phase);assert(t.total>5&&t.total<7,'dv '+t.total);});
   test('Kepler lab extrema obey a(1±e)',function(){var a=1.7,e=.42;near(a*(1-e),.986,1e-12);near(a*(1+e),2.414,1e-12);});
   test('P14 v9 share state preserves learning context',function(){var h=stateHash({day:2,speed:5,zoom:1,tracked:-1,spin:-1.15,playing:false,scale:'log',view:'flat',appearance:'antique',label:'smart',workspace:'learn',frame:'earth',camera:'orbit',pitch:55,split:'off',mission:'voyager2',missionView:'missions',lagrange:'',missionFollow:false,learnStory:'retrograde',learnStep:2,learnLab:'transfer'}),st=parseStateHash(h,0);assert(st.version===9&&st.learnStory==='retrograde'&&st.learnStep===2&&st.learnLab==='transfer',h);});
-  test('P16 stable release architecture is active',function(){assert(APP_VERSION==='2.0.0');assert(document.querySelector('.p15-release-chip'));assert(document.getElementById('p15DataCard'));});
+  test('P16 stable release architecture is active',function(){assert(APP_VERSION==='2.0.1');assert(document.querySelector('.p15-release-chip'));assert(document.getElementById('p15DataCard'));});
   test('P15 exposes one workspace navigator across breakpoints',function(){assert(modeTabs&&modeTabs.querySelectorAll('[data-mode]').length===4);});
   test('P15 simplified tools keep core actions available',function(){['todayBtn','copyBtn','fullscreenBtn','settingsBtn','resetBtn','helpBtn'].forEach(function(id){assert(document.getElementById(id),id);});});
   test('P15 removes duplicate v1-era entry points',function(){['almanacBtn','scaleBtn','viewBtn','lookBtn','timeline','timelineSpan','modeBtn'].forEach(function(id){assert(!document.getElementById(id),id+' should be removed');});});
@@ -2819,7 +2819,8 @@ function runUnitTests(){
     samples.forEach(function(x){var st=parseStateHash(x[0],0);assert(st&&st.version===x[1],'v'+x[1]);});
   });
   test('P16 shared state excludes private observer location',function(){var h=stateHash(currentViewState());assert(h.indexOf(String(prefs.observerLat))<0||prefs.observerLat===null,'latitude leaked');assert(h.indexOf(String(prefs.observerLon))<0||prefs.observerLon===null,'longitude leaked');assert(h.indexOf(String(prefs.observerTimezone))<0||!prefs.observerTimezone,'timezone leaked');});
-  test('P16 stable release metadata is visible',function(){assert(APP_VERSION==='2.0.0');var m=document.querySelector('.p15-release-meta');assert(m&&/STABLE/.test(m.textContent),'stable metadata missing');});
+  test('P16 stable release metadata is visible',function(){assert(APP_VERSION==='2.0.1');var m=document.querySelector('.p15-release-meta');assert(m&&/STABLE/.test(m.textContent),'stable metadata missing');});
+  test('P17 visible release identity matches stable patch',function(){var f=document.querySelector('.help-foot');assert(f&&/v2\\.0\\.1/.test(f.textContent)&&/STABLE/.test(f.textContent),'stale help footer');});
   test('P16 core workspaces remain exactly four',function(){var tabs=Array.from(document.querySelectorAll('#modeTabs [data-mode]'));assert(tabs.length===4,'workspace count '+tabs.length);assert(tabs.map(function(x){return x.dataset.mode;}).join(',')==='explore,observe,learn,missions','workspace order');});
   var passed=results.filter(function(r){return r.ok;}).length,failed=results.length-passed;
   window.__ORRERY_TEST_RESULTS__={passed:passed,failed:failed,total:results.length,results:results};
