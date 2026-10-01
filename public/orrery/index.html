@@ -2805,6 +2805,22 @@ function runUnitTests(){
   test('P15 removes duplicate v1-era entry points',function(){['almanacBtn','scaleBtn','viewBtn','lookBtn','timeline','timelineSpan','modeBtn'].forEach(function(id){assert(!document.getElementById(id),id+' should be removed');});});
   test('P15 exact-date panel retains deterministic UTC entry',function(){assert(dateInput&&timeInput&&dateGo&&dateToday);});
   test('P15 data status distinguishes offline core from optional precision',function(){syncP15ReleaseStatus();assert($('p15DataStatus').textContent.length>5);});
+  test('P16 legacy share schemas v1-v8 remain readable',function(){
+    var samples=[
+      ['#d0s2z1.00t-1',1],
+      ['#v2d0s2z1.00t-1r-1.150',2],
+      ['#v3d0s5z1.00t-1r-1.150q0',3],
+      ['#v4d0s5z1.00t-1r-1.150q0v0',4],
+      ['#v5d0s5z1.00t-1r-1.150q0v0a0l1',5],
+      ['#v6d0s5z1.00t-1r-1.150q0v0a0l1w0',6],
+      ['#v7d0s5z1.00t-1r-1.150q0v0a0l1w0f0c0h55x0',7],
+      ['#v8d0s5z1.00t-1r-1.150q0v0a0l1w3f0c0h55x0m0u0g0y0',8]
+    ];
+    samples.forEach(function(x){var st=parseStateHash(x[0],0);assert(st&&st.version===x[1],'v'+x[1]);});
+  });
+  test('P16 shared state excludes private observer location',function(){var h=stateHash(currentViewState());assert(h.indexOf(String(prefs.observerLat))<0||prefs.observerLat===null,'latitude leaked');assert(h.indexOf(String(prefs.observerLon))<0||prefs.observerLon===null,'longitude leaked');assert(h.indexOf(String(prefs.observerTimezone))<0||!prefs.observerTimezone,'timezone leaked');});
+  test('P16 stable release metadata is visible',function(){assert(APP_VERSION==='2.0.0');var m=document.querySelector('.p15-release-meta');assert(m&&/STABLE/.test(m.textContent),'stable metadata missing');});
+  test('P16 core workspaces remain exactly four',function(){var tabs=Array.from(document.querySelectorAll('#modeTabs [data-mode]'));assert(tabs.length===4,'workspace count '+tabs.length);assert(tabs.map(function(x){return x.dataset.mode;}).join(',')==='explore,observe,learn,missions','workspace order');});
   var passed=results.filter(function(r){return r.ok;}).length,failed=results.length-passed;
   window.__ORRERY_TEST_RESULTS__={passed:passed,failed:failed,total:results.length,results:results};
   if(panel){panel.hidden=false;panel.innerHTML='<h2>Orrery v2 release tests</h2><p><b>'+passed+'/'+results.length+'</b> passed'+(failed?' · '+failed+' failed':' · ALL TESTS PASSED')+'</p>'+results.map(function(r){return '<div class="'+(r.ok?'test-pass':'test-fail')+'">'+(r.ok?'PASS':'FAIL')+' — '+r.name+(r.ok?'':' — '+r.error)+'</div>';}).join('');}
