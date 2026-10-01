@@ -12,6 +12,7 @@ const routes = [
   '/hub-search.json',
   '/hub-providers.json',
   '/hub-provider-schema.json',
+  '/hub-attention-schema.json',
 ].sort((a, b) => a.localeCompare(b));
 const payload = { schemaVersion: 1, routes };
 await writeJson(path.join(PATHS.generated, 'route-manifest.json'), payload, { check: Boolean(args.check) });

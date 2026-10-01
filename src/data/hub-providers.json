@@ -3,7 +3,7 @@
   "contract": "thiepn.hub.provider",
   "contractVersion": {
     "major": 1,
-    "minor": 0
+    "minor": 1
   },
   "budgets": {
     "visible": 6,
@@ -97,5 +97,17 @@
       }
     }
   ],
-  "responseSchema": "https://thiepn.dev/hub-provider-schema.json"
+  "responseSchema": "https://thiepn.dev/hub-provider-schema.json",
+  "attentionContract": {
+    "schemaVersion": 1,
+    "responseSchema": "https://thiepn.dev/hub-attention-schema.json",
+    "privateReadsEnabled": false,
+    "inlineWritesEnabled": false,
+    "transport": null,
+    "requiredPermissions": {
+      "notes": "notes.hub.inbox.read",
+      "library": "library.hub.inbox.read",
+      "tms60": "tms60.hub.inbox.read"
+    }
+  }
 }

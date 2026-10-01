@@ -13,7 +13,7 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-      expect(await page.locator('a[href="/inbox/"]').count()).toBe(0);
+      await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
       await expect(page.locator('.site-brand')).toHaveText('THIEPN');
       if (width < 640) await expect(page.getByRole('navigation', { name: 'Portal navigation' })).toBeVisible();
     }

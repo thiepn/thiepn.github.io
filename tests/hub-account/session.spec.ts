@@ -152,3 +152,14 @@ test('H4 privacy stays held during session re-verification and unverified view r
   await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeDisabled();
   await expect(page.getByRole('radio',{name:'Focus',exact:true})).toBeDisabled();
 });
+
+test('H5 verified Hub identity does not grant private Search or Inbox access', async ({ page }) => {
+  const f = await fixture(page); await page.goto(hubOrigin + '/home/'); await login(page);
+  await page.goto(hubOrigin + '/inbox/'); await expect(page.locator('[data-auth-status]')).toContainText('a@example.test');
+  await expect(page.locator('[data-inbox-items]')).toBeEmpty(); await expect(page.locator('.portal-inbox-footer')).toContainText('No unread total');
+  await page.getByRole('button', { name: 'Hide Inbox', exact: true }).click(); await expect(page.locator('[data-hub-account]')).toBeHidden();
+  await page.getByRole('button', { name: 'Show Inbox', exact: true }).click(); await page.getByRole('button', { name: 'Sign out of Hub', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible(); await expect(page.locator('[data-inbox-items]')).toBeEmpty();
+  await page.goto(hubOrigin + '/search/?scope=resources'); await expect(page.locator('[data-portal-query]')).toBeHidden();
+  expect(f.requests.some(url => /hub\/(search|inbox)|rest\/v1/.test(url))).toBe(false);
+});

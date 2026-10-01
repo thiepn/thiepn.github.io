@@ -1,4 +1,4 @@
-import { contextKey, requestKey, validProviderContext, validateProviderEnvelope, ProviderContractError } from './contract';
+import { contextKey, requestKey, validProviderContext, providerContextAllowed, validateProviderEnvelope, ProviderContractError } from './contract';
 import { PROVIDER_BUDGETS } from './registry';
 import type { Operation, ProviderAccess, ProviderAdapter, ProviderId, ProviderResult, RequestContext } from './types';
 
@@ -24,7 +24,7 @@ export class ProviderRunner {
       const access = this.access.get(result.providerId);
       if (!access || access.expiresAt <= this.now()) { this.results.delete(key); continue; }
       const value = structuredClone(result);
-      if (value.envelope && ['ready','empty'].includes(value.status) && Date.parse(value.envelope.expiresAt) <= this.now()) { value.status = 'stale'; value.envelope.status = 'stale'; value.envelope.data = null; }
+      if (value.envelope && ['ready','empty'].includes(value.status) && Date.parse(value.envelope.expiresAt) <= this.now()) { value.status = 'stale'; value.envelope.status = 'stale'; value.envelope.data = null; this.results.set(key, structuredClone(value)); }
       snapshot.push(value);
     }
     return snapshot;
@@ -47,7 +47,7 @@ export class ProviderRunner {
         let result: ProviderResult;
         const allowed = adapter.manifest.privateReadsEnabled && adapter.manifest.operations[item.operation];
         if (!allowed) result = { providerId:item.providerId, status:'unsupported' };
-        else if (!access || access.expiresAt <= this.now() || access.context.scope !== adapter.manifest.scope || !access.permissions.includes(adapter.manifest.requiredPermissions[item.operation])) result = { providerId:item.providerId, status:'unconnected' };
+        else if (!access || access.expiresAt <= this.now() || !providerContextAllowed(access.context, adapter.manifest) || !access.permissions.includes(adapter.manifest.requiredPermissions[item.operation])) result = { providerId:item.providerId, status:'unconnected' };
         else {
           const controller = new AbortController(); this.controllers.add(controller);
           const request: RequestContext = { ...item, requestId:crypto.randomUUID(), context:structuredClone(access.context) };

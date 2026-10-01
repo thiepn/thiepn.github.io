@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thiepn.dev/hub-attention-schema.json",
+  "$comment": "Structural read-only attention contract. Runtime also enforces request/access binding, UTF-8 budgets, time bounds and issue identity. This schema does not authorize access.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "providerId",
+    "operation",
+    "requestId",
+    "context",
+    "privacy",
+    "coverage",
+    "status",
+    "observedAt",
+    "expiresAt",
+    "sourceUpdatedAt",
+    "data"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "providerId": {
+      "enum": [
+        "notes",
+        "library",
+        "tms60"
+      ]
+    },
+    "operation": {
+      "const": "inbox"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    },
+    "context": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/accountContext"
+        },
+        {
+          "$ref": "#/$defs/deviceContext"
+        }
+      ]
+    },
+    "privacy": {
+      "const": "private"
+    },
+    "coverage": {
+      "enum": [
+        "cloud-snapshot",
+        "device-local",
+        "translation-cloud-snapshot"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "empty",
+        "unconnected",
+        "unsupported",
+        "offline",
+        "stale",
+        "error"
+      ]
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "sourceUpdatedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "items"
+          ],
+          "properties": {
+            "items": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "issueId",
+                  "dedupeKey",
+                  "title",
+                  "type",
+                  "severity",
+                  "state",
+                  "attention",
+                  "updatedAt",
+                  "expiresAt",
+                  "actionKey"
+                ],
+                "properties": {
+                  "issueId": {
+                    "$ref": "#/$defs/token"
+                  },
+                  "dedupeKey": {
+                    "$ref": "#/$defs/token"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                  },
+                  "type": {
+                    "enum": [
+                      "sync-conflict",
+                      "export-failed",
+                      "device-approval",
+                      "job-complete",
+                      "reminder",
+                      "security-notice"
+                    ]
+                  },
+                  "severity": {
+                    "enum": [
+                      "critical",
+                      "important",
+                      "normal"
+                    ]
+                  },
+                  "state": {
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  },
+                  "attention": {
+                    "enum": [
+                      "unread",
+                      "read",
+                      "dismissed"
+                    ]
+                  },
+                  "updatedAt": {
+                    "$ref": "#/$defs/timestamp"
+                  },
+                  "expiresAt": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "$ref": "#/$defs/timestamp"
+                      }
+                    ]
+                  },
+                  "actionKey": {
+                    "const": "open"
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "security-notice"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "severity": {
+                          "enum": [
+                            "critical",
+                            "important"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "notes"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "cloud-snapshot"
+          },
+          "context": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/accountContext"
+              },
+              {
+                "properties": {
+                  "workspaceId": {
+                    "const": null
+                  },
+                  "translationId": {
+                    "const": null
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "library"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "device-local"
+          },
+          "context": {
+            "$ref": "#/$defs/deviceContext"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "providerId": {
+            "const": "tms60"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coverage": {
+            "const": "translation-cloud-snapshot"
+          },
+          "context": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/accountContext"
+              },
+              {
+                "properties": {
+                  "workspaceId": {
+                    "const": null
+                  },
+                  "translationId": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "empty"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "data": {
+            "const": null
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "empty"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "token": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "accountContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "accountId",
+        "workspaceId",
+        "grantRevision",
+        "translationId"
+      ],
+      "properties": {
+        "scope": {
+          "const": "account"
+        },
+        "accountId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workspaceId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-zA-Z0-9:_-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grantRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        },
+        "translationId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 16,
+              "pattern": "^[a-z][a-z0-9-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "deviceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "deviceId",
+        "consentRevision"
+      ],
+      "properties": {
+        "scope": {
+          "const": "device"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        },
+        "consentRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9:_-]+$"
+        }
+      }
+    }
+  }
+}

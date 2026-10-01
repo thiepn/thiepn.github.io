@@ -13,6 +13,7 @@ const workActive = path.startsWith('/work/') || path.startsWith('/project');
     <nav class="site-nav" aria-label="Primary navigation">
       <a href="/home/" aria-current={path === '/home/' ? 'page' : undefined}>Home</a>
       <a href="/#apps" aria-current={appsActive ? 'page' : undefined}>Apps</a>
+      {portal && <a href="/inbox/" aria-current={path === '/inbox/' ? 'page' : undefined}>Inbox</a>}
       <a href="/work/" aria-current={workActive ? 'page' : undefined}>Work</a>
       <a href="/about/" aria-current={path.startsWith('/about/') ? 'page' : undefined}>About</a>
     </nav>

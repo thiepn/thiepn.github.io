@@ -93,3 +93,5 @@ H2 Account entry, session boundaries, release gate and paired validation: [docs/
 H3 provider contracts, capability audit and private-data release gates: [docs/HUB_H3.md](docs/HUB_H3.md).
 
 H4 daily board, Focus, timezone and visual privacy behavior: [docs/HUB_H4.md](docs/HUB_H4.md).
+
+H5 scoped Search, attention contracts, Inbox coverage and release gates: [docs/HUB_H5.md](docs/HUB_H5.md).

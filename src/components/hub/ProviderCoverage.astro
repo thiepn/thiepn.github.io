@@ -1,0 +1,9 @@
+---
+import { PILOT_PROVIDERS } from '../../lib/providers/registry';
+interface Props { operation: 'search' | 'inbox'; }
+const { operation } = Astro.props;
+const labels = { notes: 'Notes', library: 'Library', tms60: 'TMS60' };
+---
+<ul class="portal-source-coverage" aria-label="Provider coverage">
+  {PILOT_PROVIDERS.map(provider => <li data-source={provider.id}><div><strong>{labels[provider.id]}</strong><small>{provider.scope === 'device' ? 'On this device' : provider.id === 'tms60' ? 'Account · selected translation' : 'Account · cloud snapshot'}</small></div><span>{provider.privateReadsEnabled && provider.operations[operation] ? 'Certification required' : 'Not connected'}</span><a href={provider.actions.open} rel="noreferrer">Open {labels[provider.id]} <span aria-hidden="true">↗</span></a></li>)}
+</ul>
