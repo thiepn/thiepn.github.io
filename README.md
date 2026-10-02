@@ -97,3 +97,5 @@ H4 daily board, Focus, timezone and visual privacy behavior: [docs/HUB_H4.md](do
 H5 scoped Search, attention contracts, Inbox coverage and release gates: [docs/HUB_H5.md](docs/HUB_H5.md).
 
 H6 manual workflow guides, transfer validation and owner certification gates: [docs/HUB_H6.md](docs/HUB_H6.md).
+
+H7 reviewed 100–250-app admission, pin discovery and bounded provider selection: [docs/HUB_H7.md](docs/HUB_H7.md).

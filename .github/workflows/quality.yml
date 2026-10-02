@@ -22,7 +22,7 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run audit:studio
       - name: Retained scale and automation checks
-        run: npm run perf:scale && npm run test:automation
+        run: npm run perf:scale && npm run test:hub-scale && npm run test:automation
       - uses: actions/upload-artifact@v4
         if: always()
         with:

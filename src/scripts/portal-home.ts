@@ -2,6 +2,7 @@ import { hubIdentity } from './portal-auth';
 import { preferenceKey, type HubIdentity } from '../lib/hub-auth';
 import { MAX_HUB_PINS, defaultHubPreferences, parseHubPreferences, moveHubPin } from '../lib/hub-preferences';
 import { defaultHomeView, homeDay, visibleHomeModules, type HomeModuleId, type HomeView } from '../lib/home-view';
+import { matchesPinTitle } from '../lib/pin-filter';
 
 const root = document.querySelector<HTMLElement>('[data-portal-home]');
 if (root) {
@@ -17,6 +18,15 @@ if (root) {
   const status = root.querySelector<HTMLElement>('[data-customize-status]')!;
   const notice = root.querySelector<HTMLElement>('[data-preference-status]')!;
   const choices = Array.from(root.querySelectorAll<HTMLInputElement>('[data-pin-choice]'));
+  const pinFilter = root.querySelector<HTMLInputElement>('[data-pin-filter]')!;
+  const pinFilterStatus = root.querySelector<HTMLElement>('[data-pin-filter-status]')!;
+  root.querySelector<HTMLElement>('[data-pin-filter-control]')!.hidden = pinFilterStatus.hidden = false;
+  function filterPins() {
+    let count = 0;
+    choices.forEach(choice => { const label = choice.closest<HTMLLabelElement>('label')!; const match = matchesPinTitle(label.textContent ?? '', pinFilter.value); label.hidden = !match; if (match) ++count; });
+    pinFilterStatus.textContent = `${count} apps available to choose. Filtering does not change your pins.`;
+  }
+  pinFilter.addEventListener('input', filterPins); filterPins();
   let identity: HubIdentity = hubIdentity;
   let activeKey: string | null = null;
   let canPersist = true;
@@ -97,7 +107,7 @@ if (root) {
   window.addEventListener('pageshow', updateDay);
   window.addEventListener('pagehide', event => { if (!event.persisted) clearInterval(dayTimer); });
   let returnFocus: HTMLElement | null = null;
-  open.addEventListener('click', () => { returnFocus = document.activeElement as HTMLElement; dialog.showModal(); root.querySelector<HTMLButtonElement>('[data-customize-close]')!.focus(); });
+  open.addEventListener('click', () => { returnFocus = document.activeElement as HTMLElement; pinFilter.value = ''; filterPins(); dialog.showModal(); root.querySelector<HTMLButtonElement>('[data-customize-close]')!.focus(); });
   root.querySelector('[data-customize-close]')!.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
   dialog.addEventListener('close', () => returnFocus?.focus());

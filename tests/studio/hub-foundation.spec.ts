@@ -38,7 +38,7 @@ test('Home starter pins, keyboard reorder, persistence and local storage isolati
   await expect(page.locator('[data-portal-home]')).toHaveAttribute('data-density', 'comfortable');
   await expect(page.locator('[data-pin-list] [data-pin-slug="canvas"]')).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem('notes:sentinel'))).toBe('keep');
-  await expect(page.locator('[data-hub-item]')).toHaveCount(27);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
   expect(await page.locator('[data-hub-slug]').evaluateAll(nodes => nodes.map(n => (n as HTMLElement).dataset.hubSlug))).toEqual(hub.projects.map((p: any) => p.slug));
 });
 
@@ -83,7 +83,7 @@ test('Public task search is direct, reloadable, curated and network independent'
   await page.locator('[data-portal-query]').fill('zzzz-no-app');
   await expect(page.locator('[data-portal-search-empty]')).toBeVisible();
   await page.locator('[data-portal-query]').fill('');
-  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(27);
+  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(hub.expectedCount);
   await page.locator('[data-portal-query]').fill('Scripture memory');
   await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'tms60');
   await page.reload();
@@ -99,8 +99,8 @@ test('Alias, Home privacy, and no-JavaScript launchers', async ({ browser, reque
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/');
-  await page.goto('http://127.0.0.1:4321/home/'); await expect(page.locator('[data-pin-list] a')).toHaveCount(8); await expect(page.locator('[data-hub-item]')).toHaveCount(27);
-  await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(27);
+  await page.goto('http://127.0.0.1:4321/home/'); await expect(page.locator('[data-pin-list] a')).toHaveCount(8); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+  await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(hub.expectedCount);
   await context.close();
 });
 

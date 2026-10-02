@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+const hubCount = JSON.parse(readFileSync(new URL('../../src/data/hub.json', import.meta.url), 'utf8')).expectedCount;
 import { test, expect } from '@playwright/test';
 test('H5 scopes filter reviewed actions and preserve keyboard and reload state', async ({ page }) => {
   await page.goto('/search/');
@@ -11,7 +13,7 @@ test('H5 scopes filter reviewed actions and preserve keyboard and reload state',
   await expect(page.getByLabel('Action or task')).toHaveValue('checklist');
   await page.getByLabel('Action or task').fill('zz-no-match'); await expect(page.locator('[data-action-empty]')).toBeVisible();
   await page.keyboard.press('Escape'); await expect(page.getByRole('tab', { name: 'Apps', exact: true })).toBeFocused();
-  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(27);
+  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(hubCount);
 });
 test('H5 resource URLs are scrubbed without collecting or sending private queries', async ({ page }) => {
   const requests: string[] = []; page.on('request', r => requests.push(r.url()));
@@ -43,7 +45,7 @@ test('H5 Inbox is reachable without badges, distinguishes unavailable coverage a
 });
 test('H5 public directory and Inbox owner links work without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false }); const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(27);
+  await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(hubCount);
   await expect(page.getByRole('tablist')).toBeHidden(); await page.goto('http://127.0.0.1:4321/inbox/');
   await expect(page.getByRole('link', { name: 'Open Notes', exact: true })).toHaveAttribute('href', 'https://thiepn.dev/notes/');
   await expect(page.getByRole('button', { name: 'Hide Inbox' })).toBeHidden(); await context.close();

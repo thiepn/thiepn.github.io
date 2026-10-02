@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+const hubCount = JSON.parse(readFileSync(new URL('../../src/data/hub.json', import.meta.url), 'utf8')).expectedCount;
 import { test, expect } from '@playwright/test';
 const visibleModules = (page: any) => page.locator('[data-home-module]:visible').evaluateAll((nodes: HTMLElement[]) => nodes.map(node => node.dataset.homeModule));
 test('H4 module choices, Focus and independent resets persist without importing external data', async ({ page }) => {
@@ -33,7 +35,7 @@ test('H4 Hide Home survives reload, remains keyboard reversible and leaves every
   const hide = page.getByRole('button', { name: 'Hide Home', exact: true }); await hide.focus(); await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: 'Show Home', exact: true })).toBeFocused();
   await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(27);
+  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hubCount);
   await page.reload(); await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
   await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await page.getByRole('button', { name: 'Reset daily modules' }).click(); await page.keyboard.press('Escape');
@@ -48,7 +50,7 @@ test('H4 zero modules remains deliberate, and blocked storage keeps the view for
   await expect(page.locator('[data-customize-status]')).toContainText('this visit'); await page.keyboard.press('Escape');
   await expect(page.locator('[data-home-modules-empty]')).toBeVisible(); expect(await visibleModules(page)).toEqual([]);
   await page.getByRole('radio', { name: 'Focus', exact: true }).check(); expect(await visibleModules(page)).toEqual([]);
-  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(27);
+  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hubCount);
 });
 test('H4 civil date updates at midnight and on return without network polling', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-01T21:59:30Z') });

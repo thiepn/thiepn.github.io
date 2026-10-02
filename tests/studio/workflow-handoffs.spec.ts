@@ -7,7 +7,8 @@ test('H6 guides support positions, history and recovery without claiming progres
   await expect(page.locator('[data-flow-status]')).toContainText('no file transfer or app outcome confirmed');
   await page.getByRole('link',{name:'Turn notes into a manuscript',exact:true}).click();
   await expect(page.locator('[aria-current="step"] h3')).toHaveText('Export selected notes');
-  await page.getByRole('link',{name:'View step 2',exact:true}).click(); await page.reload();
+  await page.getByRole('link',{name:'View step 2',exact:true}).click(); // Browser-native reload avoids Firefox automation adding a duplicate history entry.
+  await Promise.all([page.waitForEvent('load'), page.evaluate(() => location.reload())]);
   await expect(page.locator('[aria-current="step"] h3')).toHaveText('Open the Markdown source');
   await page.getByText('If something stops',{exact:true}).last().click(); await expect(page.getByText(/Reopen the saved draft/)).toBeVisible();
   expect(await page.evaluate(() => JSON.stringify({...localStorage}))).not.toContain('fictional-secret');

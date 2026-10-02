@@ -77,7 +77,8 @@
     "pretypecheck": "node scripts/prepare-showcase.mjs",
     "validate:historical": "node scripts/validate-phase0.mjs && node scripts/validate-catalogue.mjs && node scripts/validate-phase2.mjs && node scripts/validate-phase3.mjs && node scripts/validate-phase4.mjs && node scripts/validate-phase5.mjs && node scripts/validate-phase6.mjs && node scripts/validate-phase7.mjs && node scripts/validate-phase8.mjs && node scripts/validate-phase9.mjs && node scripts/validate-phase10.mjs && node scripts/validate-phase11.mjs && node scripts/validate-phase12.mjs && node scripts/validate-phase13.mjs && node scripts/validate-phase14.mjs && node scripts/validate-media.mjs && node scripts/validate-links.mjs",
     "test:e2e:historical": "playwright test",
-    "audit:studio": "npm run generated:check && npm run validate && npm run typecheck && npm test && npm run build && npm run perf:budget && npm run test:e2e"
+    "audit:studio": "npm run generated:check && npm run validate && npm run typecheck && npm test && npm run build && npm run perf:budget && npm run test:e2e",
+    "test:hub-scale": "node scripts/test-hub-registry-scale.mjs"
   },
   "dependencies": {
     "astro": "7.1.6",
