@@ -11,14 +11,15 @@ const server = createServer((request, response) => {
   const bytes = responses.get(route);
   if (!bytes || (fault === 'missing' && route === '/hub-release.json')) { response.writeHead(404); response.end(); return; }
   response.writeHead(200);
-  response.end(fault === 'changed' && route === '/' ? Buffer.concat([bytes, Buffer.from('changed')]) : bytes);
+  if (route === '/' && fault === 'changed') { const altered = Buffer.from(bytes); altered[0] ^= 1; response.end(altered); }
+  else response.end(fault === 'oversized' && route === '/' ? Buffer.concat([bytes, Buffer.from('changed')]) : bytes);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 try {
   const base = `http://127.0.0.1:${server.address().port}/`;
   const args = ['--experimental-strip-types', 'scripts/smoke-hub-release.mjs', '--url', base];
   await run(process.execPath, args, { timeout: 15000 }); console.log('H8 exact serving fixture accepted');
-  for (fault of ['changed', 'missing']) {
+  for (fault of ['changed', 'oversized', 'missing']) {
     let rejected = false;
     try { await run(process.execPath, args, { timeout: 15000 }); }
     catch (error) { if (error.code === 1 && error.stderr.includes('Hub candidate smoke failed')) rejected = true; else throw error; }
