@@ -115,4 +115,5 @@ html[data-portal][data-theme='dark'] .portal-module-faith{border-top-color:#b6b3
 
 .portal-flows{padding-block:24px 48px}.portal-flows>.portal-home-heading{display:block}.portal-flows>.portal-home-heading h1{margin-block:.3rem .7rem}
 .portal-pin-filter{display:grid;gap:.5rem;margin-block:1rem}.portal-pin-filter input{min-width:0;min-height:44px;padding:.6rem;background:var(--surface-1);color:var(--ink);border:1px solid var(--line-strong);border-radius:.3rem}.portal-pin-filter[hidden],.portal-pin-choices label[hidden]{display:none!important}
-@supports(content-visibility:auto){.hub-card{content-visibility:auto;contain-intrinsic-size:auto 310px}.portal-search-row{content-visibility:auto;contain-intrinsic-size:auto 140px}}
+/* Keep image cards in normal layout: WebKit lazy images can stall inside skipped card content. */
+@supports(content-visibility:auto){.portal-search-row{content-visibility:auto;contain-intrinsic-size:auto 140px}}

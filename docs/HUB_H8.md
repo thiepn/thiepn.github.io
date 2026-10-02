@@ -45,6 +45,8 @@ Quality CI runs source/built gates and artifact fault tests after the full studi
 
 The older source audit reported 46 obsolete expectations. H8 uses a separately reviewed featured count, excludes projects by current source visibility instead of an obsolete Markdown Guide hold, accepts Astro's boolean `noindex` syntax, and checks current THIEPN branding. Duplicate identity, generated metadata, launch/route integrity, fallback and retired-brand checks remain. Historical visual/browser workflows do not replace the current Hub studio matrix.
 
+The first complete H8 matrix passed 527/528 checks. WebKit stalled on a lazy-loaded Signal Earth thumbnail after scrolling into an image card with `content-visibility:auto`. H8 removes layout skipping from image cards and keeps ordinary native image lazy loading; text-only Search rows retain progressive layout. The complete corrected candidate must pass its own matrix. Serving fixtures additionally reject same-size hash tampering and oversized bodies, not just missing files.
+
 ## Qualification evidence
 
 | Local check | Result |
