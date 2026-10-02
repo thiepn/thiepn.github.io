@@ -99,3 +99,18 @@ html[data-portal][data-theme='dark'] .portal-module-faith{border-top-color:#b6b3
 .portal-inbox :is([data-inbox-content],[data-inbox-hidden],[data-hub-account])[hidden]{display:none}
 .portal-bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:759px){.portal-action-results{grid-template-columns:1fr}.portal-inbox-content{padding:12px}.portal-source-coverage li{padding:12px}.portal-source-coverage li>div{width:100%;overflow-wrap:anywhere}}
+/* Workflow guides keep instructions and recovery beside the owning app. */
+.portal-flow-choices{display:flex;flex-wrap:wrap;gap:.6rem;margin-block:1.2rem}
+.portal-flow-choices a{padding:.75rem;border:1px solid var(--line);border-radius:.4rem;text-decoration:none;min-height:44px}
+.portal-flow-choices a[aria-current]{background:var(--surface-2);outline:2px solid currentColor;outline-offset:2px}
+.portal-flow-guide{margin-block:2rem;max-width:72ch}
+.portal-flow-guide[hidden]{display:none!important}
+.portal-flow-steps{padding-left:1.5rem;display:grid;gap:1.25rem}
+.portal-flow-steps>li{padding:1rem;border:1px solid var(--line);border-radius:.5rem;overflow-wrap:anywhere}
+.portal-flow-steps>li[aria-current]{border-color:currentColor}
+.portal-flow-steps h3{margin-block:.3rem .8rem}
+.portal-flow-steps p{margin-block:.65rem}
+.portal-flow-steps summary{cursor:pointer;min-height:44px;display:list-item;padding-block:.6rem}
+.portal-flow-actions{display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-top:1rem}
+
+.portal-flows{padding-block:24px 48px}.portal-flows>.portal-home-heading{display:block}.portal-flows>.portal-home-heading h1{margin-block:.3rem .7rem}
