@@ -1,0 +1,18 @@
+import hub from '../data/hub.json';
+import registry from '../data/hub-providers.json';
+import { AUTOMATED_TRANSFERS_ENABLED } from '../lib/workflows/transfer';
+import { HUB_RELEASE_ID, type HubReleaseStatus } from '../lib/hub-release-policy';
+export const prerender = true;
+export function GET() {
+  const status: HubReleaseStatus = {
+    schemaVersion: 1, releaseId: HUB_RELEASE_ID, profile: 'public-handoffs', appCount: hub.expectedCount,
+    features: {
+      hubSignIn: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1',
+      privateReads: registry.providers.some(p => p.privateReadsEnabled || ['summary', 'continue', 'search'].some(op => p.operations[op as keyof typeof p.operations])),
+      inlineWrites: registry.providers.some(p => p.inlineWritesEnabled || p.operations.capture) || registry.attentionContract.inlineWritesEnabled,
+      inboxReads: registry.attentionContract.privateReadsEnabled || registry.providers.some(p => p.operations.inbox),
+      automatedTransfers: AUTOMATED_TRANSFERS_ENABLED,
+    },
+  };
+  return new Response(JSON.stringify(status), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=0, must-revalidate' } });
+}

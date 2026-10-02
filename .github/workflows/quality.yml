@@ -21,6 +21,8 @@ jobs:
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run audit:studio
+      - name: Hub public release profile gate
+        run: npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke
       - name: Retained scale and automation checks
         run: npm run perf:scale && npm run test:hub-scale && npm run test:automation
       - uses: actions/upload-artifact@v4
@@ -30,4 +32,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            .cache/hub-release-qualification.json
           retention-days: 7
+          include-hidden-files: true

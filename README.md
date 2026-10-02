@@ -99,3 +99,5 @@ H5 scoped Search, attention contracts, Inbox coverage and release gates: [docs/H
 H6 manual workflow guides, transfer validation and owner certification gates: [docs/HUB_H6.md](docs/HUB_H6.md).
 
 H7 reviewed 100–250-app admission, pin discovery and bounded provider selection: [docs/HUB_H7.md](docs/HUB_H7.md).
+
+H8 production qualification and promotion gates: [docs/HUB_H8.md](docs/HUB_H8.md).

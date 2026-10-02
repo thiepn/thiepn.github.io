@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "H8-public-handoffs-v1",
+  "profile": "public-handoffs",
+  "expectedFeaturedProjects": 6,
+  "socialBrand": "THIEPN.",
+  "status": "review-candidate",
+  "productionEnabled": false
+}

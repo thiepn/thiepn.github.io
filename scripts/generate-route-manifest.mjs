@@ -10,6 +10,7 @@ const routes = [
   ...collections.map(collectionRoute),
   '/catalogue.json',
   '/hub-search.json',
+  '/hub-release.json',
   '/hub-providers.json',
   '/hub-provider-schema.json',
   '/hub-attention-schema.json',

@@ -10,6 +10,7 @@ const warn = (message) => warnings.push(message);
 const exists = (file) => fs.existsSync(file);
 
 const rc = readJson('release-candidate.json');
+const hubRelease = readJson('release-hub.json');
 const pkg = readJson('package.json');
 const publicCatalogue = readJson('src/generated/catalogue-public.json');
 const searchIndex = readJson('src/generated/search-index.json');
@@ -43,7 +44,7 @@ if (stats.totalListed !== sourceStats.totalListed) fail(`generated listed projec
 if (projects.length !== sourceStats.totalListed) fail(`public catalogue project count ${projects.length} != source listed count ${sourceStats.totalListed}`);
 if (indexedProjects.length !== sourceStats.totalListed) fail(`search index project count ${indexedProjects.length} != source listed count ${sourceStats.totalListed}`);
 if (collections.length !== rc.expected.collections) fail(`collection count ${collections.length} != ${rc.expected.collections}`);
-if ((curation.featured ?? []).length !== rc.expected.featuredProjects) fail(`featured count ${(curation.featured ?? []).length} != ${rc.expected.featuredProjects}`);
+if ((curation.featured ?? []).length !== hubRelease.expectedFeaturedProjects) fail(`featured count ${(curation.featured ?? []).length} != ${hubRelease.expectedFeaturedProjects}`);
 
 const unique = (values) => new Set(values).size === values.length;
 for (const [label, values] of [
@@ -69,9 +70,11 @@ for (const collection of collections) {
   if (!routes.has(route)) fail(`${collection.code}: missing collection route ${route}`);
 }
 
-if (projects.some((project) => project.slug === 'markdown-guide')) fail('HOLD project markdown-guide leaked into public catalogue');
-if (searchIndex.projects?.some((project) => project.slug === 'markdown-guide')) fail('HOLD project markdown-guide leaked into search');
-if ([...routes].some((route) => route.includes('markdown-guide'))) fail('HOLD project markdown-guide leaked into routes');
+for (const { data } of sourceProjectFiles.filter(({ data }) => data.visibility !== 'listed')) {
+  if (projects.some(project => project.slug === data.slug)) fail(`Unlisted project ${data.slug} leaked into public catalogue`);
+  if (searchIndex.projects?.some(project => project.slug === data.slug)) fail(`Unlisted project ${data.slug} leaked into search`);
+  if (routes.has(`/project/${data.slug}/`)) fail(`Unlisted project ${data.slug} leaked into routes`);
+}
 if ([...routes].some((route) => route.startsWith('/dev/'))) fail('development route leaked into public route manifest');
 
 if (!baseLayout.includes('data-catalogue-search-open') && !fs.readFileSync('src/components/shell/SiteHeader.astro','utf8').includes('data-catalogue-search-open')) fail('search fallback link is missing');
@@ -80,15 +83,15 @@ if (!baseLayout.includes('thiepn:index-theme') || !baseLayout.includes("prefers-
 if (!previewController.includes("addEventListener('error'") || !previewController.includes("setState('unavailable')")) fail('preview media failure fallback is missing');
 if (!githubSync.includes('cached-or-unavailable') || !githubSync.includes('stale: true')) fail('GitHub metadata failure fallback is missing');
 if (!sitemapSource.includes("!route.startsWith('/dev/')")) fail('sitemap must exclude development routes');
-if (!/<BaseLayout\b[^>]*\bnoindex=\{true\}/s.test(notFoundSource)) fail('404 page must opt into BaseLayout noindex handling');
+if (!/<BaseLayout\b[^>]*\bnoindex(?:=\{true\})?(?=[\s>])/s.test(notFoundSource)) fail('404 page must opt into BaseLayout noindex handling');
 if (ogGeneratorSource.includes('PROJECT UNIVERSE')) fail('social-card generator still contains legacy Project Universe branding');
-if (!ogGeneratorSource.includes('THIEPN / PORTFOLIO')) fail('social-card generator must use the current portfolio footer');
+if (hubRelease.socialBrand !== 'THIEPN.' || !ogGeneratorSource.includes(hubRelease.socialBrand)) fail('social-card generator must use the reviewed current brand');
 for (const svgFile of Object.keys(ogRasterManifest.entries ?? {})) {
   const svgPath = path.join('public/og', svgFile);
   if (!exists(svgPath)) { fail(`missing social-card SVG ${svgFile}`); continue; }
   const svg = fs.readFileSync(svgPath, 'utf8');
   if (svg.includes('PROJECT UNIVERSE')) fail(`${svgFile}: legacy Project Universe branding remains`);
-  if (!svg.includes('THIEPN / PORTFOLIO')) fail(`${svgFile}: current portfolio footer is missing`);
+  if (!svg.includes(hubRelease.socialBrand)) fail(`${svgFile}: current social brand is missing`);
 }
 
 const requiredFiles = [
