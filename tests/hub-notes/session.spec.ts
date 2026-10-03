@@ -31,8 +31,8 @@ async function fixture(page:Page,permissions=['notes.hub.summary.read','notes.hu
     if(url.origin===PLATFORM){
       expect(req.headers().authorization).toBe('Bearer '+managedToken);
       if(url.pathname.endsWith('/access'))return route.fulfill({json:{ok:true,data:denied?null:{accountId:A,consumer:'thiepn-hub',audience:'notes-hub',permissions,grantRevision:REV,expiresAt:managedExpiry,accountState:'active',notesSyncAccess:true}}});
-      const body=req.postDataJSON();if(held)await new Promise<void>(r=>{release=r;});
-      return route.fulfill({json:{schemaVersion:1,providerId:'notes',operation:body.operation,requestId:body.requestId,context:body.context,privacy:'private',coverage:'cloud-snapshot',status:'ready',observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+expires).toISOString(),sourceUpdatedAt:new Date(Date.now()-1000).toISOString(),data:{items:[{resourceId:REV,title:body.operation==='search'?'Search fixture title':'<b>Fictional private title</b>',updatedAt:new Date(Date.now()-1000).toISOString()}]}}});
+      const body=req.postDataJSON();if(held)await new Promise<void>(r=>{release=r;});const observed=Date.now();
+      return route.fulfill({json:{schemaVersion:1,providerId:'notes',operation:body.operation,requestId:body.requestId,context:body.context,privacy:'private',coverage:'cloud-snapshot',status:'ready',observedAt:new Date(observed).toISOString(),expiresAt:new Date(observed+expires).toISOString(),sourceUpdatedAt:new Date(observed-1000).toISOString(),data:{items:[{resourceId:REV,title:body.operation==='search'?'Search fixture title':'<b>Fictional private title</b>',updatedAt:new Date(observed-1000).toISOString()}]}}});
     }
     if(url.origin===HUB||url.origin===ACCOUNT){
       const root=path.resolve(url.origin===HUB?'.cache/h14-hub':'.cache/h14-account');let file=path.join(root,url.pathname);

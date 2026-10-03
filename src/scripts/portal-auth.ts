@@ -83,8 +83,8 @@ if (root) {
         catch { busy = false; show({ status: 'unavailable' }, 'Hub preferences are hidden. Sign-out could not be confirmed; try again.'); }
       })());
       retry.addEventListener('click', () => { if (callbackQuery) location.assign('/home/'); else void verify(); });
-      client.auth.onAuthStateChange(() => { if (!busy && !callbackQuery) { ++generation; show({ status: 'checking' }); setTimeout(() => { if (!busy && !callbackQuery) void verify(); }, 0); } });
-      window.addEventListener('pageshow', () => { if (!busy && !callbackQuery) void verify(); });
+      client.auth.onAuthStateChange((event) => { if (event === 'INITIAL_SESSION') return; if (!busy && !callbackQuery) { ++generation; show({ status: 'checking' }); setTimeout(() => { if (!busy && !callbackQuery) void verify(); }, 0); } });
+      window.addEventListener('pageshow', event => { if (event.persisted && !busy && !callbackQuery) void verify(); });
       document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy && !callbackQuery) void verify(); });
       if (location.pathname === '/home/auth/callback/') {
         const query = callbackQuery!;
