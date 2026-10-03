@@ -5,6 +5,7 @@ import DailyHome from '../../components/hub/DailyHome.astro';
 import PortalAccount from '../../components/hub/PortalAccount.astro';
 import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
+import PrivateTms from '../../components/hub/PrivateTms.astro';
 import PrivateNotes from '../../components/hub/PrivateNotes.astro';
 import { getHubProjects } from '../../lib/hub';
 import '../../styles/hub.css';
@@ -20,6 +21,7 @@ const entries = await getHubProjects();
     <PersonalPins entries={entries} />
     <p class="portal-home-hidden" data-home-hidden hidden>Home is hidden. Choose Show Home to reveal your account, pins and daily modules. All apps remain available below.</p>
     <DailyHome entries={entries} />
+    <PrivateTms />
     <PrivateNotes />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
@@ -27,4 +29,5 @@ const entries = await getHubProjects();
     <PortalCustomize entries={entries} />
   </div>
 </BaseLayout>
-<script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home'; import '../../scripts/portal-auth'; import '../../scripts/portal-notes';</script>
+<script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home'; import '../../scripts/portal-auth'; import '../../scripts/portal-notes';
+  import '../../scripts/portal-tms60';</script>

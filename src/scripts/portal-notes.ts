@@ -2,10 +2,8 @@ import { hubIdentity, readHubNotesConsent } from './portal-auth';
 import { HubNotesSession, NOTES_PENDING_KEY } from '../lib/hub-notes-session';
 import type { Operation } from '../lib/providers/types';
 
-// Capture and remove protocol parameters before identity waits or network work.
-const query = new URLSearchParams(location.search), fragment = location.hash;
-const callback = query.has('state') || query.has('code') || query.has('error');
-if(callback)history.replaceState(null,'','/home/');
+import {managedQuery as query,managedFragment as fragment,managedCallback,managedTarget} from '../lib/hub-managed-return';
+const callback=managedCallback && (managedTarget===null || managedTarget===NOTES_PENDING_KEY);
 const root=document.querySelector<HTMLElement>('[data-private-notes]');
 if(root){
   const status=root.querySelector<HTMLElement>('[data-notes-status]')!;

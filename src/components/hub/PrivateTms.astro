@@ -1,0 +1,14 @@
+---
+const enabled = import.meta.env.PUBLIC_HUB_TMS60_PRIVATE === 'staged-v1';
+---
+{enabled && <section class="portal-daily portal-private-tms60" data-private-tms60 data-home-personal aria-labelledby="private-tms60-heading">
+  <header class="portal-section-heading"><div><h2 id="private-tms60-heading">Faith · TMS60</h2><p class="portal-muted">Review counts and Bible references from one translation’s cloud snapshot. Local practice stays in TMS60.</p></div></header>
+  <label>Translation <select data-tms60-translation>{["esv","niv","nlt","hfa","schlachter1951","klb1985","krv1961"].map(id=><option value={id}>{id.toUpperCase()}</option>)}</select></label>
+  <p role="status" aria-live="polite" data-tms60-status>Sign in to connect your TMS60.</p>
+  <div class="portal-account-actions"><button class="portal-button" type="button" data-tms60-connect>Connect TMS60</button><button class="portal-button" type="button" data-tms60-refresh hidden>Refresh</button><button class="portal-button" type="button" data-tms60-disconnect hidden>Disconnect this tab</button><a class="portal-button" href="https://account.thiepn.dev/hub/tms60" rel="noreferrer">Manage sharing</a><a class="portal-button" href="https://tms60.thiepn.dev/" rel="noreferrer">Open TMS60</a></div>
+  <div data-tms60-private hidden>
+    <fieldset class="portal-view-switch"><legend>Show</legend><label><input type="radio" name="tms60-operation" value="summary" checked/> Due reviews</label><label><input type="radio" name="tms60-operation" value="continue"/> Continue</label></fieldset>
+    <form data-tms60-search><label>Search references <input class="portal-input" name="query" type="search" maxlength="256" autocomplete="off"/></label><button class="portal-button" type="submit">Search TMS60</button></form>
+    <p data-tms60-counts></p><ul data-tms60-items></ul><small data-tms60-freshness></small>
+  </div>
+</section>}

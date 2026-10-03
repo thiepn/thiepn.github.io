@@ -1,5 +1,6 @@
 import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, readHubCallback, type HubIdentity } from '../lib/hub-auth';
 import { parseNotesConsent, type NotesConsent } from '../lib/hub-notes-session';
+export let readHubTmsConsent:(owner:string,translation:string)=>Promise<NotesConsent>=async()=>{throw new Error('Unavailable');};
 export let readHubNotesConsent: (owner:string)=>Promise<NotesConsent> = async()=>{throw new Error('Unavailable');};
 
 const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSearchParams(location.search) : null;
@@ -46,6 +47,7 @@ if (root) {
         if(error || generation !== epoch || hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner)throw new Error('Unavailable');
         return parseNotesConsent(data);
       };
+      readHubTmsConsent=async(owner,translation)=>{const epoch=generation;if(hubIdentity.status!=='signed-in'||hubIdentity.id!==owner)throw new Error('Unavailable');const {data:user,error:userError}=await client.auth.getUser();if(userError||user.user?.id!==owner||generation!==epoch)throw new Error('Unavailable');const {data,error}=await client.rpc('get_thiepn_hub_tms60_consent',{p_translation:translation});if(error||generation!==epoch||hubIdentity.status!=='signed-in'||hubIdentity.id!==owner)throw new Error('Unavailable');return parseNotesConsent(data,'tms60');};
       async function verify() {
         const current = ++generation;
         show({ status: 'checking' });
