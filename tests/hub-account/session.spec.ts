@@ -199,7 +199,9 @@ test('H10 expired SDK session rotates refresh token and re-verifies the same ide
   await expireSession(page); await page.reload();
   await expect(page.locator('[data-auth-status]')).toContainText('a@example.test');
   expect(f.refreshes()).toBeGreaterThan(0);
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('thiepn:hub-auth:v1')!).refresh_token.endsWith('-1'))).toBe(true);
+  // SDK startup and auth events can cause another legitimate refresh. Prove
+  // persisted rotation for A without assuming exactly one refresh request.
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('thiepn:hub-auth:v1')!).refresh_token)).toMatch(new RegExp('^fixture-refresh-'+a+'-[1-9][0-9]*$'));
 });
 test('H10 revoked refresh cannot restore account preferences',async({page})=>{
   const f=await fixture(page); await page.goto(hubOrigin+'/home/'); await login(page);
