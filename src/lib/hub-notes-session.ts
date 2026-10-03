@@ -9,17 +9,18 @@ export const NOTES_CALLBACK = 'https://thiepn.dev/home/';
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const purposes = ['notes.hub.summary.read','notes.hub.continue.read','notes.hub.search.read'];
 export type NotesConsent = { permissions: string[]; revision: string | null };
-export function parseNotesConsent(v: unknown): NotesConsent {
+export function parseNotesConsent(v: unknown, provider: 'notes'|'tms60' = 'notes'): NotesConsent {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Unavailable');
   const value = v as NotesConsent;
-  if (Object.keys(value).sort().join(',') !== 'permissions,revision' || !Array.isArray(value.permissions) || value.permissions.length > 3 || new Set(value.permissions).size !== value.permissions.length || value.permissions.some(p => !purposes.includes(p)) || !(value.revision === null || uuid(value.revision)) || value.revision === null && value.permissions.length) throw new Error('Unavailable');
+  if (Object.keys(value).sort().join(',') !== 'permissions,revision' || !Array.isArray(value.permissions) || value.permissions.length > 3 || new Set(value.permissions).size !== value.permissions.length || value.permissions.some(p => !purposes.map(x=>x.replace("notes.",provider+".")).includes(p)) || !(value.revision === null || uuid(value.revision)) || value.revision === null && value.permissions.length) throw new Error('Unavailable');
   return structuredClone(value);
 }
 type Pending = { state: string; verifier: string; started: number; owner: string; revision: string; clientId: string };
 type Tokens = { bearer: string; refresh: string; expiresAt: number; owner: string; revision: string };
-export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string };
+export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string; provider?: 'notes'|'tms60'; translationId?: string };
 export function validNotesConfig(config: NotesSessionConfig): boolean {
   try {
+    if(config.provider==='tms60')return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && ['esv','niv','nlt','hfa','schlachter1951','klb1985','krv1961'].includes(config.translationId ?? '');
     const url = new URL(config.platformOrigin);
     return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && url.origin === config.platformOrigin && url.protocol === 'https:' && url.hostname.endsWith('.vercel.app') && !url.username && !url.password;
   } catch { return false; }
@@ -27,7 +28,7 @@ export function validNotesConfig(config: NotesSessionConfig): boolean {
 const random = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const object = (value: unknown): value is Record<string,unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 /** Standard Supabase OAuth public-client flow. Tokens exist only in this object.
- * Decoded claims are rejection checks; only the H13 server verifies authority.
+ * Decoded claims are rejection checks; the owner server/PostgREST verifies authority.
  */
 export class HubNotesSession {
   private epoch = 0;
@@ -37,28 +38,29 @@ export class HubNotesSession {
   constructor(private config: NotesSessionConfig, private storage: Pick<Storage,'getItem'|'setItem'|'removeItem'>, private owner: () => string | null, private http: typeof fetch = fetch, private now = Date.now) {
     if (!validNotesConfig(config)) throw new Error('Unavailable');
   }
+  private get pendingKey(){return this.config.provider==='tms60'?'thiepn:hub-tms60:pkce:'+this.config.translationId+':v1':NOTES_PENDING_KEY;}
   clear(removePending = true) {
     ++this.epoch; this.tokens = null; this.refreshFlight = null;
     for (const c of this.controllers) c.abort(); this.controllers.clear();
-    if (removePending) try { this.storage.removeItem(NOTES_PENDING_KEY); } catch { /* inaccessible storage */ }
+    if (removePending) try { this.storage.removeItem(this.pendingKey); } catch { /* inaccessible storage */ }
   }
   connected() { return !!this.tokens && this.tokens.owner === this.owner() && this.tokens.expiresAt > this.now(); }
   async begin(owner: string, raw: unknown): Promise<string> {
     this.clear(); const epoch = this.epoch;
-    const consent = parseNotesConsent(raw);
+    const consent = parseNotesConsent(raw,this.config.provider);
     if (!uuid(owner) || owner !== this.owner() || !consent.revision || !consent.permissions.length) throw new Error('Unavailable');
     const verifier = random(), state = random();
     const hash = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));
     const challenge = btoa(String.fromCharCode(...hash)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     if (epoch !== this.epoch || this.owner() !== owner) throw new Error('Unavailable');
-    this.storage.setItem(NOTES_PENDING_KEY,JSON.stringify({ state, verifier, started:this.now(), owner, revision:consent.revision, clientId:this.config.clientId }));
+    this.storage.setItem(this.pendingKey,JSON.stringify({ state, verifier, started:this.now(), owner, revision:consent.revision, clientId:this.config.clientId }));
     const url = new URL('/auth/v1/oauth/authorize',NOTES_ISSUER);
     url.search = new URLSearchParams({ response_type:'code',client_id:this.config.clientId,redirect_uri:NOTES_CALLBACK,state,code_challenge:challenge,code_challenge_method:'S256',scope:'email' }).toString();
     return url.href;
   }
   /** Caller captures and scrubs URL before any async work. Single-use pending. */
   async complete(query: URLSearchParams, fragment: string): Promise<void> {
-    const raw = this.storage.getItem(NOTES_PENDING_KEY); this.storage.removeItem(NOTES_PENDING_KEY);
+    const raw = this.storage.getItem(this.pendingKey); this.storage.removeItem(this.pendingKey);
     this.clear(false); const epoch = this.epoch;
     if (fragment || query.getAll('code').length !== 1 || query.getAll('state').length !== 1 || [...query.keys()].some(k => !['code','state'].includes(k)) || !raw || raw.length > 2048) throw new Error('Unavailable');
     const p = JSON.parse(raw) as Pending;
@@ -115,6 +117,16 @@ export class HubNotesSession {
     const epoch = this.epoch;
     try {
       const tokens = await this.freshTokens();
+      if(this.config.provider==='tms60'){
+        if(operation==='search' && (typeof query!=='string'||!query.trim()||query.length>256||/[\u0000-\u001f\u007f]/.test(query)) || operation!=='search' && query!==undefined)throw new Error('Unavailable');
+        const request:RequestContext={providerId:'tms60',operation,requestId:crypto.randomUUID(),context:{scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:this.config.translationId!},...(query!==undefined?{query}:{})};
+        const raw=await this.json(NOTES_ISSUER+'/rest/v1/rpc/read_thiepn_hub_tms60',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,apikey:this.config.publishableKey,'Content-Type':'application/json'},body:JSON.stringify({p_operation:operation,p_revision:tokens.revision,p_translation:this.config.translationId,p_request_id:request.requestId,p_query:query??null})},operation==='search'?65536:32768,signal);
+        if(epoch!==this.epoch||tokens.owner!==this.owner()||signal.aborted)throw new Error('Unavailable');
+        const manifest={...structuredClone(providerManifest('tms60')),privateReadsEnabled:true,operations:{summary:true,continue:true,search:true,capture:false,inbox:false}};
+        const envelope=validateProviderEnvelope(JSON.stringify(raw),manifest,request,this.now());
+        if(Date.parse(envelope.expiresAt)>tokens.expiresAt)throw new Error('Unavailable');
+        return envelope;
+      }
       const snapshot = await this.json(this.config.platformOrigin+'/v1/private/hub/notes/access',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify({operation,grantRevision:tokens.revision})},8192,signal);
       const auth = object(snapshot) && snapshot.ok === true ? snapshot.data : null;
       if (!object(auth) || Object.keys(auth).sort().join(',') !== 'accountId,accountState,audience,consumer,expiresAt,grantRevision,notesSyncAccess,permissions' || auth.accountId !== tokens.owner || auth.consumer !== 'thiepn-hub' || auth.audience !== 'notes-hub' || auth.accountState !== 'active' || auth.notesSyncAccess !== true || auth.grantRevision !== tokens.revision || !Array.isArray(auth.permissions) || auth.permissions.length > 3 || new Set(auth.permissions).size !== auth.permissions.length || auth.permissions.some(p=>!purposes.includes(p)) || !auth.permissions.includes(`notes.hub.${operation}.read`) || !Number.isSafeInteger(auth.expiresAt) || Number(auth.expiresAt) <= this.now() || Number(auth.expiresAt) > tokens.expiresAt || epoch !== this.epoch || tokens.owner !== this.owner()) throw new Error('Unavailable');
