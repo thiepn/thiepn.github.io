@@ -9,21 +9,33 @@ const accountDist=process.env.H2_ACCOUNT_DIST;
 if(!accountDist) throw new Error('Set H2_ACCOUNT_DIST to the paired Account production build (VITE_SUPABASE_URL must match the canonical project).');
 const mime=(file:string)=>file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':file.endsWith('.html')?'text/html':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.woff2')?'font/woff2':'application/octet-stream';
 async function fixture(page:Page) {
-  let subject=a, userFailure=false, logoutFailure=false, challenge='', tokenExchanges=0;
+  let subject=a, userFailure=false, logoutFailure=false, refreshRevoked=false, challenge='', tokenExchanges=0, refreshes=0, rotation=0;
+  let heldUser: { wait: Promise<void>; started: () => void } | null = null;
   const requests:string[]=[];
   await page.route('**/*',async route=>{
     const request=route.request(); const url=new URL(request.url()); requests.push(request.url());
     if(url.origin===issuer){
       if(url.pathname.endsWith('/authorize')){challenge=url.searchParams.get('code_challenge')!;return route.fulfill({contentType:'text/html',body:`<script>location.replace(${JSON.stringify(url.searchParams.get('redirect_to')!+'&code=fixture-once')})</script>`});}
       if(url.pathname.endsWith('/token')){
-        tokenExchanges++;
         const body=request.postDataJSON();
-        expect(crypto.createHash('sha256').update(body.code_verifier).digest('base64url')).toBe(challenge);
+        if(url.searchParams.get('grant_type')==='refresh_token') {
+          refreshes++;
+          expect(body.refresh_token).toMatch(/^fixture-refresh-/);
+          if(refreshRevoked) return route.fulfill({status:400,json:{error:'invalid_grant',error_code:'refresh_token_not_found',msg:'Refresh token revoked'}});
+          rotation++;
+        } else {
+          tokenExchanges++;
+          expect(crypto.createHash('sha256').update(body.code_verifier).digest('base64url')).toBe(challenge);
+        }
         const exp=Math.floor(Date.now()/1000)+3600;
         const token=[Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:subject,exp,iat:exp-3600,aud:'authenticated',role:'authenticated',session_id:subject})).toString('base64url'),'fixture-signature'].join('.');
-        return route.fulfill({json:{access_token:token,refresh_token:'fixture-refresh-'+subject,token_type:'bearer',expires_in:3600,expires_at:exp,user:{id:subject,email:subject===a?'a@example.test':'b@example.test',app_metadata:{},user_metadata:{},aud:'authenticated',created_at:'2026-01-01T00:00:00Z'}}});
+        return route.fulfill({json:{access_token:token,refresh_token:'fixture-refresh-'+subject+'-'+rotation,token_type:'bearer',expires_in:3600,expires_at:exp,user:{id:subject,email:subject===a?'a@example.test':'b@example.test',app_metadata:{},user_metadata:{},aud:'authenticated',created_at:'2026-01-01T00:00:00Z'}}});
       }
-      if(url.pathname.endsWith('/user')) return route.fulfill({status:userFailure?503:200,json:userFailure?{message:'Fixture unavailable'}:{id:subject,email:subject===a?'a@example.test':'b@example.test',app_metadata:{},user_metadata:{},aud:'authenticated',created_at:'2026-01-01T00:00:00Z'}});
+      if(url.pathname.endsWith('/user')) {
+        const capturedSubject=subject, held=heldUser; heldUser=null;
+        if(held) { held.started(); await held.wait; }
+        return route.fulfill({status:userFailure?503:200,json:userFailure?{message:'Fixture unavailable'}:{id:capturedSubject,email:capturedSubject===a?'a@example.test':'b@example.test',app_metadata:{},user_metadata:{},aud:'authenticated',created_at:'2026-01-01T00:00:00Z'}});
+      }
       if(url.pathname.endsWith('/logout')) return route.fulfill({status:logoutFailure?500:204,json:logoutFailure?{message:'Unavailable'}:undefined});
       return route.fulfill({status:404,json:{message:'Unsupported fixture endpoint'}});
     }
@@ -37,7 +49,7 @@ async function fixture(page:Page) {
     }
     return route.abort();
   });
-  return {requests, setUser:(id:string)=>{subject=id;}, failUser:()=>{userFailure=true;}, failLogout:()=>{logoutFailure=true;}, exchanges:()=>tokenExchanges};
+  return {requests, setUser:(id:string)=>{subject=id;}, failUser:()=>{userFailure=true;}, failLogout:()=>{logoutFailure=true;}, exchanges:()=>tokenExchanges, refreshes:()=>refreshes, revokeRefresh:()=>{refreshRevoked=true;}, holdNextUser:()=>{let release!:()=>void, started!:()=>void; const began=new Promise<void>(resolve=>{started=resolve;}); heldUser={wait:new Promise<void>(resolve=>{release=resolve;}),started}; return {began,release};}};
 }
 async function login(page:Page, label='Sign in') {
   await page.getByRole('button',{name:label,exact:true}).focus(); await page.keyboard.press('Enter');
@@ -162,4 +174,63 @@ test('H5 verified Hub identity does not grant private Search or Inbox access', a
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible(); await expect(page.locator('[data-inbox-items]')).toBeEmpty();
   await page.goto(hubOrigin + '/search/?scope=resources'); await expect(page.locator('[data-portal-query]')).toBeHidden();
   expect(f.requests.some(url => /hub\/(search|inbox)|rest\/v1/.test(url))).toBe(false);
+});
+
+for (const suffix of ['&extra=1', '&access_token=fixture', '&code=duplicate', '#refresh_token=fixture']) test(`H10 rejects callback injection ${suffix}`, async ({page}) => {
+  const f=await fixture(page);
+  const flow='a'.repeat(64);
+  await page.addInitScript(flow=>sessionStorage.setItem('thiepn:hub-login:v1',JSON.stringify({flow,started:Date.now(),returnTo:'/home/'})),flow);
+  await page.goto(hubOrigin+'/home/auth/callback/?flow='+flow+'&code=fixture-once'+suffix);
+  await expect(page.locator('[data-auth-status]')).toContainText('missing, expired or already used');
+  expect(page.url()).toBe(hubOrigin+'/home/auth/callback/');
+  expect(f.exchanges()).toBe(0);
+  expect(await page.evaluate(()=>sessionStorage.getItem('thiepn:hub-login:v1'))).toBeNull();
+});
+async function expireSession(page:Page) {
+  await page.evaluate(()=>{
+    const key='thiepn:hub-auth:v1';
+    const session=JSON.parse(localStorage.getItem(key)!);
+    session.expires_at=Math.floor(Date.now()/1000)-60;
+    localStorage.setItem(key,JSON.stringify(session));
+  });
+}
+test('H10 expired SDK session rotates refresh token and re-verifies the same identity',async({page})=>{
+  const f=await fixture(page); await page.goto(hubOrigin+'/home/'); await login(page);
+  await expireSession(page); await page.reload();
+  await expect(page.locator('[data-auth-status]')).toContainText('a@example.test');
+  expect(f.refreshes()).toBeGreaterThan(0);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('thiepn:hub-auth:v1')!).refresh_token.endsWith('-1'))).toBe(true);
+});
+test('H10 revoked refresh cannot restore account preferences',async({page})=>{
+  const f=await fixture(page); await page.goto(hubOrigin+'/home/'); await login(page);
+  await page.getByRole('button',{name:'Customize',exact:true}).click();
+  while(await page.locator('[data-pin-choice]:checked').count()) await page.locator('[data-pin-choice]:checked').first().uncheck();
+  await page.locator('[data-pin-choice][value="notes"]').check(); await page.keyboard.press('Escape');
+  f.revokeRefresh(); await expireSession(page); await page.reload();
+  await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+  expect(f.refreshes()).toBeGreaterThan(0);
+  await expect(page.locator('[data-pin-list] a')).not.toHaveCount(1);
+  expect(await page.evaluate(()=>localStorage.getItem('thiepn:hub-auth:v1'))).toBeNull();
+});
+test('H10 mismatched server identity fails closed rather than opening another preference partition',async({page})=>{
+  const f=await fixture(page); await page.goto(hubOrigin+'/home/'); await login(page);
+  f.setUser(b); await page.reload();
+  await expect(page.locator('[data-auth-status]')).toContainText('unavailable');
+  await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Switch account',exact:true})).toBeHidden();
+});
+
+test('H10 late verification cannot restore identity after another tab signs out',async({page,context})=>{
+  const f=await fixture(page); await page.goto(hubOrigin+'/home/'); await login(page);
+  const other=await context.newPage(); await fixture(other); await other.goto(hubOrigin+'/home/');
+  await expect(other.locator('[data-auth-status]')).toContainText('a@example.test');
+  const held=f.holdNextUser();
+  await page.reload({waitUntil:'domcontentloaded'}); await held.began;
+  await other.getByRole('button',{name:'Sign out of Hub'}).click();
+  await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+  const verification=page.waitForResponse(response=>new URL(response.url()).pathname==='/auth/v1/user');
+  held.release(); await (await verification).finished();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Switch account',exact:true})).toBeHidden();
 });

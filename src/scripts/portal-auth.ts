@@ -1,6 +1,7 @@
-import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, type HubIdentity } from '../lib/hub-auth';
+import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, readHubCallback, type HubIdentity } from '../lib/hub-auth';
 
 const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSearchParams(location.search) : null;
+const callbackFragment = callbackQuery ? location.hash : '';
 if (callbackQuery) history.replaceState(null, '', '/home/auth/callback/');
 const root = document.querySelector<HTMLElement>('[data-hub-account]');
 const config = { url: import.meta.env.PUBLIC_THIEPN_SUPABASE_URL, key: import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY, origin: import.meta.env.PUBLIC_HUB_AUTH_ORIGIN, enabled: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1' };
@@ -43,7 +44,7 @@ if (root) {
           if (!session.session) { if (current === generation) show({ status: 'signed-out' }); return; }
           const { data, error } = await client.auth.getUser();
           if (current !== generation) return;
-          if (error || !data.user || !validAccountId(data.user.id)) throw new Error('Unverified identity');
+          if (error || !data.user || !validAccountId(data.user.id) || data.user.id !== session.session.user.id) throw new Error('Unverified identity');
           show({ status: 'signed-in', id: data.user.id, label: data.user.email ?? 'THIEPN member' });
         } catch { if (current === generation) show({ status: 'unavailable' }); }
       }
@@ -76,15 +77,15 @@ if (root) {
       document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy && !callbackQuery) void verify(); });
       if (location.pathname === '/home/auth/callback/') {
         const query = callbackQuery!;
-        const code = query.get('code');
+        const callback = readHubCallback(query, callbackFragment);
         let pending = null;
-        try { pending = readPendingLogin(sessionStorage.getItem(HUB_LOGIN_KEY), query.get('flow')); sessionStorage.removeItem(HUB_LOGIN_KEY); } catch { /* storage unavailable */ }
+        try { pending = readPendingLogin(sessionStorage.getItem(HUB_LOGIN_KEY), callback?.flow ?? null); sessionStorage.removeItem(HUB_LOGIN_KEY); } catch { /* storage unavailable */ }
         history.replaceState(null, '', '/home/auth/callback/');
         busy = true; show({ status: 'checking' });
-        if (!pending || !code || query.getAll('code').length !== 1 || query.getAll('flow').length !== 1 || query.has('error') || code.length > 2048) {
+        if (!pending || !callback) {
           busy = false; show({ status: 'unavailable' }, 'This sign-in return is missing, expired or already used. Start again from Home.');
         } else {
-          try { const { error } = await client.auth.exchangeCodeForSession(code); if (error) throw error; busy = false; await verify(); if ((hubIdentity as HubIdentity).status === 'signed-in') location.replace(pending.returnTo); }
+          try { const { error } = await client.auth.exchangeCodeForSession(callback.code); if (error) throw error; busy = false; await verify(); if ((hubIdentity as HubIdentity).status === 'signed-in') location.replace(pending.returnTo); }
           catch { busy = false; show({ status: 'unavailable' }, 'Sign-in could not be completed. Start again from Home.'); }
         }
       } else await verify();

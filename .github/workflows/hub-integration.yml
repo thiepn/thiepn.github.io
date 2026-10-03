@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: thiepn/account
-          ref: cceb04def401b117e23f082dab71c56ba60552f6
+          ref: 28159b0966f86fd5e1b6c4a99011e174f0ef06f0
           path: .cache/h9-account
       - uses: actions/setup-node@v4
         with:
