@@ -79,6 +79,7 @@ jobs:
   verify:
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout deployed source
         uses: actions/checkout@v7
@@ -103,8 +104,6 @@ jobs:
       - name: Verify exact qualified Hub artifact
         run: npm run hub:smoke
 
-      - name: Certify The Orrery production route and live JPL precision path
-        env:
-          ORRERY_URL: https://thiepn.dev/orrery/
-          ORRERY_PRECISION_URL: https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision
-        run: node scripts/smoke-orrery-production.mjs
+      # Project Pages owns /orrery/; this site's public/orrery copy is not
+      # the served release. App-specific certification remains in orrery-burnin.yml.
+      # Hub still requires all launcher availability and exact artifact checks above.

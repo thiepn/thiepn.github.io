@@ -1,0 +1,54 @@
+import { test, expect } from '@playwright/test';
+import { validateHubReleaseStatus } from '../../src/lib/hub-release-policy';
+const issuer = 'https://hycegznamzjhwinegaai.supabase.co';
+const account = 'https://account.thiepn.dev';
+// Fresh browser contexts only. No real credentials, private app reads or OAuth continuation.
+test('served profile, local customization, Search and manual workflow handoffs', async ({ page, request }) => {
+  const response = await request.get('/hub-release.json'); expect(response.ok()).toBe(true);
+  expect(validateHubReleaseStatus(await response.json()).appCount).toBe(27);
+  const privateRequests: string[] = []; const errors: string[] = [];
+  page.on('request', r => { if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) privateRequests.push(new URL(r.url()).pathname); });
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/home/');
+  await expect(page.locator('[data-auth-login]')).toBeHidden();
+  await expect(page.locator('[data-hub-item]')).toHaveCount(27);
+  const original = await page.locator('[data-pin-list] a').count();
+  await page.getByRole('button', { name: 'Customize', exact: true }).click();
+  await page.locator('[data-pin-choice]:checked').first().uncheck();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.reload();
+  await expect(page.locator('[data-pin-list] a')).toHaveCount(original - 1);
+  await page.goto('/search/?q=merge+PDF');
+  await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'pdf-studio');
+  await page.getByRole('tab', { name: 'My resources', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Private resource search is not connected yet' })).toBeVisible();
+  await page.goto('/flows/?flow=pdf-read&step=2');
+  await expect(page.locator('[aria-current="step"] h3')).toHaveText('Choose the reading copy');
+  await expect(page.locator('[data-flow-status]')).toContainText('no file transfer or app outcome confirmed');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(privateRequests).toEqual([]); expect(errors).toEqual([]);
+});
+test('live Account validates tokenless entry and rejects alternate destinations', async ({ page, request }) => {
+  const release = await request.get(account + '/release.json'); expect(release.ok()).toBe(true);
+  const metadata = await release.json(); expect(metadata.product).toBe('THIEPN Account');
+  if (process.env.H9_ACCOUNT_SHA) expect(metadata.commit).toBe(process.env.H9_ACCOUNT_SHA);
+  // Abort auth navigation defensively; this probe never clicks Continue with Google.
+  await page.route(issuer + '/**', route => route.abort());
+  const launch = new URL(issuer + '/auth/v1/authorize');
+  launch.searchParams.set('provider', 'google'); launch.searchParams.set('prompt', 'select_account');
+  launch.searchParams.set('code_challenge_method', 's256'); launch.searchParams.set('code_challenge', 'a'.repeat(43));
+  launch.searchParams.set('redirect_to', 'https://thiepn.dev/home/auth/callback/?flow=' + 'b'.repeat(64));
+  const entry = account + '/hub/entry?request=' + encodeURIComponent(launch.href);
+  await page.goto(entry);
+  await expect(page.getByRole('heading', { name: 'Sign in to THIEPN Hub', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(account + '/hub/entry');
+  await expect(page.getByRole('link', { name: 'Continue with Google', exact: true })).toHaveAttribute('href', launch.href);
+  await expect(page.getByRole('link', { name: 'Return to Hub', exact: true })).toHaveAttribute('href', 'https://thiepn.dev/home/');
+  launch.searchParams.set('redirect_to', 'https://attacker.invalid/');
+  await page.goto(account + '/hub/entry?request=' + encodeURIComponent(launch.href));
+  await expect(page.getByRole('heading', { name: 'This Hub sign-in request is invalid.', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue with Google', exact: true })).toHaveCount(0);
+  await page.goto(entry + '&extra=1');
+  await expect(page.getByRole('heading', { name: 'This Hub sign-in request is invalid.', exact: true })).toBeVisible();
+});
