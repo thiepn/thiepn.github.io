@@ -52,6 +52,11 @@ const checks = {};
 const terminal = createInterface({ input: process.stdin, output: process.stdout });
 const browser = await ({ chromium, firefox, webkit })[engine].launch({ headless: false });
 const context = await browser.newContext(); // No existing sessions, TLS bypass, trace, HAR or screenshots.
+const stop = new AbortController();
+const interrupt = () => stop.abort();
+process.once('SIGINT', interrupt);
+browser.once('disconnected', interrupt);
+const prompt = text => terminal.question(text, { signal: stop.signal });
 let accountRevision = null, finished = false;
 try {
   const response = await context.request.get(account + '/release.json', { timeout: 8000 });
@@ -92,24 +97,24 @@ try {
   const subject = () => page.evaluate(() => JSON.parse(localStorage.getItem('thiepn:hub-auth:v1') ?? 'null')?.user?.id ?? null);
   await page.goto(hub + '/home/');
   console.log('This browser serves your local Hub candidate at its canonical origin. Production is unchanged. Complete Google yourself; no credential automation is used. Close the browser to abort.');
-  await terminal.question('Sign in from Hub through Account and Google. Once Home shows your signed-in state, press Enter. ');
+  await prompt('Sign in from Hub through Account and Google. Once Home shows your signed-in state, press Enter. ');
   const first = await subject();
   checks.googleRoundTrip = !!first && await signedIn() && observations.codeExchange > 0 && observations.verifiedUser > 0;
   if (!checks.googleRoundTrip) throw new Error('Google round trip was not observed');
   await page.reload();
   await page.locator('[data-auth-switch]').waitFor({ state: 'visible', timeout: 15000 });
   checks.reloadSameIdentity = await subject() === first;
-  await terminal.question('Use Switch account, then Return to Hub without continuing Google. Once signed out, press Enter. ');
+  await prompt('Use Switch account, then Return to Hub without continuing Google. Once signed out, press Enter. ');
   checks.cancelSwitchClearsIdentity = page.url() === hub + '/home/' && await page.locator('[data-auth-login]').isVisible() && await subject() === null;
-  await terminal.question('Sign in again with a different authorized test account. Once Home is signed in, press Enter. ');
+  await prompt('Sign in again with a different authorized test account. Once Home is signed in, press Enter. ');
   const second = await subject();
   checks.switchDifferentIdentity = !!second && second !== first && await signedIn();
   const beforeRefresh = observations.refresh, beforeVerification = observations.verifiedUser;
-  await terminal.question('Leave Home open until a natural refresh occurs (normally up to one hour). Press Enter when ready; skipping leaves refresh unqualified. ');
+  await prompt('Leave Home open until a natural refresh occurs (normally up to one hour). Press Enter when ready; skipping leaves refresh unqualified. ');
   checks.naturalRefresh = observations.refresh > beforeRefresh && observations.verifiedUser > beforeVerification && await signedIn() && await subject() === second;
   const other = await context.newPage(); await other.goto(hub + '/home/');
   await other.locator('[data-auth-switch]').waitFor({ state: 'visible', timeout: 15000 });
-  await terminal.question('Use Sign out of Hub in the original tab. Once both tabs show Sign in, press Enter. ');
+  await prompt('Use Sign out of Hub in the original tab. Once both tabs show Sign in, press Enter. ');
   checks.localAndCrossTabSignOut = await page.locator('[data-auth-login]').isVisible() && await other.locator('[data-auth-login]').isVisible() && observations.localLogout > 0;
   finished = true;
   if (Object.values(checks).some(value => value !== true) || observations.privateRequestsBlocked > 0) process.exitCode = 1;
@@ -118,7 +123,8 @@ try {
   console.error('Qualification stopped before completion. The report remains incomplete; no provider error detail or URL was retained.');
   process.exitCode = 1;
 } finally {
-  terminal.close(); await context.close(); await browser.close();
+  terminal.close(); process.removeListener('SIGINT', interrupt);
+  await context.close().catch(() => {}); await browser.close().catch(() => {});
   const report = {
     schemaVersion: 1, profile: 'H10-local-identity-observation', recordedAt: new Date().toISOString(),
     browser: { engine, version: browser.version() }, accountRevision, candidateAssets: hashes,
