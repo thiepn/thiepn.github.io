@@ -26,7 +26,7 @@ if (root) {
       for (const item of envelope.data.items) {
         const li = document.createElement('li'), a = document.createElement('a');
         a.href = libraryContinueUrl(item); a.rel = 'noreferrer'; a.textContent = `${item.title} · ${item.format?.toUpperCase()} · edition ${item.edition}`;
-        const progress = document.createElement('p'); progress.textContent = `Current ${Math.round((item.current ?? 0) * 100)}% · furthest ${Math.round((item.furthest ?? 0) * 100)}% · release ${item.releaseVersion}`;
+        const progress = document.createElement('p'); progress.textContent = `Current ${Math.round((item.current ?? 0) * 100)}% · furthest ${Math.round((item.furthest ?? 0) * 100)}%`;
         li.append(a, progress); list.append(li);
       }
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
