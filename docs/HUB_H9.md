@@ -14,7 +14,9 @@ General site-smoke fetches now have eight-second request/body deadlines. The ver
 
 ## Account prerequisite
 
-Reconciled Account PR #2 with main `65f49dd`, preserving the current visual design and adding Return to Hub to desktop/mobile navigation. The outer `/hub/entry` URL now rejects extra/duplicate fields and fragments. Valid continuation still accepts only the pinned Google S256 request and exact Hub callback. Account candidate: `1300a20b379b6340ebea8042113bae64db0ccd9b`; paired workflow checks out that immutable revision, never an unreviewed moving branch.
+Reconciled Account PR #2 with main `65f49dd`, preserving the current visual design and adding Return to Hub to desktop/mobile navigation. The outer `/hub/entry` URL now rejects extra/duplicate fields and fragments. Valid continuation still accepts only the pinned Google S256 request and exact Hub callback. Account candidate including the contrast correction: `cceb04def401b117e23f082dab71c56ba60552f6`; paired workflow checks out that immutable revision, never an unreviewed moving branch.
+
+Expanded paired testing found the Account explanation paragraph at 4.46:1 contrast. Account PR #3 uses its existing foreground-soft color; both Firefox reflow/axe checks then passed at 320 and 1440. The preceding 11 Firefox identity/lifecycle checks passed.
 
 Local Account typecheck, 30 unit checks and production build passed. Account uses its existing deployment-after-green-CI workflow. No database, app grant, redirect allowlist or secret is changed. Source integration and tokenless entry verification are distinct from real Google authentication.
 
