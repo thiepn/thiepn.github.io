@@ -1,0 +1,45 @@
+name: Hub Notes integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: hub-notes-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  owner-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the immutable Notes owner implementation
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/notes
+          ref: 213a37d8adcc00c35b06d4fb4f1a79b2e9b55818
+          path: .cache/h11-notes
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            .cache/h11-notes/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+        working-directory: .cache/h11-notes
+      - name: Owner types and real PostgreSQL projection checks
+        working-directory: .cache/h11-notes
+        run: npm run typecheck && npx vitest run server/hub/notesProjection.test.ts
+      - name: Actual owner envelopes through Hub's validator and runner
+        env:
+          H11_NOTES_DIR: ${{ github.workspace }}/.cache/h11-notes
+        run: npm run test:hub-owner
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hub-notes-contract-evidence
+          path: test-results/h11-owner-integration.xml
+          retention-days: 7

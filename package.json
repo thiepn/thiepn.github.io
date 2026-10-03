@@ -86,7 +86,8 @@
     "test:hub-smoke": "node --experimental-strip-types scripts/test-hub-release-smoke.mjs",
     "test:hub-account": "playwright test -c playwright.hub-account.config.ts",
     "test:hub-live": "playwright test -c playwright.hub-live.config.ts",
-    "hub:identity:operator": "node scripts/hub-identity-operator.mjs"
+    "hub:identity:operator": "node scripts/hub-identity-operator.mjs",
+    "test:hub-owner": "vitest run --config vitest.hub-owner.config.ts"
   },
   "dependencies": {
     "astro": "7.1.6",
