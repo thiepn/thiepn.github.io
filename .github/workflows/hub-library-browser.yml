@@ -1,0 +1,40 @@
+name: Hub device Library browsers
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: hub-device-library-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  staged-paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Check out immutable H16 Library owner
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: thiepn/library
+          ref: 1b227548c50d8c9f414f48fbf56bf467820ef9bc
+          path: .cache/h16-source-library
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: corepack enable
+      - name: Build actual Library owner (no publication files required)
+        working-directory: .cache/h16-source-library
+        run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
+      - name: Build isolated Hub fixture (never deploy these artifacts)
+        run: npx astro build --outDir .cache/h16-hub
+        env:
+          PUBLIC_HUB_LIBRARY_PRIVATE: staged-v1
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Device consent and actual owner projection in all engines
+        run: npx playwright test -c playwright.hub-library.config.ts
+        env:
+          H16_LIBRARY_DIST: .cache/h16-source-library/dist/library
