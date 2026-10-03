@@ -15,7 +15,15 @@ export function readPendingLogin(raw: string | null, flow: string | null, now = 
   try {
     if (!raw || raw.length > 1024 || !flow || !/^[a-f0-9]{64}$/.test(flow)) return null;
     const value = JSON.parse(raw);
-    if (value.flow !== flow || typeof value.started !== 'number' || now < value.started || now - value.started > 600000) return null;
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.flow !== flow || !Number.isFinite(value.started) || now < value.started || now - value.started > 600000) return null;
     return { returnTo: safeHubReturn(value.returnTo) };
   } catch { return null; }
+}
+// Accept only the code flow we initiated; implicit tokens and provider errors
+// belong to recovery, never to a successful exchange.
+export function readHubCallback(query: URLSearchParams, fragment: string): { code: string; flow: string } | null {
+  if (fragment || [...query.keys()].sort().join(',') !== 'code,flow') return null;
+  const code = query.get('code'), flow = query.get('flow');
+  if (!code || code.length > 2048 || /[\s\x00-\x1f\x7f]/.test(code) || !flow || !/^[a-f0-9]{64}$/.test(flow)) return null;
+  return { code, flow };
 }
