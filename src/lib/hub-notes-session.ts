@@ -28,7 +28,7 @@ export function validNotesConfig(config: NotesSessionConfig): boolean {
 const random = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const object = (value: unknown): value is Record<string,unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 /** Standard Supabase OAuth public-client flow. Tokens exist only in this object.
- * Decoded claims are rejection checks; only the H13 server verifies authority.
+ * Decoded claims are rejection checks; the owner server/PostgREST verifies authority.
  */
 export class HubNotesSession {
   private epoch = 0;

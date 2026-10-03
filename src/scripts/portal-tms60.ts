@@ -45,17 +45,21 @@ if(root){
     try{
       const envelope=await session.read(operation,abort.signal,search);
       if(epoch!==generation || root!.hidden || document.hidden)return;
+      if(['unconnected','unsupported'].includes(envelope.status)){
+        erase(envelope.status==='unconnected'?'No cloud snapshot for this translation. Sync it in TMS60, then refresh.':'This translation’s cloud snapshot cannot be read yet. Open TMS60 to check its sync.');
+        refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;return;
+      }
       if(!['ready','empty'].includes(envelope.status) || !envelope.data)throw new Error('Unavailable');
       for(const item of envelope.data.items){
         const li=document.createElement('li'),a=document.createElement('a');
-        // TMS60 has no qualified resource deep link yet. Open its real workspace.
-        a.href='https://tms60.thiepn.dev/#hub='+encodeURIComponent(item.resourceId);a.rel='noreferrer';a.textContent=item.title;
+        // Exact metadata-only resource link; native app requires explicit practice.
+        a.href='https://tms60.thiepn.dev/#hub='+encodeURIComponent(item.resourceId);a.rel='noreferrer';a.textContent=item.title+' · '+(item.dimension==='reference'?'Reference recall':item.dimension==='learning'?'Learning':'Wording recall');
         const time=document.createElement('time');time.dateTime=item.updatedAt;time.textContent=new Date(item.updatedAt).toLocaleString();
         li.append(a,document.createTextNode(' · '),time);list.append(li);
       }
-      counts.textContent=operation==='summary'?`${envelope.data.dueTaskCount} review tasks across ${envelope.data.dueVerseCount} verses · ${envelope.data.newVerseCount} new verses`:'';
+      counts.textContent=operation==='summary'?`${envelope.data.dueTaskCount} review tasks across ${envelope.data.dueVerseCount} ${envelope.data.dueVerseCount===1?'verse':'verses'} · ${envelope.data.newVerseCount} new verses`:'';
       panel.hidden=false;refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;
-      status.textContent=envelope.status==='empty'?'No matching synced notes.':'Synced TMS60 references';
+      status.textContent=envelope.status==='empty'?(operation==='search'?'No matching Bible references.':operation==='continue'?'No recent synced practice.':'No due review tasks.'):'Synced TMS60 references';
       freshness.textContent=`Cloud snapshot checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Open TMS60 for current local changes.`;
       timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check TMS60 again.');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
     }catch{if(epoch===generation)clear('TMS60 could not be checked. Your sharing may have changed; reconnect or open TMS60.');}
@@ -67,7 +71,7 @@ if(root){
     catch{if(epoch===generation)clear('Choose your TMS60 sharing permissions in Account, then connect again.');controls();}
   })());
   refresh.addEventListener('click',()=>void load((root!.querySelector<HTMLInputElement>('[name="tms60-operation"]:checked')?.value ?? 'summary') as Operation));
-  disconnect.addEventListener('click',()=>{clear('TMS60 are disconnected in this tab. Manage sharing in Account to revoke access everywhere.');controls();});
+  disconnect.addEventListener('click',()=>{clear('TMS60 is disconnected in this tab. Manage sharing in Account to revoke access everywhere.');controls();});
   root.querySelectorAll<HTMLInputElement>('[name="tms60-operation"]').forEach(r=>r.addEventListener('change',()=>void load(r.value as Operation)));
   form.addEventListener('submit',e=>{e.preventDefault();const value=(form.elements.namedItem('query') as HTMLInputElement).value.trim();if(value)void load('search',value);});
   let completing=false,callbackUsed=false;

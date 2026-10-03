@@ -6,7 +6,7 @@ const token=(managed=false)=>'eyJhbGciOiJFUzI1NiJ9.'+Buffer.from(JSON.stringify(
 const user={id:A,email:'fictional@example.test',aud:'authenticated',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.html')?'text/html':p.endsWith('.svg')?'image/svg+xml':p.endsWith('.woff2')?'font/woff2':'application/octet-stream';
 async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hub.search.read','tms60.hub.continue.read']){
-  let state='',challenge='',denied=false,held=false,release!:()=>void,expires=300000;
+  let projectionStatus='ready',state='',challenge='',denied=false,held=false,release!:()=>void,expires=300000;
   const managedToken=token(true);
   const calls:{url:string;body:string|null}[]=[];
   await page.addInitScript(({HUB,ACCOUNT,user,bearer})=>{
@@ -20,7 +20,7 @@ async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hu
       expect(req.headers().authorization).toBe('Bearer '+managedToken);
       if(denied)return route.fulfill({status:403,json:{message:'projection_unavailable'}});
       const body=req.postDataJSON();if(held)await new Promise<void>(r=>{release=r;});const observed=Date.now();
-      return route.fulfill({json:{schemaVersion:1,providerId:'tms60',operation:body.p_operation,requestId:body.p_request_id,context:{scope:'account',accountId:A,workspaceId:null,grantRevision:REV,translationId:body.p_translation},privacy:'private',coverage:'translation-cloud-snapshot',status:'ready',observedAt:new Date(observed).toISOString(),expiresAt:new Date(observed+expires).toISOString(),sourceUpdatedAt:new Date(observed-1000).toISOString(),data:{...(body.p_operation==='summary'?{dueTaskCount:2,dueVerseCount:1,newVerseCount:59}:{}),items:[{resourceId:body.p_translation+':1:wording',dimension:'wording',title:body.p_operation==='search'?'John 3:16':'2 Corinthians 5:17',updatedAt:new Date(observed-1000).toISOString()}]}}});
+      return route.fulfill({json:{schemaVersion:1,providerId:'tms60',operation:body.p_operation,requestId:body.p_request_id,context:{scope:'account',accountId:A,workspaceId:null,grantRevision:REV,translationId:body.p_translation},privacy:'private',coverage:'translation-cloud-snapshot',status:projectionStatus,observedAt:new Date(observed).toISOString(),expiresAt:new Date(observed+expires).toISOString(),sourceUpdatedAt:new Date(observed-1000).toISOString(),data:projectionStatus==='ready'?{...(body.p_operation==='summary'?{dueTaskCount:2,dueVerseCount:1,newVerseCount:59}:{}),items:[{resourceId:body.p_translation+':1:wording',dimension:'wording',title:body.p_operation==='search'?'John 3:16':'2 Corinthians 5:17',updatedAt:new Date(observed-1000).toISOString()}]}:null}});
     }
     if(url.origin===ISSUER){
       if(url.pathname.endsWith('/oauth/authorize')){state=url.searchParams.get('state')!;challenge=url.searchParams.get('code_challenge')!;return route.fulfill({contentType:'text/html',body:`<script>location.replace(${JSON.stringify(ACCOUNT+'/oauth/consent?authorization_id=h15-fictional')})</script>`});}
@@ -43,7 +43,7 @@ async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hu
     }
     return route.abort();
   });
-  return{calls,revoke:()=>{denied=true;},hold:()=>{held=true;},release:()=>{held=false;release?.();},shortExpiry:()=>{expires=1200;}};
+  return{calls,missing:()=>{projectionStatus='unconnected';},unsupported:()=>{projectionStatus='unsupported';},revoke:()=>{denied=true;},hold:()=>{held=true;},release:()=>{held=false;release?.();},shortExpiry:()=>{expires=1200;}};
 }
 async function connect(page:Page){await page.goto(HUB+'/home/');await expect(page.locator('[data-auth-status]')).toContainText(user.email);await page.getByRole('button',{name:'Connect TMS60',exact:true}).click();await expect(page.getByRole('heading',{name:'Connect THIEPN Hub'})).toBeVisible();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-tms60-items]')).toContainText('2 Corinthians 5:17');expect(page.url()).toBe(HUB+'/home/');}
 test('actual Account authorization, browser PKCE and title-only UI with explicit search',async({page})=>{
@@ -67,7 +67,7 @@ test('search-only sharing never requests recent titles or Continue',async({page}
 test('Continue-only sharing opens the permitted view directly',async({page})=>{const f=await fixture(page,['tms60.hub.continue.read']);await connect(page);await expect(page.getByRole('radio',{name:'Due reviews',exact:true})).toBeDisabled();await expect(page.getByRole('radio',{name:'Continue',exact:true})).toBeChecked();await expect(page.getByRole('searchbox',{name:'Search references'})).toBeHidden();expect(f.calls.filter(c=>c.url.endsWith('/rest/v1/rpc/read_thiepn_hub_tms60')).every(c=>JSON.parse(c.body!).p_operation==='continue')).toBe(true);});
 
 test('changing translation removes old counts and requires a new connection',async({page})=>{
- const f=await fixture(page);await connect(page);await expect(page.locator('[data-tms60-counts]')).toContainText('2 review tasks across 1 verses');
+ const f=await fixture(page);await connect(page);await expect(page.locator('[data-tms60-counts]')).toContainText('2 review tasks across 1 verse');
  await page.locator('[data-tms60-translation]').selectOption('niv');await expect(page.locator('[data-tms60-items]')).toBeEmpty();await expect(page.locator('[data-tms60-counts]')).toBeEmpty();
  await page.getByRole('button',{name:'Connect TMS60',exact:true}).click();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-tms60-items]')).toContainText('2 Corinthians');
  expect(await page.locator('[data-tms60-items] a').getAttribute('href')).toBe('https://tms60.thiepn.dev/#hub=niv%3A1%3Awording');
@@ -79,4 +79,8 @@ test('real TMS60 entry displays the requested reference before explicit practice
  const app=page.frameLocator('#app-frame');await expect(app.getByRole('dialog')).toBeVisible();await expect(app.getByRole('dialog')).toContainText('2 Corinthians 5:17');await expect(app.getByRole('button',{name:'Start reference recall',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tms60-esv-memory-lab-v1')!).progress['1'].stage)).toBe(0);
  expect(page.url()).toBe(TMS+'/');
+});
+
+test('missing cloud snapshot never becomes sixty new verses or revoked sharing',async({page})=>{
+ const f=await fixture(page);f.missing();await page.goto(HUB+'/home/');await expect(page.locator('[data-auth-status]')).toContainText(user.email);await page.getByRole('button',{name:'Connect TMS60',exact:true}).click();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-tms60-status]')).toContainText('No cloud snapshot');await expect(page.locator('[data-tms60-counts]')).toBeEmpty();await expect(page.getByRole('button',{name:'Refresh',exact:true})).toBeVisible();
 });
