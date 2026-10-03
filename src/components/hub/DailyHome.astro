@@ -1,0 +1,24 @@
+---
+import { HOME_MODULES, resolveHomeActions } from '../../lib/daily-home';
+import type { HubProjectEntry } from '../../lib/hub';
+interface Props { entries: HubProjectEntry[]; }
+const { entries } = Astro.props;
+const apps = new Map(entries.map(({ project }) => [project.data.slug, project.data.liveUrl!]));
+---
+<section class="portal-daily" aria-labelledby="daily-home-heading" data-daily-board data-home-personal>
+  <header class="portal-section-heading portal-daily-heading">
+    <div><h2 id="daily-home-heading">Daily Home</h2><p class="portal-muted">Actions in your apps. Your progress stays with them.</p></div>
+    <fieldset class="portal-view-switch" data-home-mode-controls hidden><legend class="sr-only">Home view</legend><label><input type="radio" name="home-mode" value="today" checked /> Today</label><label><input type="radio" name="home-mode" value="focus" /> Focus</label></fieldset>
+  </header>
+  <div class="portal-daily-grid">
+    {HOME_MODULES.map(module => <section class={`portal-daily-module portal-module-${module.id}`} aria-labelledby={`module-${module.id}`} data-home-module={module.id} hidden={['calendar', 'weather'].includes(module.id)}>
+      <header><h3 id={`module-${module.id}`}>{module.title}</h3>{module.id === 'today' && <small data-day-zone>Device time</small>}</header>
+      <p>{module.description}</p>
+      <ul>{resolveHomeActions(module, apps).map(action => <li><a href={action.href} rel="noreferrer"><strong>{action.label}</strong><small>{action.detail}</small><span aria-hidden="true">↗</span></a></li>)}</ul>
+      {module.id === 'today' && <small class="portal-module-note">Agenda and task summaries are not connected yet.</small>}
+      {module.id === 'continue' && <small class="portal-module-note">Recent resources are not connected yet.</small>}
+    </section>)}
+  </div>
+  <p class="portal-muted"><a href="/flows/">Workflow guides</a> · Scan, edit, read and write across your apps.</p>
+  <p class="portal-modules-empty portal-muted" data-home-modules-empty hidden>No modules in this view. Choose Customize to add them or return to Today.</p>
+</section>

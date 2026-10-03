@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/catalogue';
+---
+<BaseLayout title="Workflows — THIEPN" description="Follow supported handoffs between Scan, PDF Studio, Library, Notes and Manuscript." portal>
+  <div class="portal-flows page-shell" data-portal-flows>
+    <header class="portal-home-heading"><p class="portal-muted">Across your apps</p><h1>Workflows</h1><p>Choose a guide. Each app handles its own files and saving.</p></header>
+    <nav class="portal-flow-choices" aria-label="Workflow guides">{WORKFLOWS.map(flow => <a href={workflowLocation(flow.id)} data-flow-choice={flow.id}>{flow.title}</a>)}</nav>
+    <p class="portal-muted" role="status" data-flow-status>Manual handoffs. Hub does not transfer files or confirm app outcomes.</p>
+    {WORKFLOWS.map(flow => <section class="portal-flow-guide" data-flow-guide={flow.id} aria-labelledby={`flow-${flow.id}`}>
+      <h2 id={`flow-${flow.id}`}>{flow.title}</h2><p>{flow.description}</p>
+      <ol class="portal-flow-steps">{flow.steps.map((step, index) => <li data-flow-step={index}>
+        <header><small>{WORKFLOW_APPS[step.owner].label}</small><h3>{step.title}</h3></header>
+        <p>{step.instruction}</p><p><strong>Check in the app:</strong> {step.check}</p>
+        <details><summary>If something stops</summary><p>{step.recovery}</p></details>
+        <div class="portal-flow-actions"><a class="portal-button" href={WORKFLOW_APPS[step.owner].href} target="_blank" rel="noopener noreferrer">{step.owner === 'scan' ? 'Open Scan product page' : `Open ${WORKFLOW_APPS[step.owner].label}`} <span class="sr-only">(new tab)</span></a><a href={workflowLocation(flow.id, index)} data-flow-position={index}>View step {index + 1}</a></div>
+      </li>)}</ol>
+    </section>)}
+    <p class="portal-muted">App links open a new tab so this guide stays available. Choosing a step changes only your place in the guide. Keep originals and check the destination before repeating an import.</p>
+    <p><a href="/home/">Home</a> · <a href="/search/?scope=actions">Search actions</a></p>
+    <noscript><p>All guides and app links are available without JavaScript.</p></noscript>
+  </div>
+</BaseLayout>
+<script>import '../../scripts/portal-flows';</script>

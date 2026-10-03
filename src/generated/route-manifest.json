@@ -12,6 +12,12 @@
     "/collection/productivity-creation/",
     "/collection/typing-games/",
     "/collections/",
+    "/flows/",
+    "/hub-attention-schema.json",
+    "/hub-provider-schema.json",
+    "/hub-providers.json",
+    "/hub-release.json",
+    "/hub-search.json",
     "/privacy/",
     "/project/artikelwerk/",
     "/project/atelier/",
@@ -47,6 +53,7 @@
     "/projects/",
     "/scan/",
     "/scan/privacy/",
+    "/search/",
     "/work/"
   ]
 }

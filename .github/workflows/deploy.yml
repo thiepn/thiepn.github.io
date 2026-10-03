@@ -46,11 +46,24 @@ jobs:
         uses: withastro/action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
+          PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
           PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         with:
           node-version: 24
           package-manager: npm@11
-          build-cmd: npm run validate && npm run typecheck && npm test && npm run build:enriched
+          build-cmd: npm run validate && npm run release:source && npm run typecheck && npm test && npm run build:enriched && npm run perf:budget && npm run hub:qualify
+
+      - name: Preserve Hub candidate fingerprints
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-release-qualification
+          path: .cache/hub-release-qualification.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
 
   deploy:
     needs: build
@@ -80,6 +93,15 @@ jobs:
         env:
           PRODUCTION_URL: https://thiepn.dev/
         run: node scripts/smoke-production.mjs --url https://thiepn.dev/ --retries 12
+
+      - name: Download qualified Hub fingerprints
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-release-qualification
+          path: .cache
+
+      - name: Verify exact qualified Hub artifact
+        run: npm run hub:smoke
 
       - name: Certify The Orrery production route and live JPL precision path
         env:

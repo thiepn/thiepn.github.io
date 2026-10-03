@@ -20,6 +20,8 @@ const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : h
   class="hub-card"
   data-hub-item
   data-hub-item-category={hub.category}
+  data-hub-slug={p.slug}
+  data-hub-title={p.title}
   style={`--hub-accent-light:${p.accent.light};--hub-accent-dark:${p.accent.dark};`}
 >
   <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>

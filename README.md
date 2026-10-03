@@ -4,10 +4,22 @@ The production source for **thiepn.dev**, built with Astro and static content.
 
 ## September 2026 redesign
 
-The public site is now an editorial showcase, not an interface to its catalogue schema.
-**Work / Library / About** are the primary destinations. The homepage leads directly into Micro Arcade,
-then presents contrasting tools, games and a bridge to the separately deployed Library.
-The complete archive remains at `/projects/`; all `/project/` and `/collection/` URLs remain valid.
+### THIEPN HUB foundation (H1)
+
+The public root now launches the complete reviewed 27-app Hub. `/home/` adds
+personal pins, spacing and themes; `/search/` finds apps by name or task and
+opens them directly; `/apps/` resolves to `/`. Home preferences are browser-local.
+THIEPN Account remains independently deployed; private summaries and Account
+preference sync are later phases. See [the H1 contract](docs/HUB_H1.md).
+
+The editorial showcase described below is retained at `/work/`, with the
+archive and project/collection compatibility routes unchanged.
+
+The editorial Work surface is a showcase, not an interface to its catalogue schema.
+**Home / Apps / Search** are the portal destinations; Work and About remain secondary.
+Work presents curated tools and games. Library remains a separately deployed app with a direct
+Hub launcher. The complete archive remains at `/projects/`; all `/project/` and `/collection/`
+URLs remain valid.
 
 This redesign supersedes earlier instructions to preserve THE INDEX / DS-01, catalogue-code labels,
 “flagship” UI, redundant classification sections and motion choreography. Historical documentation
@@ -71,4 +83,21 @@ After changing a project subtitle, title or accent, run `npx playwright install 
 
 ## Interactive showcase
 
-Tiny Tools has a dedicated homepage feature, four direct task routes, a local whitespace-cleaner miniature and a complete project page. Micro Arcade uses genuine, keyboard-operable game previews with an opt-in recording. Source-linked build notes document three projects without invented outcomes or contribution claims. See [showcase maintenance and verification](docs/showcase/README.md) for content, media and lifecycle contracts.
+Project details retain the Tiny Tools feature and four direct task routes. Micro Arcade's project
+page uses genuine, keyboard-operable game previews with an opt-in recording. Source-linked build
+notes document three projects without invented outcomes or contribution claims. These features
+do not override the public Hub's reviewed app order. See [showcase maintenance and verification](docs/showcase/README.md) for content, media and lifecycle contracts.
+
+H2 Account entry, session boundaries, release gate and paired validation: [docs/HUB_H2.md](docs/HUB_H2.md).
+
+H3 provider contracts, capability audit and private-data release gates: [docs/HUB_H3.md](docs/HUB_H3.md).
+
+H4 daily board, Focus, timezone and visual privacy behavior: [docs/HUB_H4.md](docs/HUB_H4.md).
+
+H5 scoped Search, attention contracts, Inbox coverage and release gates: [docs/HUB_H5.md](docs/HUB_H5.md).
+
+H6 manual workflow guides, transfer validation and owner certification gates: [docs/HUB_H6.md](docs/HUB_H6.md).
+
+H7 reviewed 100–250-app admission, pin discovery and bounded provider selection: [docs/HUB_H7.md](docs/HUB_H7.md).
+
+H8 production qualification and promotion gates: [docs/HUB_H8.md](docs/HUB_H8.md).

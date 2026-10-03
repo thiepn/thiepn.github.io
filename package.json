@@ -77,13 +77,20 @@
     "pretypecheck": "node scripts/prepare-showcase.mjs",
     "validate:historical": "node scripts/validate-phase0.mjs && node scripts/validate-catalogue.mjs && node scripts/validate-phase2.mjs && node scripts/validate-phase3.mjs && node scripts/validate-phase4.mjs && node scripts/validate-phase5.mjs && node scripts/validate-phase6.mjs && node scripts/validate-phase7.mjs && node scripts/validate-phase8.mjs && node scripts/validate-phase9.mjs && node scripts/validate-phase10.mjs && node scripts/validate-phase11.mjs && node scripts/validate-phase12.mjs && node scripts/validate-phase13.mjs && node scripts/validate-phase14.mjs && node scripts/validate-media.mjs && node scripts/validate-links.mjs",
     "test:e2e:historical": "playwright test",
-    "audit:studio": "npm run generated:check && npm run validate && npm run typecheck && npm test && npm run build && npm run perf:budget && npm run test:e2e"
+    "audit:studio": "npm run generated:check && npm run validate && npm run typecheck && npm test && npm run build && npm run perf:budget && npm run test:e2e",
+    "test:hub-scale": "node scripts/test-hub-registry-scale.mjs",
+    "hub:qualify": "node --experimental-strip-types scripts/qualify-hub-release.mjs",
+    "audit:hub-release": "npm run release:lockfile && npm run audit:studio && npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke && npm run perf:scale && npm run test:hub-scale && npm run test:automation",
+    "hub:smoke": "node --experimental-strip-types scripts/smoke-hub-release.mjs",
+    "test:hub-release": "node --experimental-strip-types scripts/test-hub-release-gate.mjs",
+    "test:hub-smoke": "node --experimental-strip-types scripts/test-hub-release-smoke.mjs"
   },
   "dependencies": {
     "astro": "7.1.6",
     "motion": "12.43.0",
     "@fontsource-variable/instrument-sans": "5.3.0",
-    "@fontsource/ibm-plex-mono": "5.3.0"
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@supabase/supabase-js": "2.117.2"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

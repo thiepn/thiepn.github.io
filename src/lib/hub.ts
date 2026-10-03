@@ -34,6 +34,7 @@ function assertHubRegistryShape() {
     throw new Error(`Hub registry expected ${HUB_EXPECTED_COUNT} apps but contains ${HUB_PROJECT_CONFIG.length}.`);
   }
 
+  if (!Number.isInteger(HUB_EXPECTED_COUNT) || HUB_EXPECTED_COUNT < 27 || HUB_EXPECTED_COUNT > 250) throw new Error('Hub supports 27–250 reviewed apps.');
   const slugs = new Set<string>();
   const orders = new Set<number>();
   for (const entry of HUB_PROJECT_CONFIG) {

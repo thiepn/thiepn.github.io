@@ -4,7 +4,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function get(url,opts={},tries=12){let last;for(let i=0;i<tries;i++){try{const r=await fetch(url,{redirect:'follow',...opts});const text=await r.text();if(r.ok)return {r,text};last=new Error(r.status+' '+url+': '+text.slice(0,240));}catch(e){last=e;}if(i<tries-1)await sleep(5000);}throw last;}
 function ok(x,m){if(!x)throw new Error(m);}
 const page=await get(BASE);ok(/<title>The Orrery<\/title>/i.test(page.text),'title');ok(page.text.includes("APP_VERSION='2.0.1'"),'version');
-ok(!/v2\\.0\\.0-alpha|v2\\.0\\.0-rc/i.test(page.text),'stale prerelease identity');\nconst manifest=JSON.parse((await get(new URL('manifest.webmanifest',BASE))).text);ok(manifest.name==='The Orrery','manifest');
+ok(!/v2\.0\.0-alpha|v2\.0\.0-rc/i.test(page.text),'stale prerelease identity');
+const manifest=JSON.parse((await get(new URL('manifest.webmanifest',BASE))).text);ok(manifest.name==='The Orrery','manifest');
 const version=JSON.parse((await get(new URL('version.json',BASE))).text);ok(version.version==='2.0.1'&&version.release_channel==='stable','version json');
 const sw=(await get(new URL('sw.js',BASE))).text;ok(sw.includes('orrery-v2.0.1-prod1'),'sw cache');
 const health=await get(PRECISION+'/health',{headers:{Origin:'https://thiepn.dev'}},4);const hj=JSON.parse(health.text);ok(hj.ok===true,'precision health');ok((health.r.headers.get('access-control-allow-origin')||'')==='https://thiepn.dev','precision cors');

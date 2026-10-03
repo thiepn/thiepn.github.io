@@ -16,7 +16,7 @@ async function open(detail: SearchOpenDetail = {}) {
     await module.openCatalogueSearch(detail);
   } catch {
     // The static archive remains usable when a split chunk cannot load.
-    location.assign('/projects/');
+    location.assign(document.documentElement.dataset.portal ? '/search/' : '/projects/');
   }
 }
 

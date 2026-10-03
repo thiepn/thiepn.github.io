@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "providerId": "tms60",
+  "requestId": "fixture-tms60-summary",
+  "operation": "summary",
+  "context": {
+    "scope": "account",
+    "accountId": "11111111-1111-4111-8111-111111111111",
+    "workspaceId": null,
+    "grantRevision": "tms60-grant-1",
+    "translationId": "esv"
+  },
+  "privacy": "private",
+  "coverage": "translation-cloud-snapshot",
+  "status": "ready",
+  "observedAt": "2026-10-01T08:00:00.000Z",
+  "expiresAt": "2026-10-01T08:02:00.000Z",
+  "sourceUpdatedAt": "2026-10-01T08:00:00.000Z",
+  "data": {
+    "dueTaskCount": 2,
+    "dueVerseCount": 1,
+    "newVerseCount": 0,
+    "items": [
+      {
+        "resourceId": "esv:1:wording",
+        "title": "2 Corinthians 5:17",
+        "dimension": "wording",
+        "updatedAt": "2026-10-01T08:00:00.000Z"
+      },
+      {
+        "resourceId": "esv:1:reference",
+        "title": "2 Corinthians 5:17",
+        "dimension": "reference",
+        "updatedAt": "2026-10-01T08:00:00.000Z"
+      }
+    ]
+  }
+}

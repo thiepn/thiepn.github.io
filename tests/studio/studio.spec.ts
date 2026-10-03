@@ -207,7 +207,7 @@ test('global search supports keyboard, no results, Escape and focus restoration'
 
 test('global search retries after an index network failure', async ({ page }) => {
   let attempts = 0;
-  await page.route('**/search-index.json', async (route) => {
+  await page.route('**/{hub-search,search-index}.json', async (route) => {
     if (++attempts === 1) await route.fulfill({ status: 503, body: 'Unavailable' });
     else await route.continue();
   });

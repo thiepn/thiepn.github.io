@@ -31,7 +31,8 @@ assert(homepage.includes('<HubCatalogue'), 'Homepage must render the complete Hu
 assert(!homepage.includes('<HubHero'), 'Homepage must begin with apps instead of a hero landing section');
 assert(!homepage.includes('ArcadeShowcase'), 'Micro Arcade must not have a privileged homepage showcase');
 assert(!homepage.includes('TinyToolsSpotlight'), 'Tiny Tools must not have a privileged homepage spotlight');
-assert.equal(hub.projects.length, 27, 'Homepage Hub contract must expose exactly 27 apps');
+assert.equal(hub.projects.length, hub.expectedCount, 'Hub membership must match its reviewed declared count');
+assert(hub.expectedCount >= 27 && hub.expectedCount <= 250, 'Hub supports the reviewed 27-app baseline through 250 apps');
 assert(hub.projects.some((entry) => entry.slug === 'thiepn-library'), 'THIEPN Library must remain directly available in the Hub');
 assert.notEqual([...hub.projects].sort((a, b) => a.order - b.order)[0]?.slug, 'signal-earth', 'Signal Earth must not occupy the first Hub slot');
 

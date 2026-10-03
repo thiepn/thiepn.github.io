@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getHubProjects } from '../../lib/hub';
+import { hubSearchProjects } from '../../lib/hub-search';
+import { HUB_ACTIONS } from '../../lib/hub-actions';
+import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
+const projects = hubSearchProjects(await getHubProjects());
+const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
+---
+<BaseLayout title="Search apps — THIEPN" description="Find THIEPN apps by name, topic or task and open them directly." portal>
+  <div class="portal-search-page page-shell" data-portal-search-page>
+    <header class="portal-home-heading"><div><p class="portal-muted">Find the right app</p><h1>Search</h1></div></header>
+    <div class="portal-search-scopes" role="tablist" aria-label="Search scope" data-search-scopes hidden>{[['apps', 'Apps'], ['actions', 'Actions'], ['resources', 'My resources']].map(([scope, label]) => <button type="button" role="tab" id={`scope-${scope}`} aria-controls={`search-${scope}`} aria-selected={scope === 'apps' ? 'true' : 'false'} tabindex={scope === 'apps' ? 0 : -1} data-search-scope-choice={scope}>{label}</button>)}</div>
+    <form class="portal-search-form" role="search" action="/search/" method="get" data-public-search-form>
+      <label for="app-query" data-public-query-label>App name or task</label>
+      <div><input type="search" id="app-query" name="q" placeholder="Try merge PDF or French vocabulary" maxlength="200" autocomplete="off" spellcheck="false" data-portal-query /><button type="submit">Search</button></div>
+    </form>
+    <p class="portal-muted" data-public-search-description>Search the public app directory. Your private notes, reading history and other app data are not searched.</p>
+    <p class="portal-search-status" role="status" aria-live="polite" data-portal-search-status>{projects.length} apps</p>
+    <section id="search-apps" aria-labelledby="scope-apps" data-search-panel="apps">
+    <div class="portal-search-results" data-portal-search-results>
+      {projects.map(project => <article class="portal-search-row" data-portal-search-slug={project.slug}>
+        <div><h2><a href={project.liveUrl!}>{project.title}</a></h2><p>{project.subtitle}</p><small>{project.category === 'faith' ? 'Faith' : project.category[0]!.toUpperCase() + project.category.slice(1)}{project.slug === 'scan' && ' · Android download'}</small></div>
+        <div class="portal-search-actions"><a href={project.liveUrl!}>Open app <span aria-hidden="true">↗</span></a><a href={`/project/${project.slug}/`}>Details</a></div>
+      </article>)}
+    </div>
+    <p class="portal-search-empty" data-portal-search-empty hidden>No apps match. Try another name or task, or <a href="/#apps">browse all apps</a>.</p>
+    </section>
+    <section id="search-actions" aria-labelledby="scope-actions" data-search-panel="actions" hidden>
+      <p class="portal-muted">Choose an action to open its app. Search does not execute a save or change app data.</p>
+      <div class="portal-action-results">{HUB_ACTIONS.map(action => <article class="portal-search-row" data-search-action={action.id}><h2><a href={action.href} rel="noreferrer">{action.title}</a></h2><p>{action.description}</p></article>)}</div>
+      <p class="portal-search-empty" data-action-empty hidden>No actions match. Try another task or search Apps.</p>
+    </section>
+    <section id="search-resources" aria-labelledby="scope-resources" data-search-panel="resources" hidden>
+      <h2 class="portal-resource-title">Private resource search is not connected yet</h2>
+      <p class="portal-muted">No private sources have been searched. Open an app to search there. A verified Hub sign-in alone does not grant access to its contents.</p>
+      <ProviderCoverage operation="search" />
+      <p class="portal-muted">Library is device-private. Notes and TMS60 cloud snapshots do not include every unsynced local change.</p>
+    </section>
+    <noscript><p>All apps are listed. Filtering requires JavaScript.</p></noscript>
+    <script is:inline type="application/json" data-portal-app-index set:html={payload}></script>
+    <script is:inline type="application/json" data-portal-action-index set:html={JSON.stringify(HUB_ACTIONS).replaceAll('<', '\\u003c')}></script>
+  </div>
+</BaseLayout>
+<script>import '../../scripts/portal-search';</script>

@@ -1,0 +1,9 @@
+---
+import { PILOT_HANDOFFS } from '../../lib/providers/handoffs';
+---
+<section class="portal-provider-handoffs" aria-labelledby="handoffs-heading">
+  <h2 id="handoffs-heading">Quick actions</h2>
+  <div class="portal-handoff-grid">
+    {PILOT_HANDOFFS.map(action => <a class="portal-provider-action" href={action.href} rel="noreferrer" data-provider-handoff={action.providerId}><strong>{action.label}</strong><small>{action.description}</small></a>)}
+  </div>
+</section>

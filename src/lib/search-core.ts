@@ -56,7 +56,7 @@ const normalize = (value: string) => value
   .normalize('NFKD')
   .replace(/[\u0300-\u036f]/g, '')
   .toLocaleLowerCase('en')
-  .replace(/[^a-z0-9]+/g, ' ')
+  .replace(/[^\p{L}\p{N}]+/gu, ' ')
   .trim();
 
 function tokenDistance(a: string, b: string): number {
