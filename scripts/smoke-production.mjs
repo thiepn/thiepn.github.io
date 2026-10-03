@@ -17,7 +17,7 @@ async function fetchRetry(url, expected = (r) => r.ok) {
   let last;
   for (let i=0;i<retries;i++) {
     try {
-      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000), redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
       if (expected(r)) return r;
       last = new Error(`${r.status} ${r.statusText}`);
     } catch (e) { last=e; }
@@ -30,7 +30,7 @@ async function fetchTextRetry(url, responseExpected, textExpected, failureMessag
   let last;
   for (let i=0;i<retries;i++) {
     try {
-      const r = await fetch(url, { redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000), redirect:'follow', headers:{'user-agent':'THIEPN-Production-Smoke/2.1'} });
       const text = await r.text();
       if (responseExpected(r) && textExpected(text)) return { response:r, text };
       last = new Error(failureMessage || `${r.status} ${r.statusText}`);

@@ -1,0 +1,51 @@
+name: Hub Account integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: hub-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: thiepn/account
+          ref: cceb04def401b117e23f082dab71c56ba60552f6
+          path: .cache/h9-account
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build
+        working-directory: .cache/h9-account
+        env:
+          VITE_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Build isolated SDK fixture (never a deploy artifact)
+        run: npm run build
+        env:
+          PUBLIC_HUB_ACCOUNT_ENTRY: v1
+          PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+      - name: Verify actual paired applications on all engines
+        run: npx playwright test -c playwright.hub-account.config.ts
+        env:
+          H2_ACCOUNT_DIST: ${{ github.workspace }}/.cache/h9-account/dist
+          H2_AXE_PATH: /tmp/audit-tools/node_modules/axe-core/axe.min.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hub-account-paired
+          path: test-results/
+          retention-days: 7

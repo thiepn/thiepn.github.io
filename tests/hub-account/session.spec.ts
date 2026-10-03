@@ -122,11 +122,11 @@ for(const width of [320,1440])test(`Account entry and signed-in Home reflow at $
   await fixture(page);await page.setViewportSize({width,height:900});await page.goto(hubOrigin+'/home/');
   await login(page);expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await page.screenshot({path:`.cache/h2-home-${width}.png`});
-  if(process.env.H2_AXE_PATH){await page.addScriptTag({content:fs.readFileSync(process.env.H2_AXE_PATH,'utf8')});expect(await page.evaluate(async()=>{const result=await (window as any).axe.run();return result.violations.map((v:any)=>({id:v.id,impact:v.impact}));})).toEqual([]);}
+  if(process.env.H2_AXE_PATH){await page.addScriptTag({content:fs.readFileSync(process.env.H2_AXE_PATH,'utf8')});expect(await page.evaluate(async()=>{const result=await (window as any).axe.run();return result.violations.map((v:any)=>({id:v.id,impact:v.impact,nodes:v.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary}))}));})).toEqual([]);}
   await page.getByRole('button',{name:'Switch account',exact:true}).click();await expect(page.getByRole('heading',{name:'Sign in to THIEPN Hub'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await page.screenshot({path:`.cache/h2-account-${width}.png`});
-  if(process.env.H2_AXE_PATH){await page.addScriptTag({content:fs.readFileSync(process.env.H2_AXE_PATH,'utf8')});expect(await page.evaluate(async()=>{const result=await (window as any).axe.run();return result.violations.map((v:any)=>({id:v.id,impact:v.impact}));})).toEqual([]);}
+  if(process.env.H2_AXE_PATH){await page.addScriptTag({content:fs.readFileSync(process.env.H2_AXE_PATH,'utf8')});expect(await page.evaluate(async()=>{const result=await (window as any).axe.run();return result.violations.map((v:any)=>({id:v.id,impact:v.impact,nodes:v.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary}))}));})).toEqual([]);}
 });
 
 test('H4 daily view and timezone stay partitioned across guest, A, B and sign-out',async({page})=>{
