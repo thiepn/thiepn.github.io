@@ -10,7 +10,7 @@ Managed access and rotating refresh tokens live only in memory. Session storage 
 
 ## Home behavior
 
-The staged panel offers recent synced titles, Continue, and explicit title search. Results use the existing strict provider envelope validator and show cloud-snapshot freshness. Titles are text nodes. Links open the real Notes workspace because a resource deep link has not been qualified. Queries travel only in a private POST body. No note bodies, attachments, local drafts, writes, inbox aggregation, persisted result cache, raw Notes REST or Storage access are introduced.
+The staged panel offers recent synced titles, Continue, and explicit title search. It enables only the selected sharing purposes; Continue-only grants open Continue directly and search-only grants make no automatic recent-title read. Results use the existing strict provider envelope validator and show cloud-snapshot freshness. Titles are text nodes. Links open the real Notes workspace because a resource deep link has not been qualified. Queries travel only in a private POST body. No note bodies, attachments, local drafts, writes, inbox aggregation, persisted result cache, raw Notes REST or Storage access are introduced.
 
 Backgrounding, pagehide, identity changes, sign-out, Hide Home and cross-tab disconnect clear results and managed tokens. Expired snapshots remove titles; Refresh obtains fresh authority. Reload requires reconnecting. Requests have bounded bodies, cancellation and a two-second whole-read deadline; late results cannot restore cleared UI.
 

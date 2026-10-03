@@ -19,11 +19,15 @@ if(root){
   let generation=0,controller:AbortController|null=null,timer:ReturnType<typeof setTimeout>|undefined;
   const owner=()=>hubIdentity.status==='signed-in'?hubIdentity.id:null;
   let session:HubNotesSession|null=null;
+  let permissions=new Set<string>();
+  const radios=[...root.querySelectorAll<HTMLInputElement>('[name="notes-operation"]')];
+  function operationAllowed(operation:Operation){return permissions.has(`notes.hub.${operation}.read`);}
+  function configureOperations(){radios.forEach(r=>{r.disabled=!operationAllowed(r.value as Operation);});form.hidden=!operationAllowed('search');root!.querySelector<HTMLElement>('fieldset')!.hidden=!operationAllowed('summary')&&!operationAllowed('continue');}
   function erase(message='Connect Notes to show your synced titles.'){
     ++generation;controller?.abort();controller=null;clearTimeout(timer);list.replaceChildren();freshness.textContent='';panel.hidden=true;form.reset();
     refresh.hidden=disconnect.hidden=true;status.textContent=message;
   }
-  function clear(message?:string,removePending=true){session?.clear(removePending);erase(message);}
+  function clear(message?:string,removePending=true){session?.clear(removePending);permissions.clear();configureOperations();erase(message);}
   function controls(){connect.disabled=Boolean(!owner() || !session || root!.hidden || document.hidden);}
   try {
     if(location.origin!=='https://thiepn.dev' || import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY!=='v1')throw new Error('Unavailable');
@@ -31,7 +35,7 @@ if(root){
   }catch{status.textContent='Notes connection is unavailable. You can open Notes directly.';}
   controls();
   async function load(operation:Operation,search?:string){
-    if(!session || !owner() || root!.hidden || document.hidden)return;
+    if(!session || !owner() || root!.hidden || document.hidden || !operationAllowed(operation))return;
     erase('Checking current Notes access…');const epoch=generation;
     const abort=new AbortController();controller=abort;
     try{
@@ -45,10 +49,10 @@ if(root){
         const time=document.createElement('time');time.dateTime=item.updatedAt;time.textContent=new Date(item.updatedAt).toLocaleString();
         li.append(a,document.createTextNode(' · '),time);list.append(li);
       }
-      panel.hidden=false;refresh.hidden=disconnect.hidden=false;
+      panel.hidden=false;refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;
       status.textContent=envelope.status==='empty'?'No matching synced notes.':'Synced Notes titles';
       freshness.textContent=`Cloud snapshot checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Open Notes for current local changes.`;
-      timer=setTimeout(()=>{erase('This snapshot expired. Refresh to check Notes again.');refresh.hidden=disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
+      timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check Notes again.');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
     }catch{if(epoch===generation)clear('Notes could not be checked. Your sharing may have changed; reconnect or open Notes.');}
     finally{if(epoch===generation)controller=null;controls();}
   }
@@ -66,7 +70,15 @@ if(root){
     clear(owner()?'Connect Notes to show your synced titles.':'Sign in to connect your Notes.',!callback || callbackUsed);controls();
     if(callback && !callbackUsed && !completing && owner() && session && !document.hidden && !root!.hidden){
       completing=true;callbackUsed=true;const epoch=generation;status.textContent='Completing Notes connection…';
-      try{await session.complete(query,fragment);if(epoch===generation)await load('summary');}
+      try{
+        await session.complete(query,fragment);const id=owner();if(epoch!==generation || !id)return;
+        const consent=await readHubNotesConsent(id);if(epoch!==generation || id!==owner())return;
+        permissions=new Set(consent.permissions);configureOperations();
+        const initial:Operation|null=operationAllowed('summary')?'summary':operationAllowed('continue')?'continue':null;
+        if(initial){radios.forEach(r=>{r.checked=r.value===initial;});await load(initial);}
+        else if(operationAllowed('search')){panel.hidden=false;disconnect.hidden=false;status.textContent='Connected. Search your synced Notes titles.';}
+        else clear('Choose your Notes sharing permissions in Account, then connect again.');
+      }
       catch{if(epoch===generation)clear('This Notes return is missing, expired or already used. Connect again.');}
       finally{completing=false;controls();}
     }
