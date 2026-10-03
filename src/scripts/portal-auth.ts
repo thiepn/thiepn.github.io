@@ -1,4 +1,6 @@
 import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, readHubCallback, type HubIdentity } from '../lib/hub-auth';
+import { parseNotesConsent, type NotesConsent } from '../lib/hub-notes-session';
+export let readHubNotesConsent: (owner:string)=>Promise<NotesConsent> = async()=>{throw new Error('Unavailable');};
 
 const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSearchParams(location.search) : null;
 const callbackFragment = callbackQuery ? location.hash : '';
@@ -35,6 +37,15 @@ if (root) {
     void (async () => {
       const { createClient } = await import('@supabase/supabase-js');
       const client = createClient(config.url!, config.key!, { global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), AbortSignal.timeout(8000)]) }) }, auth: { storageKey: HUB_AUTH_KEY, flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } });
+      readHubNotesConsent = async(owner) => {
+        const epoch = generation;
+        if(hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner)throw new Error('Unavailable');
+        const {data:user,error:userError}=await client.auth.getUser();
+        if(userError || user.user?.id !== owner || generation !== epoch)throw new Error('Unavailable');
+        const {data,error}=await client.rpc('get_thiepn_hub_notes_consent');
+        if(error || generation !== epoch || hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner)throw new Error('Unavailable');
+        return parseNotesConsent(data);
+      };
       async function verify() {
         const current = ++generation;
         show({ status: 'checking' });
