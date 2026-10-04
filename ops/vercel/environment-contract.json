@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "productId": "hub",
+  "ci": {
+    "requiredSecrets": [
+      "VERCEL_TOKEN"
+    ],
+    "neverProjectEnvironment": [
+      "VERCEL_TOKEN"
+    ]
+  },
+  "build": {
+    "fixedPublic": {
+      "PUBLIC_HUB_AUTH_ORIGIN": "https://thiepn.dev",
+      "PUBLIC_THIEPN_SUPABASE_URL": "https://hycegznamzjhwinegaai.supabase.co",
+      "PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN": ""
+    },
+    "repositoryVariables": [
+      "HUB_ACCOUNT_ENTRY",
+      "THIEPN_SUPABASE_PUBLISHABLE_KEY"
+    ]
+  },
+  "vercel": {
+    "productionForbidden": [
+      "THIEPN_HUB_PRIVATE_RUNTIME",
+      "PUBLIC_HUB_NOTES_PRIVATE",
+      "PUBLIC_HUB_TMS60_PRIVATE",
+      "PUBLIC_HUB_LIBRARY_PRIVATE",
+      "PUBLIC_HUB_PLATFORM_ORIGIN"
+    ],
+    "neverAllowed": [
+      "VERCEL_TOKEN",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "THIEPN_ACCOUNT_SECRET_KEY",
+      "THIEPN_CORE_SECRET_KEY"
+    ],
+    "privateRuntime": {
+      "activation": "THIEPN_HUB_PRIVATE_RUNTIME",
+      "activationValue": "staged-v1",
+      "serverOnly": [
+        "THIEPN_ACCOUNT_URL",
+        "THIEPN_ACCOUNT_PUBLISHABLE_KEY",
+        "THIEPN_HUB_OAUTH_CLIENT_ID"
+      ],
+      "browserVisible": [
+        "PUBLIC_HUB_NOTES_PRIVATE",
+        "PUBLIC_HUB_NOTES_CLIENT_ID",
+        "PUBLIC_HUB_TMS60_PRIVATE",
+        "PUBLIC_HUB_LIBRARY_PRIVATE",
+        "PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY"
+      ]
+    }
+  }
+}

@@ -90,7 +90,11 @@
     "test:hub-owner": "vitest run --config vitest.hub-owner.config.ts",
     "test:hub-library": "playwright test -c playwright.hub-library.config.ts",
     "vercel:provision": "node scripts/provision-vercel-hub.mjs",
-    "vercel:smoke": "node scripts/smoke-vercel-preview.mjs"
+    "vercel:smoke": "node scripts/smoke-vercel-preview.mjs",
+    "vercel:standard": "node scripts/vercel/validate-product-family.mjs",
+    "vercel:env-audit": "node scripts/vercel/audit-environment-contract.mjs",
+    "vercel:candidate-smoke": "node scripts/vercel/smoke-release-candidate.mjs",
+    "vercel:release-input": "node scripts/vercel/release-control.mjs validate-input"
   },
   "dependencies": {
     "astro": "7.1.6",

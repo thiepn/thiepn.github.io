@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "productId": "hub",
+  "family": "hub",
+  "projectName": "thiepn-hub",
+  "repository": "thiepn/thiepn.github.io",
+  "framework": "astro",
+  "nodeMajor": 24,
+  "vercelCliVersion": "50.1.0",
+  "deployment": {
+    "mode": "manual-cli",
+    "gitIntegration": false,
+    "automaticDeployments": false,
+    "previewWorkflow": "stage-vercel-hub.yml",
+    "candidateTarget": "production",
+    "candidateSkipDomain": true,
+    "promotion": "explicit-certified-deployment",
+    "rollback": "explicit-certified-deployment"
+  },
+  "production": {
+    "canonicalDomain": "thiepn.dev",
+    "trafficOwnerUntilCutover": "github-pages",
+    "vercelCustomDomainAssignmentAllowed": false
+  }
+}

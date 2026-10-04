@@ -1,0 +1,100 @@
+name: Restore certified THIEPN Hub Vercel deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full source commit SHA for the certified rollback target
+        required: true
+        type: string
+      deployment_url:
+        description: Previously certified Vercel deployment URL
+        required: true
+        type: string
+      confirm:
+        description: Type ROLLBACK thiepn-hub
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-hub-production-control
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_NAME: thiepn-hub
+      VERCEL_ENV_TARGET: production
+      PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
+      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
+      PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
+    steps:
+      - name: Validate dispatch fields before checkout
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          DEPLOYMENT_URL: ${{ inputs.deployment_url }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEPLOYMENT_URL" =~ ^https://[A-Za-z0-9.-]+\.vercel\.app/?$ ]]
+          [[ "$CONFIRM" == "ROLLBACK thiepn-hub" ]]
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Validate explicit rollback target
+        run: >-
+          node scripts/vercel/release-control.mjs validate-input
+          --action rollback --sha "${{ inputs.source_sha }}"
+          --url "${{ inputs.deployment_url }}"
+          --confirm "${{ inputs.confirm }}"
+      - run: test -n "$VERCEL_TOKEN"
+      - run: npm run vercel:standard
+      - name: Provision/reconcile project
+        id: provision
+        run: node scripts/provision-vercel-hub.mjs
+      - name: Audit Production environment metadata
+        env:
+          VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
+        run: npm run vercel:env-audit
+      - name: Rebuild target source with Production settings
+        run: |
+          npx --yes vercel@50.1.0 pull --yes --environment=production --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          npx --yes vercel@50.1.0 build --prod --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
+      - name: Verify selected deployment before rollback
+        run: |
+          node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ inputs.deployment_url }}"
+          npm run vercel:candidate-smoke -- --url "${{ inputs.deployment_url }}"
+          npx --yes vercel@50.1.0 inspect "${{ inputs.deployment_url }}" --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+      - name: Restore selected certified deployment
+        run: >-
+          npx --yes vercel@50.1.0 promote "${{ inputs.deployment_url }}"
+          --yes --timeout 5m --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+      - name: Record rollback evidence
+        run: >-
+          node scripts/vercel/release-control.mjs record
+          --action rollback --sha "${{ inputs.source_sha }}"
+          --url "${{ inputs.deployment_url }}"
+          --project-id "${{ steps.provision.outputs.project-id }}"
+          --project-name "${{ steps.provision.outputs.project-name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vercel-hub-rollback-${{ inputs.source_sha }}
+          path: |
+            .cache/hub-release-qualification.json
+            .cache/vercel-release-record.json
+          retention-days: 90
