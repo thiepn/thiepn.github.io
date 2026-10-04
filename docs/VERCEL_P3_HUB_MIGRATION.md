@@ -107,4 +107,18 @@ P3 is source-complete when:
 - Preview smoke verifies exact served bytes and routing behavior;
 - normal Hub quality CI passes.
 
+## Bootstrap execution state
+
+A one-time Preview-only bootstrap probe ran from this branch after the normal Hub Quality and provider-integration gates passed.
+
+Observed repository configuration:
+
+- `VERCEL_TOKEN`: not configured;
+- `HUB_ACCOUNT_ENTRY` repository variable: empty in the bootstrap context;
+- `THIEPN_SUPABASE_PUBLISHABLE_KEY` repository variable: empty in the bootstrap context.
+
+Because `VERCEL_TOKEN` was absent, every Vercel mutation/build/deploy step was skipped. No Vercel project, deployment, alias or domain was created. The temporary push-triggered bootstrap workflow was removed immediately afterward.
+
+The empty public Hub variables do not weaken P3's public-handoffs profile because private provider reads remain disabled, but P4 must reconcile them before enabling Account/Core-backed Hub functionality.
+
 P3 is operationally complete only after one real Preview deployment passes those checks.
