@@ -50,9 +50,9 @@ jobs:
           npm test
           npm run release:source
 
-      - name: Provision manual-only Vercel project
+      - name: Bootstrap/reconcile Vercel project and CLI linkage
         id: provision
-        run: node scripts/provision-vercel-hub.mjs
+        run: npm run vercel:bootstrap
 
       - name: Audit Preview environment metadata
         env:
@@ -65,13 +65,13 @@ jobs:
           npx --yes vercel@50.1.0 pull
           --yes
           --environment=preview
-          --project="${{ steps.provision.outputs.project-id }}"
+         
           --token="$VERCEL_TOKEN"
 
       - name: Build Vercel artifact
         run: >-
           npx --yes vercel@50.1.0 build
-          --project="${{ steps.provision.outputs.project-id }}"
+         
           --token="$VERCEL_TOKEN"
 
       - name: Qualify exact Vercel static output
@@ -89,7 +89,7 @@ jobs:
             npx --yes vercel@50.1.0 deploy \
               --prebuilt \
               --yes \
-              --project="${{ steps.provision.outputs.project-id }}" \
+              \
               --token="$VERCEL_TOKEN" |
             tail -n 1
           )"
@@ -121,5 +121,5 @@ jobs:
         run: >-
           npx --yes vercel@50.1.0 inspect
           "${{ steps.deploy.outputs.url }}"
-          --project="${{ steps.provision.outputs.project-id }}"
+         
           --token="$VERCEL_TOKEN"
