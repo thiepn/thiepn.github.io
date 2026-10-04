@@ -31,11 +31,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_NAME: thiepn-hub
       VERCEL_ENV_TARGET: production
-      PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
-      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
-      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
-      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
-      PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
     steps:
       - name: Validate dispatch fields before checkout
         shell: bash
