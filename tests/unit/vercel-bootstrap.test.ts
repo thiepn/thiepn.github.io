@@ -20,17 +20,17 @@ describe('P6 real Vercel bootstrap contract',()=>{
 
   it('requires the hardened unlinked Astro project state',()=>{
     expect(assertProjectState({
-      id:'prj_fixture',name:'thiepn-hub',link:null,framework:'astro',nodeVersion:'24.x',
+      id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture',link:null,framework:'astro',nodeVersion:'24.x',
       outputDirectory:'dist',buildCommand:'npm run build:enriched',installCommand:'npm ci',
       autoAssignCustomDomains:false,
-    })).toEqual({id:'prj_fixture',name:'thiepn-hub'});
+    })).toEqual({id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture'});
     expect(()=>assertProjectState({
-      id:'prj_fixture',name:'thiepn-hub',link:{type:'github'},framework:'astro',nodeVersion:'24.x',
+      id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture',link:{type:'github'},framework:'astro',nodeVersion:'24.x',
       outputDirectory:'dist',buildCommand:'npm run build:enriched',installCommand:'npm ci',
       autoAssignCustomDomains:false,
     })).toThrow('Git integration');
     expect(()=>assertProjectState({
-      id:'prj_fixture',name:'thiepn-hub',link:null,framework:'astro',nodeVersion:'24.x',
+      id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture',link:null,framework:'astro',nodeVersion:'24.x',
       outputDirectory:'dist',buildCommand:'npm run build:enriched',installCommand:'npm ci',
       autoAssignCustomDomains:true,
     })).toThrow('custom-domain');
@@ -48,7 +48,7 @@ describe('P6 real Vercel bootstrap contract',()=>{
       Response.json({id:'prj_fixture',name:'thiepn-hub',link:null}),
       Response.json({ok:true}),
       Response.json({
-        id:'prj_fixture',name:'thiepn-hub',link:null,framework:'astro',nodeVersion:'24.x',
+        id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture',link:null,framework:'astro',nodeVersion:'24.x',
         outputDirectory:'dist',buildCommand:'npm run build:enriched',installCommand:'npm ci',
         autoAssignCustomDomains:false,
       }),
@@ -59,7 +59,7 @@ describe('P6 real Vercel bootstrap contract',()=>{
     const seen:Array<{url:RequestInfo|URL;init?:RequestInit}>=[];
     const fetchImpl=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{seen.push(init?{url,init}:{url});return responses.shift()!;});
     const result=await bootstrapHubProject({token:'fixture-token',fetchImpl});
-    expect(result.project).toEqual({id:'prj_fixture',name:'thiepn-hub'});
+    expect(result.project).toEqual({id:'prj_fixture',name:'thiepn-hub',accountId:'team_fixture'});
     expect(result.environment.keys).toEqual([...keys].sort());
     expect(result.domains).toEqual(['thiepn-hub.vercel.app']);
     const calls=seen.map(({url,init})=>({url:String(url),method:init?.method??'GET',body:init?.body?JSON.parse(String(init.body)):null}));
