@@ -59,11 +59,11 @@ jobs:
       - name: Pull Production project settings
         run: >-
           npx --yes vercel@50.1.0 pull --yes --environment=production
-          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          --token="$VERCEL_TOKEN"
       - name: Build production-configured candidate
         run: >-
           npx --yes vercel@50.1.0 build --prod
-          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          --token="$VERCEL_TOKEN"
       - name: Qualify exact candidate artifact
         run: node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
       - name: Deploy without assigning production domains
@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN" | tail -n 1)"
+          url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --token="$VERCEL_TOKEN" | tail -n 1)"
           [[ "$url" == https://*.vercel.app ]] || { echo "Unexpected Vercel deployment URL" >&2; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Verify exact served public artifact
@@ -79,7 +79,7 @@ jobs:
       - name: Verify production-configured candidate semantics
         run: npm run vercel:candidate-smoke -- --url "${{ steps.deploy.outputs.url }}"
       - name: Inspect candidate
-        run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --token="$VERCEL_TOKEN"
       - name: Record immutable release evidence
         run: >-
           node scripts/vercel/release-control.mjs record
