@@ -37,11 +37,11 @@ function apiError(action, response, body) {
   );
 }
 
-async function api(token, path, init = {}) {
+async function api(fetchImpl, token, path, init = {}) {
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API}${path}`, {
+  const response = await fetchImpl(`${API}${path}`, {
     ...init,
     headers,
     redirect: 'error',
@@ -78,49 +78,44 @@ export async function ensureHubProject({
   if (!token) throw new Error('VERCEL_TOKEN is required');
   validateProjectName(projectName);
 
-  const originalFetch = globalThis.fetch;
-  if (fetchImpl !== fetch) globalThis.fetch = fetchImpl;
-  try {
-    const lookup = await api(
-      token,
-      `/v9/projects/${encodeURIComponent(projectName)}`,
-      { method: 'GET' },
-    );
+  const lookup = await api(
+    fetchImpl,
+    token,
+    `/v9/projects/${encodeURIComponent(projectName)}`,
+    { method: 'GET' },
+  );
 
-    let project;
-    let created = false;
-    if (lookup.response.ok) {
-      project = parseProject(lookup.body);
-    } else if (lookup.response.status === 404) {
-      const creation = await api(token, '/v11/projects', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: projectName,
-          framework: 'astro',
-          buildCommand: 'npm run build:enriched',
-          installCommand: 'npm ci',
-          outputDirectory: 'dist',
-        }),
-      });
-      if (!creation.response.ok) {
-        throw apiError('Vercel Hub project creation', creation.response, creation.body);
-      }
-      project = parseProject(creation.body);
-      created = true;
-    } else {
-      throw apiError('Vercel Hub project lookup', lookup.response, lookup.body);
+  let project;
+  let created = false;
+  if (lookup.response.ok) {
+    project = parseProject(lookup.body);
+  } else if (lookup.response.status === 404) {
+    const creation = await api(fetchImpl, token, '/v11/projects', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: projectName,
+        framework: 'astro',
+        buildCommand: 'npm run build:enriched',
+        installCommand: 'npm ci',
+        outputDirectory: 'dist',
+      }),
+    });
+    if (!creation.response.ok) {
+      throw apiError('Vercel Hub project creation', creation.response, creation.body);
     }
-
-    if (project.linkedGit) {
-      throw new Error(
-        'thiepn-hub is Git-linked; P3 requires manual CLI deployment only',
-      );
-    }
-
-    return { project, created };
-  } finally {
-    if (fetchImpl !== fetch) globalThis.fetch = originalFetch;
+    project = parseProject(creation.body);
+    created = true;
+  } else {
+    throw apiError('Vercel Hub project lookup', lookup.response, lookup.body);
   }
+
+  if (project.linkedGit) {
+    throw new Error(
+      'thiepn-hub is Git-linked; P3 requires manual CLI deployment only',
+    );
+  }
+
+  return { project, created };
 }
 
 function output(name, value) {
