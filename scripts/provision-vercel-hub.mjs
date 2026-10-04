@@ -65,8 +65,9 @@ function parseProject(body) {
   return {
     id: value.id,
     name: value.name,
-    linkedGit:
+    linkedGit: Boolean(
       value.link && typeof value.link === 'object' && !Array.isArray(value.link),
+    ),
   };
 }
 
