@@ -1,0 +1,113 @@
+name: Build THIEPN Hub Vercel release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Git ref to certify
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-hub-release-candidate
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_NAME: thiepn-hub
+      VERCEL_ENV_TARGET: production
+      PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
+      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
+      PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Freeze source SHA
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Require deployment credential
+        run: test -n "$VERCEL_TOKEN"
+      - name: Validate product-family standard
+        run: npm run vercel:standard
+      - name: Source qualification
+        run: |
+          npm run release:lockfile
+          npm run generated:check
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run release:source
+      - name: Provision manual-only project
+        id: provision
+        run: node scripts/provision-vercel-hub.mjs
+      - name: Audit Production environment metadata
+        env:
+          VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
+        run: npm run vercel:env-audit
+      - name: Pull Production project settings
+        run: >-
+          npx --yes vercel@50.1.0 pull --yes --environment=production
+          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+      - name: Build production-configured candidate
+        run: >-
+          npx --yes vercel@50.1.0 build --prod
+          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+      - name: Qualify exact candidate artifact
+        run: node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
+      - name: Deploy without assigning production domains
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN" | tail -n 1)"
+          [[ "$url" == https://*.vercel.app ]] || { echo "Unexpected Vercel deployment URL" >&2; exit 1; }
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Verify exact served public artifact
+        run: node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ steps.deploy.outputs.url }}"
+      - name: Verify production-configured candidate semantics
+        run: npm run vercel:candidate-smoke -- --url "${{ steps.deploy.outputs.url }}"
+      - name: Inspect candidate
+        run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+      - name: Record immutable release evidence
+        run: >-
+          node scripts/vercel/release-control.mjs record
+          --action candidate
+          --sha "${{ steps.source.outputs.sha }}"
+          --url "${{ steps.deploy.outputs.url }}"
+          --project-id "${{ steps.provision.outputs.project-id }}"
+          --project-name "${{ steps.provision.outputs.project-name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vercel-hub-candidate-${{ steps.source.outputs.sha }}
+          path: |
+            .cache/hub-release-qualification.json
+            .cache/vercel-release-record.json
+          retention-days: 30
+      - name: Summary
+        run: |
+          {
+            echo "### THIEPN Hub release candidate"
+            echo "- Source: `${{ steps.source.outputs.sha }}`"
+            echo "- Deployment: `${{ steps.deploy.outputs.url }}`"
+            echo "- Build environment: production"
+            echo "- Production domain assignment: skipped"
+            echo "- Private Hub runtime: required to remain disabled"
+            echo "- thiepn.dev: unchanged"
+          } >> "$GITHUB_STEP_SUMMARY"
