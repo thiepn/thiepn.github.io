@@ -6,6 +6,7 @@ import PortalAccount from '../../components/hub/PortalAccount.astro';
 import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
 import PrivateTms from '../../components/hub/PrivateTms.astro';
+import PrivateLibrary from '../../components/hub/PrivateLibrary.astro';
 import PrivateNotes from '../../components/hub/PrivateNotes.astro';
 import { getHubProjects } from '../../lib/hub';
 import '../../styles/hub.css';
@@ -23,6 +24,7 @@ const entries = await getHubProjects();
     <DailyHome entries={entries} />
     <PrivateTms />
     <PrivateNotes />
+    <PrivateLibrary />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
     <noscript><p class="portal-muted">All app links work without JavaScript. Customization requires JavaScript.</p></noscript>
@@ -30,4 +32,4 @@ const entries = await getHubProjects();
   </div>
 </BaseLayout>
 <script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home'; import '../../scripts/portal-auth'; import '../../scripts/portal-notes';
-  import '../../scripts/portal-tms60';</script>
+  import '../../scripts/portal-tms60'; import '../../scripts/portal-library';</script>
