@@ -104,8 +104,8 @@ jobs:
         run: |
           {
             echo "### THIEPN Hub release candidate"
-            echo "- Source: `${{ steps.source.outputs.sha }}`"
-            echo "- Deployment: `${{ steps.deploy.outputs.url }}`"
+            echo "- Source: ${{ steps.source.outputs.sha }}"
+            echo "- Deployment: ${{ steps.deploy.outputs.url }}"
             echo "- Build environment: production"
             echo "- Production domain assignment: skipped"
             echo "- Private Hub runtime: required to remain disabled"
