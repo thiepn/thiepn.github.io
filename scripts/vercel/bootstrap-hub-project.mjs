@@ -39,7 +39,7 @@ export function productionEntries(contract){
 }
 export function assertProjectState(raw){
   const value=asObject(raw);
-  if(typeof value.id!=='string'||typeof value.name!=='string')throw new Error('Invalid Vercel project');
+  if(typeof value.id!=='string'||typeof value.name!=='string'||typeof value.accountId!=='string'||!/^(?:team|usr)_[A-Za-z0-9]+$/.test(value.accountId))throw new Error('Invalid Vercel project');
   if(value.name!=='thiepn-hub')throw new Error('Unexpected Vercel project name');
   if(value.link&&typeof value.link==='object'&&!Array.isArray(value.link))throw new Error('Vercel Git integration must remain absent');
   if(value.framework!=='astro')throw new Error('Vercel framework drift');
@@ -48,7 +48,7 @@ export function assertProjectState(raw){
   if(value.buildCommand!=='npm run build:enriched')throw new Error('Vercel build command drift');
   if(value.installCommand!=='npm ci')throw new Error('Vercel install command drift');
   if(value.autoAssignCustomDomains!==false)throw new Error('Automatic custom-domain assignment must be disabled');
-  return{id:value.id,name:value.name};
+  return{id:value.id,name:value.name,accountId:value.accountId};
 }
 export function assertDomains(raw){
   const value=asObject(raw);
@@ -114,7 +114,8 @@ function output(name,value){
 }
 async function main(){
   const result=await bootstrapHubProject({token:process.env.VERCEL_TOKEN??'',projectName:process.env.VERCEL_PROJECT_NAME??'thiepn-hub'});
-  output('project-id',result.project.id);output('project-name',result.project.name);output('project-created',String(result.created));
+  output('project-id',result.project.id);output('project-name',result.project.name);output('org-id',result.project.accountId);output('project-created',String(result.created));
+  if(process.env.GITHUB_ENV){appendFileSync(process.env.GITHUB_ENV,'VERCEL_PROJECT_ID='+result.project.id+'\nVERCEL_ORG_ID='+result.project.accountId+'\n','utf8');}
   console.log('P6 Vercel bootstrap passed: '+result.project.name+' ('+result.project.id+'), production env keys='+result.environment.count+', custom domains=0.');
 }
 if(import.meta.url==='file://'+process.argv[1])await main();
