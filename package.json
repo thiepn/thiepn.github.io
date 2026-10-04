@@ -94,7 +94,8 @@
     "vercel:standard": "node scripts/vercel/validate-product-family.mjs",
     "vercel:env-audit": "node scripts/vercel/audit-environment-contract.mjs",
     "vercel:candidate-smoke": "node scripts/vercel/smoke-release-candidate.mjs",
-    "vercel:release-input": "node scripts/vercel/release-control.mjs validate-input"
+    "vercel:release-input": "node scripts/vercel/release-control.mjs validate-input",
+    "vercel:bootstrap": "node scripts/vercel/bootstrap-hub-project.mjs"
   },
   "dependencies": {
     "astro": "7.1.6",
