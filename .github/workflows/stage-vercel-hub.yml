@@ -1,0 +1,116 @@
+name: Stage THIEPN Hub on Vercel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-hub-preview
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_NAME: thiepn-hub
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
+      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
+      PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Require deployment credential
+        run: test -n "$VERCEL_TOKEN"
+
+      - name: Source qualification
+        run: |
+          npm run generated:check
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run release:source
+
+      - name: Provision manual-only Vercel project
+        id: provision
+        run: node scripts/provision-vercel-hub.mjs
+
+      - name: Pull Preview project settings
+        run: >-
+          npx --yes vercel@50.1.0 pull
+          --yes
+          --environment=preview
+          --project="${{ steps.provision.outputs.project-id }}"
+          --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel artifact
+        run: >-
+          npx --yes vercel@50.1.0 build
+          --project="${{ steps.provision.outputs.project-id }}"
+          --token="$VERCEL_TOKEN"
+
+      - name: Qualify exact Vercel static output
+        run: >-
+          node --experimental-strip-types
+          scripts/qualify-hub-release.mjs
+          --dist .vercel/output/static
+
+      - name: Deploy Preview
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(
+            npx --yes vercel@50.1.0 deploy \
+              --prebuilt \
+              --yes \
+              --project="${{ steps.provision.outputs.project-id }}" \
+              --token="$VERCEL_TOKEN" |
+            tail -n 1
+          )"
+          if [[ "$url" != https://* ]]; then
+            echo "Unexpected Vercel deployment output" >&2
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### THIEPN Hub P3 Preview"
+            echo "- Project: ${{ steps.provision.outputs.project-name }}"
+            echo "- Preview: $url"
+            echo "- Production alias: unchanged"
+            echo "- thiepn.dev DNS: unchanged"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify exact served artifact
+        run: >-
+          node --experimental-strip-types
+          scripts/smoke-hub-release.mjs
+          --url "${{ steps.deploy.outputs.url }}"
+
+      - name: Verify Vercel hosting semantics
+        run: >-
+          node scripts/smoke-vercel-preview.mjs
+          --url "${{ steps.deploy.outputs.url }}"
+
+      - name: Inspect Preview
+        run: >-
+          npx --yes vercel@50.1.0 inspect
+          "${{ steps.deploy.outputs.url }}"
+          --project="${{ steps.provision.outputs.project-id }}"
+          --token="$VERCEL_TOKEN"

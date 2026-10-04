@@ -88,7 +88,9 @@
     "test:hub-live": "playwright test -c playwright.hub-live.config.ts",
     "hub:identity:operator": "node scripts/hub-identity-operator.mjs",
     "test:hub-owner": "vitest run --config vitest.hub-owner.config.ts",
-    "test:hub-library": "playwright test -c playwright.hub-library.config.ts"
+    "test:hub-library": "playwright test -c playwright.hub-library.config.ts",
+    "vercel:provision": "node scripts/provision-vercel-hub.mjs",
+    "vercel:smoke": "node scripts/smoke-vercel-preview.mjs"
   },
   "dependencies": {
     "astro": "7.1.6",
