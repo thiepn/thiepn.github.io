@@ -66,27 +66,27 @@ jobs:
           npm run typecheck
           npm test
           npm run release:source
-      - name: Provision/reconcile project
+      - name: Bootstrap/reconcile project and CLI linkage
         id: provision
-        run: node scripts/provision-vercel-hub.mjs
+        run: npm run vercel:bootstrap
       - name: Audit Production environment metadata
         env:
           VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
         run: npm run vercel:env-audit
       - name: Rebuild comparison artifact with Production settings
         run: |
-          npx --yes vercel@50.1.0 pull --yes --environment=production --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
-          npx --yes vercel@50.1.0 build --prod --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          npx --yes vercel@50.1.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@50.1.0 build --prod --token="$VERCEL_TOKEN"
           node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
       - name: Prove supplied deployment matches certified source
         run: |
           node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ inputs.deployment_url }}"
           npm run vercel:candidate-smoke -- --url "${{ inputs.deployment_url }}"
-          npx --yes vercel@50.1.0 inspect "${{ inputs.deployment_url }}" --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          npx --yes vercel@50.1.0 inspect "${{ inputs.deployment_url }}" --token="$VERCEL_TOKEN"
       - name: Promote exact existing deployment
         run: >-
           npx --yes vercel@50.1.0 promote "${{ inputs.deployment_url }}"
-          --yes --timeout 5m --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          --yes --timeout 5m --token="$VERCEL_TOKEN"
       - name: Verify promotion status
         run: npx --yes vercel@50.1.0 promote status "${{ steps.provision.outputs.project-name }}" --token="$VERCEL_TOKEN"
       - name: Record promotion evidence
