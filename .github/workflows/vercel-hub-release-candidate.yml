@@ -54,10 +54,10 @@ jobs:
           npm run typecheck
           npm test
           npm run release:source
-      - name: Provision manual-only project
+      - name: Bootstrap and reconcile manual-only project + Production public env
         id: provision
-        run: node scripts/provision-vercel-hub.mjs
-      - name: Audit Production environment metadata
+        run: npm run vercel:bootstrap
+      - name: Re-audit Production environment metadata
         env:
           VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
         run: npm run vercel:env-audit
