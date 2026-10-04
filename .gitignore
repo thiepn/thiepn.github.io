@@ -26,3 +26,4 @@ Thumbs.db
 
 # Build-time copies of the existing real project captures
 src/assets/showcase/
+.vercel/
