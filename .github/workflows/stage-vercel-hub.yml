@@ -106,6 +106,8 @@ jobs:
             echo "- thiepn.dev DNS: unchanged"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Create ephemeral deployment-protection bypass for CI verification
+        run: npm run vercel:bypass-create
       - name: Verify exact served artifact
         run: >-
           node --experimental-strip-types
@@ -123,3 +125,4 @@ jobs:
           "${{ steps.deploy.outputs.url }}"
          
           --token="$VERCEL_TOKEN"
+
