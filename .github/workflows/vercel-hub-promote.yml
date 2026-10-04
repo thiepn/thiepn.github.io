@@ -37,6 +37,16 @@ jobs:
       PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
       PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
     steps:
+      - name: Validate dispatch fields before checkout
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          DEPLOYMENT_URL: ${{ inputs.deployment_url }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEPLOYMENT_URL" =~ ^https://[A-Za-z0-9.-]+\.vercel\.app/?$ ]]
+          [[ "$CONFIRM" == "PROMOTE thiepn-hub" ]]
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_sha }}
