@@ -56,13 +56,13 @@ describe('P6 real Vercel bootstrap contract',()=>{
       Response.json({envs:keys.map(key=>({key,target:['production'],type:'plain'}))}),
       Response.json({domains:[{name:'thiepn-hub.vercel.app'}]}),
     ];
-    const seen:Array<[RequestInfo|URL,RequestInit?]>=[];
-    const fetchImpl=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{seen.push([url,init]);return responses.shift()!;});
+    const seen:Array<{url:RequestInfo|URL;init?:RequestInit}>=[];
+    const fetchImpl=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{seen.push(init?{url,init}:{url});return responses.shift()!;});
     const result=await bootstrapHubProject({token:'fixture-token',fetchImpl});
     expect(result.project).toEqual({id:'prj_fixture',name:'thiepn-hub'});
     expect(result.environment.keys).toEqual([...keys].sort());
     expect(result.domains).toEqual(['thiepn-hub.vercel.app']);
-    const calls=seen.map(([url,init])=>({url:String(url),method:init?.method??'GET',body:init?.body?JSON.parse(String(init.body)):null}));
+    const calls=seen.map(({url,init})=>({url:String(url),method:init?.method??'GET',body:init?.body?JSON.parse(String(init.body)):null}));
     expect(calls[1]?.body).toMatchObject({nodeVersion:'24.x',autoAssignCustomDomains:false,autoExposeSystemEnvs:false});
     expect(calls.filter(c=>c.url.includes('/env?upsert=true'))).toHaveLength(keys.length);
     expect(calls.some(c=>c.url.endsWith('/env?decrypt=false'))).toBe(true);
