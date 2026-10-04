@@ -65,13 +65,11 @@ jobs:
           npx --yes vercel@50.1.0 pull
           --yes
           --environment=preview
-         
           --token="$VERCEL_TOKEN"
 
       - name: Build Vercel artifact
         run: >-
           npx --yes vercel@50.1.0 build
-         
           --token="$VERCEL_TOKEN"
 
       - name: Qualify exact Vercel static output
@@ -89,7 +87,6 @@ jobs:
             npx --yes vercel@50.1.0 deploy \
               --prebuilt \
               --yes \
-              \
               --token="$VERCEL_TOKEN" |
             tail -n 1
           )"
@@ -107,6 +104,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create ephemeral deployment-protection bypass for CI verification
+        id: bypass
         run: npm run vercel:bypass-create
       - name: Verify exact served artifact
         run: >-
@@ -123,6 +121,9 @@ jobs:
         run: >-
           npx --yes vercel@50.1.0 inspect
           "${{ steps.deploy.outputs.url }}"
-         
           --token="$VERCEL_TOKEN"
+
+      - name: Revoke ephemeral deployment-protection bypass
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
+        run: npm run vercel:bypass-revoke
 
