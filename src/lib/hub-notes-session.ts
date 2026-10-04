@@ -22,7 +22,7 @@ export function validNotesConfig(config: NotesSessionConfig): boolean {
   try {
     if(config.provider==='tms60')return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && ['esv','niv','nlt','hfa','schlachter1951','klb1985','krv1961'].includes(config.translationId ?? '');
     const url = new URL(config.platformOrigin);
-    return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && url.origin === config.platformOrigin && url.protocol === 'https:' && url.hostname.endsWith('.vercel.app') && !url.username && !url.password;
+    return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && url.origin === config.platformOrigin && url.protocol === 'https:' && (url.hostname.endsWith('.vercel.app') || url.hostname === 'thiepn.dev') && !url.username && !url.password;
   } catch { return false; }
 }
 const random = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -127,12 +127,12 @@ export class HubNotesSession {
         if(Date.parse(envelope.expiresAt)>tokens.expiresAt)throw new Error('Unavailable');
         return envelope;
       }
-      const snapshot = await this.json(this.config.platformOrigin+'/v1/private/hub/notes/access',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify({operation,grantRevision:tokens.revision})},8192,signal);
+      const snapshot = await this.json(this.config.platformOrigin+'/api/v1/private/hub/notes/access',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify({operation,grantRevision:tokens.revision})},8192,signal);
       const auth = object(snapshot) && snapshot.ok === true ? snapshot.data : null;
       if (!object(auth) || Object.keys(auth).sort().join(',') !== 'accountId,accountState,audience,consumer,expiresAt,grantRevision,notesSyncAccess,permissions' || auth.accountId !== tokens.owner || auth.consumer !== 'thiepn-hub' || auth.audience !== 'notes-hub' || auth.accountState !== 'active' || auth.notesSyncAccess !== true || auth.grantRevision !== tokens.revision || !Array.isArray(auth.permissions) || auth.permissions.length > 3 || new Set(auth.permissions).size !== auth.permissions.length || auth.permissions.some(p=>!purposes.includes(p)) || !auth.permissions.includes(`notes.hub.${operation}.read`) || !Number.isSafeInteger(auth.expiresAt) || Number(auth.expiresAt) <= this.now() || Number(auth.expiresAt) > tokens.expiresAt || epoch !== this.epoch || tokens.owner !== this.owner()) throw new Error('Unavailable');
       if (operation === 'search' && (typeof query !== 'string' || !query.trim() || query.length > 256 || /[\u0000-\u001f\u007f]/.test(query)) || operation !== 'search' && query !== undefined) throw new Error('Unavailable');
       const request: RequestContext = {providerId:'notes',operation,requestId:crypto.randomUUID(),context:{scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:null},...(query!==undefined?{query}:{})};
-      const raw = await this.json(this.config.platformOrigin+'/hub/notes/v1',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify(request)},operation==='search'?65536:32768,signal);
+      const raw = await this.json(this.config.platformOrigin+'/api/hub/notes/v1',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify(request)},operation==='search'?65536:32768,signal);
       if (epoch !== this.epoch || tokens.owner !== this.owner() || signal.aborted || Number(auth.expiresAt) <= this.now()) throw new Error('Unavailable');
       const manifest = {...structuredClone(providerManifest('notes')),privateReadsEnabled:true,operations:{summary:true,continue:true,search:true,capture:false,inbox:false}};
       const envelope = validateProviderEnvelope(JSON.stringify(raw),manifest,request,this.now());

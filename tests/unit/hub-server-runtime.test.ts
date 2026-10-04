@@ -1,0 +1,33 @@
+import{afterEach,describe,expect,it,vi}from'vitest';import{handleNotesAccess,handleNotesProjection}from'../../server/hub-runtime/notes';import{readHubServerEnv}from'../../server/hub-runtime/env';
+const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',CLIENT='33333333-3333-4333-8333-333333333333',REV='44444444-4444-4444-8444-444444444444',SESSION='55555555-5555-4555-8555-555555555555';
+const NOW=Date.parse('2026-10-04T12:00:00.000Z'),ACCOUNT='https://hycegznamzjhwinegaai.supabase.co',PREVIEW='https://hub-preview.vercel.app';
+const key='sb_publishable_fixture_1234567890',env={accountUrl:ACCOUNT,publishableKey:key,oauthClientId:CLIENT,enabled:true as const};
+const bearer='eyJhbGciOiJFUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:A,iss:ACCOUNT+'/auth/v1',aud:'authenticated',role:'authenticated',client_id:CLIENT,is_anonymous:false,session_id:SESSION,exp:Math.floor(NOW/1000)+3600})).toString('base64url')+'.fictional_signature';
+const auth={accountId:A,consumer:'thiepn-hub',audience:'notes-hub',permissions:['notes.hub.summary.read','notes.hub.continue.read','notes.hub.search.read'],grantRevision:REV,expiresAt:NOW+3600000,accountState:'active',notesSyncAccess:true};
+const row={user_id:A,entity_type:'note',entity_id:B,deleted_at:null,note_id:B,note_type:'text',title:'  Fictional   title  ',note_updated_at:String(NOW-1000),archived_at:null,trashed_at:null,synced_at:new Date(NOW-500).toISOString()};
+function request(path:string,body:unknown,origin=PREVIEW,headerOrigin=origin){return new Request(origin+path,{method:'POST',headers:{Authorization:'Bearer '+bearer,'Content-Type':'application/json',Origin:headerOrigin},body:JSON.stringify(body)});}
+const context={scope:'account' as const,accountId:A,workspaceId:null,grantRevision:REV,translationId:null};
+function upstream(options:{deny?:boolean;revoke?:boolean;badRow?:boolean;authFailure?:boolean;stallRead?:boolean}={}){
+ let authCalls=0;
+ return vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+   const u=String(url),headers=new Headers(init?.headers);expect(headers.get('apikey')).toBe(key);expect(init?.redirect).toBe('error');
+   if(u.endsWith('/auth/v1/user')){if(options.authFailure)return new Response('{}',{status:401});return Response.json({id:A});}
+   expect(headers.get('authorization')).toBe('Bearer '+bearer);
+   if(u.endsWith('/authorize_thiepn_hub_notes')){authCalls++;return Response.json(options.deny||options.revoke&&authCalls>1?null:auth);}
+   if(u.endsWith('/read_thiepn_hub_notes')){if(options.stallRead)return new Promise<Response>(()=>{});return Response.json(options.badRow?[{...row,content:'PRIVATE'}]:[row]);}
+   throw new Error('unexpected '+u);
+ });
+}
+afterEach(()=>{vi.restoreAllMocks();vi.useRealTimers();});
+describe('P4 Hub-owned private runtime',()=>{
+ it('defaults off unless all staged server configuration is valid',()=>{expect(readHubServerEnv({})).toBeNull();expect(readHubServerEnv({THIEPN_HUB_PRIVATE_RUNTIME:'staged-v1',THIEPN_ACCOUNT_URL:ACCOUNT,THIEPN_ACCOUNT_PUBLISHABLE_KEY:key,THIEPN_HUB_OAUTH_CLIENT_ID:'bad'})).toBeNull();});
+ it('verifies the exact bearer with Account before trusting claims and returns current authorization',async()=>{const http=upstream();const r=await handleNotesAccess(request('/api/v1/private/hub/notes/access',{operation:'summary',grantRevision:REV}),{env,http,now:()=>NOW});expect(r.status).toBe(200);expect((await r.json()).data).toEqual(auth);expect(http.mock.calls.map(c=>String(c[0]))).toEqual([ACCOUNT+'/auth/v1/user',ACCOUNT+'/rest/v1/rpc/authorize_thiepn_hub_notes']);});
+ it('rejects attacker origins before any upstream call',async()=>{const http=upstream();const r=await handleNotesAccess(request('/api/v1/private/hub/notes/access',{operation:'summary',grantRevision:REV},PREVIEW,'https://evil.test'),{env,http,now:()=>NOW});expect(r.status).toBe(403);expect(http).not.toHaveBeenCalled();});
+ it('rejects provider-rejected managed tokens',async()=>{const r=await handleNotesAccess(request('/api/v1/private/hub/notes/access',{operation:'summary',grantRevision:REV}),{env,http:upstream({authFailure:true}),now:()=>NOW});expect(r.status).toBe(401);});
+ it('rejects extra access fields before Account calls',async()=>{const http=upstream();const r=await handleNotesAccess(request('/api/v1/private/hub/notes/access',{operation:'summary',grantRevision:REV,extra:true}),{env,http,now:()=>NOW});expect(r.status).toBe(400);expect(http).not.toHaveBeenCalled();});
+ it('builds only the strict metadata envelope and rechecks authorization after the RPC',async()=>{const http=upstream();const input={providerId:'notes',operation:'summary',requestId:'request-12345678',context};const r=await handleNotesProjection(request('/api/hub/notes/v1',input),{env,http,now:()=>NOW});expect(r.status).toBe(200);const value=await r.json();expect(value.data.items).toEqual([{resourceId:B,title:'Fictional title',updatedAt:new Date(NOW-1000).toISOString()}]);expect(JSON.stringify(value)).not.toMatch(/content|payload|Bearer|fictional_signature/);expect(http.mock.calls.filter(c=>String(c[0]).endsWith('/authorize_thiepn_hub_notes'))).toHaveLength(2);});
+ it('withholds a completed projection after revocation',async()=>{const r=await handleNotesProjection(request('/api/hub/notes/v1',{providerId:'notes',operation:'summary',requestId:'request-12345678',context}),{env,http:upstream({revoke:true}),now:()=>NOW});expect(r.status).toBe(403);});
+ it('rejects unsafe owner rows without reflecting upstream data',async()=>{const r=await handleNotesProjection(request('/api/hub/notes/v1',{providerId:'notes',operation:'summary',requestId:'request-12345678',context}),{env,http:upstream({badRow:true}),now:()=>NOW});expect(r.status).toBe(503);expect(JSON.stringify(await r.json())).not.toContain('PRIVATE');});
+ it('sends search text only in the RPC body',async()=>{const http=upstream();const input={providerId:'notes',operation:'search',requestId:'request-12345678',context,query:'private % _ query'};const r=await handleNotesProjection(request('/api/hub/notes/v1',input),{env,http,now:()=>NOW});expect(r.status).toBe(200);const call=http.mock.calls.find(c=>String(c[0]).endsWith('/read_thiepn_hub_notes'))!;expect(String(call[0])).not.toContain('private');expect(JSON.parse(String(call[1]?.body)).p_query).toBe('private % _ query');});
+ it('enforces the whole-operation deadline even if the upstream read ignores abort',async()=>{vi.useFakeTimers();const pending=handleNotesProjection(request('/api/hub/notes/v1',{providerId:'notes',operation:'summary',requestId:'request-12345678',context}),{env,http:upstream({stallRead:true}),now:()=>NOW});await vi.advanceTimersByTimeAsync(2100);expect((await pending).status).toBe(504);});
+});

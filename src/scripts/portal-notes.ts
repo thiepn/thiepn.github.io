@@ -29,7 +29,7 @@ if(root){
   function controls(){connect.disabled=Boolean(!owner() || !session || root!.hidden || document.hidden);}
   try {
     if(location.origin!=='https://thiepn.dev' || import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY!=='v1')throw new Error('Unavailable');
-    session=new HubNotesSession({clientId:import.meta.env.PUBLIC_HUB_NOTES_CLIENT_ID ?? '',platformOrigin:import.meta.env.PUBLIC_HUB_PLATFORM_ORIGIN ?? '',publishableKey:import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY ?? ''},sessionStorage,owner);
+    session=new HubNotesSession({clientId:import.meta.env.PUBLIC_HUB_NOTES_CLIENT_ID ?? '',platformOrigin:import.meta.env.PUBLIC_HUB_PLATFORM_ORIGIN || location.origin,publishableKey:import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY ?? ''},sessionStorage,owner);
   }catch{status.textContent='Notes connection is unavailable. You can open Notes directly.';}
   controls();
   async function load(operation:Operation,search?:string){

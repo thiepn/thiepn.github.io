@@ -14,7 +14,7 @@ function fixture(options:{claims?:Record<string,unknown>;denied?:boolean;badRow?
     if(String(url).endsWith('/oauth/token'))return Response.json(response({access_token:token(options.claims),expires_in:options.ttl??3600}));
     expect(new Headers(init?.headers).get('authorization')).toContain('Bearer eyJ');
     if(String(url).endsWith('/notes/access'))return Response.json({ok:true,data:options.denied?null:{accountId:A,consumer:'thiepn-hub',audience:'notes-hub',permissions:consent.permissions,grantRevision:REV,expiresAt:NOW+Math.min(options.ttl??3600,3600)*1000,accountState:'active',notesSyncAccess:true}});
-    expect(String(url)).toBe(cfg.platformOrigin+'/hub/notes/v1');
+    expect(String(url)).toBe(cfg.platformOrigin+'/api/hub/notes/v1');
     const input=JSON.parse(String(init?.body));await options.delay?.();
     return Response.json({schemaVersion:1,providerId:'notes',operation:input.operation,requestId:input.requestId,context:input.context,privacy:'private',coverage:'cloud-snapshot',status:'ready',observedAt:new Date(now).toISOString(),expiresAt:new Date(Math.min(now+300000,NOW+Math.min(options.ttl??3600,3600)*1000)).toISOString(),sourceUpdatedAt:new Date(now-1000).toISOString(),data:{items:[{resourceId:B,title:'Fictional title',updatedAt:new Date(now-1000).toISOString(),...(options.badRow?{content:'PRIVATE_BODY'}:{})}]}});
   });
