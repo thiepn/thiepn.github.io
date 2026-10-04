@@ -104,3 +104,21 @@ A live Vercel read after the probe confirmed:
 No Vercel state changed. The one-time push trigger was removed immediately after verification. The permanent P5/P6 manual candidate workflow remains available for use after the credential is deliberately configured.
 
 **Current P6 status:** source/control-plane complete; operational bootstrap and first certified candidate are blocked only by the missing GitHub Actions `VERCEL_TOKEN`.
+
+## Observed P6 execution status — 4 October 2026
+
+The source qualification completed successfully before the first external-write attempt.
+
+A temporary one-shot branch workflow then tested the CI credential boundary before checkout or any Vercel API call. Its first step, `test -n "$VERCEL_TOKEN"`, failed because the repository does not currently expose a `VERCEL_TOKEN` Actions secret. Every subsequent checkout, bootstrap, build, deployment and evidence step was skipped.
+
+The connected Vercel account was re-queried after that run and still returned zero projects named `thiepn-hub`. Therefore:
+
+- no Vercel project was created;
+- no Vercel environment variable was written;
+- no deployment/candidate exists;
+- no domain or alias changed;
+- no production traffic changed.
+
+The temporary push-triggered workflow and trigger file were removed immediately after the probe. Permanent deployment automation remains manual-only through the P5 `workflow_dispatch` pipelines.
+
+P6 is therefore **source-complete but operationally credential-blocked**. The only missing prerequisite for the real bootstrap/candidate is a repository Actions secret named `VERCEL_TOKEN` with permission to manage the intended Vercel account. Once that secret exists, the permanent `Build THIEPN Hub Vercel release candidate` workflow can execute the already-certified bootstrap path without another architecture change.
