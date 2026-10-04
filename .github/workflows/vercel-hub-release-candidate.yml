@@ -75,6 +75,7 @@ jobs:
           [[ "$url" == https://*.vercel.app ]] || { echo "Unexpected Vercel deployment URL" >&2; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Create ephemeral deployment-protection bypass for CI certification
+        id: bypass
         run: npm run vercel:bypass-create
       - name: Verify exact served public artifact
         run: node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ steps.deploy.outputs.url }}"
@@ -98,7 +99,7 @@ jobs:
             .cache/vercel-release-record.json
           retention-days: 30
       - name: Revoke ephemeral deployment-protection bypass
-        if: ${{ always() }}
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
         run: npm run vercel:bypass-revoke
       - name: Summary
         run: |
