@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: thiepn/library
-          ref: 1b227548c50d8c9f414f48fbf56bf467820ef9bc
+          ref: b84930b991f4819c9c22fc1d63e23b12a5c6ff4d
           path: .cache/h16-source-library
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
