@@ -5,7 +5,7 @@ Home has an isolated staged Library card under
 `hub-release.json` reports private reads when it is set, so H8 cannot certify or
 deploy a staged fixture as the public-handoffs profile. No registry operations
 or account features are activated. The immutable owner source is Library
-`1b227548c50d8c9f414f48fbf56bf467820ef9bc` (PR 133).
+`b84930b991f4819c9c22fc1d63e23b12a5c6ff4d` (PR 133).
 
 “Reading on this browser” is a browser-profile connection, available without
 sign-in and explicitly unrelated to account ownership. Shared-browser reading
@@ -43,7 +43,9 @@ Local unit checks: 206 Hub tests and 58 Library reader regressions. Local Firefo
 paired checks: 18 scenarios. Existing public release/quality gates stay required.
 Human/device qualification and production activation remain H20.
 
-Library PR 133 remains unmerged: its inherited security audit is down to one
-high advisory, GHSA-ch52-4w7c-c8xp. The declared http-cache-semantics 4.2.1
-fix is unavailable from the build registry. Library publication and staged
-activation are blocked; Hub public deployment remains qualified and default-off.
+The inherited Library dependency blocker was resolved with the newly published
+http-cache-semantics 4.3.0 security fix. Library now pins the official release
+with frozen integrity and an exact-version release-age exception; its general
+24-hour age rule and vulnerability audit remain enabled. The full production
+audit reports no known vulnerabilities. Final owner gates remain required;
+H20 still owns real-device qualification and production private activation.
