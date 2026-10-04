@@ -1,11 +1,12 @@
 import{afterEach,describe,expect,it,vi}from'vitest';
-import{validateEnvironmentContract,validateProduct,validateRepoPolicy}from'../../scripts/vercel/validate-product-family.mjs';
+import{validateEnvironmentContract,validateFiles,validateProduct,validateRepoPolicy}from'../../scripts/vercel/validate-product-family.mjs';
 import{auditEnvironmentMetadata,fetchEnvironmentMetadata}from'../../scripts/vercel/audit-environment-contract.mjs';
 import{validateConfirmation,validateDeploymentUrl,validateSourceSha}from'../../scripts/vercel/release-control.mjs';
 const product={schemaVersion:1,productId:'hub',family:'hub',projectName:'thiepn-hub',repository:'thiepn/thiepn.github.io',framework:'astro',nodeMajor:24,vercelCliVersion:'50.1.0',deployment:{mode:'manual-cli',gitIntegration:false,automaticDeployments:false,previewWorkflow:'stage-vercel-hub.yml',candidateTarget:'production',candidateSkipDomain:true,promotion:'explicit-certified-deployment',rollback:'explicit-certified-deployment'},production:{canonicalDomain:'thiepn.dev',trafficOwnerUntilCutover:'github-pages',vercelCustomDomainAssignmentAllowed:false}};
 const contract={schemaVersion:1,productId:'hub',ci:{requiredSecrets:['VERCEL_TOKEN'],neverProjectEnvironment:['VERCEL_TOKEN']},build:{fixedPublic:{PUBLIC_HUB_AUTH_ORIGIN:'https://thiepn.dev'},repositoryVariables:[]},vercel:{productionForbidden:['THIEPN_HUB_PRIVATE_RUNTIME','PUBLIC_HUB_NOTES_PRIVATE'],neverAllowed:['VERCEL_TOKEN','SUPABASE_SERVICE_ROLE_KEY'],privateRuntime:{activation:'THIEPN_HUB_PRIVATE_RUNTIME',activationValue:'staged-v1',serverOnly:['THIEPN_ACCOUNT_URL'],browserVisible:['PUBLIC_HUB_NOTES_PRIVATE']}}};
 afterEach(()=>vi.restoreAllMocks());
 describe('P5 product-family Vercel standard',()=>{
+ it('keeps the checked-in product, environment and vercel.json contracts valid',async()=>{await expect(validateFiles()).resolves.toMatchObject({product:{projectName:'thiepn-hub'},env:{productId:'hub'}});});
  it('accepts only manual non-Git-linked deployment policy',()=>{expect(validateProduct(structuredClone(product)).projectName).toBe('thiepn-hub');const bad=structuredClone(product);bad.deployment.automaticDeployments=true;expect(()=>validateProduct(bad)).toThrow('Unsafe deployment policy');});
  it('requires Vercel Git deployment to remain disabled',()=>{expect(()=>validateRepoPolicy({git:{deploymentEnabled:true}})).toThrow();expect(()=>validateRepoPolicy({git:{deploymentEnabled:false}})).not.toThrow();});
  it('separates server-only and browser-visible environment names',()=>{expect(validateEnvironmentContract(structuredClone(contract)).productId).toBe('hub');const bad=structuredClone(contract);bad.vercel.privateRuntime.serverOnly=['PUBLIC_SECRET'];expect(()=>validateEnvironmentContract(bad)).toThrow('Server/browser');});
