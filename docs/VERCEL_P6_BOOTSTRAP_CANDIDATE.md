@@ -85,3 +85,22 @@ P6 does not:
 **Operational PASS:** the real bare project exists, approved Production public env is provisioned, no custom domain is attached, and one READY no-domain production-configured candidate passes exact-artifact and fail-closed smoke.
 
 **Credential-blocked:** if `VERCEL_TOKEN` is absent from GitHub Actions, the bootstrap probe must terminate before any Vercel write. Source controls may still be complete, but P6 is not operationally complete.
+
+## First bootstrap execution
+
+A one-time push-triggered bootstrap probe ran after the P6 source head passed the full Quality and Account/Notes/TMS60/Library integration matrix.
+
+Observed GitHub Actions state:
+
+- `VERCEL_TOKEN`: **not configured**.
+
+The workflow therefore stopped immediately after credential detection. Every project mutation, environment upsert, build, deployment, artifact qualification, smoke check and evidence-upload step was skipped.
+
+A live Vercel read after the probe confirmed:
+
+- projects named `thiepn-hub`: **0**;
+- deployments for `thiepn-hub`: **0**.
+
+No Vercel state changed. The one-time push trigger was removed immediately after verification. The permanent P5/P6 manual candidate workflow remains available for use after the credential is deliberately configured.
+
+**Current P6 status:** source/control-plane complete; operational bootstrap and first certified candidate are blocked only by the missing GitHub Actions `VERCEL_TOKEN`.
