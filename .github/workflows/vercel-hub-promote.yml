@@ -79,6 +79,7 @@ jobs:
           npx --yes vercel@50.1.0 build --prod --token="$VERCEL_TOKEN"
           node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
       - name: Create ephemeral deployment-protection bypass for CI verification
+        id: bypass
         run: npm run vercel:bypass-create
       - name: Prove supplied deployment matches certified source
         run: |
@@ -106,5 +107,5 @@ jobs:
             .cache/vercel-release-record.json
           retention-days: 90
       - name: Revoke ephemeral deployment-protection bypass
-        if: ${{ always() }}
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
         run: npm run vercel:bypass-revoke
