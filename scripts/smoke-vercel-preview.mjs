@@ -9,11 +9,14 @@ if (base.protocol !== 'https:' || base.username || base.password || base.search 
 }
 base.pathname = '/';
 
+const bypass=process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const protectionHeaders=bypass?{'x-vercel-protection-bypass':bypass}:{};
+
 async function read(path, expectedStatus = 200) {
   const response = await fetch(new URL(path, base), {
     redirect: 'error',
     signal: AbortSignal.timeout(10_000),
-    headers: { 'user-agent': 'THIEPN-Vercel-P3-Smoke/1' },
+    headers: { 'user-agent': 'THIEPN-Vercel-P3-Smoke/1', ...protectionHeaders },
   });
   const text = await response.text();
   if (response.status !== expectedStatus) {
