@@ -12,7 +12,7 @@ afterEach(()=>vi.restoreAllMocks());
 describe('P6 real Vercel bootstrap contract',()=>{
   it('provisions only checked-in public Production build variables',async()=>{
     const contract=JSON.parse(await fs.readFile('ops/vercel/environment-contract.json','utf8'));
-    const entries=productionEntries(contract);
+    const entries=productionEntries(contract) as Array<{key:string;value:string;type:string;target:string[]}>;
     expect(entries.map(x=>x.key)).toEqual(contract.vercel.productionProvisionedPublic);
     expect(entries.every(x=>x.type==='plain'&&x.target.length===1&&x.target[0]==='production')).toBe(true);
     expect(entries.some(x=>/SECRET|SERVICE_ROLE|PRIVATE_RUNTIME/.test(x.key))).toBe(false);
@@ -43,7 +43,7 @@ describe('P6 real Vercel bootstrap contract',()=>{
 
   it('creates/reconciles project, public Production env and domain policy without decrypting values',async()=>{
     const contract=JSON.parse(await fs.readFile('ops/vercel/environment-contract.json','utf8'));
-    const keys=contract.vercel.productionProvisionedPublic;
+    const keys=contract.vercel.productionProvisionedPublic as string[];
     const responses=[
       Response.json({id:'prj_fixture',name:'thiepn-hub',link:null}),
       Response.json({ok:true}),
@@ -56,12 +56,13 @@ describe('P6 real Vercel bootstrap contract',()=>{
       Response.json({envs:keys.map(key=>({key,target:['production'],type:'plain'}))}),
       Response.json({domains:[{name:'thiepn-hub.vercel.app'}]}),
     ];
-    const fetchImpl=vi.fn(async()=>responses.shift()!);
+    const seen:Array<[RequestInfo|URL,RequestInit?]>=[];
+    const fetchImpl=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{seen.push([url,init]);return responses.shift()!;});
     const result=await bootstrapHubProject({token:'fixture-token',fetchImpl});
     expect(result.project).toEqual({id:'prj_fixture',name:'thiepn-hub'});
     expect(result.environment.keys).toEqual([...keys].sort());
     expect(result.domains).toEqual(['thiepn-hub.vercel.app']);
-    const calls=fetchImpl.mock.calls.map(([url,init])=>({url:String(url),method:init?.method??'GET',body:init?.body?JSON.parse(String(init.body)):null}));
+    const calls=seen.map(([url,init])=>({url:String(url),method:init?.method??'GET',body:init?.body?JSON.parse(String(init.body)):null}));
     expect(calls[1]?.body).toMatchObject({nodeVersion:'24.x',autoAssignCustomDomains:false,autoExposeSystemEnvs:false});
     expect(calls.filter(c=>c.url.includes('/env?upsert=true'))).toHaveLength(keys.length);
     expect(calls.some(c=>c.url.endsWith('/env?decrypt=false'))).toBe(true);
