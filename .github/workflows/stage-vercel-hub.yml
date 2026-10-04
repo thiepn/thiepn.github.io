@@ -39,6 +39,9 @@ jobs:
       - name: Require deployment credential
         run: test -n "$VERCEL_TOKEN"
 
+      - name: Validate product-family standard
+        run: npm run vercel:standard
+
       - name: Source qualification
         run: |
           npm run generated:check
@@ -50,6 +53,12 @@ jobs:
       - name: Provision manual-only Vercel project
         id: provision
         run: node scripts/provision-vercel-hub.mjs
+
+      - name: Audit Preview environment metadata
+        env:
+          VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
+          VERCEL_ENV_TARGET: preview
+        run: npm run vercel:env-audit
 
       - name: Pull Preview project settings
         run: >-
