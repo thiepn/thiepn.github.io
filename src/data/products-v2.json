@@ -33,7 +33,8 @@
             "discovery",
             "search",
             "account-overview"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "tools",
@@ -42,10 +43,12 @@
           "launchUrl": "https://thiepn.dev/tools/",
           "capabilities": [
             "browser-tools"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "home"
+      "defaultModule": "home",
+      "state": "active"
     },
     {
       "id": "folio",
@@ -73,7 +76,8 @@
           "launchUrl": null,
           "capabilities": [
             "workspace"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "knowledge",
@@ -82,7 +86,8 @@
           "launchUrl": null,
           "capabilities": [
             "knowledge"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "library",
@@ -92,7 +97,8 @@
           "capabilities": [
             "library",
             "reading"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "write",
@@ -102,7 +108,8 @@
           "capabilities": [
             "writing",
             "documents"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "notes",
@@ -112,7 +119,8 @@
           "capabilities": [
             "capture",
             "notes"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "canvas",
@@ -122,10 +130,12 @@
           "capabilities": [
             "canvas",
             "collaboration"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "home"
+      "defaultModule": "home",
+      "state": "staged"
     },
     {
       "id": "bible",
@@ -150,7 +160,8 @@
           "launchUrl": null,
           "capabilities": [
             "bible-study"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "devotion",
@@ -159,7 +170,8 @@
           "launchUrl": null,
           "capabilities": [
             "devotion"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "tms60",
@@ -168,7 +180,8 @@
           "launchUrl": "https://tms60.thiepn.dev/",
           "capabilities": [
             "scripture-memory"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "greek",
@@ -177,10 +190,12 @@
           "launchUrl": "https://thiepn.dev/greek/",
           "capabilities": [
             "biblical-languages"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "study"
+      "defaultModule": "study",
+      "state": "staged"
     },
     {
       "id": "games",
@@ -204,7 +219,8 @@
           "capabilities": [
             "game-library",
             "progression"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "arcade",
@@ -214,10 +230,12 @@
           "capabilities": [
             "game-library",
             "leaderboards"
-          ]
+          ],
+          "state": "staged"
         }
       ],
-      "defaultModule": "home"
+      "defaultModule": "home",
+      "state": "staged"
     },
     {
       "id": "study",
@@ -245,7 +263,8 @@
             "courses",
             "review",
             "exam-prep"
-          ]
+          ],
+          "state": "staged"
         },
         {
           "id": "math",
@@ -254,7 +273,8 @@
           "launchUrl": "https://thiepn.dev/mathlab/",
           "capabilities": [
             "mathematics"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "music",
@@ -263,7 +283,8 @@
           "launchUrl": "https://thiepn.dev/steadybar/",
           "capabilities": [
             "music-practice"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "tuner",
@@ -272,10 +293,12 @@
           "launchUrl": null,
           "capabilities": [
             "music-practice"
-          ]
+          ],
+          "state": "staged"
         }
       ],
-      "defaultModule": "home"
+      "defaultModule": "home",
+      "state": "staged"
     },
     {
       "id": "diet",
@@ -300,7 +323,8 @@
             "nutrition",
             "goals",
             "copilot"
-          ]
+          ],
+          "state": "active"
         },
         {
           "id": "health",
@@ -309,10 +333,12 @@
           "launchUrl": "https://thiepn.dev/diet/",
           "capabilities": [
             "health-data"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "copilot"
+      "defaultModule": "copilot",
+      "state": "active"
     },
     {
       "id": "french",
@@ -340,10 +366,12 @@
             "grammar",
             "listening",
             "speaking"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "course"
+      "defaultModule": "course",
+      "state": "active"
     },
     {
       "id": "pdf",
@@ -369,10 +397,12 @@
             "annotation",
             "organization",
             "export"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "studio"
+      "defaultModule": "studio",
+      "state": "active"
     },
     {
       "id": "orrery",
@@ -398,10 +428,12 @@
             "space-weather",
             "satellites",
             "astronomy"
-          ]
+          ],
+          "state": "active"
         }
       ],
-      "defaultModule": "observatory"
+      "defaultModule": "observatory",
+      "state": "active"
     }
   ],
   "aliases": {
