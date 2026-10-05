@@ -1,3 +1,4 @@
+import { candidateRequestHeaders } from './candidate-request-headers.mjs';
 const args=process.argv.slice(2);
 const i=args.indexOf('--url');
 const raw=i>=0?args[i+1]:process.env.VERCEL_DEPLOYMENT_URL;
@@ -5,9 +6,9 @@ if(!raw)throw new Error('Candidate URL is required');
 const base=new URL(raw);
 if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash||!base.hostname.endsWith('.vercel.app'))throw new Error('Use a clean Vercel candidate origin');
 const bypass=process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
-const protectionHeaders=bypass?{'x-vercel-protection-bypass':bypass}:{};
 async function read(path,init={},expected=200){
- const response=await fetch(new URL(path,base),{redirect:'error',signal:AbortSignal.timeout(10000),headers:{'user-agent':'THIEPN-Vercel-P5-Candidate/1',...protectionHeaders,...(init.headers??{})},...init});
+ const {headers:initHeaders,...requestInit}=init;
+ const response=await fetch(new URL(path,base),{...requestInit,redirect:'error',signal:AbortSignal.timeout(10000),headers:candidateRequestHeaders({bypass,headers:initHeaders})});
  const text=await response.text();if(response.status!==expected)throw new Error(path+' returned '+response.status+', expected '+expected);return{response,text};
 }
 for(const path of ['/','/home/','/search/','/inbox/']){const {text}=await read(path);if(!/<main\b/i.test(text)||!/THIEPN/i.test(text))throw new Error(path+' missing Hub identity');}
