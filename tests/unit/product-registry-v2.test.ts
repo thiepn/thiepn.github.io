@@ -32,7 +32,9 @@ describe('product registry v2', () => {
     expect(resolveProductAliasV2('mdd')?.canonicalRef).toBe('bible/devotion');
   });
 
-  it('resolves canonical refs and rejects unknown refs', () => {
+  it('resolves product roots, canonical refs and unknown refs', () => {
+    expect(resolveProductAliasV2('bible')?.canonicalRef).toBe('bible/study');
+    expect(resolveProductAliasV2('study')?.canonicalRef).toBe('study/home');
     expect(productModuleByRefV2('pdf/studio')?.module.name).toBe('PDF Studio');
     expect(resolveProductAliasV2('pdf/studio')?.alias).toBeNull();
     expect(resolveProductAliasV2('missing')).toBeNull();
