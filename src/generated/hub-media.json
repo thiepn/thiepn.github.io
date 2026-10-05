@@ -118,6 +118,7 @@
     "french-3000": {
       "file": "/src/assets/hub/french-3000.webp",
       "url": "https://thiepn.dev/french3000/",
+      "movedTo": "https://french.thiepn.dev/",
       "bytes": 40734
     },
     "micro-arcade": {

@@ -14,8 +14,8 @@ type: flashcards
 status: live
 visibility: listed
 summary: Build practical French vocabulary through focused flashcards, context, and spaced repetition.
-repo: thiepn/french3000
-liveUrl: https://thiepn.dev/french3000/
+repo: thiepn/french
+liveUrl: https://french.thiepn.dev/
 tags:
 - french
 - vocabulary

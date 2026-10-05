@@ -238,8 +238,8 @@
       "type": "flashcards",
       "status": "live",
       "route": "/project/french-3000/",
-      "liveUrl": "https://thiepn.dev/french3000/",
-      "repo": "thiepn/french3000",
+      "liveUrl": "https://french.thiepn.dev/",
+      "repo": "thiepn/french",
       "tags": [
         "french",
         "vocabulary",
