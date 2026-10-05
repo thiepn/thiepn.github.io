@@ -6,6 +6,7 @@ on:
       - 'src/lib/reading-pilot.ts'
       - 'src/lib/hub-release-policy.ts'
       - 'src/scripts/portal-library.ts'
+      - 'src/styles/portal.css'
       - 'src/components/hub/**'
       - 'src/pages/home/**'
       - 'src/pages/reading-pilot.json.ts'
@@ -39,6 +40,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: corepack enable
       - name: Build and check actual Library owner
         working-directory: .cache/h21-source-library

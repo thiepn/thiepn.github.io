@@ -20,6 +20,19 @@ html[data-portal] .hub-catalogue{padding-top:20px}html[data-portal] .hub-catalog
 .portal-account h2 { font-size:1rem; margin:0 0 6px; }
 .portal-account p { margin:0; font-size:.875rem; }
 .portal-account-actions { display:flex; flex-wrap:wrap; gap:8px; }
+
+.portal-reading-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding-left:24px; margin-block:16px; }
+.portal-reading-steps li { padding-left:4px; }
+.portal-reading-steps strong,.portal-reading-steps span { display:block; }
+.portal-reading-steps span { font-size:.8125rem; color:var(--ink-secondary); }
+[data-library-pilot] [data-library-items] { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:12px; list-style:none; padding:0; margin-block:16px; }
+.portal-reading-card,.portal-reading-empty { min-width:0; padding:16px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); }
+.portal-reading-card h3 { font-size:1rem; overflow-wrap:anywhere; }
+.portal-reading-card p,.portal-reading-empty p { font-size:.875rem; margin-block:8px; }
+.portal-reading-card progress { display:block; width:100%; height:12px; margin-top:12px; accent-color:var(--accent); }
+.portal-reading-card .portal-button,.portal-reading-empty .portal-button { margin-top:8px; }
+@media(max-width:759px) { .portal-reading-steps { grid-template-columns:1fr; gap:8px; } }
+@media(forced-colors:active) { .portal-reading-card,.portal-reading-empty { border-color:CanvasText; } }
 .portal-account small { width:100%; color:var(--ink-secondary); }
 
 .portal-account > div { min-width:0; }

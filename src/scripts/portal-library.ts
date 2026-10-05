@@ -32,6 +32,7 @@ if (root) {
   const panel = root.querySelector<HTMLElement>('[data-library-private]')!;
   const list = root.querySelector<HTMLElement>('[data-library-items]')!;
   const freshness = root.querySelector<HTMLElement>('[data-library-freshness]')!;
+  const empty = root.querySelector<HTMLElement>('[data-library-empty]');
   const connect = root.querySelector<HTMLButtonElement>('[data-library-connect]')!;
   const refresh = root.querySelector<HTMLButtonElement>('[data-library-refresh]')!;
   const disconnect = root.querySelector<HTMLButtonElement>('[data-library-disconnect]')!;
@@ -39,7 +40,7 @@ if (root) {
   const radios = [...root.querySelectorAll<HTMLInputElement>('[name="library-operation"]')];
   let permissions = new Set<Operation>(), generation = 0, controller: AbortController | null = null, timer: ReturnType<typeof setTimeout> | undefined;
   const session = new HubLibrarySession(() => clear('Library data or sharing changed. Connect again to check current progress.'));
-  function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; panel.hidden = true; form.reset(); status.textContent = message; }
+  function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; if(empty)empty.hidden=true; panel.hidden = true; form.reset(); status.textContent = message; }
   function controls() { connect.disabled = !available(); radios.forEach(r => { r.disabled = !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
   function clear(message = 'Connect this browser to check saved reading progress.') { session.clear(); permissions.clear(); erase(message); controls(); }
   async function load(operation: Operation, query = '') {
@@ -54,8 +55,17 @@ if (root) {
         const li = document.createElement('li'), a = document.createElement('a');
         a.href = libraryContinueUrl(item); a.rel = 'noreferrer'; a.textContent = `${item.title} · ${item.format?.toUpperCase()} · edition ${item.edition}`;
         const progress = document.createElement('p'); progress.textContent = `Current ${Math.round((item.current ?? 0) * 100)}% · furthest ${Math.round((item.furthest ?? 0) * 100)}%`;
-        li.append(a, progress); list.append(li);
+        if (pilot) {
+          li.className = 'portal-reading-card';
+          const title = document.createElement('h3'); title.textContent = item.title;
+          const edition = document.createElement('p'); edition.className = 'portal-muted'; edition.textContent = `${item.format?.toUpperCase()} · edition ${item.edition} · Library`;
+          const meter = document.createElement('progress'); meter.max = 100; meter.value = Math.round((item.current ?? 0) * 100); meter.setAttribute('aria-label', `Current reading progress for ${item.title}`);
+          a.className = 'portal-button'; a.textContent = 'Continue reading'; a.setAttribute('aria-label', `Continue reading ${item.title}`);
+          li.append(title, edition, meter, progress, a);
+        } else li.append(a, progress);
+        list.append(li);
       }
+      if(empty)empty.hidden=envelope.status!=='empty';
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
       freshness.textContent = `Device-local · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Legacy web progress and other browsers are not included.`;
       timer = setTimeout(() => clear('This reading snapshot expired. Connect again to check Library.'), Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
