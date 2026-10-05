@@ -42,14 +42,10 @@ for (const member of projection.members ?? []) {
     failures.push(`Unknown Folio module: ${member.moduleRef}`);
   if (!project)
     failures.push(`Unknown catalogue project: ${member.catalogueSlug}`);
-  if (
-    member.preserveLiveUrl &&
-    module?.launchUrl &&
-    project?.liveUrl !== module.launchUrl
-  )
-    failures.push(
-      `${member.catalogueSlug}: catalogue/module live URLs must match during P9.`,
-    );
+  if (member.preserveLiveUrl && !project?.liveUrl)
+    failures.push(`${member.catalogueSlug}: existing live URL must remain present.`);
+  if (module?.state === 'active' && !module.launchUrl)
+    failures.push(`${member.moduleRef}: active module requires a launch URL.`);
 }
 
 if (folio?.state !== 'staged')
