@@ -44,7 +44,8 @@
             "browser-tools"
           ]
         }
-      ]
+      ],
+      "defaultModule": "home"
     },
     {
       "id": "folio",
@@ -123,7 +124,8 @@
             "collaboration"
           ]
         }
-      ]
+      ],
+      "defaultModule": "home"
     },
     {
       "id": "bible",
@@ -177,7 +179,8 @@
             "biblical-languages"
           ]
         }
-      ]
+      ],
+      "defaultModule": "study"
     },
     {
       "id": "games",
@@ -213,7 +216,8 @@
             "leaderboards"
           ]
         }
-      ]
+      ],
+      "defaultModule": "home"
     },
     {
       "id": "study",
@@ -270,7 +274,8 @@
             "music-practice"
           ]
         }
-      ]
+      ],
+      "defaultModule": "home"
     },
     {
       "id": "diet",
@@ -306,7 +311,8 @@
             "health-data"
           ]
         }
-      ]
+      ],
+      "defaultModule": "copilot"
     },
     {
       "id": "french",
@@ -336,7 +342,8 @@
             "speaking"
           ]
         }
-      ]
+      ],
+      "defaultModule": "course"
     },
     {
       "id": "pdf",
@@ -364,7 +371,8 @@
             "export"
           ]
         }
-      ]
+      ],
+      "defaultModule": "studio"
     },
     {
       "id": "orrery",
@@ -392,7 +400,8 @@
             "astronomy"
           ]
         }
-      ]
+      ],
+      "defaultModule": "observatory"
     }
   ],
   "aliases": {
@@ -414,6 +423,9 @@
     "games": "games/home",
     "tools": "hub/tools",
     "pdf": "pdf/studio",
-    "orrery": "orrery/observatory"
+    "orrery": "orrery/observatory",
+    "hub": "hub/home",
+    "bible": "bible/study",
+    "study": "study/home"
   }
 }
