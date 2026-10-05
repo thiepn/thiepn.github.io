@@ -1,0 +1,54 @@
+name: Hub controlled reading pilot browsers
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hub-reading-pilot-browser.yml'
+      - 'src/lib/reading-pilot.ts'
+      - 'src/lib/hub-release-policy.ts'
+      - 'src/scripts/portal-library.ts'
+      - 'src/components/hub/**'
+      - 'src/pages/home/**'
+      - 'src/pages/reading-pilot.json.ts'
+      - 'src/pages/hub-release.json.ts'
+      - 'src/data/reading-pilot.json'
+      - 'release-hub.json'
+      - 'scripts/qualify-hub-release.mjs'
+      - 'tests/hub-reading-pilot/**'
+      - 'playwright.hub-reading-pilot.config.ts'
+      - 'package*.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hub-reading-pilot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pilot-paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Check out immutable Library owner
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: thiepn/library
+          ref: 77058023894f4d7935c79e291a5dba7daacb8666
+          path: .cache/h21-source-library
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: corepack enable
+      - name: Build and check actual Library owner
+        working-directory: .cache/h21-source-library
+        run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
+      - name: Build the production pilot profile
+        run: npm run build
+      - name: Qualify device-only public release
+        run: npm run hub:qualify
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Explicit opt-in, actual reading bridge, pause and mobile exclusion
+        run: npx playwright test -c playwright.hub-reading-pilot.config.ts
+        env:
+          H21_LIBRARY_DIST: .cache/h21-source-library/dist/library

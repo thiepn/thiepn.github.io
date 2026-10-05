@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "releaseId": "H8-public-handoffs-v1",
-  "profile": "public-handoffs",
+  "releaseId": "H21-device-reading-pilot-v1",
+  "profile": "device-reading-pilot",
   "expectedFeaturedProjects": 6,
   "socialBrand": "THIEPN.",
   "status": "review-candidate",
