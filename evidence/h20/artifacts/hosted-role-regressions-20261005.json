@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-05T17:53:33.295Z",
+  "qualification": "hosted-role-tests-only",
+  "suites": [
+    {
+      "name": "hub_h18_notes_capture.sql",
+      "assertions": [
+        {
+          "name": "changed replay rejected",
+          "passed": true
+        },
+        {
+          "name": "create consent independent of Inbox read",
+          "passed": true
+        },
+        {
+          "name": "destination allowlist enforced",
+          "passed": true
+        },
+        {
+          "name": "durable exact-command replay creates one native note",
+          "passed": true
+        },
+        {
+          "name": "native app write grant enforced",
+          "passed": true
+        },
+        {
+          "name": "native Notes text record fields",
+          "passed": true
+        },
+        {
+          "name": "native tokens cannot impersonate consumer",
+          "passed": true
+        },
+        {
+          "name": "receipt does not resurrect a deleted note",
+          "passed": true
+        },
+        {
+          "name": "revocation enforced even for receipt lookup",
+          "passed": true
+        },
+        {
+          "name": "text bounds enforced",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "hub_h20_boundary.sql",
+      "assertions": [
+        {
+          "name": "managed attachment insert denied",
+          "passed": true
+        },
+        {
+          "name": "managed attachment reads denied",
+          "passed": true
+        },
+        {
+          "name": "managed attachment update and delete denied",
+          "passed": true
+        },
+        {
+          "name": "managed native Account rows denied",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: cancel_thiepn_account_deletion",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: claim_notes_sync_access",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: connect_thiepn_app",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: create_thiepn_account_backup",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: disable_notes_sync_access",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: disconnect_thiepn_app",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: execute_thiepn_app_data_deletion",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: get_thiepn_account_auth_assurance",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: get_thiepn_account_backup_inventory",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: get_thiepn_account_data_inventory",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: get_thiepn_account_export_payload",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: list_notes_auth_sessions",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: list_thiepn_account_sessions",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: notes_auth_identity_delete_status",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: plan_thiepn_account_deletion",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: plan_thiepn_app_data_deletion",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: request_thiepn_account_deletion",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: request_thiepn_account_export",
+          "passed": true
+        },
+        {
+          "name": "managed native RPC denied: set_thiepn_app_permission",
+          "passed": true
+        },
+        {
+          "name": "managed raw Notes, TMS60 and Library reads denied",
+          "passed": true
+        },
+        {
+          "name": "native Notes, attachment and inventory remain available to their owner",
+          "passed": true
+        },
+        {
+          "name": "private native implementations inaccessible to API roles",
+          "passed": true
+        },
+        {
+          "name": "revoked session rejects scoped capture",
+          "passed": true
+        },
+        {
+          "name": "scoped owner capture succeeds under authenticated role",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "hub_h17_notes_inbox.sql",
+      "assertions": [
+        {
+          "name": "legacy Core permission response preserved",
+          "passed": true
+        },
+        {
+          "name": "real owner projection and body exclusion",
+          "passed": true
+        },
+        {
+          "name": "source version rejects timestamp collisions",
+          "passed": true
+        },
+        {
+          "name": "mark read and idempotent replay",
+          "passed": true
+        },
+        {
+          "name": "changed replay rejected",
+          "passed": true
+        },
+        {
+          "name": "stale action rejected",
+          "passed": true
+        },
+        {
+          "name": "dismissal tombstone and native lifecycle preservation",
+          "passed": true
+        },
+        {
+          "name": "rescheduled occurrence is unread",
+          "passed": true
+        },
+        {
+          "name": "trashed and future reminders excluded",
+          "passed": true
+        },
+        {
+          "name": "privacy markers and malformed reminder timestamps excluded",
+          "passed": true
+        },
+        {
+          "name": "write grant independently enforced",
+          "passed": true
+        },
+        {
+          "name": "revocation enforced",
+          "passed": true
+        },
+        {
+          "name": "cross owner access denied",
+          "passed": true
+        },
+        {
+          "name": "ordinary native token denied",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No signed OAuth issuance",
+    "No physical-device qualification",
+    "Other shared-project native surfaces remain unqualified"
+  ]
+}

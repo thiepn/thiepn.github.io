@@ -81,3 +81,18 @@ test('prepared reading work survives reload without automatically connecting or 
 test('cancel and privacy masking clear previews without destination writes',async({page})=>{const f=await fixture(page);await start(page);await reading(page);await page.getByRole('button',{name:'Cancel preview',exact:true}).click();await expect(page.locator('[data-workflow-preview]')).toBeHidden();await page.locator('[data-workflow-library] button').first().click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();await expect(page.locator('[data-workflow-note]')).toBeEmpty();expect(f.receipts.size).toBe(0);});
 test('due-review workflow opens the actual native reference screen without practice',async({page})=>{const f=await fixture(page);await start(page);await page.getByRole('button',{name:'Connect TMS60',exact:true}).click();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-workflow-tms60]')).toContainText('2 Corinthians 5:17');await page.locator('[data-workflow-tms60] button').first().click();await expect(page.locator('[data-workflow-handoff]')).toBeHidden();await page.getByRole('button',{name:'Confirm destination',exact:true}).click();const href=await page.locator('[data-workflow-handoff]').getAttribute('href');expect(href).toBe(TMS+'/#hub=esv%3A1%3Areference');await page.goto(href!);const app=page.frameLocator('#app-frame');await expect(app.getByRole('dialog')).toContainText('2 Corinthians 5:17');await expect(app.getByRole('button',{name:'Start reference recall',exact:true})).toBeVisible();expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tms60-esv-memory-lab-v1')!).progress['1'].stage)).toBe(0);expect(f.receipts.size).toBe(0);});
 test('unavailable create permission keeps prepared study work for recovery',async({page})=>{const f=await fixture(page,['notes.hub.inbox.read']);await start(page);await reading(page);await page.getByRole('button',{name:'Confirm destination',exact:true}).click();await page.getByRole('button',{name:'Connect capture',exact:true}).click();await expect(page.locator('[data-capture-status]')).toContainText('Enable creation');await expect(page.locator('[data-capture-form] [name=content]')).toHaveValue(/Reading notes for/);expect(f.receipts.size).toBe(0);await page.reload();await page.getByRole('button',{name:'Use this account’s Notes',exact:true}).click();await expect(page.locator('[data-capture-form] [name=content]')).toHaveValue(/Reading notes for/);});
+
+// Viewport/touch emulation supplements, but does not certify, physical devices.
+test('long study-note preview and capture remain usable in a compact viewport', async ({page}) => {
+  const f = await fixture(page); await start(page); await reading(page);
+  await expect(page.locator('[data-workflow-preview]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.getByRole('button', {name:'Confirm destination',exact:true}).click();
+  const content = page.locator('[data-capture-form] [name=content]');
+  await content.fill('Recoverable study notes '.repeat(80));
+  await content.blur(); await page.reload();
+  await page.getByRole('button',{name:'Use this account’s Notes',exact:true}).click();
+  await expect(content).toHaveValue('Recoverable study notes '.repeat(80));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  expect(f.receipts.size).toBe(0);
+});

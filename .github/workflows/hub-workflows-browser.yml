@@ -14,6 +14,9 @@ on:
       - 'tests/hub-workflows/**'
       - 'tests/unit/integrated-workflows.test.ts'
       - 'playwright.hub-workflows.config.ts'
+      - 'scripts/h20-release-gate.mjs'
+      - 'tests/unit/h20-release-gate.test.ts'
+      - 'evidence/h20/**'
       - 'package*.json'
   workflow_dispatch:
 permissions:
@@ -27,17 +30,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Check out immutable H19 Account authorization source
+      - name: Check out immutable H20 Account authorization source
         uses: actions/checkout@v4
         with:
           repository: thiepn/account
-          ref: 676413adfeef68f50e2bae95364fd43afbb6b497
+          ref: 9cddcbcdb36e6260be3761ae35b221b1a7b8e271
           path: .cache/h19-source-account
       - name: Check out immutable Library bridge source
         uses: actions/checkout@v4
         with:
           repository: thiepn/library
-          ref: ab4d042b24617e5fcd0b8f3c011bbc7b4f55fa9e
+          ref: 77058023894f4d7935c79e291a5dba7daacb8666
           path: .cache/h19-source-library
       - name: Check out immutable TMS60 native entry source
         uses: actions/checkout@v4
@@ -50,6 +53,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Validate H20 evidence without claiming activation
+        run: node scripts/h20-release-gate.mjs --candidate "$GITHUB_SHA"
       - run: corepack enable
       - run: pnpm install --frozen-lockfile && pnpm typecheck && pnpm test
         working-directory: .cache/h19-source-account
@@ -79,7 +84,7 @@ jobs:
           PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
           PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Actual Hub, Account, Library and TMS60 workflows in all engines
+      - name: Actual Hub, Account, Library and TMS60 workflows in desktop and mobile browser engines
         run: npx playwright test -c playwright.hub-workflows.config.ts
         env:
           H19_LIBRARY_DIST: .cache/h19-source-library/dist/library
