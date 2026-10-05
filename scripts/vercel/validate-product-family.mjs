@@ -8,9 +8,12 @@ export function validateProduct(value){
 }
 export function validateEnvironmentContract(value){
  if(!object(value)||value.schemaVersion!==1||value.productId!=='hub'||!object(value.ci)||!object(value.build)||!object(value.vercel))throw new Error('Invalid environment contract');
- const lists=[value.ci.requiredSecrets,value.ci.neverProjectEnvironment,value.vercel.productionForbidden,value.vercel.neverAllowed];
+ const lists=[value.ci.requiredSecrets,value.ci.neverProjectEnvironment,value.vercel.productionForbidden,value.vercel.neverAllowed,value.vercel.productionProvisionedPublic];
  for(const list of lists)if(!Array.isArray(list)||list.some(x=>typeof x!=='string'||!/^[A-Z][A-Z0-9_]+$/.test(x))||new Set(list).size!==list.length)throw new Error('Invalid environment variable list');
  if(!value.ci.requiredSecrets.includes('VERCEL_TOKEN')||!value.ci.neverProjectEnvironment.includes('VERCEL_TOKEN')||!value.vercel.neverAllowed.includes('VERCEL_TOKEN'))throw new Error('VERCEL_TOKEN boundary missing');
+ if(!object(value.build.fixedPublic)||!Array.isArray(value.build.repositoryVariables))throw new Error('Invalid public build contract');
+ for(const key of value.vercel.productionProvisionedPublic){if(!key.startsWith('PUBLIC_')||typeof value.build.fixedPublic[key]!=='string'||!value.build.fixedPublic[key])throw new Error('Invalid provisioned public variable');}
+ if(value.build.repositoryVariables.length)throw new Error('P6 public build inputs must be reproducible from source');
  const runtime=value.vercel.privateRuntime;
  if(!object(runtime)||runtime.activation!=='THIEPN_HUB_PRIVATE_RUNTIME'||runtime.activationValue!=='staged-v1'||!Array.isArray(runtime.serverOnly)||!Array.isArray(runtime.browserVisible))throw new Error('Invalid private runtime contract');
  if(runtime.serverOnly.some(x=>x.startsWith('PUBLIC_'))||runtime.browserVisible.some(x=>!x.startsWith('PUBLIC_')))throw new Error('Server/browser environment boundary violated');

@@ -11,10 +11,10 @@ The reference contract lives in `ops/vercel/thiepn-hub.json`. Automatic Git depl
 ## Three deployment states
 
 1. **Preview** — manual developer/staging deployment using the existing P3 workflow.
-2. **Release candidate** — built with the Vercel **Production environment**, then deployed with `--prod --skip-domain`. This produces production-configured bytes/functions without moving a production alias.
+2. **Release candidate** — built with the Vercel **Production environment**, then deployed with `--prod --skip-domain`. This produces production-configured bytes/functions without assigning the canonical/custom production domain. Vercel may still advance its generated project `.vercel.app` alias.
 3. **Production** — the already-certified candidate is promoted. It is not rebuilt.
 
-This is intentional. Promoting an ordinary Preview can carry Preview environment values into production. A P5 candidate is built with Production settings first, then withheld from domains until certification.
+This is intentional. Promoting an ordinary Preview can carry Preview environment values into production. A P5 candidate is built with Production settings first, then withheld from canonical/custom domains until certification.
 
 ## Environment contract
 
@@ -26,13 +26,15 @@ Production currently forbids every private-Hub activation switch. Consequently t
 
 The environment auditor requests Vercel metadata with `decrypt=false` and prints only variable names/counts; values are never requested or logged.
 
+Protected `.vercel.app` deployments keep Vercel Authentication enabled. CI creates an ephemeral automation bypass, waits through its bounded propagation window, performs certification requests with the bypass header, and revokes the bypass afterward. This preserves deployment protection rather than disabling it for tests.
+
 ## Controlled release
 
 ### Candidate
 
 `vercel-hub-release-candidate.yml` is manual-only. It checks out the requested source ref, records its immutable SHA, runs source qualification, provisions/reuses the manual-only project, audits the Production environment contract, pulls Production project settings, builds with `vercel build --prod`, qualifies the exact Vercel artifact, deploys with `--prebuilt --prod --skip-domain`, re-fetches the exact public bytes, confirms both private Notes endpoints fail closed, and records immutable evidence.
 
-No alias or custom domain is changed.
+No canonical/custom domain is assigned. Vercel may update its generated project `.vercel.app` alias; `thiepn.dev` remains untouched until the dedicated cutover phase.
 
 ### Promotion
 
@@ -48,6 +50,6 @@ No alias or custom domain is changed.
 
 ## Reuse by future products
 
-Future product families should copy the pattern, not the Hub-specific names: one product manifest, one environment contract, manual candidate build from Production settings, no-domain certification, exact-deployment promotion, explicit certified rollback, product-owned server endpoints, no secret duplication into browser builds, and no automatic deployment merely because code was pushed.
+Future product families should copy the pattern, not the Hub-specific names: one product manifest, one environment contract, manual candidate build from Production settings, no-canonical-domain certification, exact-deployment promotion, explicit certified rollback, product-owned server endpoints, no secret duplication into browser builds, and no automatic deployment merely because code was pushed.
 
 Small static applications stay on their existing static hosting until they actually need server compute.

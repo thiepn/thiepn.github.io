@@ -9,6 +9,10 @@ export function auditEnvironmentMetadata(contract,raw,target='production'){
  const forbidden=new Set([...(target==='production'?contract.vercel.productionForbidden:[]),...contract.vercel.neverAllowed]);
  const found=[...keys].filter(key=>forbidden.has(key)).sort();
  if(found.length)throw new Error('Forbidden '+target+' Vercel variables: '+found.join(', '));
+ if(target==='production'){
+  const missing=contract.vercel.productionProvisionedPublic.filter(key=>!keys.has(key));
+  if(missing.length)throw new Error('Missing production Vercel variables: '+missing.join(', '));
+ }
  return{target,count:applicable.length,keys:[...keys].sort()};
 }
 export async function fetchEnvironmentMetadata({token,projectName,fetchImpl=fetch}){

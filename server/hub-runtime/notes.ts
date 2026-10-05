@@ -1,4 +1,4 @@
-import type{HubServerEnv}from'./env';import{validUuid}from'./env';import{readBoundedJson,readRequestJson}from'./bounded-json';import{failure,privateJson,requestId,sameOriginAllowed,success}from'./response';import{verifyManagedBearer,type ManagedIdentity}from'./auth';
+import type{HubServerEnv}from'./env.js';import{validUuid}from'./env.js';import{readBoundedJson,readRequestJson}from'./bounded-json.js';import{failure,privateJson,requestId,sameOriginAllowed,success}from'./response.js';import{verifyManagedBearer,type ManagedIdentity}from'./auth.js';
 type Operation='summary'|'continue'|'search';
 type Authorization={accountId:string;consumer:'thiepn-hub';audience:'notes-hub';permissions:string[];grantRevision:string;expiresAt:number;accountState:'active';notesSyncAccess:true};
 type Context={scope:'account';accountId:string;workspaceId:null;grantRevision:string;translationId:null};
@@ -11,7 +11,8 @@ const hasControl=(s:string)=>/[\u0000-\u001f\u007f]/.test(s);
 const unavailable=(request:Request,id:string,status=503)=>failure(request,id,'HUB_PRIVATE_UNAVAILABLE',status);
 function parseAccess(value:unknown):{operation:Operation;grantRevision:string}{
   if(!object(value)||!exact(value,['operation','grantRevision'])||!['summary','continue','search'].includes(String(value.operation))||!validUuid(value.grantRevision))throw new Error('bad');
-  return{operation:value.operation as Operation,grantRevision:value.grantRevision};
+  const grantRevision=value.grantRevision;if(!validUuid(grantRevision))throw new Error('bad');
+  return{operation:value.operation as Operation,grantRevision};
 }
 function parseProviderRequest(value:unknown):ProviderRequest{
   if(!object(value)||!['summary','continue','search'].includes(String(value.operation)))throw new Error('bad');
@@ -45,8 +46,10 @@ function projectRows(value:unknown,request:ProviderRequest,now:number){
     if(!object(row)||!exact(row,['user_id','entity_type','entity_id','deleted_at','note_id','note_type','title','note_updated_at','archived_at','trashed_at','synced_at'])||row.user_id!==request.context.accountId||row.entity_type!=='note'||row.deleted_at!==null||!validUuid(row.entity_id)||row.note_id!==row.entity_id||!['text','checklist'].includes(String(row.note_type))||typeof row.title!=='string'||row.title.length>500||row.trashed_at!==null||(request.operation!=='search'&&row.archived_at!==null)||!timestamp(row.synced_at)||Date.parse(row.synced_at)>now+30000||ids.has(String(row.entity_id).toLowerCase()))throw new Error('row');
     if(row.archived_at!==null)millis(row.archived_at);
     const updated=millis(row.note_updated_at);if(updated>now+30000)throw new Error('row');
-    ids.add(String(row.entity_id).toLowerCase());if(sourceUpdatedAt===null||row.synced_at>sourceUpdatedAt)sourceUpdatedAt=row.synced_at;
-    return{resourceId:row.entity_id as string,title:displayTitle(row.title),updatedAt:new Date(updated).toISOString()};
+    const entityId=row.entity_id;if(!validUuid(entityId))throw new Error('row');
+    const syncedAt=row.synced_at;if(!timestamp(syncedAt))throw new Error('row');
+    ids.add(entityId.toLowerCase());if(sourceUpdatedAt===null||syncedAt>sourceUpdatedAt)sourceUpdatedAt=syncedAt;
+    return{resourceId:entityId,title:displayTitle(row.title),updatedAt:new Date(updated).toISOString()};
   });
   return{items,sourceUpdatedAt};
 }

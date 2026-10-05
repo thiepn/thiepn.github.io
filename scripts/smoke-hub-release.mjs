@@ -9,13 +9,15 @@ assert(base.protocol === 'https:' || (base.protocol === 'http:' && ['localhost',
 assert(!base.username && !base.password && !base.search && !base.hash && base.pathname === '/', 'Use a root origin without credentials or query');
 assert.equal(report.schemaVersion, 1);
 const failures = [];
+const bypass=process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const protectionHeaders=bypass?{'x-vercel-protection-bypass':bypass}:{};
 // Only public candidate bytes; no sign-in, user storage, private reads or mutation.
 for (let start = 0; start < report.builtAssets.length; start += 6) {
   await Promise.all(report.builtAssets.slice(start, start + 6).map(async asset => {
     try {
       const url = new URL(asset.path, base);
       url.searchParams.set('hub-qualification', String(Date.now()));
-      const response = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'error', headers: { 'Cache-Control': 'no-cache' } });
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'error', headers: { 'Cache-Control': 'no-cache', ...protectionHeaders } });
       if (response.status !== 200) { await response.body?.cancel(); throw new Error('Unexpected serving status'); }
       const reader = response.body.getReader(), chunks = []; let size = 0;
       try {

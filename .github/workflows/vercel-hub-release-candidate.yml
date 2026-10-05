@@ -24,11 +24,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_NAME: thiepn-hub
       VERCEL_ENV_TARGET: production
-      PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
-      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
-      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
-      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
-      PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ''
     steps:
       - uses: actions/checkout@v7
         with:
@@ -54,21 +49,21 @@ jobs:
           npm run typecheck
           npm test
           npm run release:source
-      - name: Provision manual-only project
+      - name: Bootstrap and reconcile manual-only project + Production public env
         id: provision
-        run: node scripts/provision-vercel-hub.mjs
-      - name: Audit Production environment metadata
+        run: npm run vercel:bootstrap
+      - name: Re-audit Production environment metadata
         env:
           VERCEL_PROJECT_ID: ${{ steps.provision.outputs.project-id }}
         run: npm run vercel:env-audit
       - name: Pull Production project settings
         run: >-
           npx --yes vercel@50.1.0 pull --yes --environment=production
-          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          --token="$VERCEL_TOKEN"
       - name: Build production-configured candidate
         run: >-
           npx --yes vercel@50.1.0 build --prod
-          --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+          --token="$VERCEL_TOKEN"
       - name: Qualify exact candidate artifact
         run: node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
       - name: Deploy without assigning production domains
@@ -76,15 +71,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN" | tail -n 1)"
+          url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --token="$VERCEL_TOKEN" | tail -n 1)"
           [[ "$url" == https://*.vercel.app ]] || { echo "Unexpected Vercel deployment URL" >&2; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Create ephemeral deployment-protection bypass for CI certification
+        id: bypass
+        run: npm run vercel:bypass-create
+      - name: Wait for deployment-protection bypass activation
+        run: npm run vercel:bypass-wait -- --url "${{ steps.deploy.outputs.url }}"
+
       - name: Verify exact served public artifact
         run: node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ steps.deploy.outputs.url }}"
       - name: Verify production-configured candidate semantics
         run: npm run vercel:candidate-smoke -- --url "${{ steps.deploy.outputs.url }}"
       - name: Inspect candidate
-        run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --project="${{ steps.provision.outputs.project-id }}" --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --token="$VERCEL_TOKEN"
       - name: Record immutable release evidence
         run: >-
           node scripts/vercel/release-control.mjs record
@@ -100,6 +101,9 @@ jobs:
             .cache/hub-release-qualification.json
             .cache/vercel-release-record.json
           retention-days: 30
+      - name: Revoke ephemeral deployment-protection bypass
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
+        run: npm run vercel:bypass-revoke
       - name: Summary
         run: |
           {

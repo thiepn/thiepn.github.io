@@ -11,14 +11,13 @@
   },
   "build": {
     "fixedPublic": {
+      "PUBLIC_HUB_ACCOUNT_ENTRY": "https://account.thiepn.dev/hub/entry",
       "PUBLIC_HUB_AUTH_ORIGIN": "https://thiepn.dev",
       "PUBLIC_THIEPN_SUPABASE_URL": "https://hycegznamzjhwinegaai.supabase.co",
+      "PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR",
       "PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN": ""
     },
-    "repositoryVariables": [
-      "HUB_ACCOUNT_ENTRY",
-      "THIEPN_SUPABASE_PUBLISHABLE_KEY"
-    ]
+    "repositoryVariables": []
   },
   "vercel": {
     "productionForbidden": [
@@ -49,6 +48,12 @@
         "PUBLIC_HUB_LIBRARY_PRIVATE",
         "PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY"
       ]
-    }
+    },
+    "productionProvisionedPublic": [
+      "PUBLIC_HUB_ACCOUNT_ENTRY",
+      "PUBLIC_HUB_AUTH_ORIGIN",
+      "PUBLIC_THIEPN_SUPABASE_URL",
+      "PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY"
+    ]
   }
 }
