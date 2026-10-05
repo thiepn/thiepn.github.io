@@ -1,0 +1,419 @@
+{
+  "schemaVersion": 2,
+  "contractId": "thiepn-product-registry-v2",
+  "compatibility": {
+    "preserveLegacyAppIds": true,
+    "legacyRegistry": "thiepn/core/registry/apps.json",
+    "aliasMode": "resolve-only",
+    "removedIds": []
+  },
+  "products": [
+    {
+      "id": "hub",
+      "name": "THIEPN Hub",
+      "ownerRepos": [
+        "thiepn/thiepn.github.io"
+      ],
+      "launchUrl": "https://thiepn.dev/",
+      "capabilities": [
+        "launcher",
+        "discovery",
+        "search",
+        "cross-app-workflows",
+        "account-overview"
+      ],
+      "modules": [
+        {
+          "id": "home",
+          "name": "Home",
+          "repo": "thiepn/thiepn.github.io",
+          "launchUrl": "https://thiepn.dev/",
+          "capabilities": [
+            "launcher",
+            "discovery",
+            "search",
+            "account-overview"
+          ]
+        },
+        {
+          "id": "tools",
+          "name": "Tools",
+          "repo": "thiepn/tools",
+          "launchUrl": "https://thiepn.dev/tools/",
+          "capabilities": [
+            "browser-tools"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "folio",
+      "name": "Folio",
+      "ownerRepos": [
+        "thiepn/notes",
+        "thiepn/library",
+        "thiepn/manuscript",
+        "thiepn/canvas"
+      ],
+      "launchUrl": null,
+      "capabilities": [
+        "capture",
+        "notes",
+        "library",
+        "writing",
+        "knowledge",
+        "canvas"
+      ],
+      "modules": [
+        {
+          "id": "home",
+          "name": "Folio",
+          "repo": null,
+          "launchUrl": null,
+          "capabilities": [
+            "workspace"
+          ]
+        },
+        {
+          "id": "knowledge",
+          "name": "Knowledge",
+          "repo": null,
+          "launchUrl": null,
+          "capabilities": [
+            "knowledge"
+          ]
+        },
+        {
+          "id": "library",
+          "name": "Library",
+          "repo": "thiepn/library",
+          "launchUrl": "https://thiepn.dev/library/",
+          "capabilities": [
+            "library",
+            "reading"
+          ]
+        },
+        {
+          "id": "write",
+          "name": "Write",
+          "repo": "thiepn/manuscript",
+          "launchUrl": "https://thiepn.dev/manuscript/",
+          "capabilities": [
+            "writing",
+            "documents"
+          ]
+        },
+        {
+          "id": "notes",
+          "name": "Notes",
+          "repo": "thiepn/notes",
+          "launchUrl": "https://thiepn.dev/notes/",
+          "capabilities": [
+            "capture",
+            "notes"
+          ]
+        },
+        {
+          "id": "canvas",
+          "name": "Canvas",
+          "repo": "thiepn/canvas",
+          "launchUrl": "https://thiepn.dev/canvas/",
+          "capabilities": [
+            "canvas",
+            "collaboration"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bible",
+      "name": "Bible",
+      "ownerRepos": [
+        "thiepn/selah",
+        "thiepn/tms60",
+        "thiepn/greek"
+      ],
+      "launchUrl": null,
+      "capabilities": [
+        "bible-study",
+        "devotion",
+        "scripture-memory",
+        "biblical-languages"
+      ],
+      "modules": [
+        {
+          "id": "study",
+          "name": "Study",
+          "repo": "thiepn/selah",
+          "launchUrl": null,
+          "capabilities": [
+            "bible-study"
+          ]
+        },
+        {
+          "id": "devotion",
+          "name": "Devotion",
+          "repo": null,
+          "launchUrl": null,
+          "capabilities": [
+            "devotion"
+          ]
+        },
+        {
+          "id": "tms60",
+          "name": "TMS60",
+          "repo": "thiepn/tms60",
+          "launchUrl": "https://tms60.thiepn.dev/",
+          "capabilities": [
+            "scripture-memory"
+          ]
+        },
+        {
+          "id": "greek",
+          "name": "Biblical Greek",
+          "repo": "thiepn/greek",
+          "launchUrl": "https://thiepn.dev/greek/",
+          "capabilities": [
+            "biblical-languages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "games",
+      "name": "Games",
+      "ownerRepos": [
+        "thiepn/arcade"
+      ],
+      "launchUrl": null,
+      "capabilities": [
+        "game-library",
+        "progression",
+        "multiplayer",
+        "leaderboards"
+      ],
+      "modules": [
+        {
+          "id": "home",
+          "name": "Games",
+          "repo": "thiepn/arcade",
+          "launchUrl": null,
+          "capabilities": [
+            "game-library",
+            "progression"
+          ]
+        },
+        {
+          "id": "arcade",
+          "name": "Arcade",
+          "repo": "thiepn/arcade",
+          "launchUrl": null,
+          "capabilities": [
+            "game-library",
+            "leaderboards"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "study",
+      "name": "Study",
+      "ownerRepos": [
+        "thiepn/studyOS",
+        "thiepn/mathlab",
+        "thiepn/steadybar"
+      ],
+      "launchUrl": null,
+      "capabilities": [
+        "courses",
+        "review",
+        "exam-prep",
+        "mathematics",
+        "music-practice"
+      ],
+      "modules": [
+        {
+          "id": "home",
+          "name": "Study",
+          "repo": "thiepn/studyOS",
+          "launchUrl": null,
+          "capabilities": [
+            "courses",
+            "review",
+            "exam-prep"
+          ]
+        },
+        {
+          "id": "math",
+          "name": "Math",
+          "repo": "thiepn/mathlab",
+          "launchUrl": "https://thiepn.dev/mathlab/",
+          "capabilities": [
+            "mathematics"
+          ]
+        },
+        {
+          "id": "music",
+          "name": "Music Practice",
+          "repo": "thiepn/steadybar",
+          "launchUrl": "https://thiepn.dev/steadybar/",
+          "capabilities": [
+            "music-practice"
+          ]
+        },
+        {
+          "id": "tuner",
+          "name": "Tuner",
+          "repo": null,
+          "launchUrl": null,
+          "capabilities": [
+            "music-practice"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diet",
+      "name": "Diet",
+      "ownerRepos": [
+        "thiepn/diet"
+      ],
+      "launchUrl": "https://thiepn.dev/diet/",
+      "capabilities": [
+        "nutrition",
+        "health-data",
+        "goals",
+        "copilot"
+      ],
+      "modules": [
+        {
+          "id": "copilot",
+          "name": "Diet Copilot",
+          "repo": "thiepn/diet",
+          "launchUrl": "https://thiepn.dev/diet/",
+          "capabilities": [
+            "nutrition",
+            "goals",
+            "copilot"
+          ]
+        },
+        {
+          "id": "health",
+          "name": "Health",
+          "repo": "thiepn/diet",
+          "launchUrl": "https://thiepn.dev/diet/",
+          "capabilities": [
+            "health-data"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "french",
+      "name": "French",
+      "ownerRepos": [
+        "thiepn/french"
+      ],
+      "launchUrl": "https://french.thiepn.dev/",
+      "capabilities": [
+        "curriculum",
+        "vocabulary",
+        "grammar",
+        "listening",
+        "speaking"
+      ],
+      "modules": [
+        {
+          "id": "course",
+          "name": "French",
+          "repo": "thiepn/french",
+          "launchUrl": "https://french.thiepn.dev/",
+          "capabilities": [
+            "curriculum",
+            "vocabulary",
+            "grammar",
+            "listening",
+            "speaking"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdf",
+      "name": "PDF",
+      "ownerRepos": [
+        "thiepn/pdf"
+      ],
+      "launchUrl": "https://thiepn.dev/pdf/",
+      "capabilities": [
+        "pdf-edit",
+        "annotation",
+        "organization",
+        "export"
+      ],
+      "modules": [
+        {
+          "id": "studio",
+          "name": "PDF Studio",
+          "repo": "thiepn/pdf",
+          "launchUrl": "https://thiepn.dev/pdf/",
+          "capabilities": [
+            "pdf-edit",
+            "annotation",
+            "organization",
+            "export"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orrery",
+      "name": "Orrery",
+      "ownerRepos": [
+        "thiepn/thiepn.github.io"
+      ],
+      "launchUrl": "https://thiepn.dev/orrery/",
+      "capabilities": [
+        "earth-observation",
+        "space-weather",
+        "satellites",
+        "astronomy"
+      ],
+      "modules": [
+        {
+          "id": "observatory",
+          "name": "Orrery",
+          "repo": "thiepn/thiepn.github.io",
+          "launchUrl": "https://thiepn.dev/orrery/",
+          "capabilities": [
+            "earth-observation",
+            "space-weather",
+            "satellites",
+            "astronomy"
+          ]
+        }
+      ]
+    }
+  ],
+  "aliases": {
+    "knowledge": "folio/knowledge",
+    "folio": "folio/home",
+    "library": "folio/library",
+    "manuscript": "folio/write",
+    "notes": "folio/notes",
+    "canvas": "folio/canvas",
+    "french": "french/course",
+    "math": "study/math",
+    "greek": "bible/greek",
+    "mdd": "bible/devotion",
+    "tms60": "bible/tms60",
+    "steadybar": "study/music",
+    "tuner": "study/tuner",
+    "diet": "diet/copilot",
+    "health": "diet/health",
+    "games": "games/home",
+    "tools": "hub/tools",
+    "pdf": "pdf/studio",
+    "orrery": "orrery/observatory"
+  }
+}
