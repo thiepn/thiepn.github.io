@@ -119,7 +119,7 @@ export class HubNotesSession {
   }
   async capture(command: import('./notes-capture').CaptureCommand, external: AbortSignal): Promise<import('./notes-capture').CaptureReceipt> {
     const epoch = this.epoch, tokens = await this.freshTokens();
-    if (!this.config.capture || command.accountId !== tokens.owner || !uuid(command.requestId) || command.destination !== 'notes:unfiled') throw new Error('Unavailable');
+    if (epoch !== this.epoch || tokens.owner !== this.owner() || external.aborted || !this.config.capture || command.accountId !== tokens.owner || !uuid(command.requestId) || command.destination !== 'notes:unfiled') throw new Error('Unavailable');
     const raw = await this.json(NOTES_ISSUER+'/rest/v1/rpc/thiepn_hub_notes_capture', {
       method:'POST', headers:{Authorization:'Bearer '+tokens.bearer,apikey:this.config.publishableKey,'Content-Type':'application/json'},
       body:JSON.stringify({p_revision:tokens.revision,p_request_id:command.requestId,p_destination:command.destination,p_title:command.title,p_content:command.content}),
