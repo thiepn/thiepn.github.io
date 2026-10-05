@@ -42,7 +42,7 @@ if (root) {
   const session = new HubLibrarySession(() => clear('Library data or sharing changed. Connect again to check current progress.'));
   function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; if(empty)empty.hidden=true; panel.hidden = true; form.reset(); status.textContent = message; }
   function controls() { connect.disabled = !available(); radios.forEach(r => { r.disabled = !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
-  function clear(message = 'Connect this browser to check saved reading progress.') { session.clear(); permissions.clear(); erase(message); controls(); }
+  function clear(message = 'Connect this browser to check saved reading progress.') { session.clear(); permissions.clear(); erase(message); if(pilot && joined)pilotStatus!.textContent='Joined for this tab. Connect this browser to check reading progress.'; controls(); }
   async function load(operation: Operation, query = '') {
     if (!permissions.has(operation) || !available() || !await verifyPilot()) return;
     erase('Checking Library progress…'); const epoch = generation; controller = new AbortController();
@@ -66,6 +66,7 @@ if (root) {
         list.append(li);
       }
       if(empty)empty.hidden=envelope.status!=='empty';
+      if(pilot)pilotStatus!.textContent='Connected for this tab. Reading metadata clears when you leave Home.';
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
       freshness.textContent = `Device-local · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Legacy web progress and other browsers are not included.`;
       timer = setTimeout(() => clear('This reading snapshot expired. Connect again to check Library.'), Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
