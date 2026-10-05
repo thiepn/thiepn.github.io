@@ -39,8 +39,9 @@ jobs:
         run: npm run vercel:bypass-create
       - name: Compare exact bytes
         run: |
-          node - <<'NODE'
-          const fs=require('fs'),crypto=require('crypto');
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
           const report=JSON.parse(fs.readFileSync('.cache/hub-release-qualification.json','utf8'));
           const wanted=[
             report.builtAssets.find(x=>x.path==='/hub-release.json'),
