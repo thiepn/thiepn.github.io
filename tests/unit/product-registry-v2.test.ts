@@ -40,8 +40,10 @@ describe('product registry v2', () => {
     expect(resolveProductAliasV2('missing')).toBeNull();
   });
 
-  it('supports product and reverse-alias lookups', () => {
+  it('supports product state and reverse-alias lookups', () => {
     expect(productByIdV2('folio')?.name).toBe('Folio');
+    expect(productByIdV2('folio')?.state).toBe('staged');
+    expect(productByIdV2('pdf')?.state).toBe('active');
     expect(modulesForProductV2('bible').map((module) => module.id)).toContain('tms60');
     expect(aliasesForModuleV2('folio/write')).toContain('manuscript');
   });
