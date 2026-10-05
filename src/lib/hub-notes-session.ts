@@ -11,24 +11,26 @@ export const NOTES_PENDING_KEY = 'thiepn:hub-notes:pkce:v1';
 export const NOTES_ISSUER = 'https://hycegznamzjhwinegaai.supabase.co';
 export const NOTES_CALLBACK = 'https://thiepn.dev/home/';
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+export const CAPTURE_PENDING_KEY = 'thiepn:hub-capture:pkce:v1';
 export const INBOX_PENDING_KEY = 'thiepn:hub-inbox:pkce:v1';
-const purposes = ['notes.hub.summary.read','notes.hub.continue.read','notes.hub.search.read','notes.hub.inbox.read','notes.hub.inbox.attention.write'];
+const purposes = ['notes.hub.summary.read','notes.hub.continue.read','notes.hub.search.read','notes.hub.inbox.read','notes.hub.inbox.attention.write','notes.hub.capture.create'];
 export type NotesConsent = { permissions: string[]; revision: string | null };
 export function parseNotesConsent(v: unknown, provider: 'notes'|'tms60' = 'notes'): NotesConsent {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Unavailable');
   const value = v as NotesConsent;
-  if (Object.keys(value).sort().join(',') !== 'permissions,revision' || !Array.isArray(value.permissions) || value.permissions.length > (provider === 'notes' ? 5 : 3) || new Set(value.permissions).size !== value.permissions.length || value.permissions.some(p => !(provider === 'notes' ? purposes : purposes.slice(0,3).map(x=>x.replace('notes.',provider+'.'))).includes(p)) || !(value.revision === null || uuid(value.revision)) || value.revision === null && value.permissions.length) throw new Error('Unavailable');
+  if (Object.keys(value).sort().join(',') !== 'permissions,revision' || !Array.isArray(value.permissions) || value.permissions.length > (provider === 'notes' ? 6 : 3) || new Set(value.permissions).size !== value.permissions.length || value.permissions.some(p => !(provider === 'notes' ? purposes : purposes.slice(0,3).map(x=>x.replace('notes.',provider+'.'))).includes(p)) || !(value.revision === null || uuid(value.revision)) || value.revision === null && value.permissions.length) throw new Error('Unavailable');
   if (provider === 'notes' && value.permissions.includes('notes.hub.inbox.attention.write') && !value.permissions.includes('notes.hub.inbox.read')) throw new Error('Unavailable');
   return structuredClone(value);
 }
 type Pending = { state: string; verifier: string; started: number; owner: string; revision: string; clientId: string };
 type Tokens = { bearer: string; refresh: string; expiresAt: number; owner: string; revision: string };
-export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string; provider?: 'notes'|'tms60'; translationId?: string; inbox?: boolean };
+export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string; provider?: 'notes'|'tms60'; translationId?: string; inbox?: boolean; capture?: boolean };
 export function validNotesConfig(config: NotesSessionConfig): boolean {
   try {
-    if(config.inbox && config.provider==='tms60') return false;
+    if (config.inbox && config.capture) return false;
+    if ((config.inbox || config.capture) && config.provider==='tms60') return false;
     if(config.provider==='tms60')return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && ['esv','niv','nlt','hfa','schlachter1951','klb1985','krv1961'].includes(config.translationId ?? '');
-    if (config.inbox === true) return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey);
+    if (config.inbox === true || config.capture === true) return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey);
     const url = new URL(config.platformOrigin);
     return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && url.origin === config.platformOrigin && url.protocol === 'https:' && url.hostname.endsWith('.vercel.app') && !url.username && !url.password;
   } catch { return false; }
@@ -47,7 +49,7 @@ export class HubNotesSession {
     if (!validNotesConfig(config)) throw new Error('Unavailable');
   }
   private get callback(){return this.config.inbox ? 'https://thiepn.dev/inbox/' : NOTES_CALLBACK;}
-  private get pendingKey(){return this.config.inbox ? INBOX_PENDING_KEY : this.config.provider==='tms60'?'thiepn:hub-tms60:pkce:'+this.config.translationId+':v1':NOTES_PENDING_KEY;}
+  private get pendingKey(){return this.config.capture ? CAPTURE_PENDING_KEY : this.config.inbox ? INBOX_PENDING_KEY : this.config.provider==='tms60'?'thiepn:hub-tms60:pkce:'+this.config.translationId+':v1':NOTES_PENDING_KEY;}
   clear(removePending = true) {
     ++this.epoch; this.tokens = null; this.refreshFlight = null;
     for (const c of this.controllers) c.abort(); this.controllers.clear();
@@ -57,6 +59,7 @@ export class HubNotesSession {
   async begin(owner: string, raw: unknown): Promise<string> {
     this.clear(); const epoch = this.epoch;
     const consent = parseNotesConsent(raw,this.config.provider);
+    if (this.config.capture && !consent.permissions.includes('notes.hub.capture.create')) throw new Error('Unavailable');
     if (this.config.inbox && !consent.permissions.includes('notes.hub.inbox.read')) throw new Error('Unavailable');
     if (!uuid(owner) || owner !== this.owner() || !consent.revision || !consent.permissions.length) throw new Error('Unavailable');
     const verifier = random(), state = random();
@@ -114,6 +117,16 @@ export class HubNotesSession {
     if (!this.tokens || this.tokens.owner !== this.owner() || this.tokens.expiresAt <= this.now()) throw new Error('Unavailable');
     return this.tokens;
   }
+  async capture(command: import('./notes-capture').CaptureCommand, external: AbortSignal): Promise<import('./notes-capture').CaptureReceipt> {
+    const epoch = this.epoch, tokens = await this.freshTokens();
+    if (epoch !== this.epoch || tokens.owner !== this.owner() || external.aborted || !this.config.capture || command.accountId !== tokens.owner || !uuid(command.requestId) || command.destination !== 'notes:unfiled') throw new Error('Unavailable');
+    const raw = await this.json(NOTES_ISSUER+'/rest/v1/rpc/thiepn_hub_notes_capture', {
+      method:'POST', headers:{Authorization:'Bearer '+tokens.bearer,apikey:this.config.publishableKey,'Content-Type':'application/json'},
+      body:JSON.stringify({p_revision:tokens.revision,p_request_id:command.requestId,p_destination:command.destination,p_title:command.title,p_content:command.content}),
+    },4096,external);
+    if (!object(raw) || Object.keys(raw).sort().join(',') !== 'accountId,createdAt,destination,grantRevision,noteId,requestId,schemaVersion,status' || raw.schemaVersion !== 1 || raw.accountId !== tokens.owner || raw.grantRevision !== tokens.revision || raw.requestId !== command.requestId || raw.destination !== command.destination || raw.status !== 'confirmed' || !uuid(raw.noteId) || !Number.isSafeInteger(raw.createdAt) || Number(raw.createdAt)<0 || epoch !== this.epoch || tokens.owner !== this.owner() || external.aborted) throw new Error('Unavailable');
+    return raw as import('./notes-capture').CaptureReceipt;
+  }
   async inboxAccess(raw: unknown): Promise<ProviderAccess> {
     const consent = parseNotesConsent(raw);
     const tokens = await this.freshTokens();
@@ -161,7 +174,7 @@ export class HubNotesSession {
       }
       const snapshot = await this.json(this.config.platformOrigin+'/v1/private/hub/notes/access',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify({operation,grantRevision:tokens.revision})},8192,signal);
       const auth = object(snapshot) && snapshot.ok === true ? snapshot.data : null;
-      if (!object(auth) || Object.keys(auth).sort().join(',') !== 'accountId,accountState,audience,consumer,expiresAt,grantRevision,notesSyncAccess,permissions' || auth.accountId !== tokens.owner || auth.consumer !== 'thiepn-hub' || auth.audience !== 'notes-hub' || auth.accountState !== 'active' || auth.notesSyncAccess !== true || auth.grantRevision !== tokens.revision || !Array.isArray(auth.permissions) || auth.permissions.length > 5 || new Set(auth.permissions).size !== auth.permissions.length || auth.permissions.some(p=>!purposes.includes(p)) || !auth.permissions.includes(`notes.hub.${operation}.read`) || !Number.isSafeInteger(auth.expiresAt) || Number(auth.expiresAt) <= this.now() || Number(auth.expiresAt) > tokens.expiresAt || epoch !== this.epoch || tokens.owner !== this.owner()) throw new Error('Unavailable');
+      if (!object(auth) || Object.keys(auth).sort().join(',') !== 'accountId,accountState,audience,consumer,expiresAt,grantRevision,notesSyncAccess,permissions' || auth.accountId !== tokens.owner || auth.consumer !== 'thiepn-hub' || auth.audience !== 'notes-hub' || auth.accountState !== 'active' || auth.notesSyncAccess !== true || auth.grantRevision !== tokens.revision || !Array.isArray(auth.permissions) || auth.permissions.length > 6 || new Set(auth.permissions).size !== auth.permissions.length || auth.permissions.some(p=>!purposes.includes(p)) || !auth.permissions.includes(`notes.hub.${operation}.read`) || !Number.isSafeInteger(auth.expiresAt) || Number(auth.expiresAt) <= this.now() || Number(auth.expiresAt) > tokens.expiresAt || epoch !== this.epoch || tokens.owner !== this.owner()) throw new Error('Unavailable');
       if (operation === 'search' && (typeof query !== 'string' || !query.trim() || query.length > 256 || /[\u0000-\u001f\u007f]/.test(query)) || operation !== 'search' && query !== undefined) throw new Error('Unavailable');
       const request: RequestContext = {providerId:'notes',operation,requestId:crypto.randomUUID(),context:{scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:null},...(query!==undefined?{query}:{})};
       const raw = await this.json(this.config.platformOrigin+'/hub/notes/v1',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify(request)},operation==='search'?65536:32768,signal);
