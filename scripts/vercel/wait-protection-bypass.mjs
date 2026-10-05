@@ -1,5 +1,15 @@
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * @param {{
+ *   url?: string,
+ *   secret?: string,
+ *   fetchImpl?: typeof fetch,
+ *   sleepImpl?: (ms: number) => Promise<void>,
+ *   attempts?: number,
+ *   intervalMs?: number,
+ * }} [options]
+ */
 export async function waitForProtectionBypass({
   url,
   secret,
