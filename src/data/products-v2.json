@@ -54,13 +54,20 @@
       "id": "folio",
       "name": "Folio",
       "ownerRepos": [
+        "thiepn/folio",
         "thiepn/notes",
         "thiepn/library",
         "thiepn/manuscript",
         "thiepn/canvas"
       ],
-      "launchUrl": null,
+      "launchUrl": "https://thiepn.dev/folio/",
       "capabilities": [
+        "workspace",
+        "tasks",
+        "projects",
+        "planning",
+        "habits",
+        "focus",
         "capture",
         "notes",
         "library",
@@ -72,10 +79,15 @@
         {
           "id": "home",
           "name": "Folio",
-          "repo": null,
-          "launchUrl": null,
+          "repo": "thiepn/folio",
+          "launchUrl": "https://thiepn.dev/folio/",
           "capabilities": [
-            "workspace"
+            "workspace",
+            "tasks",
+            "projects",
+            "planning",
+            "habits",
+            "focus"
           ],
           "state": "staged"
         },
@@ -341,12 +353,14 @@
       "state": "active"
     },
     {
-      "id": "french",
-      "name": "French",
+      "id": "languages",
+      "name": "Languages",
       "ownerRepos": [
-        "thiepn/french"
+        "thiepn/languages",
+        "thiepn/french",
+        "thiepn/japanese"
       ],
-      "launchUrl": "https://french.thiepn.dev/",
+      "launchUrl": null,
       "capabilities": [
         "curriculum",
         "vocabulary",
@@ -356,7 +370,17 @@
       ],
       "modules": [
         {
-          "id": "course",
+          "id": "platform",
+          "name": "Languages",
+          "repo": "thiepn/languages",
+          "launchUrl": null,
+          "capabilities": [
+            "curriculum"
+          ],
+          "state": "staged"
+        },
+        {
+          "id": "french",
           "name": "French",
           "repo": "thiepn/french",
           "launchUrl": "https://french.thiepn.dev/",
@@ -368,10 +392,24 @@
             "speaking"
           ],
           "state": "active"
+        },
+        {
+          "id": "japanese",
+          "name": "Japanese",
+          "repo": "thiepn/japanese",
+          "launchUrl": null,
+          "capabilities": [
+            "curriculum",
+            "vocabulary",
+            "grammar",
+            "listening",
+            "speaking"
+          ],
+          "state": "staged"
         }
       ],
-      "defaultModule": "course",
-      "state": "active"
+      "defaultModule": "platform",
+      "state": "staged"
     },
     {
       "id": "pdf",
@@ -443,7 +481,7 @@
     "manuscript": "folio/write",
     "notes": "folio/notes",
     "canvas": "folio/canvas",
-    "french": "french/course",
+    "french": "languages/french",
     "math": "study/math",
     "greek": "bible/greek",
     "mdd": "bible/devotion",
@@ -458,6 +496,8 @@
     "orrery": "orrery/observatory",
     "hub": "hub/home",
     "bible": "bible/study",
-    "study": "study/home"
+    "study": "study/home",
+    "japanese": "languages/japanese",
+    "languages": "languages/platform"
   }
 }
