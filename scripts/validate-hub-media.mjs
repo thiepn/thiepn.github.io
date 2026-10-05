@@ -27,7 +27,13 @@ for (const slug of expectedSlugs) {
     continue;
   }
   if (!project?.liveUrl) failures.push(`${slug}: project liveUrl missing while validating Hub media.`);
-  else if (capture.url !== project.liveUrl) failures.push(`${slug}: screenshot source URL ${capture.url} does not match project liveUrl ${project.liveUrl}.`);
+  else if (capture.url !== project.liveUrl) {
+    // Preserve the actual capture URL when an app moves. A fresh capture replaces
+    // this temporary relocation marker rather than rewriting screenshot history.
+    if (capture.movedTo === project.liveUrl && /^https:\/\//.test(capture.movedTo)) {
+      warnings.push(`${slug}: historical screenshot from ${capture.url}; app moved to ${capture.movedTo}. Recapture pending.`);
+    } else failures.push(`${slug}: screenshot source URL ${capture.url} does not match project liveUrl ${project.liveUrl}.`);
+  } else if (capture.movedTo) failures.push(`${slug}: relocation marker must be removed after recapture.`);
 
   const expectedFile = `/src/assets/hub/${slug}.webp`;
   if (capture.file !== expectedFile) failures.push(`${slug}: expected media path ${expectedFile}, received ${capture.file}.`);
