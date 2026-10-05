@@ -1,0 +1,15 @@
+---
+const enabled = import.meta.env.PUBLIC_HUB_CAPTURE_PRIVATE === 'staged-v1';
+---
+{enabled && <section class="portal-daily" data-private-capture data-home-personal aria-labelledby="capture-heading">
+  <h2 id="capture-heading">Capture a thought</h2>
+  <p>Save a new text note to your signed-in account’s synced Notes. Your draft is stored in this browser until you erase it. Shared devices can retain it after sign-out.</p>
+  <p role="status" aria-live="polite" data-capture-status>Choose your destination to start or recover a draft.</p>
+  <div class="portal-account-actions"><button class="portal-button" type="button" data-capture-select>Use this account’s Notes</button><button class="portal-button" type="button" data-capture-connect disabled>Connect capture</button><button class="portal-button" type="button" data-capture-disconnect hidden>Disconnect this tab</button><a class="portal-button" href="https://account.thiepn.dev/hub/connections" rel="noreferrer">Manage sharing</a></div>
+  <form data-capture-form hidden>
+    <p>Destination: Notes · Unfiled · current signed-in account</p>
+    <label>Title <input class="portal-input" name="title" maxlength="500" autocomplete="off"/></label>
+    <label>Thought <textarea class="portal-input" name="content" maxlength="16000" rows="6" autocomplete="off"></textarea></label>
+    <div class="portal-account-actions"><button class="portal-button" type="submit" data-capture-save disabled>Save to Notes</button><button class="portal-button" type="button" data-capture-new hidden>New draft</button><button class="portal-button" type="button" data-capture-erase>Erase local draft</button><a class="portal-button" href="https://thiepn.dev/notes/" rel="noreferrer">Open Notes</a></div>
+  </form>
+</section>}
