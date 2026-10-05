@@ -105,3 +105,37 @@ P6 does not:
 ## Exit criterion
 
 P6 reaches **Operational PASS** only when one immutable, Production-configured Vercel candidate passes the complete source qualification, exact public artifact verification, fail-closed private API smoke, deployment inspection and evidence-recording path while `thiepn.dev` remains unchanged.
+
+## Operational certification — PASS
+
+P6 completed its first fully certified Production-configured candidate from immutable source:
+
+- source SHA: `7540e1b547c60dfbbae90d70f5386ed497be36d6`;
+- Vercel deployment ID: `dpl_3LmE2bfGu7sty2MkidxoRSfY8omv`;
+- deployment URL: `https://thiepn-7z65hdv1o-thiepn-project.vercel.app`;
+- deployment state: `READY`;
+- target: `production`;
+- custom domains attached to project: **0**;
+- canonical `thiepn.dev` cutover: **not performed**;
+- promotion to the canonical domain: **not performed**;
+- project SSO protection: **retained** (`all_except_custom_domains`).
+
+Certification evidence:
+
+1. immutable source verification passed;
+2. full P6 source qualification passed;
+3. Production environment reconciliation passed;
+4. Production project settings pull passed;
+5. Vercel Production build passed;
+6. exact artifact qualification passed;
+7. no-canonical-domain deployment passed;
+8. ephemeral protection bypass was created and its readiness was bounded/verified;
+9. all **49** qualified public artifacts matched the served deployment exactly;
+10. both P4 private Notes endpoints returned the required fail-closed `HUB_PRIVATE_DISABLED` behavior;
+11. deployment inspection passed;
+12. immutable release evidence was recorded and uploaded;
+13. the ephemeral Vercel automation bypass was successfully revoked.
+
+The generated Vercel project alias may advance as part of a Production-target `--skip-domain` deployment. This is not the THIEPN canonical domain and does not alter Cloudflare/GitHub Pages traffic.
+
+P6 is therefore **Operational PASS**. The certified deployment is a release candidate only; it is not authorization for canonical-domain cutover or private Hub activation.
