@@ -54,6 +54,7 @@ for (const product of registry.products ?? []) {
     modules.set(module.id, module);
   }
   if (!modules.size) failures.push(`${product.id}: at least one module is required.`);
+  if (!modules.has(product.defaultModule)) failures.push(`${product.id}: defaultModule must reference a module in the product.`);
   products.set(product.id, modules);
 }
 
