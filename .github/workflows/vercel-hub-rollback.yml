@@ -73,6 +73,9 @@ jobs:
       - name: Create ephemeral deployment-protection bypass for CI verification
         id: bypass
         run: npm run vercel:bypass-create
+      - name: Wait for deployment-protection bypass activation
+        run: npm run vercel:bypass-wait -- --url "${{ inputs.deployment_url }}"
+
       - name: Verify selected deployment before rollback
         run: |
           node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ inputs.deployment_url }}"
