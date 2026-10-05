@@ -1,0 +1,86 @@
+name: Hub cross-app workflow browsers
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hub-workflows-browser.yml'
+      - 'src/lib/workflows/**'
+      - 'src/lib/providers/**'
+      - 'src/lib/hub-*.ts'
+      - 'src/scripts/portal-*.ts'
+      - 'src/components/hub/**'
+      - 'src/pages/home/**'
+      - 'src/pages/hub-release.json.ts'
+      - 'src/data/hub-providers.json'
+      - 'tests/hub-workflows/**'
+      - 'tests/unit/integrated-workflows.test.ts'
+      - 'playwright.hub-workflows.config.ts'
+      - 'package*.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hub-cross-app-workflows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  staged-paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out immutable H19 Account authorization source
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/account
+          ref: 676413adfeef68f50e2bae95364fd43afbb6b497
+          path: .cache/h19-source-account
+      - name: Check out immutable Library bridge source
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/library
+          ref: ab4d042b24617e5fcd0b8f3c011bbc7b4f55fa9e
+          path: .cache/h19-source-library
+      - name: Check out immutable TMS60 native entry source
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/tms60
+          ref: 3ecc39eb517f6cd4d4171046e376fc4108f928c6
+          path: .cache/h19-source-tms60
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile && pnpm typecheck && pnpm test
+        working-directory: .cache/h19-source-account
+      - name: Build isolated Account authorization fixture
+        working-directory: .cache/h19-source-account
+        run: pnpm exec vite build --outDir "${GITHUB_WORKSPACE}/.cache/h19-account"
+        env:
+          VITE_HUB_OAUTH_ENABLED: staged-v1
+          VITE_HUB_OAUTH_CLIENT_ID: 33333333-3333-4333-8333-333333333333
+          VITE_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+          VITE_ACCOUNT_CANONICAL_ORIGIN: https://account.thiepn.dev
+      - name: Build and check actual Library owner
+        working-directory: .cache/h19-source-library
+        run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
+      - name: Build isolated Hub fixture (never deploy these artifacts)
+        run: npx astro build --outDir .cache/h19-hub
+        env:
+          PUBLIC_HUB_WORKFLOWS_PRIVATE: staged-v1
+          PUBLIC_HUB_LIBRARY_PRIVATE: staged-v1
+          PUBLIC_HUB_TMS60_PRIVATE: staged-v1
+          PUBLIC_HUB_NOTES_CLIENT_ID: 33333333-3333-4333-8333-333333333333
+          PUBLIC_HUB_CAPTURE_PRIVATE: staged-v1
+          PUBLIC_HUB_CAPTURE_CLIENT_ID: 33333333-3333-4333-8333-333333333333
+          PUBLIC_HUB_ACCOUNT_ENTRY: v1
+          PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Actual Hub, Account, Library and TMS60 workflows in all engines
+        run: npx playwright test -c playwright.hub-workflows.config.ts
+        env:
+          H19_LIBRARY_DIST: .cache/h19-source-library/dist/library
+          H19_TMS_DIR: .cache/h19-source-tms60

@@ -1,3 +1,4 @@
+import {integratedWorkflows} from '../lib/workflows/integrated';
 import { HubLibrarySession, libraryContinueUrl } from '../lib/hub-library-session';
 import type { Operation } from '../lib/providers/types';
 const root = document.querySelector<HTMLElement>('[data-private-library]');
@@ -13,7 +14,7 @@ if (root) {
   const radios = [...root.querySelectorAll<HTMLInputElement>('[name="library-operation"]')];
   let permissions = new Set<Operation>(), generation = 0, controller: AbortController | null = null, timer: ReturnType<typeof setTimeout> | undefined;
   const session = new HubLibrarySession(() => clear('Library data or sharing changed. Connect again to check current progress.'));
-  function erase(message: string) { ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; panel.hidden = true; form.reset(); status.textContent = message; }
+  function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; panel.hidden = true; form.reset(); status.textContent = message; }
   function controls() { connect.disabled = Boolean(root!.hidden || document.hidden); radios.forEach(r => { r.disabled = !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
   function clear(message = 'Connect this browser to check saved reading progress.') { session.clear(); permissions.clear(); erase(message); controls(); }
   async function load(operation: Operation, query = '') {
@@ -23,6 +24,7 @@ if (root) {
       const envelope = await session.read(operation, controller.signal, query);
       if (epoch !== generation || root!.hidden || document.hidden) return;
       if (!['ready','empty'].includes(envelope.status) || !envelope.data) throw new Error('Unavailable');
+      if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for (const item of envelope.data.items) {
         const li = document.createElement('li'), a = document.createElement('a');
         a.href = libraryContinueUrl(item); a.rel = 'noreferrer'; a.textContent = `${item.title} · ${item.format?.toUpperCase()} · edition ${item.edition}`;
