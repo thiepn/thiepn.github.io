@@ -3,6 +3,7 @@ export interface ProductModuleV2 {
   name: string;
   repo: string | null;
   launchUrl: string | null;
+  defaultModule: string;
   capabilities: readonly string[];
 }
 
