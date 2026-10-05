@@ -7,6 +7,7 @@ import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
 import PrivateTms from '../../components/hub/PrivateTms.astro';
 import PrivateLibrary from '../../components/hub/PrivateLibrary.astro';
+import ReadingPilot from '../../components/hub/ReadingPilot.astro';
 import IntegratedWorkflows from '../../components/hub/IntegratedWorkflows.astro';
 import PrivateCapture from '../../components/hub/PrivateCapture.astro';
 import PrivateNotes from '../../components/hub/PrivateNotes.astro';
@@ -29,6 +30,7 @@ const entries = await getHubProjects();
     <PrivateCapture />
     <IntegratedWorkflows />
     <PrivateLibrary />
+    <ReadingPilot />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
     <noscript><p class="portal-muted">All app links work without JavaScript. Customization requires JavaScript.</p></noscript>
