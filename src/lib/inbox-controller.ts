@@ -49,7 +49,7 @@ export function mountInbox(root: HTMLElement, adapters: readonly InboxAdapter[])
       if (node) node.textContent = ({ ready: 'Connected', empty: 'No attention items', idle: 'Waiting for source', unsupported: 'Not supported', unconnected: 'Not connected', offline: 'Unavailable', stale: 'Refresh required', error: 'Could not verify source' } as const)[source.status];
     }
   };
-  const clear = () => { clearTimeout(expiry); runtime.clear(); items.replaceChildren(); status.textContent = ''; total.textContent = 'No unread total is available.'; refresh.hidden = true; };
+  const clear = () => { clearTimeout(expiry); runtime.clear(); for (const node of root.querySelectorAll<HTMLElement>('[data-source] > span')) node.textContent = 'Not connected'; items.replaceChildren(); status.textContent = ''; total.textContent = 'No unread total is available.'; refresh.hidden = true; };
   const reload = async () => { refresh.disabled = true; try { await runtime.refresh(render); } finally { refresh.disabled = false; } };
   refresh.addEventListener('click', reload);
   return {
