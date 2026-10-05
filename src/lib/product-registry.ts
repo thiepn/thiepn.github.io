@@ -30,7 +30,9 @@ export function productModuleByRefV2(ref: string): ResolvedProductModuleV2 | nul
 }
 
 export function resolveProductAliasV2(aliasOrRef: string): ResolvedProductModuleV2 | null {
-  const target = PRODUCT_REGISTRY_V2.aliases[aliasOrRef] ?? aliasOrRef;
+  const product = productById.get(aliasOrRef);
+  const productDefault = product ? `${product.id}/${product.defaultModule}` : null;
+  const target = PRODUCT_REGISTRY_V2.aliases[aliasOrRef] ?? productDefault ?? aliasOrRef;
   const resolved = moduleByRef.get(target);
   if (!resolved) return null;
   return {
