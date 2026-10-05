@@ -12,5 +12,6 @@ const enabled = pilot ? READING_PILOT_ENABLED : import.meta.env.PUBLIC_HUB_LIBRA
     <fieldset><legend>Show</legend><label><input type="radio" name="library-operation" value="summary" checked/> Reading summary</label> <label><input type="radio" name="library-operation" value="continue"/> Continue</label></fieldset>
     <form data-library-search><label>Search saved reading titles <input class="portal-input" name="query" type="search" maxlength="256" autocomplete="off"/></label><button class="portal-button" type="submit">Search Library</button></form>
     <ul data-library-items></ul><small data-library-freshness></small>
+    {pilot && <div class="portal-reading-empty" data-library-empty hidden><h3>Start reading in Library</h3><p>No saved progress matches a current EPUB or PDF in this browser. Open a book in Library, read a little, then return here and join again. Web-format books and reading on other devices are not included.</p><a class="portal-button" href="/library/" rel="noreferrer">Browse Library</a></div>}
   </div>
 </section>}
