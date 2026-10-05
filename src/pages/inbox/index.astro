@@ -9,13 +9,15 @@ import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
     <PortalAccount />
     <section class="portal-inbox-content" aria-labelledby="inbox-coverage-heading" data-inbox-content>
       <h2 id="inbox-coverage-heading">Inbox is not connected yet</h2>
-      <p>No attention feeds have been read. This does not mean that your apps have no unresolved issues.</p>
+      <p data-inbox-description>No attention feeds have been read. This does not mean that your apps have no unresolved issues.</p>
       <ProviderCoverage operation="inbox" />
       <p class="portal-muted">Conflicts, failed exports, chosen reminders and completed jobs belong here when an app supports them. Reading or opening an issue does not resolve it.</p>
+      <p role="status" aria-live="polite" data-inbox-status></p>
+      <button type="button" class="portal-button" data-inbox-refresh hidden>Refresh Inbox</button>
       <div data-inbox-items></div>
     </section>
     <p class="portal-home-hidden" data-inbox-hidden hidden>Inbox is hidden. Choose Show Inbox to reveal its coverage. You can still open all apps.</p>
-    <p class="portal-muted portal-inbox-footer"><a href="/#apps">All apps</a> · <a href="/search/">Search</a> · No unread total is available.</p>
+    <p class="portal-muted portal-inbox-footer"><a href="/#apps">All apps</a> · <a href="/search/">Search</a> · <span data-inbox-total>No unread total is available.</span></p>
     <noscript><p class="portal-muted">All source links work without JavaScript.</p></noscript>
   </div>
 </BaseLayout>

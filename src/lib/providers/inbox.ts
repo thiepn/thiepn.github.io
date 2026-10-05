@@ -45,8 +45,7 @@ export interface InboxView {
   items: (AttentionItem & { providerId: ProviderId; href: string })[];
   knownUnread: number; unreadCount: number | null; allSourcesResponded: boolean;
 }
-// Passive contract store: a future certified bounded transport must call begin/accept/fail.
-// This does not fetch, mutate owner state, acknowledge or dismiss an issue.
+// Validated RAM-only contract store. InboxRuntime coordinates owner reads/actions.
 export class InboxStore {
   private access = new Map<ProviderId, ProviderAccess>();
   private pending = new Map<ProviderId, AttentionRequest>();
@@ -61,6 +60,16 @@ export class InboxStore {
     this.access = new Map((values ?? []).map(value => [value.providerId, structuredClone(value)]));
   }
   clear() { this.setAccess(null); }
+  nextExpiry(): number | null {
+    const times = [...this.access.values()].map(a => a.expiresAt);
+    for (const envelope of this.envelopes.values()) {
+      if (!['ready', 'empty'].includes(envelope.status)) continue;
+      times.push(Date.parse(envelope.expiresAt));
+      for (const item of envelope.data?.items ?? []) if (item.expiresAt) times.push(Date.parse(item.expiresAt));
+    }
+    const future = times.filter(t => t > this.now());
+    return future.length ? Math.min(...future) : null;
+  }
   private allowed(id: ProviderId) {
     const manifest = this.manifests.find(m => m.id === id), access = this.access.get(id);
     return !!manifest && manifest.privateReadsEnabled && manifest.operations.inbox && !!access && access.expiresAt > this.now() && providerContextAllowed(access.context, manifest) && access.permissions.includes(`${id}.hub.inbox.read`);
