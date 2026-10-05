@@ -23,6 +23,8 @@ for (const product of registry.products ?? []) {
   if (!Array.isArray(product.ownerRepos) || !product.ownerRepos.length || product.ownerRepos.some((value) => !repo.test(value))) {
     failures.push(`${product.id}: ownerRepos must be non-empty owner/repo values.`);
   }
+  if (!['active', 'staged'].includes(product.state)) failures.push(`${product.id}: invalid product state.`);
+  if (product.state === 'active' && product.launchUrl === null) failures.push(`${product.id}: active product requires launchUrl.`);
   if (product.launchUrl !== null) {
     try {
       const url = new URL(product.launchUrl);
@@ -39,6 +41,8 @@ for (const product of registry.products ?? []) {
   for (const module of product.modules ?? []) {
     if (!id.test(module.id ?? '')) failures.push(`${product.id}: invalid module id ${module.id}`);
     if (modules.has(module.id)) failures.push(`${product.id}: duplicate module id ${module.id}`);
+    if (!['active', 'staged'].includes(module.state)) failures.push(`${product.id}/${module.id}: invalid module state.`);
+    if (module.state === 'active' && module.launchUrl === null) failures.push(`${product.id}/${module.id}: active module requires launchUrl.`);
     if (module.repo !== null && !repo.test(module.repo ?? '')) failures.push(`${product.id}/${module.id}: invalid repo.`);
     if (module.launchUrl !== null) {
       try {
