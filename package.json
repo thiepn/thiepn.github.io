@@ -98,7 +98,8 @@
     "vercel:bootstrap": "node scripts/vercel/bootstrap-hub-project.mjs",
     "vercel:bypass-create": "node scripts/vercel/protection-bypass.mjs create",
     "vercel:bypass-revoke": "node scripts/vercel/protection-bypass.mjs revoke",
-    "typecheck:vercel": "tsc -p tsconfig.vercel.json"
+    "typecheck:vercel": "tsc -p tsconfig.vercel.json",
+    "vercel:bypass-wait": "node scripts/vercel/wait-protection-bypass.mjs"
   },
   "dependencies": {
     "astro": "7.1.6",
