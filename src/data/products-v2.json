@@ -353,14 +353,12 @@
       "state": "active"
     },
     {
-      "id": "languages",
-      "name": "Languages",
+      "id": "french",
+      "name": "French",
       "ownerRepos": [
-        "thiepn/languages",
-        "thiepn/french",
-        "thiepn/japanese"
+        "thiepn/french"
       ],
-      "launchUrl": null,
+      "launchUrl": "https://french.thiepn.dev/",
       "capabilities": [
         "curriculum",
         "vocabulary",
@@ -370,17 +368,7 @@
       ],
       "modules": [
         {
-          "id": "platform",
-          "name": "Languages",
-          "repo": "thiepn/languages",
-          "launchUrl": null,
-          "capabilities": [
-            "curriculum"
-          ],
-          "state": "staged"
-        },
-        {
-          "id": "french",
+          "id": "course",
           "name": "French",
           "repo": "thiepn/french",
           "launchUrl": "https://french.thiepn.dev/",
@@ -392,24 +380,10 @@
             "speaking"
           ],
           "state": "active"
-        },
-        {
-          "id": "japanese",
-          "name": "Japanese",
-          "repo": "thiepn/japanese",
-          "launchUrl": null,
-          "capabilities": [
-            "curriculum",
-            "vocabulary",
-            "grammar",
-            "listening",
-            "speaking"
-          ],
-          "state": "staged"
         }
       ],
-      "defaultModule": "platform",
-      "state": "staged"
+      "defaultModule": "course",
+      "state": "active"
     },
     {
       "id": "pdf",
@@ -481,7 +455,7 @@
     "manuscript": "folio/write",
     "notes": "folio/notes",
     "canvas": "folio/canvas",
-    "french": "languages/french",
+    "french": "french/course",
     "math": "study/math",
     "greek": "bible/greek",
     "mdd": "bible/devotion",
@@ -496,8 +470,6 @@
     "orrery": "orrery/observatory",
     "hub": "hub/home",
     "bible": "bible/study",
-    "study": "study/home",
-    "japanese": "languages/japanese",
-    "languages": "languages/platform"
+    "study": "study/home"
   }
 }
