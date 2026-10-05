@@ -106,6 +106,9 @@ jobs:
       - name: Create ephemeral deployment-protection bypass for CI verification
         id: bypass
         run: npm run vercel:bypass-create
+      - name: Wait for deployment-protection bypass activation
+        run: npm run vercel:bypass-wait -- --url "${{ steps.deploy.outputs.url }}"
+
       - name: Verify exact served artifact
         run: >-
           node --experimental-strip-types
