@@ -22,9 +22,9 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_NAME: thiepn-hub
       VERCEL_ENV_TARGET: production
-      SOURCE_SHA: f763fee7e595d1da82935b4bbda460463b63c6be
+      SOURCE_SHA: 30f3219247bb85bb1c6e7d2b28022246414a3470
     steps:
-      - name: Require deployment credential before any Vercel write
+      - name: Require deployment credential
         run: test -n "$VERCEL_TOKEN"
       - uses: actions/checkout@v7
         with:
@@ -36,7 +36,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Verify exact certified source
         run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-      - name: Re-run source qualification
+      - name: Source qualification
         run: |
           npm run vercel:standard
           npm run release:lockfile
@@ -45,16 +45,16 @@ jobs:
           npm run typecheck
           npm test
           npm run release:source
-      - name: Bootstrap real unlinked Vercel project and Production public environment
+      - name: Reconcile project, Production env and CLI linkage
         id: provision
         run: npm run vercel:bootstrap
-      - name: Pull Production project settings
+      - name: Pull Production settings
         run: npx --yes vercel@50.1.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Build exact production-configured candidate
+      - name: Build production-configured candidate
         run: npx --yes vercel@50.1.0 build --prod --token="$VERCEL_TOKEN"
-      - name: Qualify exact Vercel static artifact
+      - name: Qualify exact artifact
         run: node --experimental-strip-types scripts/qualify-hub-release.mjs --dist .vercel/output/static
-      - name: Deploy without assigning a production domain
+      - name: Deploy no-canonical-domain candidate
         id: deploy
         shell: bash
         run: |
@@ -62,9 +62,12 @@ jobs:
           url="$(npx --yes vercel@50.1.0 deploy --prebuilt --prod --skip-domain --yes --token="$VERCEL_TOKEN" | tail -n 1)"
           [[ "$url" == https://*.vercel.app ]] || { echo "Unexpected Vercel deployment URL" >&2; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Create ephemeral deployment-protection bypass
+        id: bypass
+        run: npm run vercel:bypass-create
       - name: Verify exact served artifact
         run: node --experimental-strip-types scripts/smoke-hub-release.mjs --url "${{ steps.deploy.outputs.url }}"
-      - name: Verify P4 runtime remains fail-closed
+      - name: Verify private runtime remains fail-closed
         run: npm run vercel:candidate-smoke -- --url "${{ steps.deploy.outputs.url }}"
       - name: Inspect candidate
         run: npx --yes vercel@50.1.0 inspect "${{ steps.deploy.outputs.url }}" --token="$VERCEL_TOKEN"
@@ -82,3 +85,6 @@ jobs:
             .cache/hub-release-qualification.json
             .cache/vercel-release-record.json
           retention-days: 90
+      - name: Revoke ephemeral deployment-protection bypass
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
+        run: npm run vercel:bypass-revoke
