@@ -10,7 +10,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "typecheck": "astro check",
+    "typecheck": "astro check && npm run typecheck:vercel",
     "lint": "astro check",
     "validate": "node scripts/validate-catalogue.mjs && node scripts/validate-studio.mjs && node scripts/validate-phase15.mjs && node scripts/validate-media.mjs && node scripts/validate-links.mjs",
     "test": "vitest run tests/unit",
@@ -97,7 +97,8 @@
     "vercel:release-input": "node scripts/vercel/release-control.mjs validate-input",
     "vercel:bootstrap": "node scripts/vercel/bootstrap-hub-project.mjs",
     "vercel:bypass-create": "node scripts/vercel/protection-bypass.mjs create",
-    "vercel:bypass-revoke": "node scripts/vercel/protection-bypass.mjs revoke"
+    "vercel:bypass-revoke": "node scripts/vercel/protection-bypass.mjs revoke",
+    "typecheck:vercel": "tsc -p tsconfig.vercel.json"
   },
   "dependencies": {
     "astro": "7.1.6",
