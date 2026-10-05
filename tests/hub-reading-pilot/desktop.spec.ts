@@ -23,8 +23,10 @@ test('pause and configuration outage fail closed before the next owner read',asy
  const f=await fixture(page);await seed(page);await connect(page);f.pause();await page.getByRole('button',{name:'Refresh',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);await expect(page.locator('[data-library-items]')).toBeEmpty();
  f.fail();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-reading-pilot-status]')).toContainText('unavailable or paused');await expect(page.locator('iframe')).toHaveCount(0);
 });
-test('late join after Hide Home cannot reopen the pilot',async({page})=>{
+test('late join and read controls cannot reopen or read after ending',async({page})=>{
  const f=await fixture(page);f.hold();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.release();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+ await seed(page);await connect(page);const before=f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length;f.hold();await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect.poll(()=>f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length).toBe(before+1);
+ await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/reading-pilot.json');f.release();await (await response).finished();await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));await expect(page.locator('[data-private-library]')).toBeVisible();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('backgrounding ends the pilot; returning requires a fresh join',async({page})=>{
  await fixture(page);await seed(page);await connect(page);

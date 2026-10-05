@@ -18,7 +18,14 @@ if (root) {
   }
   async function verifyPilot() {
     if (!pilot) return true;
-    try { if (eligible && joined && !pilotRoot?.hidden && !document.hidden && await checkReadingPilot(AbortSignal.timeout(2000)) && available()) return true; } catch {}
+    const epoch = generation;
+    try {
+      if (eligible && joined && !pilotRoot?.hidden && !document.hidden && await checkReadingPilot(AbortSignal.timeout(2000))) {
+        if (epoch !== generation) return false;
+        if (available()) return true;
+      }
+    } catch {}
+    if (epoch !== generation) return false;
     endPilot('The reading pilot is unavailable or paused. Your Library data is unchanged.'); return false;
   }
   const status = root.querySelector<HTMLElement>('[data-library-status]')!;

@@ -14,7 +14,7 @@ export async function fixture(page:Page){
   const req=route.request(),u=new URL(req.url());calls.push({url:u.href,method:req.method()});
   if(u.origin!==HUB)return route.abort();
   if(u.pathname==='/reading-pilot.json'){
-   if(hold)await new Promise<void>(r=>{release=r;});
+   if(hold){hold=false;await new Promise<void>(r=>{release=r;});}
    if(fail)return route.fulfill({status:503,body:'Unavailable'});
    const config=JSON.parse(fs.readFileSync('src/data/reading-pilot.json','utf8'));return route.fulfill({json:{...config,enabled:!paused}});
   }
