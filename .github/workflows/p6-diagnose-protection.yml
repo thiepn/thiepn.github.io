@@ -1,0 +1,63 @@
+name: P6 diagnose deployment protection
+
+on:
+  push:
+    branches:
+      - vercel-p6-bootstrap-candidate
+    paths:
+      - .p6-diagnose-trigger
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_CJcePUM0sptaE0SugAZYRy9JufRX
+      VERCEL_ORG_ID: team_LVo30en2fIX29vZH3gnYxmoi
+      DEPLOYMENT_URL: https://thiepn-hbd0hbqj7-thiepn-project.vercel.app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: 7515633a2c3054c85f96aa80ee0264569e7b0c2b
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Create ephemeral bypass
+        id: bypass
+        run: node scripts/vercel/protection-bypass.mjs create
+      - name: Compare protected request modes
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const base=process.env.DEPLOYMENT_URL;
+          const secret=process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+          const cases=[
+            ['plain',{},base+'/hub-release.json'],
+            ['header',{'x-vercel-protection-bypass':secret},base+'/hub-release.json'],
+            ['header-cookie',{'x-vercel-protection-bypass':secret,'x-vercel-set-bypass-cookie':'true'},base+'/hub-release.json'],
+            ['query',{},base+'/hub-release.json?x-vercel-protection-bypass='+encodeURIComponent(secret)]
+          ];
+          for(const [name,headers,url] of cases){
+            const r=await fetch(url,{headers,redirect:'manual',signal:AbortSignal.timeout(8000)});
+            console.log(name+': status='+r.status+' location='+(r.headers.get('location')||'none')+' content-type='+(r.headers.get('content-type')||'none'));
+            await r.body?.cancel().catch(()=>{});
+          }
+          NODE
+      - name: Vercel CLI authenticated curl
+        shell: bash
+        run: |
+          set +e
+          npx --yes vercel@50.1.0 curl /hub-release.json --deployment "$DEPLOYMENT_URL" --token="$VERCEL_TOKEN" --silent --show-error --output /tmp/hub-release.json
+          code=$?
+          echo "vercel-curl-exit=$code"
+          if [[ -f /tmp/hub-release.json ]]; then
+            node -e "const fs=require('fs');const p='/tmp/hub-release.json';console.log('vercel-curl-bytes='+fs.statSync(p).size)"
+          fi
+          exit 0
+      - name: Revoke ephemeral bypass
+        if: ${{ always() && steps.bypass.outcome == 'success' }}
+        run: node scripts/vercel/protection-bypass.mjs revoke
