@@ -1,0 +1,17 @@
+---
+const enabled=import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1';
+---
+{enabled && <section class="portal-daily" data-integrated-workflows data-home-personal aria-labelledby="integrated-workflows-heading">
+ <h2 id="integrated-workflows-heading">Across your apps</h2>
+ <p>Preview the destination, then confirm. New notes use your selected Hub account. Reading history comes from this browser and may belong to someone else.</p>
+ <button class="portal-button" type="button" data-workflow-capture>Preview capture to Notes</button>
+ <h3>Reading → study note</h3><p>Connect Library’s reading summary below to choose a book.</p><ul data-workflow-library></ul>
+ <h3>Due review → TMS60</h3><p>Connect TMS60’s due-review summary below. Opening a verse does not practise it or change progress.</p><ul data-workflow-tms60></ul>
+ <div data-workflow-preview hidden><h3 data-workflow-title></h3><p data-workflow-destination></p><p data-workflow-explanation></p><pre data-workflow-note></pre><button class="portal-button" type="button" data-workflow-confirm>Confirm destination</button><button class="portal-button" type="button" data-workflow-cancel>Cancel preview</button><a class="portal-button" data-workflow-handoff hidden target="_blank" rel="noopener noreferrer">Open confirmed destination (new tab)</a></div>
+ <p role="status" aria-live="polite" data-workflow-status>Sources have not been checked. No workflow has run.</p>
+</section>}
+
+<style>
+ [data-workflow-note]{white-space:pre-wrap;overflow-wrap:anywhere;max-height:20rem;overflow:auto;}
+ [data-workflow-preview]{margin-block:1rem;padding:1rem;border:1px solid var(--border,#888);border-radius:.75rem;}
+</style>

@@ -7,6 +7,7 @@ import PersonalPins from '../../components/hub/PersonalPins.astro';
 import PortalCustomize from '../../components/hub/PortalCustomize.astro';
 import PrivateTms from '../../components/hub/PrivateTms.astro';
 import PrivateLibrary from '../../components/hub/PrivateLibrary.astro';
+import IntegratedWorkflows from '../../components/hub/IntegratedWorkflows.astro';
 import PrivateCapture from '../../components/hub/PrivateCapture.astro';
 import PrivateNotes from '../../components/hub/PrivateNotes.astro';
 import { getHubProjects } from '../../lib/hub';
@@ -26,6 +27,7 @@ const entries = await getHubProjects();
     <PrivateTms />
     <PrivateNotes />
     <PrivateCapture />
+    <IntegratedWorkflows />
     <PrivateLibrary />
     <HubCatalogue entries={entries} heading="All apps" headingLevel={2} />
     <p class="portal-local-notice" data-preference-status>Home preferences are saved in this browser. Account sync is not enabled.</p>
@@ -34,4 +36,4 @@ const entries = await getHubProjects();
   </div>
 </BaseLayout>
 <script>import '../../scripts/hub-catalogue'; import '../../scripts/portal-home'; import '../../scripts/portal-auth'; import '../../scripts/portal-notes';
-  import '../../scripts/portal-tms60'; import '../../scripts/portal-library'; import '../../scripts/portal-capture';</script>
+  import '../../scripts/portal-tms60'; import '../../scripts/portal-library'; import '../../scripts/portal-capture'; import '../../scripts/portal-integrated-workflows';</script>

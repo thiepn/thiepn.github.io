@@ -1,3 +1,4 @@
+import {integratedWorkflows} from '../lib/workflows/integrated';
 import { hubIdentity, readHubTmsConsent } from './portal-auth';
 import { HubNotesSession } from '../lib/hub-notes-session';
 import type { Operation } from '../lib/providers/types';
@@ -27,6 +28,7 @@ if(root){
   function operationAllowed(operation:Operation){return permissions.has(`tms60.hub.${operation}.read`);}
   function configureOperations(){radios.forEach(r=>{r.disabled=!operationAllowed(r.value as Operation);});form.hidden=!operationAllowed('search');root!.querySelector<HTMLElement>('fieldset')!.hidden=!operationAllowed('summary')&&!operationAllowed('continue');}
   function erase(message='Connect TMS60 to show your synced Bible references.'){
+    if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('tms60');
     ++generation;controller?.abort();controller=null;clearTimeout(timer);list.replaceChildren();counts.textContent='';freshness.textContent='';panel.hidden=true;form.reset();
     refresh.hidden=disconnect.hidden=true;status.textContent=message;
   }
@@ -50,6 +52,7 @@ if(root){
         refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;return;
       }
       if(!['ready','empty'].includes(envelope.status) || !envelope.data)throw new Error('Unavailable');
+      if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for(const item of envelope.data.items){
         const li=document.createElement('li'),a=document.createElement('a');
         // Exact metadata-only resource link; native app requires explicit practice.

@@ -1,3 +1,4 @@
+import {registerNoteDestination} from '../lib/workflows/integrated';
 import {hubIdentity,readHubNotesConsent} from './portal-auth';
 import {HubNotesSession,CAPTURE_PENDING_KEY} from '../lib/hub-notes-session';
 import {NotesCapture} from '../lib/notes-capture';
@@ -14,6 +15,14 @@ if(root){
   function controls(){const masked=Boolean(root!.hidden||document.hidden);const d=draft?.snapshot();select.disabled=busy||masked||!owner();connect.disabled=busy||masked||!session||!draft;save.disabled=busy||masked||storageError||!session?.connected()||!draft||d?.state==='confirmed'||!(d?.title.trim()||d?.content.trim());title.readOnly=content.readOnly=busy||d?.state!=='draft';fresh.hidden=d?.state!=='confirmed';fresh.disabled=erase.disabled=busy||masked;erase.disabled ||= d?.state==='uncertain';save.textContent=d?.state==='uncertain'?'Retry the same save':'Save to Notes';disconnect.hidden=!session?.connected();}
   function clear(removePending=true){++epoch;abort?.abort();abort=null;draft?.clear();draft=null;session?.clear(removePending);busy=false;storageError=false;title.value=content.value='';form.hidden=true;status.textContent='Choose your destination to start or recover a draft.';controls();}
   function choose(){const id=owner();if(!id||root!.hidden||document.hidden)return;draft=new NotesCapture(id,localStorage,owner,(command,signal)=>session!.capture(command,signal));const d=draft.snapshot();title.value=d.title;content.value=d.content;form.hidden=false;status.textContent=d.state==='uncertain'?'The previous save outcome is unknown. Reconnect and retry the same save; your text is preserved.':d.state==='confirmed'?'A receipt for the previous save is stored in this browser. Open Notes to see it, or start a new draft.':'Draft destination selected. Connect capture before saving.';controls();}
+  if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')registerNoteDestination({available:()=>Boolean(session)&&!busy&&!storageError&&!root!.hidden&&!document.hidden,prepare:(id,note)=>{
+    if(id!==owner())throw Error('Account changed');
+    if(!draft)choose();
+    if(!draft)throw Error('Draft unavailable');
+    const d=draft.snapshot();
+    if(note){if(d.state!=='draft'||d.title||d.content)throw Error('Existing draft preserved');draft.edit(note.title,note.content);title.value=note.title;content.value=note.content;}
+    status.textContent='Destination selected. Review your draft and connect capture before saving.';form.hidden=false;root!.scrollIntoView({block:'nearest'});controls();
+  }});
   select.addEventListener('click',()=>{if(busy)return;clear();try{choose();}catch{status.textContent='Cannot recover this browser draft. Stored text has been kept.';}});
   form.addEventListener('input',()=>{try{draft?.edit(title.value,content.value);storageError=false;}catch{storageError=true;status.textContent='Draft could not be stored. Copy your text before leaving; saving is paused.';}controls();});
   connect.addEventListener('click',()=>void(async()=>{const id=owner(),generation=epoch;if(!session||!id||!draft||busy)return;busy=true;controls();try{const consent=await readHubNotesConsent(id);if(generation!==epoch||id!==owner())return;const url=await session.begin(id,consent);if(generation===epoch&&id===owner()&&!root!.hidden&&!document.hidden)location.assign(url);}catch{if(generation===epoch)status.textContent='Enable creation in Account sharing, then connect again. Your draft is kept.';}finally{if(generation===epoch){busy=false;controls();}}})());
