@@ -1,0 +1,51 @@
+name: Hub Notes Inbox browsers
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: hub-notes-inbox-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  staged-paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out immutable H17 Account authorization source
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/account
+          ref: 5b426c40e9e174c11c36604c1ef2c18a6aa155d8
+          path: .cache/h17-source-account
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile && pnpm typecheck && pnpm test
+        working-directory: .cache/h17-source-account
+      - name: Build isolated Account authorization fixture
+        working-directory: .cache/h17-source-account
+        run: pnpm exec vite build --outDir "${GITHUB_WORKSPACE}/.cache/h17-account"
+        env:
+          VITE_HUB_OAUTH_ENABLED: staged-v1
+          VITE_HUB_OAUTH_CLIENT_ID: 33333333-3333-4333-8333-333333333333
+          VITE_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+          VITE_ACCOUNT_CANONICAL_ORIGIN: https://account.thiepn.dev
+      - name: Build isolated Hub fixture (never deploy these artifacts)
+        run: npx astro build --outDir .cache/h17-hub
+        env:
+          PUBLIC_HUB_INBOX_PRIVATE: staged-v1
+          PUBLIC_HUB_INBOX_CLIENT_ID: 33333333-3333-4333-8333-333333333333
+          PUBLIC_HUB_ACCOUNT_ENTRY: v1
+          PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Actual Hub and Account Inbox connection in all engines
+        run: npx playwright test -c playwright.hub-inbox.config.ts

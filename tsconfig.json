@@ -5,7 +5,10 @@
     "**/*"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    ".cache",
+    "test-results",
+    "playwright-report"
   ],
   "compilerOptions": {
     "noUncheckedIndexedAccess": true,

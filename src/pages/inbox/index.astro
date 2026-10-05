@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PortalAccount from '../../components/hub/PortalAccount.astro';
 import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
+const enabled = import.meta.env.PUBLIC_HUB_INBOX_PRIVATE === 'staged-v1';
 ---
 <BaseLayout title="Inbox — THIEPN" description="Attention from your THIEPN apps, with explicit provider coverage." portal noindex>
   <div class="portal-inbox page-shell" data-portal-inbox>
@@ -9,13 +10,17 @@ import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
     <PortalAccount />
     <section class="portal-inbox-content" aria-labelledby="inbox-coverage-heading" data-inbox-content>
       <h2 id="inbox-coverage-heading">Inbox is not connected yet</h2>
-      <p>No attention feeds have been read. This does not mean that your apps have no unresolved issues.</p>
+      <p data-inbox-description>No attention feeds have been read. This does not mean that your apps have no unresolved issues.</p>
       <ProviderCoverage operation="inbox" />
       <p class="portal-muted">Conflicts, failed exports, chosen reminders and completed jobs belong here when an app supports them. Reading or opening an issue does not resolve it.</p>
+      {enabled && <div class="portal-account-actions"><button type="button" class="portal-button" data-inbox-connect>Connect Notes reminders</button><button type="button" class="portal-button" data-inbox-disconnect hidden>Disconnect this tab</button><a class="portal-button" href="https://account.thiepn.dev/hub/connections" rel="noreferrer">Manage Inbox sharing</a></div>}
+      {enabled && <p class="portal-muted">Up to ten due reminders from your synced Notes. Future reminders, trashed notes and local drafts are excluded. Dismiss hides Inbox attention; it does not complete or snooze the reminder in Notes. Library and TMS60 attention feeds are not supported yet.</p>}
+      <p role="status" aria-live="polite" data-inbox-status></p>
+      <button type="button" class="portal-button" data-inbox-refresh hidden>Refresh Inbox</button>
       <div data-inbox-items></div>
     </section>
     <p class="portal-home-hidden" data-inbox-hidden hidden>Inbox is hidden. Choose Show Inbox to reveal its coverage. You can still open all apps.</p>
-    <p class="portal-muted portal-inbox-footer"><a href="/#apps">All apps</a> · <a href="/search/">Search</a> · No unread total is available.</p>
+    <p class="portal-muted portal-inbox-footer"><a href="/#apps">All apps</a> · <a href="/search/">Search</a> · <span data-inbox-total>No unread total is available.</span></p>
     <noscript><p class="portal-muted">All source links work without JavaScript.</p></noscript>
   </div>
 </BaseLayout>
