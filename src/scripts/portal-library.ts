@@ -9,10 +9,11 @@ if (root) {
   const join = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-join]');
   const end = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-end]');
   const pilotStatus = pilotRoot?.querySelector<HTMLElement>('[data-reading-pilot-status]');
+  let pending: symbol | undefined;
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
-  function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared.') {
+  function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared. To return, try the reading pilot and connect this browser again.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;
     join!.hidden = false; end!.hidden = true; pilotStatus!.textContent = message; clear();
   }
@@ -41,8 +42,13 @@ if (root) {
   let permissions = new Set<Operation>(), generation = 0, controller: AbortController | null = null, timer: ReturnType<typeof setTimeout> | undefined;
   const session = new HubLibrarySession(() => clear('Library data or sharing changed. Connect again to check current progress.'));
   function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; if(empty)empty.hidden=true; panel.hidden = true; form.reset(); status.textContent = message; }
-  function controls() { connect.disabled = !available(); radios.forEach(r => { r.disabled = !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
-  function clear(message = 'Connect this browser to check saved reading progress.') { session.clear(); permissions.clear(); erase(message); if(pilot && joined)pilotStatus!.textContent='Joined for this tab. Connect this browser to check reading progress.'; controls(); }
+  function controls() { connect.disabled = !available() || !!pending; refresh.disabled = !!pending; root!.setAttribute('aria-busy', String(!!pending)); radios.forEach(r => { r.disabled = !!pending || !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
+  function clear(message = 'Connect this browser to check saved reading progress.', preservePending = false) { if (!preservePending) pending = undefined; session.clear(); permissions.clear(); erase(message); if(pilot && joined)pilotStatus!.textContent='Joined for this tab. Connect this browser to check reading progress.'; controls(); }
+  async function run(action: () => Promise<void>) {
+    if (pending || !available()) return;
+    const token = Symbol(); pending = token; controls();
+    try { await action(); } finally { if (pending === token) pending = undefined; controls(); }
+  }
   async function load(operation: Operation, query = '') {
     if (!permissions.has(operation) || !available() || !await verifyPilot()) return;
     erase('Checking Library progress…'); const epoch = generation; controller = new AbortController();
@@ -73,9 +79,9 @@ if (root) {
     } catch { if (epoch === generation) clear('Library could not be checked. Review sharing or open My Library; unavailable storage is not an empty library.'); }
     finally { if (epoch === generation) controller = null; controls(); }
   }
-  connect.addEventListener('click', () => void (async () => {
+  connect.addEventListener('click', () => void run(async () => {
     if (!available() || !await verifyPilot()) return;
-    clear('Checking your Library sharing choices…'); const epoch = generation; controller = new AbortController(); connect.disabled = true;
+    clear('Checking your Library sharing choices…', true); const epoch = generation; controller = new AbortController(); connect.disabled = true;
     try {
       const consent = await session.connect(controller.signal);
       if (epoch !== generation || root!.hidden || document.hidden) return;
@@ -86,15 +92,15 @@ if (root) {
       else { panel.hidden = false; status.textContent = 'Connected. Search saved reading titles in this browser.'; }
     } catch { if (epoch === generation) clear('Choose sharing in Library, then connect this browser.'); }
     finally { controls(); }
-  })());
-  refresh.addEventListener('click', () => void load((radios.find(r => r.checked)?.value ?? 'summary') as Operation));
+  }));
+  refresh.addEventListener('click', () => void run(() => load((radios.find(r => r.checked)?.value ?? 'summary') as Operation)));
   disconnect.addEventListener('click', () => clear('Library disconnected in this tab. Manage Library sharing to revoke it in this browser.'));
-  radios.forEach(r => r.addEventListener('change', () => void load(r.value as Operation)));
-  form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void load('search', query); });
+  radios.forEach(r => r.addEventListener('change', () => void run(() => load(r.value as Operation))));
+  form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void run(() => load('search', query)); });
   window.addEventListener('hub:identity', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pagehide', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot(); } controls(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: try the reading pilot, then connect this browser for fresh progress.'); } controls(); });
   new MutationObserver(() => { if (root!.hidden) clear(); controls(); }).observe(root, { attributes: true, attributeFilter: ['hidden'] });
   if (pilot) {
     join!.disabled = !eligible;
