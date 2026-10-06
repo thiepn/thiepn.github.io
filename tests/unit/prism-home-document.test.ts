@@ -87,3 +87,32 @@ describe('Prism HomeDocument v2', () => {
     expect(result.errors).toContain('Out-of-bounds mobile placement for block-now.');
   });
 });
+
+
+describe('Prism persisted-state validation', () => {
+  it('rejects invalid appearance and preference values', () => {
+    const doc = createDefaultHomeDocument();
+    (doc.appearance as any).density = 'giant';
+    (doc.preferences as any).customizeMobileSeparately = 'yes';
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Invalid Home density.');
+    expect(result.errors).toContain('Invalid Home preferences.');
+  });
+
+  it('rejects malformed Apps ordering state', () => {
+    const doc = createDefaultHomeDocument();
+    doc.blocks['block-apps']!.settings.appOrder = ['notes', 'notes'];
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Apps appOrder must be a unique string array of at most 128 items.');
+  });
+
+  it('rejects non-boolean hidden state', () => {
+    const doc = createDefaultHomeDocument();
+    (doc.blocks['block-recent'] as any).hidden = 'true';
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Block block-recent hidden must be boolean.');
+  });
+});
