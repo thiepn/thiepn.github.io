@@ -46,14 +46,20 @@ for (const route of HUB_RELEASE_ROUTES) {
   for (const match of html.matchAll(/(?:src|href)="(\/_astro\/[^"?#]+)"/g)) files.add(match[1].slice(1));
 }
 const home = (await read('home/index.html')).toString();
-if (status.profile === 'device-reading-pilot') {
+if (status.profile === 'device-reading-pilot' || status.profile === 'library-ecosystem') {
   const pilot = await json('reading-pilot.json');
   assert.deepEqual(pilot, JSON.parse(await fs.readFile('src/data/reading-pilot.json','utf8')));
-  assert.equal(pilot.enabled, true); assert.equal(pilot.scope, 'device');
-  assert.equal(pilot.cloudAccess, false); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, false);
+  assert.equal(pilot.enabled, true); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, false);
   assert.deepEqual(pilot.operations, ['summary','continue']);
   assert(home.includes('data-reading-pilot') && home.includes('data-library-pilot="v1"'));
-  assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(home), 'Managed integration leaked into device pilot');
+  assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(home), 'Unqualified managed integration leaked into reading profile');
+  if (status.profile === 'library-ecosystem') {
+    assert.equal(pilot.scope, 'device-account'); assert.equal(pilot.cloudAccess, true);
+    assert.equal(status.features.hubSignIn, true); assert.equal(status.features.privateReads, true);
+    assert(home.includes('data-hub-account'), 'P4 requires the verified Hub Account surface');
+  } else {
+    assert.equal(pilot.scope, 'device'); assert.equal(pilot.cloudAccess, false);
+  }
   files.add('reading-pilot.json');
 }
 assert.equal([...home.matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Home roster does not match release count');
@@ -68,4 +74,4 @@ for (const file of [...files].sort()) {
 const report = { schemaVersion: 1, profile: status.profile, releaseId: status.releaseId, appCount: status.appCount, builtAssets: assets, scope: 'Built public Hub routes and directly referenced assets; no physical-device or authenticated certification' };
 await fs.mkdir('.cache', { recursive: true });
 await fs.writeFile('.cache/hub-release-qualification.json', JSON.stringify(report, null, 2) + '\n');
-console.log(`Hub ${status.profile} qualification passed: ${status.appCount} apps / ${HUB_RELEASE_ROUTES.length} routes / ${assets.length} hashed artifacts; ${status.profile === 'device-reading-pilot' ? 'explicit device reading only; managed features disabled' : 'private features disabled'}.`);
+console.log(`Hub ${status.profile} qualification passed: ${status.appCount} apps / ${HUB_RELEASE_ROUTES.length} routes / ${assets.length} hashed artifacts; ${status.profile === 'library-ecosystem' ? 'read-only Library ecosystem profile; writes and other private providers disabled' : status.profile === 'device-reading-pilot' ? 'explicit device reading only; managed features disabled' : 'private features disabled'}.`);
