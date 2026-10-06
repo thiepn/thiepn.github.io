@@ -118,3 +118,50 @@ describe('Prism HomeStore durability', () => {
     expect(save).not.toHaveBeenCalled();
   });
 });
+
+
+describe('Prism HomeStore Undo', () => {
+  it('restores and persists the previous valid document', async () => {
+    const saves: string[] = [];
+    const store = new HomeStore(createDefaultHomeDocument(), {
+      load: async () => null,
+      save: async (raw) => { saves.push(raw); },
+    });
+
+    await store.mutate((draft) => {
+      draft.appearance.density = 'compact';
+    });
+    expect(store.canUndo()).toBe(true);
+    expect(store.getSnapshot().appearance.density).toBe('compact');
+
+    await expect(store.undo()).resolves.toBe(true);
+    expect(store.getSnapshot().appearance.density).toBe('balanced');
+    expect(store.canUndo()).toBe(false);
+    expect(JSON.parse(saves.at(-1)!).appearance.density).toBe('balanced');
+  });
+
+  it('keeps history intact when an undo cannot be persisted', async () => {
+    let fail = false;
+    const store = new HomeStore(createDefaultHomeDocument(), {
+      load: async () => null,
+      save: async () => { if (fail) throw new Error('undo storage failed'); },
+    });
+
+    await store.mutate((draft) => {
+      draft.appearance.density = 'compact';
+    });
+    fail = true;
+
+    await expect(store.undo()).rejects.toThrow('undo storage failed');
+    expect(store.getSnapshot().appearance.density).toBe('compact');
+    expect(store.canUndo()).toBe(true);
+  });
+
+  it('returns false when there is no history to undo', async () => {
+    const store = new HomeStore(createDefaultHomeDocument(), {
+      load: async () => null,
+      save: async () => {},
+    });
+    await expect(store.undo()).resolves.toBe(false);
+  });
+});
