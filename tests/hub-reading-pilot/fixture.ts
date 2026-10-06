@@ -1,6 +1,7 @@
 import {expect, type Page} from '@playwright/test';
 import fs from 'node:fs'; import path from 'node:path';
 export const HUB='https://thiepn.dev';
+const SUPABASE='https://hycegznamzjhwinegaai.supabase.co';
 const OWNER=path.resolve(process.env.H21_LIBRARY_DIST??'../library/dist/library');
 const KEY='thiepn:library:hub-consent:v1', INDEX='thiepn:library:hub-personal-index:v1';
 const catalogue=JSON.parse(fs.readFileSync(path.join(OWNER,'hub/bridge/index.html'),'utf8').match(/data-books="([^\"]+)"/)![1]!.replaceAll('&quot;','"').replaceAll('&#39;',"'").replaceAll('&amp;','&').replaceAll('&lt;','<').replaceAll('&gt;','>'));
@@ -8,10 +9,22 @@ export const book=catalogue.find((b:any)=>b.format==='epub');
 const grant={schemaVersion:1,deviceId:'11111111-1111-4111-8111-111111111111',revision:'22222222-2222-4222-8222-222222222222',permissions:['summary','continue','search'],includePersonal:false};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.json')?'application/json':p.endsWith('.html')?'text/html':'application/octet-stream';
 export async function fixture(page:Page){
- const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,release=()=>{};
+ const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=false,release=()=>{};
  await page.addInitScript(()=>{(window as any).__opens=[];(window as any).__results=[];if(location.pathname.startsWith('/home')){const open=indexedDB.open.bind(indexedDB);indexedDB.open=(...args:Parameters<IDBFactory['open']>)=>{(window as any).__opens.push(args[0]);return open(...args);};window.addEventListener('message',e=>{if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);});}});
  await page.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url());calls.push({url:u.href,method:req.method()});
+  if(u.origin===SUPABASE && accountMock){
+    if(u.pathname==='/auth/v1/user') {
+      return route.fulfill({json:{id:'33333333-3333-4333-8333-333333333333',aud:'authenticated',role:'authenticated',email:'reader@example.test'}});
+    }
+    if(u.pathname==='/rest/v1/account_app_connections') return route.fulfill({json:[{status:'connected'}]});
+    if(u.pathname==='/rest/v1/library_sync_state') return route.fulfill({json:[]});
+    if(u.pathname==='/rest/v1/rpc/sync_thiepn_library_state') {
+      const body=JSON.parse(req.postData()??'{}');
+      return route.fulfill({json:{revision:1,state:body.p_state,updated_at:new Date().toISOString()}});
+    }
+    return route.fulfill({status:404,json:{message:'Fixture endpoint unavailable'}});
+  }
   if(u.origin!==HUB)return route.abort();
   if(u.pathname==='/reading-pilot.json'){
    if(hold){hold=false;await new Promise<void>(r=>{release=r;});}
@@ -22,7 +35,14 @@ export async function fixture(page:Page){
   if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,'index.html');
   if(fs.existsSync(f))return route.fulfill({path:f,contentType:mime(f)});return route.fulfill({status:404});
  });
- await page.goto(HUB+'/home/');return{calls,pause:()=>{paused=true;},fail:()=>{fail=true;},hold:()=>{hold=true;},release:()=>{hold=false;release();}};
+ await page.goto(HUB+'/home/');return{
+  calls,
+  pause:()=>{paused=true;},
+  fail:()=>{fail=true;},
+  hold:()=>{hold=true;},
+  release:()=>{hold=false;release();},
+  enableAccountMock:()=>{accountMock=true;},
+ };
 }
 export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
 export async function connect(page:Page){await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-items]')).toContainText(book.title);}
@@ -40,4 +60,36 @@ export async function seed(page: Page, permissions = grant.permissions, personal
       await new Promise<void>((resolve, reject) => { const open = indexedDB.open('thiepn-library-personal-books',3); open.onupgradeneeded = () => open.result.createObjectStore('books',{keyPath:'id'}); open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result, tx = db.transaction('books','readwrite'); tx.objectStore('books').put({ id: 'epub-fictional', file: new TextEncoder().encode('SECRET-BOOK-BYTES').buffer }); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); }; }; });
     }
   }, { book, grant, KEY, INDEX, permissions, personal, version });
+}
+
+
+export async function seedAccountAwareReading(page: Page) {
+  const accountId='33333333-3333-4333-8333-333333333333';
+  await page.evaluate(({KEY,accountId})=>{
+    const consent=JSON.parse(localStorage.getItem(KEY)??'null');
+    if(!consent)throw new Error('Seed device reading before Account reading.');
+    localStorage.setItem(KEY,JSON.stringify({
+      schemaVersion:2,
+      deviceId:consent.deviceId,
+      revision:crypto.randomUUID(),
+      permissions:consent.permissions,
+      includePersonal:consent.includePersonal,
+      includeAccount:true,
+    }));
+    localStorage.setItem('thiepn.library.account-sync.v1',JSON.stringify({
+      schemaVersion:1,
+      userId:accountId,
+      enabled:true,
+      deviceId:'44444444-4444-4444-8444-444444444444',
+    }));
+    localStorage.setItem('sb-hycegznamzjhwinegaai-auth-token',JSON.stringify({
+      access_token:'fixture-library-access-token',
+      refresh_token:'fixture-library-refresh-token',
+      token_type:'bearer',
+      expires_in:3600,
+      expires_at:Math.floor(Date.now()/1000)+3600,
+      user:{id:accountId,aud:'authenticated',role:'authenticated',email:'reader@example.test'},
+    }));
+    window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-in',id:accountId,label:'reader@example.test'}}));
+  },{KEY,accountId});
 }
