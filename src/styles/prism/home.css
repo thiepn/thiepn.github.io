@@ -341,7 +341,7 @@ html[data-portal][data-theme='dark'] .prism-app {
 }
 
 /* Tablet reference: 8-column intentional middle layout. */
-@media (min-width: 640px) and (max-width: 1023px) {
+@media (min-width: 640px) and (max-width: 1199px) {
   .prism-home {
     padding-block-start: 20px;
   }
