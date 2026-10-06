@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "phase": "P9",
+  "product": "folio",
+  "presentation": "preserve-legacy-project-cards",
+  "members": [
+    {
+      "catalogueSlug": "notes",
+      "moduleRef": "folio/notes",
+      "preserveLiveUrl": true
+    },
+    {
+      "catalogueSlug": "thiepn-library",
+      "moduleRef": "folio/library",
+      "preserveLiveUrl": true
+    },
+    {
+      "catalogueSlug": "manuscript",
+      "moduleRef": "folio/write",
+      "preserveLiveUrl": true
+    },
+    {
+      "catalogueSlug": "canvas",
+      "moduleRef": "folio/canvas",
+      "preserveLiveUrl": true
+    }
+  ],
+  "stagedModules": [
+    "folio/home",
+    "folio/knowledge"
+  ],
+  "rules": {
+    "createNewTopLevelCards": false,
+    "removeLegacyCards": false,
+    "rewriteProjectRoutes": false,
+    "rewriteLiveUrls": false,
+    "groupInProductUiLater": true
+  }
+}
