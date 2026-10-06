@@ -5,8 +5,8 @@ const pilot = Astro.props.pilot === true;
 const enabled = pilot ? READING_PILOT_ENABLED : import.meta.env.PUBLIC_HUB_LIBRARY_PRIVATE === 'staged-v1';
 ---
 {enabled && <section class="portal-daily" data-private-library data-home-personal={pilot ? undefined : true} data-library-pilot={pilot ? 'v1' : undefined} hidden={pilot} aria-labelledby="private-library-heading">
-  <header class="portal-section-heading"><div><h2 id="private-library-heading">Reading on this browser</h2><p class="portal-muted">Saved EPUB/PDF progress from this browser profile. A shared browser can contain another person’s reading history. Signing in to Hub does not make this account data.</p></div></header>
-  <p role="status" aria-live="polite" data-library-status>Choose sharing in Library, then connect this browser.</p>
+  <header class="portal-section-heading"><div><h2 id="private-library-heading">Reading in Library</h2><p class="portal-muted">Library-owned EPUB/PDF progress. Results are device-local unless Library explicitly reports that it reconciled the same THIEPN Account before sharing.</p></div></header>
+  <p role="status" aria-live="polite" data-library-status>Choose sharing in Library, then connect. Account-synced reading requires separate Library consent and the same verified account.</p>
   <div class="portal-account-actions"><button class="portal-button" type="button" data-library-connect>Connect this browser</button><button class="portal-button" type="button" data-library-refresh hidden>Refresh</button><button class="portal-button" type="button" data-library-disconnect hidden>Disconnect this tab</button><a class="portal-button" href="/library/hub" rel="noreferrer">Manage Library sharing</a><a class="portal-button" href="/library/saved">Open My Library</a></div>
   <div data-library-private hidden>
     <fieldset><legend>Show</legend><label><input type="radio" name="library-operation" value="summary" checked/> Reading summary</label> <label><input type="radio" name="library-operation" value="continue"/> Continue</label></fieldset>
