@@ -37,8 +37,12 @@ html[data-prism-shell='true'] #main-content {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 10px;
+  border: 0;
+  background: transparent;
   color: var(--ink-secondary);
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .prism-rail__brand {
@@ -186,6 +190,10 @@ html[data-prism-shell='true'] #main-content {
 
 .prism-topbar__account {
   display: inline-flex;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
   width: fit-content;
   min-height: 40px;
   align-items: center;
@@ -268,13 +276,18 @@ html[data-prism-shell='true'] #main-content {
     gap: 2px;
   }
 
-  .prism-mobile-header__actions a {
+  .prism-mobile-header__actions a,
+  .prism-mobile-header__actions button {
     display: grid;
     width: 44px;
     height: 44px;
     place-items: center;
+    border: 0;
+    background: transparent;
     color: var(--ink-secondary);
+    font: inherit;
     text-decoration: none;
+    cursor: pointer;
   }
 
   .prism-mobile-header__avatar {
@@ -348,5 +361,142 @@ html[data-prism-shell='true'] #main-content {
   .prism-rail__item[aria-current='page']::after,
   .prism-mobile-nav a[aria-current='page']::before {
     background: Highlight;
+  }
+}
+
+
+.prism-account-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(640px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface-1);
+  box-shadow: 0 18px 56px rgb(0 0 0 / 18%);
+  color: var(--ink);
+}
+
+.prism-account-dialog::backdrop {
+  background: rgb(7 10 14 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+.prism-account-dialog__surface {
+  padding: 20px;
+}
+
+.prism-account-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prism-account-dialog__eyebrow {
+  margin-bottom: 3px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 14px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.prism-account-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 26px;
+  letter-spacing: -.02em;
+}
+
+.prism-account-dialog__close,
+.prism-account-dialog__actions button,
+.prism-account-dialog__actions a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font: 520 12.5px/18px var(--font-ui);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.prism-account-dialog__close {
+  border-color: transparent;
+  color: var(--ink-secondary);
+}
+
+.prism-account-dialog__close:hover,
+.prism-account-dialog__actions button:hover,
+.prism-account-dialog__actions a:hover {
+  background: var(--surface-2);
+}
+
+.prism-account-dialog :is(button,a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prism-account-dialog__status {
+  margin-top: 24px;
+  color: var(--ink-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.prism-account-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.prism-account-dialog__actions [data-auth-login] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.prism-account-dialog__actions [hidden] {
+  display: none;
+}
+
+.prism-account-dialog__meta {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 639px) {
+  .prism-account-dialog {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 20px;
+  }
+
+  .prism-account-dialog__surface {
+    padding: 18px;
+  }
+}
+
+@media (forced-colors: active) {
+  .prism-account-dialog,
+  .prism-account-dialog__actions button,
+  .prism-account-dialog__actions a {
+    border-color: CanvasText;
+  }
+
+  .prism-account-dialog::backdrop {
+    background: Canvas;
   }
 }
