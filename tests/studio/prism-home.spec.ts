@@ -14,6 +14,16 @@ test('Prism preview locks the canonical desktop composition without legacy Home 
   await expect(page.locator('.prism-mobile-nav')).toBeHidden();
   await expect(page.locator('.site-header')).toHaveCount(0);
   await expect(page.locator('.portal-bottom-nav')).toHaveCount(0);
+
+  const accountTrigger = page.locator('.prism-topbar__account');
+  await accountTrigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#prism-account-dialog')).toHaveJSProperty('open', true);
+  await expect(page.locator('#prism-account-dialog [data-auth-status]')).toBeVisible();
+  await page.locator('[data-prism-account-close]').click();
+  await expect(page.locator('#prism-account-dialog')).toHaveJSProperty('open', false);
+  await expect(accountTrigger).toBeFocused();
+
   await expect(page.locator('.hub-hero')).toHaveCount(0);
   await expect(page.locator('.portal-home-heading')).toHaveCount(0);
   await expect(page.locator('.portal-daily')).toHaveCount(0);
