@@ -4,8 +4,9 @@ import PrivateLibrary from './PrivateLibrary.astro';
 const enabled = READING_PILOT_ENABLED && import.meta.env.PUBLIC_HUB_LIBRARY_PRIVATE !== 'staged-v1';
 ---
 {enabled && <section class="portal-daily" data-reading-pilot data-home-personal aria-labelledby="reading-pilot-heading">
- <header class="portal-section-heading"><div><h2 id="reading-pilot-heading">Pick up your reading</h2><p class="portal-muted">Desktop reading pilot · optional · this browser only</p></div></header>
+ <header class="portal-section-heading"><div><h2 id="reading-pilot-heading">Pick up your reading</h2><p class="portal-muted">Reading pilot · optional · this browser only</p></div></header>
  <p>See saved book titles and reading progress, then resume the exact edition in Library. A shared browser may contain another person’s history. This pilot does not sync accounts or create notes.</p>
+ <p class="portal-muted">Phone and tablet reading is a preview. Sharing and progress belong to this browser profile, including when you use another browser on the same device.</p>
  <ol class="portal-reading-steps" aria-label="Reading setup">
   <li><strong>Join this tab</strong><span>Nothing loads automatically.</span></li>
   <li><strong>Choose Library sharing</strong><span>Enable summary or Continue in Library.</span></li>

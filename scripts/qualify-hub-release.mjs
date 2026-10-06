@@ -50,7 +50,7 @@ if (status.profile === 'device-reading-pilot') {
   const pilot = await json('reading-pilot.json');
   assert.deepEqual(pilot, JSON.parse(await fs.readFile('src/data/reading-pilot.json','utf8')));
   assert.equal(pilot.enabled, true); assert.equal(pilot.scope, 'device');
-  assert.equal(pilot.cloudAccess, false); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, true);
+  assert.equal(pilot.cloudAccess, false); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, false);
   assert.deepEqual(pilot.operations, ['summary','continue']);
   assert(home.includes('data-reading-pilot') && home.includes('data-library-pilot="v1"'));
   assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(home), 'Managed integration leaked into device pilot');

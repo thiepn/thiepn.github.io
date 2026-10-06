@@ -50,7 +50,7 @@ jobs:
       - name: Qualify device-only public release
         run: npm run hub:qualify
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Explicit opt-in, actual reading bridge, pause and mobile exclusion
+      - name: Explicit opt-in, actual reading bridge, pause and mobile preview
         run: npx playwright test -c playwright.hub-reading-pilot.config.ts
         env:
           H21_LIBRARY_DIST: .cache/h21-source-library/dist/library
