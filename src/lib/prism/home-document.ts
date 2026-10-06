@@ -4,6 +4,7 @@ import {
   PRISM_COLUMNS,
   isPrismBlockSize,
   isPrismBlockType,
+  spanForBlock,
   type PrismBlockSize,
   type PrismBlockType,
   type PrismBreakpoint,
@@ -14,7 +15,6 @@ export const HOME_DOCUMENT_SCHEMA_VERSION = 2 as const;
 export interface HomeBlock {
   id: string;
   type: PrismBlockType;
-  size: PrismBlockSize;
   hidden?: boolean;
   settings: Record<string, unknown>;
 }
@@ -32,6 +32,7 @@ export interface HomePage {
 export interface HomePlacement {
   blockId: string;
   sectionId: string;
+  size: PrismBlockSize;
   x: number;
   y: number;
   w: number;
@@ -83,9 +84,10 @@ function placement(
   y: number,
   breakpoint: PrismBreakpoint,
   type: PrismBlockType,
+  size = PRISM_BLOCK_REGISTRY[type].defaultSize,
 ): HomePlacement {
-  const { w, h } = PRISM_BLOCK_REGISTRY[type].defaultSpan[breakpoint];
-  return { blockId, sectionId, x, y, w, h };
+  const { w, h } = spanForBlock(type, size, breakpoint);
+  return { blockId, sectionId, size, x, y, w, h };
 }
 
 export function createDefaultHomeDocument(): HomeDocumentV2 {
@@ -98,11 +100,11 @@ export function createDefaultHomeDocument(): HomeDocumentV2 {
       [IDS.activity]: { id: IDS.activity, blockIds: [IDS.study, IDS.recent] },
     },
     blocks: {
-      [IDS.continue]: { id: IDS.continue, type: 'continue', size: PRISM_BLOCK_REGISTRY.continue.defaultSize, settings: {} },
-      [IDS.now]: { id: IDS.now, type: 'now', size: PRISM_BLOCK_REGISTRY.now.defaultSize, settings: {} },
-      [IDS.appsBlock]: { id: IDS.appsBlock, type: 'apps', size: PRISM_BLOCK_REGISTRY.apps.defaultSize, settings: {} },
-      [IDS.study]: { id: IDS.study, type: 'study', size: PRISM_BLOCK_REGISTRY.study.defaultSize, settings: {} },
-      [IDS.recent]: { id: IDS.recent, type: 'recent', size: PRISM_BLOCK_REGISTRY.recent.defaultSize, settings: {} },
+      [IDS.continue]: { id: IDS.continue, type: 'continue', settings: {} },
+      [IDS.now]: { id: IDS.now, type: 'now', settings: {} },
+      [IDS.appsBlock]: { id: IDS.appsBlock, type: 'apps', settings: {} },
+      [IDS.study]: { id: IDS.study, type: 'study', settings: {} },
+      [IDS.recent]: { id: IDS.recent, type: 'recent', settings: {} },
     },
     layouts: {
       desktop: {
@@ -182,22 +184,30 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
   for (const [key, block] of Object.entries(blocks)) {
     if (!block || typeof block !== 'object') { errors.push(`Block ${key} is invalid.`); continue; }
     if (block.id !== key) errors.push(`Block key/id mismatch for ${key}.`);
-    if (!isPrismBlockType(block.type)) { errors.push(`Unknown block type for ${key}.`); continue; }
-    if (!isPrismBlockSize(block.size)) { errors.push(`Invalid block size for ${key}.`); continue; }
-    if (!PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(block.size)) {
-      errors.push(`Unsupported size ${block.size} for block type ${block.type}.`);
-    }
+    if (!isPrismBlockType(block.type)) errors.push(`Unknown block type for ${key}.`);
+    if (!block.settings || typeof block.settings !== 'object' || Array.isArray(block.settings)) errors.push(`Block ${key} settings must be an object.`);
   }
 
+  const blockMembership = new Map<string, string>();
   for (const [key, section] of Object.entries(sections)) {
     if (!section || typeof section !== 'object') { errors.push(`Section ${key} is invalid.`); continue; }
     if (section.id !== key) errors.push(`Section key/id mismatch for ${key}.`);
     if (!Array.isArray(section.blockIds)) { errors.push(`Section ${key} blockIds must be an array.`); continue; }
-    for (const blockId of section.blockIds) if (!blocks[blockId]) errors.push(`Section ${key} references missing block ${blockId}.`);
+    if (new Set(section.blockIds).size !== section.blockIds.length) errors.push(`Section ${key} contains duplicate block IDs.`);
+    for (const blockId of section.blockIds) {
+      if (!blocks[blockId]) errors.push(`Section ${key} references missing block ${blockId}.`);
+      const existing = blockMembership.get(blockId);
+      if (existing && existing !== key) errors.push(`Block ${blockId} belongs to multiple sections.`);
+      else blockMembership.set(blockId, key);
+    }
+  }
+  for (const blockId of Object.keys(blocks)) {
+    if (!blockMembership.has(blockId)) errors.push(`Block ${blockId} does not belong to a section.`);
   }
 
   for (const page of doc.pages ?? []) {
     if (!page || typeof page !== 'object' || !Array.isArray(page.sectionIds)) { errors.push('Invalid page definition.'); continue; }
+    if (new Set(page.sectionIds).size !== page.sectionIds.length) errors.push(`Page ${page.id} contains duplicate sections.`);
     for (const sectionId of page.sectionIds) if (!sections[sectionId]) errors.push(`Page ${page.id} references missing section ${sectionId}.`);
   }
 
@@ -210,16 +220,38 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         errors.push(`Missing or invalid ${breakpoint} layout.`);
         continue;
       }
+      if (new Set(layout.sectionOrder).size !== layout.sectionOrder.length) errors.push(`Duplicate sections in ${breakpoint} sectionOrder.`);
+      for (const sectionId of layout.sectionOrder) if (!sections[sectionId]) errors.push(`${breakpoint} sectionOrder references missing section ${sectionId}.`);
+
       const columns = PRISM_COLUMNS[breakpoint];
       const seen = new Set<string>();
       for (const p of layout.placements) {
         if (seen.has(p.blockId)) errors.push(`Duplicate ${breakpoint} placement for ${p.blockId}.`);
         seen.add(p.blockId);
-        if (!blocks[p.blockId]) errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+
+        const block = blocks[p.blockId];
+        if (!block) {
+          errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+        } else if (isPrismBlockType(block.type)) {
+          if (!isPrismBlockSize(p.size) || !PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(p.size)) {
+            errors.push(`Unsupported ${breakpoint} size ${String(p.size)} for block type ${block.type}.`);
+          } else {
+            const expected = spanForBlock(block.type, p.size, breakpoint);
+            if (p.w !== expected.w || p.h !== expected.h) {
+              errors.push(`Span mismatch for ${p.blockId} at ${breakpoint}: ${p.size} expects ${expected.w}x${expected.h}.`);
+            }
+          }
+        }
+
         if (!sections[p.sectionId]) errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
+        else if (!sections[p.sectionId]!.blockIds.includes(p.blockId)) errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
+
         if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
         if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
       }
+
+      for (const blockId of Object.keys(blocks)) if (!seen.has(blockId)) errors.push(`Missing ${breakpoint} placement for ${blockId}.`);
+
       for (let i = 0; i < layout.placements.length; i += 1) {
         for (let j = i + 1; j < layout.placements.length; j += 1) {
           const a = layout.placements[i]!;
