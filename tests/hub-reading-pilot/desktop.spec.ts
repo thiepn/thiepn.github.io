@@ -19,6 +19,9 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
 });
 test('explicit same-account sharing verifies matching Library state and exposes only the bounded account-synced projection',async({page})=>{
  const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
+ const messages=await page.evaluate(()=>(window as any).__libraryMessages);
+ const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
+ expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
@@ -39,6 +42,9 @@ test('explicit same-account sharing verifies matching Library state and exposes 
 
 test('divergent cloud progress never replaces the exact local Continue position',async({page})=>{
  const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);f.driftAccount();await seedAccountAwareReading(page);await connect(page);
+ const messages=await page.evaluate(()=>(window as any).__libraryMessages);
+ const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
+ expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
  await expect(page.locator('[data-library-freshness]')).toContainText('This browser');
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
