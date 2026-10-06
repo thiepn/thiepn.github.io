@@ -35,10 +35,20 @@ test('backgrounding ends the pilot; returning requires a fresh join',async({page
  await fixture(page);await seed(page);await connect(page);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
  await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
+ await expect(page.locator('[data-reading-pilot-status]')).toContainText('Welcome back');await connect(page);await expect(page.locator('[data-library-items]')).toContainText('Current 20%');
 });
 
 test('consented empty progress offers a reading next step and clears on exit',async({page})=>{
  await fixture(page);await seed(page);await page.evaluate(()=>new Promise<void>((resolve,reject)=>{const r=indexedDB.open('thiepn-library',9);r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('progress','readwrite');tx.objectStore('progress').clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}));
  await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeVisible();await expect(page.getByRole('link',{name:'Browse Library',exact:true})).toHaveAttribute('href','/library/');await expect(page.locator('[data-library-items]')).toBeEmpty();
  await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+});
+
+test('connection controls stay busy during a delayed check and exit cancels it',async({page})=>{
+ const f=await fixture(page);await seed(page);await connect(page);f.hold();
+ await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
+ await expect(page.locator('[data-library-connect]')).toBeDisabled();await expect(page.locator('[data-library-refresh]')).toBeDisabled();await expect(page.locator('[data-private-library]')).toHaveAttribute('aria-busy','true');
+ await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);
+ await expect(page.locator('[data-library-connect]')).toBeEnabled();f.release();
+ await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
