@@ -1,0 +1,37 @@
+---
+const blocks = [
+  ['block-continue', 'Continue'],
+  ['block-now', 'Now'],
+  ['block-apps', 'Apps'],
+  ['block-study', 'Study'],
+  ['block-recent', 'Recent'],
+] as const;
+---
+
+<div class="prism-edit-toolbar" data-prism-edit-toolbar hidden role="toolbar" aria-label="Customize Home">
+  <button type="button" data-prism-layout-open>Layout</button>
+  <button type="button" data-prism-undo disabled>Undo</button>
+  <button type="button" class="prism-edit-toolbar__done" data-prism-edit-done>Done</button>
+  <span class="prism-edit-toolbar__status" data-prism-edit-status role="status" aria-live="polite"></span>
+</div>
+
+<dialog class="prism-layout-dialog" id="prism-layout-dialog" data-prism-layout-dialog aria-labelledby="prism-layout-title">
+  <div class="prism-layout-dialog__surface">
+    <header>
+      <div>
+        <p>Home layout</p>
+        <h2 id="prism-layout-title">Visible blocks</h2>
+      </div>
+      <button type="button" data-prism-layout-close>Close</button>
+    </header>
+    <p class="prism-layout-dialog__intro">Choose which blocks are visible. Hidden blocks keep their layout and settings.</p>
+    <div class="prism-layout-dialog__blocks">
+      {blocks.map(([id, title]) => (
+        <label>
+          <span>{title}</span>
+          <input type="checkbox" value={id} data-prism-block-visibility />
+        </label>
+      ))}
+    </div>
+  </div>
+</dialog>
