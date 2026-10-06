@@ -20,13 +20,15 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
 test('explicit same-account sharing reconciles in Library and exposes only the bounded account-synced projection',async({page})=>{
  const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
+ await expect(page.locator('[data-library-items]')).toContainText('Current 60% · furthest 85%');
  const results=await page.evaluate(()=>(window as any).__results);
  expect(results.at(-1)?.coverage).toBe('account-synced');
  const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
  expect(f.calls.some(call=>call.url.includes('/auth/v1/user'))).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/rest/v1/account_app_connections'))).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state'))).toBe(true);
- expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/sync_thiepn_library_state'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
+ expect(f.calls.filter(call=>new URL(call.url).origin==='https://hycegznamzjhwinegaai.supabase.co').every(call=>call.method==='GET')).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/storage/v1/'))).toBe(false);
  const href=await page.locator('[data-library-items] a').first().getAttribute('href');
  expect(href).toContain('release=');expect(href).not.toContain('CFI');
