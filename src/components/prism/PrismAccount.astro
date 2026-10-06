@@ -1,0 +1,70 @@
+---
+interface Props {
+  returnTo?: string;
+}
+const { returnTo = '/home/' } = Astro.props;
+---
+
+<dialog
+  class="prism-account-dialog"
+  id="prism-account-dialog"
+  data-hub-account
+  data-auth-return={returnTo}
+  aria-labelledby="prism-account-title"
+>
+  <div class="prism-account-dialog__surface">
+    <header class="prism-account-dialog__header">
+      <div>
+        <p class="prism-account-dialog__eyebrow">THIEPN</p>
+        <h2 id="prism-account-title">Account</h2>
+      </div>
+      <button type="button" class="prism-account-dialog__close" data-prism-account-close aria-label="Close account">Close</button>
+    </header>
+
+    <p class="prism-account-dialog__status" data-auth-status role="status">Checking your Hub session…</p>
+
+    <div class="prism-account-dialog__actions">
+      <button type="button" data-auth-login hidden>Sign in</button>
+      <button type="button" data-auth-switch hidden>Switch account</button>
+      <button type="button" data-auth-logout hidden>Sign out of Hub</button>
+      <button type="button" data-auth-retry hidden>Try again</button>
+      <a href="https://account.thiepn.dev/" rel="noreferrer">Open Account</a>
+    </div>
+
+    <p class="prism-account-dialog__meta">Hub uses your verified THIEPN Account session. App data remains subject to each connected provider's permissions.</p>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('#prism-account-dialog');
+  if (dialog) {
+    const triggers = document.querySelectorAll<HTMLElement>('[data-prism-account-open]');
+    const close = dialog.querySelector<HTMLButtonElement>('[data-prism-account-close]');
+    let returnFocus: HTMLElement | null = null;
+
+    const openDialog = (trigger: HTMLElement) => {
+      returnFocus = trigger;
+      if (!dialog.open) {
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      }
+      close?.focus();
+    };
+
+    const closeDialog = () => {
+      if (!dialog.open) return;
+      if (typeof dialog.close === 'function') dialog.close();
+      else {
+        dialog.removeAttribute('open');
+        dialog.dispatchEvent(new Event('close'));
+      }
+    };
+
+    triggers.forEach((trigger) => trigger.addEventListener('click', () => openDialog(trigger)));
+    close?.addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener('close', () => returnFocus?.focus());
+  }
+</script>
