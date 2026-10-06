@@ -1,0 +1,289 @@
+/* Prism Edit Mode: builder chrome exists only while explicitly customizing. */
+.prism-block {
+  position: relative;
+}
+
+.prism-edit-toolbar[hidden],
+.prism-layout-dialog:not([open]) {
+  display: none;
+}
+
+.prism-edit-toolbar {
+  position: fixed;
+  z-index: 50;
+  left: calc(50% + (var(--prism-shell-rail, 0px) / 2));
+  bottom: 24px;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  transform: translateX(-50%);
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 14%);
+  backdrop-filter: blur(14px);
+}
+
+.prism-edit-toolbar button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: 540 12.5px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-edit-toolbar button:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-edit-toolbar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prism-edit-toolbar button:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.prism-edit-toolbar .prism-edit-toolbar__done {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+.prism-edit-toolbar__status {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-prism-editing='true'] .prism-home {
+  --prism-edit-outline: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+html[data-prism-editing='true'] .prism-block:not([hidden]) {
+  outline: 1px solid var(--prism-edit-outline);
+  outline-offset: 4px;
+  border-radius: var(--prism-radius-md);
+  cursor: default;
+}
+
+html[data-prism-editing='true'] .prism-block:not([hidden]):hover,
+html[data-prism-editing='true'] .prism-block:not([hidden]):focus {
+  outline-color: color-mix(in srgb, var(--accent) 44%, var(--prism-edit-outline));
+}
+
+html[data-prism-editing='true'] .prism-block[data-prism-selected='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.prism-block-edit-controls {
+  position: absolute;
+  z-index: 12;
+  top: 8px;
+  right: 8px;
+  display: none;
+  min-height: 38px;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+html[data-prism-editing='true'] .prism-block[data-prism-selected='true'] > .prism-block-edit-controls {
+  display: flex;
+}
+
+.prism-block-edit-controls button,
+.prism-block-edit-controls select {
+  min-width: 36px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: 540 12px/1 var(--font-ui);
+}
+
+.prism-block-edit-controls button {
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.prism-block-edit-controls select {
+  padding: 0 5px;
+  cursor: pointer;
+}
+
+.prism-block-edit-controls :is(button,select):hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-block-edit-controls :is(button,select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.prism-block-edit-controls :is(button,select):disabled {
+  opacity: .38;
+  cursor: default;
+}
+
+.prism-layout-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-1);
+  box-shadow: 0 18px 56px rgb(0 0 0 / 18%);
+  color: var(--ink);
+}
+
+.prism-layout-dialog::backdrop {
+  background: rgb(7 10 14 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+.prism-layout-dialog__surface {
+  padding: 20px;
+}
+
+.prism-layout-dialog header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prism-layout-dialog header p {
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.prism-layout-dialog h2 {
+  margin-top: 3px;
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 26px;
+}
+
+.prism-layout-dialog header button {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+.prism-layout-dialog__intro {
+  margin-top: 20px;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.prism-layout-dialog__blocks {
+  display: grid;
+  margin-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.prism-layout-dialog__blocks label {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+
+.prism-layout-dialog__blocks input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.prism-layout-dialog :is(button,input):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  html[data-prism-editing='true'] .prism-mobile-nav {
+    display: none;
+  }
+
+  .prism-edit-toolbar {
+    left: 12px;
+    right: 12px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    justify-content: space-between;
+    transform: none;
+    border-radius: 14px;
+  }
+
+  .prism-edit-toolbar button {
+    min-height: 40px;
+  }
+
+  .prism-edit-toolbar__status {
+    display: none;
+  }
+
+  .prism-block-edit-controls {
+    top: 6px;
+    right: 6px;
+  }
+
+  .prism-block-edit-controls button,
+  .prism-block-edit-controls select {
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .prism-layout-dialog {
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-edit-toolbar,
+  .prism-block-edit-controls {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .prism-edit-toolbar,
+  .prism-block-edit-controls,
+  .prism-layout-dialog {
+    border-color: CanvasText;
+  }
+
+  html[data-prism-editing='true'] .prism-block[data-prism-selected='true'] {
+    outline-color: Highlight;
+  }
+}
