@@ -1,0 +1,234 @@
+import {
+  PRISM_BLOCK_REGISTRY,
+  PRISM_BREAKPOINTS,
+  PRISM_COLUMNS,
+  isPrismBlockSize,
+  isPrismBlockType,
+  type PrismBlockSize,
+  type PrismBlockType,
+  type PrismBreakpoint,
+} from './block-registry';
+
+export const HOME_DOCUMENT_SCHEMA_VERSION = 2 as const;
+
+export interface HomeBlock {
+  id: string;
+  type: PrismBlockType;
+  size: PrismBlockSize;
+  hidden?: boolean;
+  settings: Record<string, unknown>;
+}
+
+export interface HomeSection {
+  id: string;
+  blockIds: string[];
+}
+
+export interface HomePage {
+  id: string;
+  sectionIds: string[];
+}
+
+export interface HomePlacement {
+  blockId: string;
+  sectionId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface HomeResponsiveLayout {
+  sectionOrder: string[];
+  placements: HomePlacement[];
+}
+
+export interface HomeAppearance {
+  theme: 'prism';
+  mode: 'system' | 'light' | 'dark';
+  density: 'compact' | 'balanced' | 'comfortable';
+  intensity: 'quiet' | 'balanced' | 'rich';
+  motion: 'reduced' | 'balanced' | 'expressive';
+  surface: 'default';
+  cornerStyle: 'default';
+  iconStyle: 'rich' | 'mono';
+}
+
+export interface HomeDocumentV2 {
+  schemaVersion: typeof HOME_DOCUMENT_SCHEMA_VERSION;
+  pages: HomePage[];
+  sections: Record<string, HomeSection>;
+  blocks: Record<string, HomeBlock>;
+  layouts: Record<PrismBreakpoint, HomeResponsiveLayout>;
+  appearance: HomeAppearance;
+  preferences: { customizeMobileSeparately: boolean };
+}
+
+const IDS = {
+  page: 'home',
+  start: 'section-start',
+  apps: 'section-apps',
+  activity: 'section-activity',
+  continue: 'block-continue',
+  now: 'block-now',
+  appsBlock: 'block-apps',
+  study: 'block-study',
+  recent: 'block-recent',
+} as const;
+
+function placement(
+  blockId: string,
+  sectionId: string,
+  x: number,
+  y: number,
+  breakpoint: PrismBreakpoint,
+  type: PrismBlockType,
+): HomePlacement {
+  const { w, h } = PRISM_BLOCK_REGISTRY[type].defaultSpan[breakpoint];
+  return { blockId, sectionId, x, y, w, h };
+}
+
+export function createDefaultHomeDocument(): HomeDocumentV2 {
+  return {
+    schemaVersion: HOME_DOCUMENT_SCHEMA_VERSION,
+    pages: [{ id: IDS.page, sectionIds: [IDS.start, IDS.apps, IDS.activity] }],
+    sections: {
+      [IDS.start]: { id: IDS.start, blockIds: [IDS.continue, IDS.now] },
+      [IDS.apps]: { id: IDS.apps, blockIds: [IDS.appsBlock] },
+      [IDS.activity]: { id: IDS.activity, blockIds: [IDS.study, IDS.recent] },
+    },
+    blocks: {
+      [IDS.continue]: { id: IDS.continue, type: 'continue', size: PRISM_BLOCK_REGISTRY.continue.defaultSize, settings: {} },
+      [IDS.now]: { id: IDS.now, type: 'now', size: PRISM_BLOCK_REGISTRY.now.defaultSize, settings: {} },
+      [IDS.appsBlock]: { id: IDS.appsBlock, type: 'apps', size: PRISM_BLOCK_REGISTRY.apps.defaultSize, settings: {} },
+      [IDS.study]: { id: IDS.study, type: 'study', size: PRISM_BLOCK_REGISTRY.study.defaultSize, settings: {} },
+      [IDS.recent]: { id: IDS.recent, type: 'recent', size: PRISM_BLOCK_REGISTRY.recent.defaultSize, settings: {} },
+    },
+    layouts: {
+      desktop: {
+        sectionOrder: [IDS.start, IDS.apps, IDS.activity],
+        placements: [
+          placement(IDS.continue, IDS.start, 0, 0, 'desktop', 'continue'),
+          placement(IDS.now, IDS.start, 8, 0, 'desktop', 'now'),
+          placement(IDS.appsBlock, IDS.apps, 0, 0, 'desktop', 'apps'),
+          placement(IDS.study, IDS.activity, 0, 0, 'desktop', 'study'),
+          placement(IDS.recent, IDS.activity, 7, 0, 'desktop', 'recent'),
+        ],
+      },
+      tablet: {
+        sectionOrder: [IDS.start, IDS.apps, IDS.activity],
+        placements: [
+          placement(IDS.continue, IDS.start, 0, 0, 'tablet', 'continue'),
+          placement(IDS.now, IDS.start, 5, 0, 'tablet', 'now'),
+          placement(IDS.appsBlock, IDS.apps, 0, 0, 'tablet', 'apps'),
+          placement(IDS.study, IDS.activity, 0, 0, 'tablet', 'study'),
+          placement(IDS.recent, IDS.activity, 5, 0, 'tablet', 'recent'),
+        ],
+      },
+      mobile: {
+        sectionOrder: [IDS.start, IDS.apps, IDS.activity],
+        placements: [
+          placement(IDS.continue, IDS.start, 0, 0, 'mobile', 'continue'),
+          placement(IDS.now, IDS.start, 0, 1, 'mobile', 'now'),
+          placement(IDS.appsBlock, IDS.apps, 0, 0, 'mobile', 'apps'),
+          placement(IDS.study, IDS.activity, 0, 0, 'mobile', 'study'),
+          placement(IDS.recent, IDS.activity, 0, 1, 'mobile', 'recent'),
+        ],
+      },
+    },
+    appearance: {
+      theme: 'prism',
+      mode: 'system',
+      density: 'balanced',
+      intensity: 'balanced',
+      motion: 'balanced',
+      surface: 'default',
+      cornerStyle: 'default',
+      iconStyle: 'rich',
+    },
+    preferences: { customizeMobileSeparately: false },
+  };
+}
+
+export interface HomeDocumentValidation {
+  valid: boolean;
+  errors: string[];
+}
+
+function boxesOverlap(a: HomePlacement, b: HomePlacement): boolean {
+  if (a.sectionId !== b.sectionId) return false;
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+export function validateHomeDocument(input: unknown): HomeDocumentValidation {
+  const errors: string[] = [];
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { valid: false, errors: ['HomeDocument must be an object.'] };
+  }
+
+  const doc = input as Partial<HomeDocumentV2>;
+  if (doc.schemaVersion !== HOME_DOCUMENT_SCHEMA_VERSION) errors.push('Unsupported HomeDocument schemaVersion.');
+  if (!doc.blocks || typeof doc.blocks !== 'object' || Array.isArray(doc.blocks)) errors.push('blocks must be an object.');
+  if (!doc.sections || typeof doc.sections !== 'object' || Array.isArray(doc.sections)) errors.push('sections must be an object.');
+  if (!Array.isArray(doc.pages) || doc.pages.length === 0) errors.push('pages must contain at least one page.');
+
+  const blocks = doc.blocks && typeof doc.blocks === 'object' && !Array.isArray(doc.blocks)
+    ? doc.blocks as Record<string, HomeBlock>
+    : {};
+  const sections = doc.sections && typeof doc.sections === 'object' && !Array.isArray(doc.sections)
+    ? doc.sections as Record<string, HomeSection>
+    : {};
+
+  for (const [key, block] of Object.entries(blocks)) {
+    if (!block || typeof block !== 'object') { errors.push(`Block ${key} is invalid.`); continue; }
+    if (block.id !== key) errors.push(`Block key/id mismatch for ${key}.`);
+    if (!isPrismBlockType(block.type)) { errors.push(`Unknown block type for ${key}.`); continue; }
+    if (!isPrismBlockSize(block.size)) { errors.push(`Invalid block size for ${key}.`); continue; }
+    if (!PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(block.size)) {
+      errors.push(`Unsupported size ${block.size} for block type ${block.type}.`);
+    }
+  }
+
+  for (const [key, section] of Object.entries(sections)) {
+    if (!section || typeof section !== 'object') { errors.push(`Section ${key} is invalid.`); continue; }
+    if (section.id !== key) errors.push(`Section key/id mismatch for ${key}.`);
+    if (!Array.isArray(section.blockIds)) { errors.push(`Section ${key} blockIds must be an array.`); continue; }
+    for (const blockId of section.blockIds) if (!blocks[blockId]) errors.push(`Section ${key} references missing block ${blockId}.`);
+  }
+
+  for (const page of doc.pages ?? []) {
+    if (!page || typeof page !== 'object' || !Array.isArray(page.sectionIds)) { errors.push('Invalid page definition.'); continue; }
+    for (const sectionId of page.sectionIds) if (!sections[sectionId]) errors.push(`Page ${page.id} references missing section ${sectionId}.`);
+  }
+
+  if (!doc.layouts || typeof doc.layouts !== 'object') {
+    errors.push('layouts must be present.');
+  } else {
+    for (const breakpoint of PRISM_BREAKPOINTS) {
+      const layout = doc.layouts[breakpoint];
+      if (!layout || !Array.isArray(layout.sectionOrder) || !Array.isArray(layout.placements)) {
+        errors.push(`Missing or invalid ${breakpoint} layout.`);
+        continue;
+      }
+      const columns = PRISM_COLUMNS[breakpoint];
+      const seen = new Set<string>();
+      for (const p of layout.placements) {
+        if (seen.has(p.blockId)) errors.push(`Duplicate ${breakpoint} placement for ${p.blockId}.`);
+        seen.add(p.blockId);
+        if (!blocks[p.blockId]) errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+        if (!sections[p.sectionId]) errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
+        if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
+        if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
+      }
+      for (let i = 0; i < layout.placements.length; i += 1) {
+        for (let j = i + 1; j < layout.placements.length; j += 1) {
+          const a = layout.placements[i]!;
+          const b = layout.placements[j]!;
+          if (boxesOverlap(a, b)) errors.push(`Overlapping ${breakpoint} placements: ${a.blockId} and ${b.blockId}.`);
+        }
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
