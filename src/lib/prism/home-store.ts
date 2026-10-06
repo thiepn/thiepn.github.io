@@ -96,6 +96,8 @@ export class HomeStore {
   #document: HomeDocumentV2;
   #persistence: HomePersistence;
   #listeners = new Set<HomeListener>();
+  #history: HomeDocumentV2[] = [];
+  #maxHistory = 50;
 
   constructor(document: HomeDocumentV2, persistence: HomePersistence) {
     const validation = validateHomeDocument(document);
@@ -113,21 +115,58 @@ export class HomeStore {
     return () => this.#listeners.delete(listener);
   }
 
-  async replace(next: HomeDocumentV2): Promise<void> {
+  canUndo(): boolean {
+    return this.#history.length > 0;
+  }
+
+  clearHistory(): void {
+    this.#history = [];
+  }
+
+  #publish(): void {
+    for (const listener of this.#listeners) listener(this.getSnapshot());
+  }
+
+  async replace(next: HomeDocumentV2, options: { recordHistory?: boolean } = {}): Promise<void> {
     const candidate = structuredClone(next);
     const validation = validateHomeDocument(candidate);
     if (!validation.valid) throw new Error(`Invalid HomeDocument mutation: ${validation.errors.join(' | ')}`);
     const raw = JSON.stringify(candidate);
     if (new TextEncoder().encode(raw).byteLength > MAX_HOME_DOCUMENT_BYTES) throw new Error('HomeDocument exceeds storage budget');
 
+    const current = this.getSnapshot();
+    const changed = JSON.stringify(current) !== raw;
+
     await this.#persistence.save(raw);
+    if (!changed) return;
+
+    if (options.recordHistory !== false) {
+      this.#history.push(current);
+      if (this.#history.length > this.#maxHistory) this.#history.splice(0, this.#history.length - this.#maxHistory);
+    }
     this.#document = candidate;
-    for (const listener of this.#listeners) listener(this.getSnapshot());
+    this.#publish();
   }
 
   async mutate(mutator: (draft: HomeDocumentV2) => void): Promise<void> {
     const candidate = this.getSnapshot();
     mutator(candidate);
     await this.replace(candidate);
+  }
+
+  async undo(): Promise<boolean> {
+    const previous = this.#history.at(-1);
+    if (!previous) return false;
+
+    const candidate = structuredClone(previous);
+    const validation = validateHomeDocument(candidate);
+    if (!validation.valid) throw new Error(`Invalid HomeDocument history: ${validation.errors.join(' | ')}`);
+    const raw = JSON.stringify(candidate);
+
+    await this.#persistence.save(raw);
+    this.#history.pop();
+    this.#document = candidate;
+    this.#publish();
+    return true;
   }
 }
