@@ -115,10 +115,10 @@ test('stale release cannot silently open the current reader', async ({page}) => 
 });
 test('owner consent defaults off, persists separate choices and revokes all sharing', async ({page}) => {
   await fixture(page); await page.goto(HUB+'/library/hub');
-  const checks = page.locator('[data-hub-consent] input'); for (let i=0;i<4;i++) await expect(checks.nth(i)).not.toBeChecked();
+  const checks = page.locator('[data-hub-consent] input'); for (let i=0;i<5;i++) await expect(checks.nth(i)).not.toBeChecked();
   await page.getByLabel('Continue reading', {exact:true}).check(); await page.getByRole('button',{name:'Save choices',exact:true}).click();
   await expect(page.locator('[data-hub-status]')).toContainText('Choices saved');
-  const consent = await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)!),KEY); expect(consent.permissions).toEqual(['continue']); expect(consent.includePersonal).toBe(false);
+  const consent = await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)!),KEY); expect(consent.schemaVersion).toBe(2); expect(consent.permissions).toEqual(['continue']); expect(consent.includePersonal).toBe(false); expect(consent.includeAccount).toBe(false);
   await page.getByRole('button',{name:'Revoke all sharing',exact:true}).click(); expect(await page.evaluate(KEY=>localStorage.getItem(KEY),KEY)).toBeNull();
 });
 test('forged parent-window result does not replace owner progress', async ({page}) => {
