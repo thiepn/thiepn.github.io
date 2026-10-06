@@ -4,6 +4,7 @@ import PrismHome from '../../../components/prism/PrismHome.astro';
 import { getHubProjects } from '../../../lib/hub';
 import '../../../styles/prism/tokens.css';
 import '../../../styles/prism/home.css';
+import '../../../styles/prism/shell.css';
 
 const entries = await getHubProjects();
 ---
@@ -11,6 +12,7 @@ const entries = await getHubProjects();
   title="Prism Home Preview — THIEPN"
   description="Internal preview of the THIEPN Prism Home."
   portal
+  prismShell
   noindex
   hideFooter
 >
