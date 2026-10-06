@@ -12,13 +12,15 @@ export interface BlockSpan {
   h: number;
 }
 
+type SizeSpans = Partial<Record<PrismBlockSize, Record<PrismBreakpoint, BlockSpan>>>;
+
 export interface PrismBlockDefinition {
   type: PrismBlockType;
   title: string;
   category: 'core' | 'study' | 'activity';
   supportedSizes: readonly PrismBlockSize[];
   defaultSize: PrismBlockSize;
-  defaultSpan: Record<PrismBreakpoint, BlockSpan>;
+  sizeSpans: SizeSpans;
   surface: 'plain' | 'soft' | 'focus';
   emphasis: 'quiet' | 'normal' | 'focus';
 }
@@ -36,7 +38,11 @@ export const PRISM_BLOCK_REGISTRY: Record<PrismBlockType, PrismBlockDefinition> 
     category: 'core',
     supportedSizes: ['m', 'l', 'xl'],
     defaultSize: 'l',
-    defaultSpan: { desktop: { w: 8, h: 1 }, tablet: { w: 5, h: 1 }, mobile: { w: 4, h: 1 } },
+    sizeSpans: {
+      m: { desktop: { w: 4, h: 1 }, tablet: { w: 4, h: 1 }, mobile: { w: 4, h: 1 } },
+      l: { desktop: { w: 8, h: 1 }, tablet: { w: 5, h: 1 }, mobile: { w: 4, h: 1 } },
+      xl: { desktop: { w: 12, h: 1 }, tablet: { w: 8, h: 1 }, mobile: { w: 4, h: 1 } },
+    },
     surface: 'focus',
     emphasis: 'focus',
   },
@@ -46,7 +52,10 @@ export const PRISM_BLOCK_REGISTRY: Record<PrismBlockType, PrismBlockDefinition> 
     category: 'core',
     supportedSizes: ['s', 'm'],
     defaultSize: 'm',
-    defaultSpan: { desktop: { w: 4, h: 1 }, tablet: { w: 3, h: 1 }, mobile: { w: 4, h: 1 } },
+    sizeSpans: {
+      s: { desktop: { w: 3, h: 1 }, tablet: { w: 2, h: 1 }, mobile: { w: 4, h: 1 } },
+      m: { desktop: { w: 4, h: 1 }, tablet: { w: 3, h: 1 }, mobile: { w: 4, h: 1 } },
+    },
     surface: 'plain',
     emphasis: 'normal',
   },
@@ -56,7 +65,10 @@ export const PRISM_BLOCK_REGISTRY: Record<PrismBlockType, PrismBlockDefinition> 
     category: 'core',
     supportedSizes: ['l', 'xl'],
     defaultSize: 'xl',
-    defaultSpan: { desktop: { w: 12, h: 1 }, tablet: { w: 8, h: 1 }, mobile: { w: 4, h: 1 } },
+    sizeSpans: {
+      l: { desktop: { w: 8, h: 1 }, tablet: { w: 6, h: 1 }, mobile: { w: 4, h: 1 } },
+      xl: { desktop: { w: 12, h: 1 }, tablet: { w: 8, h: 1 }, mobile: { w: 4, h: 1 } },
+    },
     surface: 'plain',
     emphasis: 'normal',
   },
@@ -66,7 +78,10 @@ export const PRISM_BLOCK_REGISTRY: Record<PrismBlockType, PrismBlockDefinition> 
     category: 'study',
     supportedSizes: ['m', 'l'],
     defaultSize: 'l',
-    defaultSpan: { desktop: { w: 7, h: 1 }, tablet: { w: 5, h: 1 }, mobile: { w: 4, h: 1 } },
+    sizeSpans: {
+      m: { desktop: { w: 5, h: 1 }, tablet: { w: 4, h: 1 }, mobile: { w: 4, h: 1 } },
+      l: { desktop: { w: 7, h: 1 }, tablet: { w: 5, h: 1 }, mobile: { w: 4, h: 1 } },
+    },
     surface: 'plain',
     emphasis: 'normal',
   },
@@ -76,7 +91,10 @@ export const PRISM_BLOCK_REGISTRY: Record<PrismBlockType, PrismBlockDefinition> 
     category: 'activity',
     supportedSizes: ['m', 'l'],
     defaultSize: 'm',
-    defaultSpan: { desktop: { w: 5, h: 1 }, tablet: { w: 3, h: 1 }, mobile: { w: 4, h: 1 } },
+    sizeSpans: {
+      m: { desktop: { w: 5, h: 1 }, tablet: { w: 3, h: 1 }, mobile: { w: 4, h: 1 } },
+      l: { desktop: { w: 7, h: 1 }, tablet: { w: 5, h: 1 }, mobile: { w: 4, h: 1 } },
+    },
     surface: 'plain',
     emphasis: 'quiet',
   },
@@ -88,4 +106,11 @@ export function isPrismBlockType(value: unknown): value is PrismBlockType {
 
 export function isPrismBlockSize(value: unknown): value is PrismBlockSize {
   return typeof value === 'string' && (PRISM_BLOCK_SIZES as readonly string[]).includes(value);
+}
+
+export function spanForBlock(type: PrismBlockType, size: PrismBlockSize, breakpoint: PrismBreakpoint): BlockSpan {
+  const definition = PRISM_BLOCK_REGISTRY[type];
+  const spans = definition.sizeSpans[size];
+  if (!spans || !definition.supportedSizes.includes(size)) throw new Error(`Unsupported size ${size} for block type ${type}`);
+  return spans[breakpoint];
 }
