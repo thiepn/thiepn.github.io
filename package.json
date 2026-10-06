@@ -15,7 +15,7 @@
     "validate": "node scripts/validate-product-registry-v2.mjs && node scripts/validate-catalogue.mjs && node scripts/validate-studio.mjs && node scripts/validate-phase15.mjs && node scripts/validate-media.mjs && node scripts/validate-links.mjs",
     "test": "vitest run tests/unit",
     "test:unit": "vitest run tests/unit",
-    "test:e2e": "playwright test -c playwright.studio.config.ts",
+    "test:e2e": "playwright test -c playwright.studio.config.ts",\n    "test:prism": "playwright test -c playwright.studio.config.ts tests/studio/prism-home.spec.ts",
     "test:a11y": "playwright test -c playwright.studio.config.ts -g accessibility",
     "audit:phase0": "npm run validate && npm run typecheck && npm run test && npm run build",
     "prebuild": "npm run catalogue:refresh && node scripts/prepare-showcase.mjs",
