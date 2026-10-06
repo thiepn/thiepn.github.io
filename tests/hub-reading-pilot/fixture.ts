@@ -87,7 +87,7 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
   driftAccount:()=>{accountDrift=true;},
  };
 }
-export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
+export async function join(page:Page){await page.getByRole('button',{name:'Connect Library',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
 export async function connect(page:Page){await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-items]')).toContainText(book.title);}
 export async function seed(page: Page, permissions = grant.permissions, personal = false, version = 9) {
   await page.evaluate(async ({ book, grant, KEY, INDEX, permissions, personal, version, FIXTURE_UPDATED }) => {
