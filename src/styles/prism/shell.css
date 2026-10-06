@@ -216,7 +216,7 @@ html[data-prism-shell='true'] #main-content {
   }
 
   .prism-topbar {
-    inset-left: 0;
+    left: 0;
     grid-template-columns: minmax(100px,1fr) minmax(240px,360px) minmax(80px,1fr);
   }
 }
