@@ -407,7 +407,7 @@ html[data-portal][data-theme='dark'] .prism-app {
   }
 
   .prism-continue__art {
-    inset-left: 34%;
+    left: 34%;
   }
 
   .prism-now {
