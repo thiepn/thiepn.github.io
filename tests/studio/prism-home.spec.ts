@@ -112,3 +112,43 @@ test('Prism Dark remains graphite-first', async ({ page }) => {
   const canvas = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim());
   expect(canvas.toLowerCase()).toBe('#0c0f13');
 });
+
+
+test('Prism migrates legacy guest preferences into V2 without deleting V1', async ({ page }) => {
+  const legacy = JSON.stringify({
+    version: 1,
+    pins: ['mathlab', 'notes'],
+    density: 'comfortable',
+    home: {
+      modules: ['today', 'continue', 'study'],
+      mode: 'today',
+      focus: 'study',
+      timezone: 'Europe/Berlin',
+      hidden: false,
+    },
+  });
+
+  await page.addInitScript((value) => {
+    localStorage.setItem('thiepn:hub-preferences', value);
+    localStorage.removeItem('thiepn:home-document:v2');
+  }, legacy);
+
+  await page.goto(route);
+  const home = page.locator('[data-prism-home]');
+  await expect(home).toHaveAttribute('data-prism-home-source', 'v1');
+  await expect(home).toHaveAttribute('data-density', 'comfortable');
+  await expect(home).toHaveAttribute('data-prism-migration', 'persisted');
+
+  const slugs = await page.locator('.prism-app').evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLElement).dataset.prismApp),
+  );
+  expect(slugs.slice(0, 2)).toEqual(['mathlab', 'notes']);
+
+  const stored = await page.evaluate(() => ({
+    legacy: localStorage.getItem('thiepn:hub-preferences'),
+    v2: localStorage.getItem('thiepn:home-document:v2'),
+  }));
+  expect(stored.legacy).toBe(legacy);
+  expect(stored.v2).not.toBeNull();
+  expect(JSON.parse(stored.v2!).schemaVersion).toBe(2);
+});
