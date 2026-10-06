@@ -18,7 +18,7 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toContain(book.title);
 });
 test('explicit same-account sharing reconciles in Library and exposes only the bounded account-synced projection',async({page})=>{
- const f=await fixture(page);await seed(page);f.enableAccountMock();await seedAccountAwareReading(page);await connect(page);
+ const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
  const results=await page.evaluate(()=>(window as any).__results);
  expect(results.at(-1)?.coverage).toBe('account-synced');
