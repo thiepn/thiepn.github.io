@@ -90,7 +90,7 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
 export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
 export async function connect(page:Page){await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-items]')).toContainText(book.title);}
 export async function seed(page: Page, permissions = grant.permissions, personal = false, version = 9) {
-  await page.evaluate(async ({ book, grant, KEY, INDEX, permissions, personal, version }) => {
+  await page.evaluate(async ({ book, grant, KEY, INDEX, permissions, personal, version, FIXTURE_UPDATED }) => {
     localStorage.setItem(KEY, JSON.stringify({ ...grant, permissions, includePersonal: personal }));
     const put = (name: string, version: number, keyPath: string, rows: unknown[]) => new Promise<void>((resolve, reject) => {
       const open = indexedDB.open(name, version); open.onupgradeneeded = () => open.result.createObjectStore('progress', { keyPath });
