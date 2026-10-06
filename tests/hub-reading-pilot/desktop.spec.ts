@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {fixture,seed,join,connect,book} from './fixture';
+import {fixture,seed,seedAccountAwareReading,join,connect,book} from './fixture';
 test('join is optional, creates no owner load; absent consent yields no reading metadata',async({page})=>{
  const f=await fixture(page);await expect(page.locator('[data-private-library]')).toBeHidden();
  expect(f.calls.some(c=>c.url.includes('/library/hub/bridge'))).toBe(false);expect(await page.evaluate(()=>(window as any).__opens)).toEqual([]);
@@ -17,6 +17,21 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
  expect(await page.evaluate(()=>(window as any).__opens)).toEqual([]);expect(await page.evaluate(()=>JSON.stringify((window as any).__results))).not.toContain('SECRET');
  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toContain(book.title);
 });
+test('explicit same-account sharing reconciles in Library and exposes only the bounded account-synced projection',async({page})=>{
+ const f=await fixture(page);await seed(page);f.enableAccountMock();await seedAccountAwareReading(page);await connect(page);
+ await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
+ const results=await page.evaluate(()=>(window as any).__results);
+ expect(results.at(-1)?.coverage).toBe('account-synced');
+ const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
+ expect(f.calls.some(call=>call.url.includes('/auth/v1/user'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/account_app_connections'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/sync_thiepn_library_state'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/storage/v1/'))).toBe(false);
+ const href=await page.locator('[data-library-items] a').first().getAttribute('href');
+ expect(href).toContain('release=');expect(href).not.toContain('CFI');
+});
+
 test('ending, masking and reloading never restore a reading snapshot automatically',async({page})=>{
  await fixture(page);await seed(page);await connect(page);await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
  await connect(page);await page.getByRole('button',{name:'Hide Home',exact:true}).click();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();
