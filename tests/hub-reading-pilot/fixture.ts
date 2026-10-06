@@ -4,12 +4,13 @@ export const HUB='https://thiepn.dev';
 const SUPABASE='https://hycegznamzjhwinegaai.supabase.co';
 const OWNER=path.resolve(process.env.H21_LIBRARY_DIST??'../library/dist/library');
 const KEY='thiepn:library:hub-consent:v1', INDEX='thiepn:library:hub-personal-index:v1';
+const FIXTURE_UPDATED='2026-10-06T20:00:00.000Z';
 const catalogue=JSON.parse(fs.readFileSync(path.join(OWNER,'hub/bridge/index.html'),'utf8').match(/data-books="([^\"]+)"/)![1]!.replaceAll('&quot;','"').replaceAll('&#39;',"'").replaceAll('&amp;','&').replaceAll('&lt;','<').replaceAll('&gt;','>'));
 export const book=catalogue.find((b:any)=>b.format==='epub');
 const grant={schemaVersion:1,deviceId:'11111111-1111-4111-8111-111111111111',revision:'22222222-2222-4222-8222-222222222222',permissions:['summary','continue','search'],includePersonal:false};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.json')?'application/json':p.endsWith('.html')?'text/html':'application/octet-stream';
 export async function fixture(page:Page, options:{account?:boolean}={}){
- const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=options.account===true,release=()=>{};
+ const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=options.account===true,accountDrift=false,release=()=>{};
  await page.addInitScript(({account})=>{
    (window as any).__opens=[];(window as any).__results=[];
    if(account){
@@ -38,7 +39,7 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
     }
     if(u.pathname==='/rest/v1/account_app_connections') return route.fulfill({json:[{status:'connected'}]});
     if(u.pathname==='/rest/v1/library_sync_state') {
-      const updatedAt=new Date(Date.now()-250).toISOString();
+      const updatedAt=FIXTURE_UPDATED;
       return route.fulfill({json:[{state:{
         format:'thiepn-library-backup',
         schemaVersion:1,
@@ -54,8 +55,8 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
                 edition:book.edition,
                 releaseVersion:book.releaseVersion,
                 cfi:'epubcfi(/6/2[SECRET-CFI])',
-                percentage:.6,
-                furthestPercentage:.85,
+                percentage:accountDrift?.6:.2,
+                furthestPercentage:accountDrift?.85:.8,
                 updatedAt,
               }],
             },
@@ -83,6 +84,7 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
   hold:()=>{hold=true;},
   release:()=>{hold=false;release();},
   enableAccountMock:()=>{accountMock=true;},
+  driftAccount:()=>{accountDrift=true;},
  };
 }
 export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
@@ -94,13 +96,13 @@ export async function seed(page: Page, permissions = grant.permissions, personal
       const open = indexedDB.open(name, version); open.onupgradeneeded = () => open.result.createObjectStore('progress', { keyPath });
       open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result, tx = db.transaction('progress','readwrite'); rows.forEach(row => tx.objectStore('progress').put(row)); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error); };
     });
-    const updatedAt = new Date(Date.now()-1000).toISOString();
-    await put('thiepn-library', version, 'workId', [{ schemaVersion: 2, workId: book.workId, edition: book.edition, releaseVersion: book.releaseVersion, percentage: .2, furthestPercentage: .8, updatedAt, cfi: 'SECRET-CFI', chapterLabel: 'SECRET-CHAPTER' }, ...(personal ? [{ schemaVersion: 2, workId: 'personal:epub-fictional', edition: 1, releaseVersion: `local-${'a'.repeat(64)}`, percentage: .3, furthestPercentage: .4, updatedAt, cfi: 'PERSONAL-CFI' }] : [])]);
+    const updatedAt = FIXTURE_UPDATED;
+    await put('thiepn-library', version, 'workId', [{ schemaVersion: 2, workId: book.workId, edition: book.edition, releaseVersion: book.releaseVersion, percentage: .2, furthestPercentage: .8, updatedAt, cfi: 'epubcfi(/6/2[SECRET-CFI])', chapterLabel: 'SECRET-CHAPTER' }, ...(personal ? [{ schemaVersion: 2, workId: 'personal:epub-fictional', edition: 1, releaseVersion: `local-${'a'.repeat(64)}`, percentage: .3, furthestPercentage: .4, updatedAt, cfi: 'PERSONAL-CFI' }] : [])]);
     if (personal) {
       localStorage.setItem(INDEX, JSON.stringify([{ workId: 'personal:epub-fictional', title: 'Private fictional import', format: 'epub', edition: 1, releaseVersion: `local-${'a'.repeat(64)}`, slug: 'personal', personalId: 'epub-fictional' }]));
       await new Promise<void>((resolve, reject) => { const open = indexedDB.open('thiepn-library-personal-books',3); open.onupgradeneeded = () => open.result.createObjectStore('books',{keyPath:'id'}); open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result, tx = db.transaction('books','readwrite'); tx.objectStore('books').put({ id: 'epub-fictional', file: new TextEncoder().encode('SECRET-BOOK-BYTES').buffer }); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); }; }; });
     }
-  }, { book, grant, KEY, INDEX, permissions, personal, version });
+  }, { book, grant, KEY, INDEX, permissions, personal, version, FIXTURE_UPDATED });
 }
 
 
