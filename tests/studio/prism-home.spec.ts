@@ -68,7 +68,7 @@ test('Prism mobile order is Continue → Now → Apps → Study → Recent with 
     expect(boxes[index]!.y).toBeGreaterThan(boxes[index - 1]!.y);
   }
 
-  const icons = page.locator('.prism-app').slice(0, 4);
+  const icons = page.locator('.prism-app');
   const iconBoxes = await Promise.all(Array.from({ length: 4 }, (_, index) => icons.nth(index).boundingBox()));
   expect(iconBoxes.every(Boolean)).toBe(true);
   const firstRowY = iconBoxes[0]!.y;
