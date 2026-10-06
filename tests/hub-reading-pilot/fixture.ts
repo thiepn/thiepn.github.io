@@ -125,13 +125,24 @@ export async function seedAccountAwareReading(page: Page) {
       enabled:true,
       deviceId:'44444444-4444-4444-8444-444444444444',
     }));
+    const expiresAt=Math.floor(Date.now()/1000)+3600;
+    const encode=(value:unknown)=>btoa(JSON.stringify(value)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const accessToken=`${encode({alg:'HS256',typ:'JWT'})}.${encode({sub:accountId,exp:expiresAt,iat:expiresAt-3600,aud:'authenticated',role:'authenticated',session_id:accountId})}.fixture-signature`;
     localStorage.setItem('sb-hycegznamzjhwinegaai-auth-token',JSON.stringify({
-      access_token:'fixture-library-access-token',
+      access_token:accessToken,
       refresh_token:'fixture-library-refresh-token',
       token_type:'bearer',
       expires_in:3600,
-      expires_at:Math.floor(Date.now()/1000)+3600,
-      user:{id:accountId,aud:'authenticated',role:'authenticated',email:'reader@example.test'},
+      expires_at:expiresAt,
+      user:{
+        id:accountId,
+        aud:'authenticated',
+        role:'authenticated',
+        email:'reader@example.test',
+        app_metadata:{},
+        user_metadata:{},
+        created_at:'2026-01-01T00:00:00.000Z',
+      },
     }));
   },{KEY,accountId});
 }
