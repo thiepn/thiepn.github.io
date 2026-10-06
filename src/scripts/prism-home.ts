@@ -1,5 +1,6 @@
 import { hubIdentity } from './portal-auth';
 import type { HubIdentity } from '../lib/hub-auth';
+import type { PrismBreakpoint } from '../lib/prism/block-registry';
 import {
   bootstrapHomeDocument,
   createBrowserHomePersistence,
@@ -8,6 +9,7 @@ import {
   readLegacyPreference,
 } from '../lib/prism/home-store';
 import { createDefaultHomeDocument, type HomeDocumentV2 } from '../lib/prism/home-document';
+import { setActiveHomeStore } from '../lib/prism/home-runtime';
 
 interface PrismAppManifestItem {
   slug: string;
@@ -21,8 +23,12 @@ const root = document.querySelector<HTMLElement>('[data-prism-home]');
 if (root) {
   const manifestNode = root.querySelector<HTMLScriptElement>('[data-prism-app-manifest]');
   const appGrid = root.querySelector<HTMLElement>('.prism-app-grid');
-  let manifest: PrismAppManifestItem[] = [];
+  const sectionsRoot = root.querySelector<HTMLElement>('.prism-home__grid');
+  const defaultAppOrder = appGrid
+    ? Array.from(appGrid.querySelectorAll<HTMLElement>('[data-prism-app]')).map((node) => node.dataset.prismApp!).filter(Boolean)
+    : [];
 
+  let manifest: PrismAppManifestItem[] = [];
   try {
     const value: unknown = JSON.parse(manifestNode?.textContent ?? '[]');
     if (Array.isArray(value)) {
@@ -39,15 +45,24 @@ if (root) {
   const availableApps = manifest.map((app) => app.slug);
   let generation = 0;
   let store: HomeStore | null = null;
+  let unsubscribeStore: (() => void) | null = null;
+  let currentDocument = createDefaultHomeDocument();
+
+  function breakpoint(): PrismBreakpoint {
+    if (window.matchMedia('(max-width: 639px)').matches) return 'mobile';
+    if (window.matchMedia('(max-width: 1199px)').matches) return 'tablet';
+    return 'desktop';
+  }
 
   function fallbackMark(title: string) {
     return title.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('').slice(0, 2) || 'T';
   }
 
   function renderApps(order: unknown) {
-    if (!appGrid || !Array.isArray(order) || !order.every((slug) => typeof slug === 'string')) return;
+    if (!appGrid) return;
+    const requested = Array.isArray(order) && order.every((slug) => typeof slug === 'string') ? order : defaultAppOrder;
     const bySlug = new Map(manifest.map((app) => [app.slug, app]));
-    const selected = [...new Set(order)].flatMap((slug) => {
+    const selected = [...new Set(requested)].flatMap((slug) => {
       const app = bySlug.get(slug);
       return app ? [app] : [];
     });
@@ -72,14 +87,39 @@ if (root) {
       const label = document.createElement('span');
       label.className = 'prism-app__label';
       label.textContent = app.title;
-
       link.append(icon, label);
       return link;
     });
     appGrid.replaceChildren(...nodes);
   }
 
+  function applyResponsiveLayout(document: HomeDocumentV2) {
+    const active = breakpoint();
+    const layout = document.layouts[active];
+    root.dataset.prismBreakpoint = active;
+
+    if (sectionsRoot) {
+      const bySection = new Map(
+        Array.from(sectionsRoot.querySelectorAll<HTMLElement>(':scope > [data-prism-section]'))
+          .map((section) => [section.dataset.prismSection!, section] as const),
+      );
+      for (const sectionId of layout.sectionOrder) {
+        const section = bySection.get(sectionId);
+        if (section) sectionsRoot.append(section);
+      }
+    }
+
+    for (const placement of layout.placements) {
+      const block = root.querySelector<HTMLElement>(`[data-prism-block-id="${placement.blockId}"]`);
+      if (!block) continue;
+      block.dataset.prismSize = placement.size;
+      block.style.gridColumn = `${placement.x + 1} / span ${placement.w}`;
+      block.style.gridRow = `${placement.y + 1} / span ${placement.h}`;
+    }
+  }
+
   function applyDocument(document: HomeDocumentV2, source: string) {
+    currentDocument = structuredClone(document);
     root.dataset.density = document.appearance.density;
     root.dataset.prismHomeSource = source;
 
@@ -88,13 +128,33 @@ if (root) {
       block.hidden = id ? document.blocks[id]?.hidden === true : false;
     }
 
-    const appOrder = document.blocks['block-apps']?.settings.appOrder;
-    if (appOrder !== undefined) renderApps(appOrder);
+    for (const section of root.querySelectorAll<HTMLElement>('[data-prism-section]')) {
+      const blocks = Array.from(section.querySelectorAll<HTMLElement>('[data-prism-block-id]'));
+      section.hidden = blocks.length > 0 && blocks.every((block) => block.hidden);
+    }
+
+    applyResponsiveLayout(document);
+    renderApps(document.blocks['block-apps']?.settings.appOrder);
+  }
+
+  function attachStore(nextStore: HomeStore, source: string) {
+    unsubscribeStore?.();
+    store = nextStore;
+    setActiveHomeStore(nextStore);
+    applyDocument(nextStore.getSnapshot(), source);
+    unsubscribeStore = nextStore.subscribe((document) => applyDocument(document, 'v2'));
+  }
+
+  function detachStore() {
+    unsubscribeStore?.();
+    unsubscribeStore = null;
+    store = null;
+    setActiveHomeStore(null);
   }
 
   async function loadIdentity(identity: HubIdentity) {
     const current = ++generation;
-    store = null;
+    detachStore();
 
     if (identity.status === 'checking' || identity.status === 'unavailable') {
       applyDocument(createDefaultHomeDocument(), identity.status);
@@ -110,8 +170,7 @@ if (root) {
       if (current !== generation) return;
 
       const nextStore = new HomeStore(boot.document, persistence);
-      store = nextStore;
-      applyDocument(nextStore.getSnapshot(), boot.source);
+      attachStore(nextStore, boot.source);
 
       if (boot.source === 'v1') {
         try {
@@ -124,6 +183,7 @@ if (root) {
       }
     } catch {
       if (current !== generation) return;
+      detachStore();
       applyDocument(createDefaultHomeDocument(), 'storage-error');
       root.dataset.prismStorage = 'error';
     }
@@ -142,6 +202,12 @@ if (root) {
     const owner = identity.status === 'signed-in' ? identity.id : null;
     if (event.key !== homeDocumentStorageKey(owner)) return;
     void loadIdentity(identity);
+  });
+
+  let resizeFrame = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => applyResponsiveLayout(currentDocument));
   });
 
   window.addEventListener('prism:home-request-snapshot', () => {
