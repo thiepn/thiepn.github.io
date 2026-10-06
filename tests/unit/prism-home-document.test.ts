@@ -40,12 +40,22 @@ describe('Prism HomeDocument v2', () => {
     }
   });
 
-  it('rejects an unsupported block size', () => {
+  it('rejects an unsupported responsive block size', () => {
     const doc = createDefaultHomeDocument();
-    doc.blocks['block-continue']!.size = 's';
+    const placement = doc.layouts.desktop.placements.find((item) => item.blockId === 'block-continue')!;
+    placement.size = 's';
     const result = validateHomeDocument(doc);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Unsupported size s for block type continue.');
+    expect(result.errors).toContain('Unsupported desktop size s for block type continue.');
+  });
+
+  it('rejects a span that does not match its art-directed size', () => {
+    const doc = createDefaultHomeDocument();
+    const placement = doc.layouts.desktop.placements.find((item) => item.blockId === 'block-continue')!;
+    placement.w = 7;
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Span mismatch for block-continue at desktop: l expects 8x1.');
   });
 
   it('rejects layout collisions instead of silently repacking spatial memory', () => {
