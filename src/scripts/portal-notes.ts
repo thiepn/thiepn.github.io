@@ -29,7 +29,7 @@ if(root){
   function clear(message?:string,removePending=true){session?.clear(removePending);permissions.clear();configureOperations();erase(message);}
   function controls(){connect.disabled=Boolean(!owner() || !session || root!.hidden || document.hidden);}
   try {
-    if(location.origin!=='https://thiepn.dev' || import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY!=='v1')throw new Error('Unavailable');
+    if(location.origin!=='https://thiepn.dev' || import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY!=='v1' || coreAgent&&!import.meta.env.PUBLIC_CORE_GATEWAY_ORIGIN)throw new Error('Unavailable');
     session=new HubNotesSession({clientId:import.meta.env.PUBLIC_HUB_NOTES_CLIENT_ID ?? '',platformOrigin:import.meta.env.PUBLIC_HUB_PLATFORM_ORIGIN ?? '',publishableKey:import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY ?? '',...(coreAgent&&import.meta.env.PUBLIC_CORE_GATEWAY_ORIGIN?{coreOrigin:import.meta.env.PUBLIC_CORE_GATEWAY_ORIGIN}:{})},sessionStorage,owner);
   }catch{status.textContent='Notes connection is unavailable. You can open Notes directly.';}
   controls();
