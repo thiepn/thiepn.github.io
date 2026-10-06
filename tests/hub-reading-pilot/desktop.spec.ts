@@ -45,18 +45,18 @@ test('divergent cloud progress never replaces the exact local Continue position'
 });
 
 test('ending, masking and reloading never restore a reading snapshot automatically',async({page})=>{
- await fixture(page);await seed(page);await connect(page);await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
+ await fixture(page);await seed(page);await connect(page);await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
  await connect(page);await page.getByRole('button',{name:'Hide Home',exact:true}).click();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();
  await page.reload();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('pause and configuration outage fail closed before the next owner read',async({page})=>{
  const f=await fixture(page);await seed(page);await connect(page);f.pause();await page.getByRole('button',{name:'Refresh',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);await expect(page.locator('[data-library-items]')).toBeEmpty();
- f.fail();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-reading-pilot-status]')).toContainText('unavailable or paused');await expect(page.locator('iframe')).toHaveCount(0);
+ f.fail();await page.getByRole('button',{name:'Connect Library',exact:true}).click();await expect(page.locator('[data-reading-pilot-status]')).toContainText('unavailable or paused');await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('late join and read controls cannot reopen or read after ending',async({page})=>{
- const f=await fixture(page);f.hold();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.release();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+ const f=await fixture(page);f.hold();await page.getByRole('button',{name:'Connect Library',exact:true}).click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.release();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
  await seed(page);await connect(page);const before=f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length;f.hold();await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect.poll(()=>f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length).toBe(before+1);
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/reading-pilot.json');f.release();await (await response).finished();await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));await expect(page.locator('[data-private-library]')).toBeVisible();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await join(page);const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/reading-pilot.json');f.release();await (await response).finished();await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));await expect(page.locator('[data-private-library]')).toBeVisible();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('backgrounding ends the pilot; returning requires a fresh join',async({page})=>{
  await fixture(page);await seed(page);await connect(page);
@@ -68,14 +68,14 @@ test('backgrounding ends the pilot; returning requires a fresh join',async({page
 test('consented empty progress offers a reading next step and clears on exit',async({page})=>{
  await fixture(page);await seed(page);await page.evaluate(()=>new Promise<void>((resolve,reject)=>{const r=indexedDB.open('thiepn-library',9);r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('progress','readwrite');tx.objectStore('progress').clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}));
  await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeVisible();await expect(page.getByRole('link',{name:'Browse Library',exact:true})).toHaveAttribute('href','/library/');await expect(page.locator('[data-library-items]')).toBeEmpty();
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
 });
 
 test('connection controls stay busy during a delayed check and exit cancels it',async({page})=>{
  const f=await fixture(page);await seed(page);await connect(page);f.hold();
  await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
  await expect(page.locator('[data-library-connect]')).toBeDisabled();await expect(page.locator('[data-library-refresh]')).toBeDisabled();await expect(page.locator('[data-private-library]')).toHaveAttribute('aria-busy','true');
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await join(page);
  await expect(page.locator('[data-library-connect]')).toBeEnabled();f.release();
  await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
