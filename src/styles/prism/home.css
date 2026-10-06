@@ -5,9 +5,19 @@
 
 .prism-home__grid {
   display: grid;
+  row-gap: 32px;
+  align-items: start;
+}
+
+.prism-home__section {
+  min-width: 0;
+}
+
+.prism-section-grid {
+  display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: 16px;
-  row-gap: 32px;
+  row-gap: 16px;
   align-items: start;
 }
 
@@ -346,7 +356,7 @@ html[data-portal][data-theme='dark'] .prism-app {
     padding-block-start: 20px;
   }
 
-  .prism-home__grid {
+  .prism-section-grid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
@@ -368,9 +378,13 @@ html[data-portal][data-theme='dark'] .prism-app {
   }
 
   .prism-home__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     row-gap: 20px;
+  }
+
+  .prism-section-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     column-gap: 12px;
+    row-gap: 20px;
   }
 
   .prism-continue,
