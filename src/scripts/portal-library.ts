@@ -103,8 +103,7 @@ if (root) {
   disconnect.addEventListener('click', () => clear('Library disconnected in this tab. Manage Library sharing to revoke it in this browser.'));
   radios.forEach(r => r.addEventListener('change', () => void run(() => load(r.value as Operation))));
   form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void run(() => load('search', query)); });
-  window.addEventListener('hub:identity', event => {
-    const detail = (event as CustomEvent).detail as { status?: unknown; id?: unknown } | undefined;
+  window.addEventListener('hub:identity', () => {
     clear();
     if (pilot) endPilot();
   });
