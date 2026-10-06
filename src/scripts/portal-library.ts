@@ -15,7 +15,7 @@ if (root) {
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
-  function endPilot(message = 'Library connection ended. This tab’s reading snapshot was cleared. To return, connect Library and connect this browser again.') {
+  function endPilot(message = 'Library connection ended. This tab’s reading snapshot was cleared. To return, choose Connect Library, then connect this browser again.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;
     join!.hidden = false; end!.hidden = true; pilotStatus!.textContent = message; clear();
   }
@@ -77,7 +77,7 @@ if (root) {
       if(pilot)pilotStatus!.textContent='Connected for this tab. Reading metadata clears when you leave Home.';
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
       freshness.textContent = envelope.coverage === 'account-synced'
-        ? `Account-synced through Library · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Library reconciled this device before sharing bounded reading metadata.`
+        ? `Account-synced through Library · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Library verified that this device already matches the Account snapshot before sharing bounded reading metadata.`
         : `This browser · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Account-synced reading was not included in this snapshot.`;
       timer = setTimeout(() => clear('This reading snapshot expired. Connect again to check Library.'), Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
     } catch { if (epoch === generation) clear('Library could not be checked. Review sharing or open My Library; unavailable storage is not an empty library.'); }
@@ -112,7 +112,7 @@ if (root) {
   });
   window.addEventListener('pagehide', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: connect Library, then connect this browser for fresh progress.'); } controls(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Choose Connect Library, then connect this browser for fresh progress.'); } controls(); });
   new MutationObserver(() => { if (root!.hidden) clear(); controls(); }).observe(root, { attributes: true, attributeFilter: ['hidden'] });
   if (pilot) {
     join!.disabled = !eligible;
