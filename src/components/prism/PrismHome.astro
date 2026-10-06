@@ -12,6 +12,19 @@ interface Props {
 }
 
 const { entries } = Astro.props;
+const appManifest = entries.map((entry) => {
+  const p = entry.project.data;
+  const raw = p.liveUrl!;
+  const url = new URL(raw);
+  return {
+    slug: p.slug,
+    title: p.title,
+    href: url.origin === 'https://thiepn.dev' ? `${url.pathname}${url.search}${url.hash}` : raw,
+    accentLight: p.accent.light,
+    accentDark: p.accent.dark,
+  };
+});
+const appManifestJson = JSON.stringify(appManifest).replace(/</g, '\\u003c');
 const homeDocument = createDefaultHomeDocument();
 const validation = validateHomeDocument(homeDocument);
 if (!validation.valid) {
@@ -32,4 +45,5 @@ if (!validation.valid) {
     <StudyBlock />
     <RecentBlock />
   </div>
+  <script type="application/json" data-prism-app-manifest set:html={appManifestJson}></script>
 </div>
