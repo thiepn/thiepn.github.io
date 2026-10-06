@@ -12,7 +12,7 @@ const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.c
 export async function fixture(page:Page, options:{account?:boolean}={}){
  const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=options.account===true,accountDrift=false,release=()=>{};
  await page.addInitScript(({account})=>{
-   (window as any).__opens=[];(window as any).__results=[];
+   (window as any).__opens=[];(window as any).__results=[];(window as any).__libraryMessages=[];
    if(account){
      const accountId='33333333-3333-4333-8333-333333333333';
      const session={
@@ -28,7 +28,10 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
    if(location.pathname.startsWith('/home')){
      const open=indexedDB.open.bind(indexedDB);
      indexedDB.open=(...args:Parameters<IDBFactory['open']>)=>{(window as any).__opens.push(args[0]);return open(...args);};
-     window.addEventListener('message',e=>{if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);});
+     window.addEventListener('message',e=>{
+       if(e.data?.protocol==='thiepn-library-hub-v1')(window as any).__libraryMessages.push(e.data);
+       if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);
+     });
    }
  },{account:options.account===true});
  await page.route('**/*',async route=>{
