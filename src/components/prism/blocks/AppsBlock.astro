@@ -1,0 +1,48 @@
+---
+import { DEFAULT_HUB_PINS } from '../../../lib/hub-preferences';
+import type { HubProjectEntry } from '../../../lib/hub';
+
+interface Props { entries: HubProjectEntry[]; }
+const { entries } = Astro.props;
+
+const bySlug = new Map(entries.map((entry) => [entry.project.data.slug, entry]));
+const preferred = DEFAULT_HUB_PINS.flatMap((slug) => {
+  const entry = bySlug.get(slug);
+  return entry ? [entry] : [];
+});
+const fallback = entries.filter((entry) => !preferred.some((item) => item.project.data.slug === entry.project.data.slug));
+const apps = [...preferred, ...fallback].slice(0, 8);
+
+function liveHref(entry: HubProjectEntry) {
+  const raw = entry.project.data.liveUrl!;
+  const url = new URL(raw);
+  return url.origin === 'https://thiepn.dev' ? `${url.pathname}${url.search}${url.hash}` : raw;
+}
+
+function fallbackMark(title: string) {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('').slice(0, 2) || 'T';
+}
+---
+<section class="prism-block prism-apps" aria-labelledby="prism-apps-title" data-prism-block="apps">
+  <header class="prism-section-heading">
+    <h2 id="prism-apps-title">Apps</h2>
+    <a href="/#apps">All apps</a>
+  </header>
+  <div class="prism-app-grid">
+    {apps.map((entry) => {
+      const p = entry.project.data;
+      return (
+        <a
+          class="prism-app"
+          href={liveHref(entry)}
+          data-prism-app={p.slug}
+          style={`--prism-app-accent:${p.accent.light};--prism-app-accent-dark:${p.accent.dark};`}
+        >
+          <span class="prism-app__icon" aria-hidden="true">{fallbackMark(p.title)}</span>
+          <span class="prism-app__label">{p.title}</span>
+        </a>
+      );
+    })}
+  </div>
+</section>
