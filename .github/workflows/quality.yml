@@ -20,6 +20,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
+      - name: Platform P9 Folio projection
+        run: node scripts/validate-folio-p9.mjs
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run audit:studio
