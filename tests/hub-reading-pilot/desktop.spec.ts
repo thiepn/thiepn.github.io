@@ -26,7 +26,10 @@ test('explicit same-account sharing verifies matching Library state and exposes 
  const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
  expect(f.calls.some(call=>call.url.includes('/auth/v1/user'))).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/rest/v1/account_app_connections'))).toBe(true);
- expect(f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state'))).toBe(true);
+ expect(
+  f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state')),
+  `Expected Library Account snapshot request. Captured: ${f.calls.filter(call=>call.url.includes('supabase.co')).map(call=>`${call.method} ${new URL(call.url).pathname}`).join(', ') || 'none'}`,
+ ).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
  expect(f.calls.filter(call=>new URL(call.url).origin==='https://hycegznamzjhwinegaai.supabase.co').every(call=>call.method==='GET')).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/storage/v1/'))).toBe(false);
@@ -40,7 +43,10 @@ test('divergent cloud progress never replaces the exact local Continue position'
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
  expect(results.at(-1)?.coverage).toBe('device-local');
- expect(f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state'))).toBe(true);
+ expect(
+  f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state')),
+  `Expected Library Account snapshot request. Captured: ${f.calls.filter(call=>call.url.includes('supabase.co')).map(call=>`${call.method} ${new URL(call.url).pathname}`).join(', ') || 'none'}`,
+ ).toBe(true);
  expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
 });
 
