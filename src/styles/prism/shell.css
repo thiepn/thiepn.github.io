@@ -190,6 +190,34 @@ html[data-prism-shell='true'] #main-content {
   font: 500 11px/1 var(--font-meta);
 }
 
+.prism-topbar__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+}
+
+.prism-topbar__customize {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: 520 12px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-topbar__customize:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-topbar__customize:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
 .prism-topbar__account {
   display: inline-flex;
   border: 0;
@@ -469,6 +497,23 @@ html[data-prism-shell='true'] #main-content {
 
 .prism-account-dialog__actions [hidden] {
   display: none;
+}
+
+.prism-account-dialog__customize {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 560 13px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-account-dialog__customize:disabled {
+  opacity: .45;
+  cursor: default;
 }
 
 .prism-account-dialog__meta {
