@@ -152,3 +152,64 @@ test('Prism migrates legacy guest preferences into V2 without deleting V1', asyn
   expect(stored.v2).not.toBeNull();
   expect(JSON.parse(stored.v2!).schemaVersion).toBe(2);
 });
+
+
+test('Prism Edit Mode mutates HomeDocument with move, resize, visibility and Undo', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(route);
+
+  const customize = page.locator('.prism-topbar__customize');
+  await expect(customize).toBeEnabled();
+  await customize.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('html')).toHaveAttribute('data-prism-editing', 'true');
+  await expect(page.locator('[data-prism-edit-toolbar]')).toBeVisible();
+  await expect(page.locator('[data-prism-edit-done]')).toBeFocused();
+
+  const continuation = page.locator('[data-prism-block-id="block-continue"]');
+  const now = page.locator('[data-prism-block-id="block-now"]');
+
+  await now.click();
+  await expect(now).toHaveAttribute('data-prism-selected', 'true');
+  await page.getByRole('button', { name: 'Move Now earlier' }).click();
+
+  let continueBox = await continuation.boundingBox();
+  let nowBox = await now.boundingBox();
+  expect(continueBox && nowBox).toBeTruthy();
+  expect(nowBox!.x).toBeLessThan(continueBox!.x);
+
+  const undo = page.locator('[data-prism-undo]');
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  continueBox = await continuation.boundingBox();
+  nowBox = await now.boundingBox();
+  expect(continueBox!.x).toBeLessThan(nowBox!.x);
+
+  await continuation.click();
+  await expect(continuation).toHaveAttribute('data-prism-selected', 'true');
+  await continuation.locator('[data-prism-size-control]').selectOption('xl');
+
+  continueBox = await continuation.boundingBox();
+  nowBox = await now.boundingBox();
+  expect(nowBox!.y).toBeGreaterThan(continueBox!.y);
+  await expect(continuation).toHaveAttribute('data-prism-size', 'xl');
+
+  await page.locator('[data-prism-layout-open]').click();
+  const recentVisibility = page.locator('[data-prism-block-visibility][value="block-recent"]');
+  await expect(recentVisibility).toBeChecked();
+  await recentVisibility.uncheck();
+  await expect(page.locator('[data-prism-block-id="block-recent"]')).toBeHidden();
+  await recentVisibility.check();
+  await expect(page.locator('[data-prism-block-id="block-recent"]')).toBeVisible();
+  await page.locator('[data-prism-layout-close]').click();
+
+  const stored = await page.evaluate(() => localStorage.getItem('thiepn:home-document:v2'));
+  expect(stored).not.toBeNull();
+  expect(JSON.parse(stored!).schemaVersion).toBe(2);
+
+  await page.locator('[data-prism-edit-done]').click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-prism-editing', 'true');
+  await expect(page.locator('[data-prism-edit-toolbar]')).toBeHidden();
+  await expect(customize).toBeFocused();
+});
