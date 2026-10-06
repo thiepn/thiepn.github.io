@@ -1,5 +1,5 @@
 export const HUB_RELEASE_ID = 'H8-public-handoffs-v1';
-export const HUB_READING_PILOT_RELEASE_ID = 'H21-device-reading-pilot-v1';
+export const HUB_READING_PILOT_RELEASE_ID = 'H23-device-reading-pilot-v1';
 export const HUB_RELEASE_ROUTES = ['/', '/home/', '/apps/', '/search/', '/inbox/', '/flows/', '/home/auth/callback/'] as const;
 export const HUB_DISABLED_FEATURES = ['hubSignIn', 'privateReads', 'inlineWrites', 'inboxReads', 'automatedTransfers'] as const;
 export interface HubReleaseStatus {

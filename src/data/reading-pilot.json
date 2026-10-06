@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "pilotId": "H21-library-reading-v1",
+  "pilotId": "H23-library-reading-v1",
   "enabled": true,
   "scope": "device",
   "operations": ["summary", "continue"],
-  "desktopOnly": true,
+  "desktopOnly": false,
   "cloudAccess": false,
   "writes": false
 }

@@ -1,4 +1,4 @@
-import { checkReadingPilot, desktopReadingPilot } from '../lib/reading-pilot';
+import { checkReadingPilot, desktopReadingPilot, READING_PILOT_MOBILE_ENABLED } from '../lib/reading-pilot';
 import {integratedWorkflows} from '../lib/workflows/integrated';
 import { HubLibrarySession, libraryContinueUrl } from '../lib/hub-library-session';
 import type { Operation } from '../lib/providers/types';
@@ -10,7 +10,7 @@ if (root) {
   const end = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-end]');
   const pilotStatus = pilotRoot?.querySelector<HTMLElement>('[data-reading-pilot-status]');
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
-  const eligible = !pilot || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
+  const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
   function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;

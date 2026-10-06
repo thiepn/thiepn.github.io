@@ -1,11 +1,12 @@
 import configuration from '../data/reading-pilot.json';
 export const READING_PILOT_ENABLED = configuration.enabled;
+export const READING_PILOT_MOBILE_ENABLED = !configuration.desktopOnly;
 export function validateReadingPilot(value: unknown): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unavailable pilot');
   const v = value as Record<string, unknown>;
   if (Object.keys(v).sort().join(',') !== 'cloudAccess,desktopOnly,enabled,operations,pilotId,schemaVersion,scope,writes'
-    || v.schemaVersion !== 1 || v.pilotId !== 'H21-library-reading-v1' || typeof v.enabled !== 'boolean'
-    || v.scope !== 'device' || v.desktopOnly !== true || v.cloudAccess !== false || v.writes !== false
+    || v.schemaVersion !== 1 || v.pilotId !== 'H23-library-reading-v1' || typeof v.enabled !== 'boolean'
+    || v.scope !== 'device' || v.desktopOnly !== false || v.cloudAccess !== false || v.writes !== false
     || JSON.stringify(v.operations) !== '["summary","continue"]') throw new Error('Unavailable pilot');
   return v.enabled;
 }
