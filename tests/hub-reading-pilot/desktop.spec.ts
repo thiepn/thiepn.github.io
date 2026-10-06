@@ -20,7 +20,7 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
 test('explicit same-account sharing reconciles in Library and exposes only the bounded account-synced projection',async({page})=>{
  const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
- await expect(page.locator('[data-library-items]')).toContainText('Current 60% · furthest 85%');
+ await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
  expect(results.at(-1)?.coverage).toBe('account-synced');
  const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
@@ -32,6 +32,16 @@ test('explicit same-account sharing reconciles in Library and exposes only the b
  expect(f.calls.some(call=>call.url.includes('/storage/v1/'))).toBe(false);
  const href=await page.locator('[data-library-items] a').first().getAttribute('href');
  expect(href).toContain('release=');expect(href).not.toContain('CFI');
+});
+
+test('divergent cloud progress never replaces the exact local Continue position',async({page})=>{
+ const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);f.driftAccount();await seedAccountAwareReading(page);await connect(page);
+ await expect(page.locator('[data-library-freshness]')).toContainText('This browser');
+ await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
+ const results=await page.evaluate(()=>(window as any).__results);
+ expect(results.at(-1)?.coverage).toBe('device-local');
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state'))).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
 });
 
 test('ending, masking and reloading never restore a reading snapshot automatically',async({page})=>{
