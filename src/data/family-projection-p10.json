@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "phase": "P10",
+  "contractId": "bible-games-family-projection-v1",
+  "families": {
+    "bible": {
+      "productRef": "bible",
+      "state": "staged",
+      "defaultModule": "bible/study",
+      "catalogueMembers": [
+        {
+          "catalogueSlug": "tms60",
+          "moduleRef": "bible/tms60",
+          "preserveLiveUrl": true
+        },
+        {
+          "catalogueSlug": "biblical-greek",
+          "moduleRef": "bible/greek",
+          "preserveLiveUrl": true
+        }
+      ],
+      "stagedModules": [
+        "bible/study",
+        "bible/devotion"
+      ]
+    },
+    "games": {
+      "productRef": "games",
+      "state": "active",
+      "defaultModule": "games/home",
+      "launchUrl": "https://thiepn.dev/arcade/",
+      "catalogueMembers": [
+        {
+          "catalogueSlug": "micro-arcade",
+          "moduleRef": "games/arcade",
+          "preserveLiveUrl": true
+        },
+        {
+          "catalogueSlug": "gomoku",
+          "moduleRef": "games/gomoku",
+          "preserveLiveUrl": true
+        },
+        {
+          "catalogueSlug": "wordstrike",
+          "moduleRef": "games/wordstrike",
+          "preserveLiveUrl": true
+        }
+      ]
+    }
+  },
+  "rules": {
+    "createDuplicateFamilyCards": false,
+    "removeLegacyCards": false,
+    "rewriteProjectRoutes": false,
+    "rewriteLiveUrls": false,
+    "changeCatalogueCategories": false,
+    "groupInProductUiLater": true
+  }
+}
