@@ -39,11 +39,25 @@ if (!validation.valid) {
   data-prism-home-schema={homeDocument.schemaVersion}
 >
   <div class="prism-home__grid" data-prism-layout="default">
-    <ContinueBlock />
-    <NowBlock />
-    <AppsBlock entries={entries} />
-    <StudyBlock />
-    <RecentBlock />
+    <div class="prism-home__section" data-prism-section="section-start">
+      <div class="prism-section-grid">
+        <ContinueBlock />
+        <NowBlock />
+      </div>
+    </div>
+
+    <div class="prism-home__section" data-prism-section="section-apps">
+      <div class="prism-section-grid">
+        <AppsBlock entries={entries} />
+      </div>
+    </div>
+
+    <div class="prism-home__section" data-prism-section="section-activity">
+      <div class="prism-section-grid">
+        <StudyBlock />
+        <RecentBlock />
+      </div>
+    </div>
   </div>
   <script type="application/json" data-prism-app-manifest set:html={appManifestJson}></script>
 </div>
