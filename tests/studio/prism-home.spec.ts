@@ -7,6 +7,13 @@ test('Prism preview locks the canonical desktop composition without legacy Home 
   await page.goto(route);
 
   await expect(page.locator('[data-prism-home="v1"]')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-prism-shell', 'true');
+  await expect(page.locator('.prism-rail')).toBeVisible();
+  await expect(page.locator('.prism-topbar')).toBeVisible();
+  await expect(page.locator('.prism-mobile-header')).toBeHidden();
+  await expect(page.locator('.prism-mobile-nav')).toBeHidden();
+  await expect(page.locator('.site-header')).toHaveCount(0);
+  await expect(page.locator('.portal-bottom-nav')).toHaveCount(0);
   await expect(page.locator('.hub-hero')).toHaveCount(0);
   await expect(page.locator('.portal-home-heading')).toHaveCount(0);
   await expect(page.locator('.portal-daily')).toHaveCount(0);
@@ -40,6 +47,9 @@ test('Prism preview uses the intentional tablet 5/8 + 3/8 composition', async ({
   await page.setViewportSize({ width: 1024, height: 1000 });
   await page.goto(route);
 
+  await expect(page.locator('.prism-rail')).toBeHidden();
+  await expect(page.locator('.prism-topbar')).toBeVisible();
+
   const continueBox = await page.locator('.prism-continue').boundingBox();
   const nowBox = await page.locator('.prism-now').boundingBox();
   const studyBox = await page.locator('.prism-study').boundingBox();
@@ -56,6 +66,13 @@ test('Prism preview uses the intentional tablet 5/8 + 3/8 composition', async ({
 test('Prism mobile order is Continue → Now → Apps → Study → Recent with a four-column app grid', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(route);
+
+  await expect(page.locator('.prism-rail')).toBeHidden();
+  await expect(page.locator('.prism-topbar')).toBeHidden();
+  await expect(page.locator('.prism-mobile-header')).toBeVisible();
+  await expect(page.locator('.prism-mobile-nav')).toBeVisible();
+  await expect(page.locator('.prism-mobile-nav a')).toHaveCount(4);
+  await expect(page.locator('.prism-mobile-nav [data-prism-nav="home"]')).toHaveAttribute('aria-current', 'page');
 
   const selectors = ['.prism-continue', '.prism-now', '.prism-apps', '.prism-study', '.prism-recent'];
   const boxes = [];
