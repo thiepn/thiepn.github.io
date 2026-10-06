@@ -6,6 +6,7 @@ import NowBlock from './blocks/NowBlock.astro';
 import AppsBlock from './blocks/AppsBlock.astro';
 import StudyBlock from './blocks/StudyBlock.astro';
 import RecentBlock from './blocks/RecentBlock.astro';
+import PrismEditUI from './PrismEditUI.astro';
 
 interface Props {
   entries: HubProjectEntry[];
@@ -60,4 +61,5 @@ if (!validation.valid) {
     </div>
   </div>
   <script type="application/json" data-prism-app-manifest set:html={appManifestJson}></script>
+  <PrismEditUI />
 </div>
