@@ -80,7 +80,9 @@ html[data-prism-shell='true'] #main-content {
 .prism-rail__brand:focus-visible,
 .prism-rail__account:focus-visible,
 .prism-topbar a:focus-visible,
+.prism-topbar button:focus-visible,
 .prism-mobile-header a:focus-visible,
+.prism-mobile-header button:focus-visible,
 .prism-mobile-nav a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -344,6 +346,7 @@ html[data-prism-shell='true'] #main-content {
 @media (prefers-reduced-motion: reduce) {
   .prism-rail__item,
   .prism-topbar a,
+  .prism-topbar button,
   .prism-mobile-nav a {
     transition: none;
   }
