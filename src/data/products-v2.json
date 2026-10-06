@@ -154,6 +154,7 @@
       "name": "Bible",
       "ownerRepos": [
         "thiepn/selah",
+        "thiepn/my-daily-devotion",
         "thiepn/tms60",
         "thiepn/greek"
       ],
@@ -178,7 +179,7 @@
         {
           "id": "devotion",
           "name": "Devotion",
-          "repo": null,
+          "repo": "thiepn/my-daily-devotion",
           "launchUrl": null,
           "capabilities": [
             "devotion"
@@ -213,9 +214,11 @@
       "id": "games",
       "name": "Games",
       "ownerRepos": [
-        "thiepn/arcade"
+        "thiepn/arcade",
+        "thiepn/gomoku",
+        "thiepn/wordstrike"
       ],
-      "launchUrl": null,
+      "launchUrl": "https://thiepn.dev/arcade/",
       "capabilities": [
         "game-library",
         "progression",
@@ -227,27 +230,49 @@
           "id": "home",
           "name": "Games",
           "repo": "thiepn/arcade",
-          "launchUrl": null,
+          "launchUrl": "https://thiepn.dev/arcade/",
           "capabilities": [
             "game-library",
             "progression"
           ],
-          "state": "staged"
+          "state": "active"
         },
         {
           "id": "arcade",
           "name": "Arcade",
           "repo": "thiepn/arcade",
-          "launchUrl": null,
+          "launchUrl": "https://thiepn.dev/arcade/",
           "capabilities": [
             "game-library",
             "leaderboards"
           ],
-          "state": "staged"
+          "state": "active"
+        },
+        {
+          "id": "gomoku",
+          "name": "Gomoku",
+          "repo": "thiepn/gomoku",
+          "launchUrl": "https://thiepn.dev/gomoku/",
+          "capabilities": [
+            "multiplayer",
+            "leaderboards"
+          ],
+          "state": "active"
+        },
+        {
+          "id": "wordstrike",
+          "name": "WORDSTRIKE",
+          "repo": "thiepn/wordstrike",
+          "launchUrl": "https://thiepn.dev/wordstrike/",
+          "capabilities": [
+            "progression",
+            "leaderboards"
+          ],
+          "state": "active"
         }
       ],
       "defaultModule": "home",
-      "state": "staged"
+      "state": "active"
     },
     {
       "id": "study",
@@ -459,12 +484,16 @@
     "math": "study/math",
     "greek": "bible/greek",
     "mdd": "bible/devotion",
+    "selah": "bible/study",
     "tms60": "bible/tms60",
     "steadybar": "study/music",
     "tuner": "study/tuner",
     "diet": "diet/copilot",
     "health": "diet/health",
     "games": "games/home",
+    "arcade": "games/arcade",
+    "gomoku": "games/gomoku",
+    "wordstrike": "games/wordstrike",
     "tools": "hub/tools",
     "pdf": "pdf/studio",
     "orrery": "orrery/observatory",
