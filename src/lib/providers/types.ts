@@ -11,8 +11,9 @@ export interface ProviderManifest {
 }
 export interface ContinueItem { resourceId: string; title: string; updatedAt: string; format?: 'epub' | 'pdf' | 'web'; edition?: number; releaseVersion?: string; current?: number; furthest?: number; dimension?: 'wording' | 'reference' | 'learning'; }
 export interface ProviderData { items: ContinueItem[]; dueTaskCount?: number; dueVerseCount?: number; newVerseCount?: number; }
+export type ProviderCoverage = 'cloud-snapshot' | 'device-local' | 'account-synced' | 'translation-cloud-snapshot';
 export interface ProviderEnvelope extends Omit<RequestContext, 'query'> {
-  schemaVersion: 1; status: ProviderStatus; privacy: 'private'; coverage: string;
+  schemaVersion: 1; status: ProviderStatus; privacy: 'private'; coverage: ProviderCoverage;
   observedAt: string; expiresAt: string; sourceUpdatedAt: string | null; data: ProviderData | null;
 }
 export interface ProviderResult { providerId: ProviderId; status: ProviderStatus; envelope?: ProviderEnvelope; }
