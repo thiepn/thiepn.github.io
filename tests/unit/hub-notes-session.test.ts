@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {HubNotesSession,NOTES_PENDING_KEY,NOTES_CALLBACK,NOTES_ISSUER,parseNotesConsent,validNotesConfig} from '../../src/lib/hub-notes-session';
+import {HubNotesSession,CAPTURE_PENDING_KEY,NOTES_PENDING_KEY,NOTES_CALLBACK,NOTES_ISSUER,parseNotesConsent,validNotesConfig} from '../../src/lib/hub-notes-session';
 const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',CLIENT='33333333-3333-4333-8333-333333333333',REV='44444444-4444-4444-8444-444444444444';
 const NOW=Date.parse('2026-10-03T20:00:00.000Z');
 const cfg={clientId:CLIENT,platformOrigin:'https://platform-fictional.vercel.app',publishableKey:'sb_publishable_fictional'};
@@ -50,4 +50,69 @@ describe('H14 standard managed OAuth and private Notes boundary',()=>{
   it('refreshes near-expiry tokens before checking current grants again',async()=>{const f=fixture({ttl:30});await connect(f);await f.session.read('summary',new AbortController().signal);const forms=f.http.mock.calls.filter(([url])=>String(url).endsWith('/oauth/token')).map(([,init])=>new URLSearchParams(String(init?.body)));expect(forms[1]?.get('grant_type')).toBe('refresh_token');expect(f.map.size).toBe(0);});
   it('has a two-second whole-read deadline even when upstream ignores abort',async()=>{const f=fixture({delay:()=>new Promise<void>(()=>{})});await connect(f);vi.useFakeTimers();const pending=f.session.read('summary',new AbortController().signal);const check=expect(pending).rejects.toThrow();await vi.advanceTimersByTimeAsync(2100);await check;expect(f.session.connected()).toBe(false);});
   it('rejects broad consent and unsafe deployment configuration',()=>{expect(()=>parseNotesConsent({permissions:['app_data.read'],revision:REV})).toThrow();expect(()=>parseNotesConsent({permissions:consent.permissions,revision:null})).toThrow();expect(validNotesConfig({...cfg,platformOrigin:'https://evil.test'})).toBe(false);expect(validNotesConfig({...cfg,platformOrigin:'https://platform.vercel.app/path'})).toBe(false);});
+});
+
+
+describe('P8 staged Core Notes agent boundary',()=>{
+  const CORE='https://core-fictional.workers.dev';
+  function staged(capture:boolean,responder:(body:Record<string,unknown>)=>unknown){
+    let owner:string|null=A;const map=new Map<string,string>();
+    const storage={getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>{map.set(k,v);},removeItem:(k:string)=>{map.delete(k);}};
+    const http=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+      expect(init?.redirect).toBe('error');expect(init?.credentials).toBe('omit');expect(init?.cache).toBe('no-store');expect(init?.referrerPolicy).toBe('no-referrer');
+      if(String(url).endsWith('/oauth/token'))return Response.json(response());
+      expect(String(url)).toBe(CORE+'/v1/agent/notes');
+      const authorization=new Headers(init?.headers).get('authorization');
+      expect(authorization).toMatch(/^Bearer eyJ/);
+      const body=JSON.parse(String(init?.body)) as Record<string,unknown>;
+      expect(JSON.stringify(body)).not.toContain(String(authorization));
+      return Response.json(responder(body));
+    });
+    const session=new HubNotesSession({...cfg,coreOrigin:CORE,...(capture?{capture:true}:{})},storage,()=>owner,http,()=>NOW);
+    return{session,storage,http,owner:(value:string|null)=>{owner=value;}};
+  }
+  async function connectStaged(f:ReturnType<typeof staged>,capture:boolean){
+    const sharing=capture?{permissions:['notes.hub.capture.create'],revision:REV}:consent;
+    await f.session.begin(A,sharing);
+    const key=capture?CAPTURE_PENDING_KEY:NOTES_PENDING_KEY;
+    const pending=JSON.parse(f.storage.getItem(key)!);
+    await f.session.complete(new URLSearchParams({code:'fictional-code',state:pending.state}),'');
+  }
+
+  it('sends staged title search through Core without exposing bearer tokens in the body',async()=>{
+    const f=staged(false,body=>{
+      expect(body).toEqual({schemaVersion:1,goal:'search my Notes for DGL',action:'search',query:'DGL',grantRevision:REV});
+      return{ok:true,data:{schemaVersion:1,status:'completed',routedModule:'folio/notes',routeConfidence:'high',action:'search',answer:'Found 1 matching synced Notes titles.',observation:{step:1,toolId:'folio.notes.search',status:'success',summary:'Found 1 note results.',value:{hits:[{id:B,title:'DGL methods',moduleRef:'folio/notes'}]}},trace:[]},meta:{requestId:'fictional-core-request'}};
+    });
+    await connectStaged(f,false);
+    const hits=await f.session.searchViaCore('DGL',new AbortController().signal);
+    expect(hits).toEqual([{id:B,title:'DGL methods',moduleRef:'folio/notes'}]);
+    expect(f.http).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves the browser capture request id through Core and validates the returned receipt',async()=>{
+    const command={accountId:A,requestId:B,destination:'notes:unfiled' as const,title:'DGL',content:'Practice systems tomorrow.'};
+    const f=staged(true,body=>{
+      expect(body).toEqual({schemaVersion:1,goal:'create a note in Notes',action:'create',title:command.title,body:command.content,approved:true,idempotencyKey:command.requestId,grantRevision:REV});
+      const receipt={schemaVersion:1,accountId:A,grantRevision:REV,requestId:B,destination:'notes:unfiled',noteId:CLIENT,createdAt:NOW,status:'confirmed'};
+      return{ok:true,data:{schemaVersion:1,status:'completed',routedModule:'folio/notes',routeConfidence:'high',action:'create',answer:'The note was created in Notes.',observation:{step:1,toolId:'folio.notes.create',status:'success',summary:'Created a Folio note.',value:{note:{id:CLIENT,title:'DGL',receipt}}},trace:[]},meta:{requestId:'fictional-core-request'}};
+    });
+    await connectStaged(f,true);
+    const receipt=await f.session.captureViaCore(command,new AbortController().signal);
+    expect(receipt).toMatchObject({requestId:B,noteId:CLIENT,grantRevision:REV,status:'confirmed'});
+    expect(f.http).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails closed on a mismatched Core write receipt',async()=>{
+    const command={accountId:A,requestId:B,destination:'notes:unfiled' as const,title:'DGL',content:'Practice systems tomorrow.'};
+    const f=staged(true,()=>({ok:true,data:{schemaVersion:1,status:'completed',routedModule:'folio/notes',routeConfidence:'high',action:'create',answer:'done',observation:{step:1,toolId:'folio.notes.create',status:'success',summary:'done',value:{note:{id:CLIENT,title:'DGL',receipt:{schemaVersion:1,accountId:A,grantRevision:REV,requestId:CLIENT,destination:'notes:unfiled',noteId:CLIENT,createdAt:NOW,status:'confirmed'}}}},trace:[]},meta:{requestId:'fictional'}}));
+    await connectStaged(f,true);
+    await expect(f.session.captureViaCore(command,new AbortController().signal)).rejects.toThrow();
+  });
+
+  it('requires an exact HTTPS Core origin when staged Core wiring is configured',()=>{
+    expect(validNotesConfig({...cfg,coreOrigin:CORE})).toBe(true);
+    expect(validNotesConfig({...cfg,coreOrigin:'http://core.test'})).toBe(false);
+    expect(validNotesConfig({...cfg,coreOrigin:'https://core.test/path'})).toBe(false);
+  });
 });
