@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "phase": "P11",
+  "contractId": "hub-runtime-ownership-p11",
+  "product": "hub",
+  "sharedNodeRuntime": {
+    "dependency": false,
+    "project": null,
+    "domain": null,
+    "retiredProjectName": "thiepn-platform",
+    "retiredDomain": "platform.thiepn.dev"
+  },
+  "hubRuntime": {
+    "ownerRepo": "thiepn/thiepn.github.io",
+    "vercelProject": "thiepn-hub",
+    "scope": [
+      "navigation",
+      "search",
+      "inbox",
+      "product-aggregation"
+    ],
+    "productOwned": true
+  },
+  "externalSharedBoundaries": [
+    {
+      "id": "core-gateway",
+      "ownerRepo": "thiepn/core",
+      "runtime": "cloudflare-worker",
+      "domain": "api.thiepn.dev"
+    },
+    {
+      "id": "account-data-platform",
+      "owner": "supabase",
+      "runtime": "supabase",
+      "domain": null
+    }
+  ],
+  "legacyNaming": [
+    {
+      "path": "supabase/functions/platform-health",
+      "classification": "account-supabase-health",
+      "sharedVercelRuntime": false,
+      "note": "The historical function name does not imply a platform.thiepn.dev service."
+    }
+  ],
+  "rules": {
+    "proxyProductSpecificServerWritesThroughSharedPlatform": false,
+    "routeHubAggregationThroughHubRuntime": true,
+    "preserveCoreGatewayBoundary": true,
+    "preserveSupabaseDataAuthority": true
+  }
+}
