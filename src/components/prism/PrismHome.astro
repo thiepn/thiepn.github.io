@@ -1,0 +1,110 @@
+---
+import { DEFAULT_HUB_PINS } from '../../lib/hub-preferences';
+import type { HubProjectEntry } from '../../lib/hub';
+
+interface Props {
+  entries: HubProjectEntry[];
+}
+
+const { entries } = Astro.props;
+const bySlug = new Map(entries.map((entry) => [entry.project.data.slug, entry]));
+const preferred = DEFAULT_HUB_PINS.flatMap((slug) => {
+  const entry = bySlug.get(slug);
+  return entry ? [entry] : [];
+});
+const fallback = entries.filter((entry) => !preferred.some((item) => item.project.data.slug === entry.project.data.slug));
+const apps = [...preferred, ...fallback].slice(0, 8);
+
+function liveHref(entry: HubProjectEntry) {
+  const raw = entry.project.data.liveUrl!;
+  const url = new URL(raw);
+  return url.origin === 'https://thiepn.dev'
+    ? `${url.pathname}${url.search}${url.hash}`
+    : raw;
+}
+
+function fallbackMark(title: string) {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('').slice(0, 2) || 'T';
+}
+---
+
+<div class="prism-home page-shell" data-portal-home data-prism-home="v1">
+  <div class="prism-home__grid">
+    <section class="prism-block prism-block--focus prism-continue" aria-labelledby="prism-continue-title">
+      <div class="prism-continue__copy">
+        <p class="prism-eyebrow">Continue</p>
+        <h1 id="prism-continue-title">No resumable activity yet</h1>
+        <p class="prism-copy">Open an app and Prism will keep your next meaningful step here.</p>
+        <a class="prism-inline-action" href="/#apps">Browse apps <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="prism-continue__art" aria-hidden="true">
+        <svg viewBox="0 0 520 180" preserveAspectRatio="none">
+          <path class="prism-path prism-path--soft" d="M-20 137 C77 72 139 151 228 93 S381 37 548 70" />
+          <path class="prism-path" d="M-12 153 C84 94 143 158 233 106 S382 58 542 82" />
+          <circle cx="233" cy="106" r="5" class="prism-node prism-node--active" />
+          <circle cx="383" cy="58" r="3" class="prism-node" />
+        </svg>
+      </div>
+    </section>
+
+    <section class="prism-block prism-now" aria-labelledby="prism-now-title">
+      <header class="prism-section-heading">
+        <h2 id="prism-now-title">Now</h2>
+      </header>
+      <div class="prism-timeline" role="status">
+        <span class="prism-timeline__node" aria-hidden="true"></span>
+        <div>
+          <strong>Nothing needs attention.</strong>
+          <p>Time-sensitive items from connected apps will appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="prism-block prism-apps" aria-labelledby="prism-apps-title">
+      <header class="prism-section-heading">
+        <h2 id="prism-apps-title">Apps</h2>
+        <a href="/#apps">All apps</a>
+      </header>
+      <div class="prism-app-grid">
+        {apps.map((entry) => {
+          const p = entry.project.data;
+          return (
+            <a
+              class="prism-app"
+              href={liveHref(entry)}
+              data-prism-app={p.slug}
+              style={`--prism-app-accent:${p.accent.light};--prism-app-accent-dark:${p.accent.dark};`}
+            >
+              <span class="prism-app__icon" aria-hidden="true">{fallbackMark(p.title)}</span>
+              <span class="prism-app__label">{p.title}</span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+
+    <section class="prism-block prism-study" aria-labelledby="prism-study-title">
+      <header class="prism-section-heading">
+        <h2 id="prism-study-title">Study</h2>
+      </header>
+      <div class="prism-quiet-state">
+        <span class="prism-progress-path" aria-hidden="true"><i></i></span>
+        <div>
+          <strong>No study progress connected yet.</strong>
+          <p>Learning apps can surface concise progress here without changing the Home layout.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="prism-block prism-recent" aria-labelledby="prism-recent-title">
+      <header class="prism-section-heading">
+        <h2 id="prism-recent-title">Recent</h2>
+      </header>
+      <div class="prism-recent-empty">
+        <strong>Nothing recent yet.</strong>
+        <p>Recent work from connected THIEPN apps will stay quietly available here.</p>
+      </div>
+    </section>
+  </div>
+</div>
