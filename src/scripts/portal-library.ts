@@ -11,6 +11,7 @@ if (root) {
   const end = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-end]');
   const pilotStatus = pilotRoot?.querySelector<HTMLElement>('[data-reading-pilot-status]');
   let pending: symbol | undefined;
+  let currentHubAccountId: string | null = hubIdentity.status === 'signed-in' ? hubIdentity.id : null;
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
@@ -88,7 +89,7 @@ if (root) {
     try {
       const consent = await session.connect(
         controller.signal,
-        hubIdentity.status === 'signed-in' ? hubIdentity.id : null,
+        currentHubAccountId,
       );
       if (epoch !== generation || root!.hidden || document.hidden) return;
       permissions = new Set(consent.permissions.filter(p => !pilot || p === 'summary' || p === 'continue')); controls();
@@ -103,7 +104,12 @@ if (root) {
   disconnect.addEventListener('click', () => clear('Library disconnected in this tab. Manage Library sharing to revoke it in this browser.'));
   radios.forEach(r => r.addEventListener('change', () => void run(() => load(r.value as Operation))));
   form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void run(() => load('search', query)); });
-  window.addEventListener('hub:identity', () => { clear(); if (pilot) endPilot(); });
+  window.addEventListener('hub:identity', event => {
+    const detail = (event as CustomEvent).detail as { status?: unknown; id?: unknown } | undefined;
+    currentHubAccountId = detail?.status === 'signed-in' && typeof detail.id === 'string' ? detail.id : null;
+    clear();
+    if (pilot) endPilot();
+  });
   window.addEventListener('pagehide', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: try the reading pilot, then connect this browser for fresh progress.'); } controls(); });
