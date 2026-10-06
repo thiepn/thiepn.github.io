@@ -1,5 +1,6 @@
 ---
 import BrandMark from '../brand/BrandMark.astro';
+import PrismAccount from './PrismAccount.astro';
 
 const path = Astro.url.pathname;
 const active = (target: string) => {
@@ -55,9 +56,9 @@ const items = [
         </a>
       ))}
     </nav>
-    <a class="prism-rail__account" href="https://account.thiepn.dev/" aria-label="Open THIEPN Account">
+    <button class="prism-rail__account" type="button" data-prism-account-open aria-label="Open THIEPN Account">
       <span aria-hidden="true">T</span>
-    </a>
+    </button>
   </aside>
 
   <header class="prism-topbar">
@@ -75,10 +76,10 @@ const items = [
       <kbd>Ctrl K</kbd>
     </a>
 
-    <a class="prism-topbar__account" href="https://account.thiepn.dev/">
+    <button class="prism-topbar__account" type="button" data-prism-account-open>
       <span class="prism-topbar__avatar" aria-hidden="true">T</span>
       <span class="prism-topbar__account-label">Account</span>
-    </a>
+    </button>
   </header>
 
   <header class="prism-mobile-header">
@@ -93,11 +94,13 @@ const items = [
           <path d="m15 15 5 5"/>
         </svg>
       </a>
-      <a href="https://account.thiepn.dev/" aria-label="Open THIEPN Account">
+      <button type="button" data-prism-account-open aria-label="Open THIEPN Account">
         <span class="prism-mobile-header__avatar" aria-hidden="true">T</span>
-      </a>
+      </button>
     </div>
   </header>
+
+  <PrismAccount returnTo={path} />
 
   <nav class="prism-mobile-nav" aria-label="THIEPN navigation">
     {items.map((item) => (
