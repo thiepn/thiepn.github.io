@@ -5,6 +5,7 @@ import { getHubProjects } from '../../../lib/hub';
 import '../../../styles/prism/tokens.css';
 import '../../../styles/prism/home.css';
 import '../../../styles/prism/shell.css';
+import '../../../styles/prism/edit.css';
 
 const entries = await getHubProjects();
 ---
@@ -18,4 +19,4 @@ const entries = await getHubProjects();
 >
   <PrismHome entries={entries} />
 </BaseLayout>
-<script>import '../../../scripts/portal-auth'; import '../../../scripts/prism-home';</script>
+<script>import '../../../scripts/portal-auth'; import '../../../scripts/prism-home'; import '../../../scripts/prism-edit';</script>
