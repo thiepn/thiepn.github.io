@@ -15,7 +15,7 @@ if (root) {
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
-  function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared. To return, try the reading pilot and connect this browser again.') {
+  function endPilot(message = 'Library connection ended. This tab’s reading snapshot was cleared. To return, connect Library and connect this browser again.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;
     join!.hidden = false; end!.hidden = true; pilotStatus!.textContent = message; clear();
   }
@@ -112,7 +112,7 @@ if (root) {
   });
   window.addEventListener('pagehide', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: try the reading pilot, then connect this browser for fresh progress.'); } controls(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: connect Library, then connect this browser for fresh progress.'); } controls(); });
   new MutationObserver(() => { if (root!.hidden) clear(); controls(); }).observe(root, { attributes: true, attributeFilter: ['hidden'] });
   if (pilot) {
     join!.disabled = !eligible;
