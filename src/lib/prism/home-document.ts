@@ -181,11 +181,37 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
     ? doc.sections as Record<string, HomeSection>
     : {};
 
+  const appearance = doc.appearance;
+  if (!appearance || typeof appearance !== 'object' || Array.isArray(appearance)) {
+    errors.push('appearance must be an object.');
+  } else {
+    if (appearance.theme !== 'prism') errors.push('Unsupported Home appearance theme.');
+    if (!['system', 'light', 'dark'].includes(String(appearance.mode))) errors.push('Invalid Home appearance mode.');
+    if (!['compact', 'balanced', 'comfortable'].includes(String(appearance.density))) errors.push('Invalid Home density.');
+    if (!['quiet', 'balanced', 'rich'].includes(String(appearance.intensity))) errors.push('Invalid Home visual intensity.');
+    if (!['reduced', 'balanced', 'expressive'].includes(String(appearance.motion))) errors.push('Invalid Home motion setting.');
+    if (appearance.surface !== 'default') errors.push('Invalid Home surface setting.');
+    if (appearance.cornerStyle !== 'default') errors.push('Invalid Home corner setting.');
+    if (!['rich', 'mono'].includes(String(appearance.iconStyle))) errors.push('Invalid Home icon setting.');
+  }
+
+  if (!doc.preferences || typeof doc.preferences !== 'object' || Array.isArray(doc.preferences)
+    || typeof doc.preferences.customizeMobileSeparately !== 'boolean') {
+    errors.push('Invalid Home preferences.');
+  }
+
   for (const [key, block] of Object.entries(blocks)) {
     if (!block || typeof block !== 'object') { errors.push(`Block ${key} is invalid.`); continue; }
     if (block.id !== key) errors.push(`Block key/id mismatch for ${key}.`);
     if (!isPrismBlockType(block.type)) errors.push(`Unknown block type for ${key}.`);
+    if (block.hidden !== undefined && typeof block.hidden !== 'boolean') errors.push(`Block ${key} hidden must be boolean.`);
     if (!block.settings || typeof block.settings !== 'object' || Array.isArray(block.settings)) errors.push(`Block ${key} settings must be an object.`);
+    if (block.type === 'apps' && block.settings && typeof block.settings === 'object' && !Array.isArray(block.settings)) {
+      const order = (block.settings as Record<string, unknown>).appOrder;
+      if (order !== undefined && (!Array.isArray(order) || order.length > 128 || !order.every((item) => typeof item === 'string') || new Set(order).size !== order.length)) {
+        errors.push('Apps appOrder must be a unique string array of at most 128 items.');
+      }
+    }
   }
 
   const blockMembership = new Map<string, string>();
