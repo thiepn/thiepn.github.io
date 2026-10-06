@@ -11,7 +11,6 @@ if (root) {
   const end = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-end]');
   const pilotStatus = pilotRoot?.querySelector<HTMLElement>('[data-reading-pilot-status]');
   let pending: symbol | undefined;
-  let currentHubAccountId: string | null = hubIdentity.status === 'signed-in' ? hubIdentity.id : null;
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
@@ -89,7 +88,7 @@ if (root) {
     try {
       const consent = await session.connect(
         controller.signal,
-        currentHubAccountId,
+        hubIdentity.status === 'signed-in' ? hubIdentity.id : null,
       );
       if (epoch !== generation || root!.hidden || document.hidden) return;
       permissions = new Set(consent.permissions.filter(p => !pilot || p === 'summary' || p === 'continue')); controls();
@@ -106,7 +105,6 @@ if (root) {
   form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void run(() => load('search', query)); });
   window.addEventListener('hub:identity', event => {
     const detail = (event as CustomEvent).detail as { status?: unknown; id?: unknown } | undefined;
-    currentHubAccountId = detail?.status === 'signed-in' && typeof detail.id === 'string' ? detail.id : null;
     clear();
     if (pilot) endPilot();
   });
