@@ -4,6 +4,7 @@ import {
   bootstrapHomeDocument,
   createBrowserHomePersistence,
   HomeStore,
+  homeDocumentStorageKey,
   readLegacyPreference,
 } from '../lib/prism/home-store';
 import { createDefaultHomeDocument, type HomeDocumentV2 } from '../lib/prism/home-document';
@@ -139,11 +140,8 @@ if (root) {
     const identity = hubIdentity;
     if (identity.status !== 'signed-in' && identity.status !== 'signed-out') return;
     const owner = identity.status === 'signed-in' ? identity.id : null;
-    const persistence = createBrowserHomePersistence(localStorage, owner);
-    void persistence.load().then((raw) => {
-      if (event.newValue !== raw) return;
-      void loadIdentity(identity);
-    }).catch(() => {});
+    if (event.key !== homeDocumentStorageKey(owner)) return;
+    void loadIdentity(identity);
   });
 
   window.addEventListener('prism:home-request-snapshot', () => {
