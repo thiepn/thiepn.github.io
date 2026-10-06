@@ -17,7 +17,7 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
  expect(await page.evaluate(()=>(window as any).__opens)).toEqual([]);expect(await page.evaluate(()=>JSON.stringify((window as any).__results))).not.toContain('SECRET');
  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toContain(book.title);
 });
-test('explicit same-account sharing reconciles in Library and exposes only the bounded account-synced projection',async({page})=>{
+test('explicit same-account sharing verifies matching Library state and exposes only the bounded account-synced projection',async({page})=>{
  const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
@@ -62,7 +62,7 @@ test('backgrounding ends the pilot; returning requires a fresh join',async({page
  await fixture(page);await seed(page);await connect(page);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
  await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
- await expect(page.locator('[data-reading-pilot-status]')).toContainText('Welcome back');await connect(page);await expect(page.locator('[data-library-items]')).toContainText('Current 20%');
+ await expect(page.locator('[data-reading-pilot-status]')).toContainText('reading snapshot was cleared');await connect(page);await expect(page.locator('[data-library-items]')).toContainText('Current 20%');
 });
 
 test('consented empty progress offers a reading next step and clears on exit',async({page})=>{
