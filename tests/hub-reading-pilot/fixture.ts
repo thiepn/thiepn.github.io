@@ -37,11 +37,33 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
       return route.fulfill({json:{id:'33333333-3333-4333-8333-333333333333',aud:'authenticated',role:'authenticated',email:'reader@example.test'}});
     }
     if(u.pathname==='/rest/v1/account_app_connections') return route.fulfill({json:[{status:'connected'}]});
-    if(u.pathname==='/rest/v1/library_sync_state') return route.fulfill({json:[]});
-    if(u.pathname==='/rest/v1/rpc/sync_thiepn_library_state') {
-      const body=JSON.parse(req.postData()??'{}');
-      return route.fulfill({json:{revision:1,state:body.p_state,updated_at:new Date().toISOString()}});
+    if(u.pathname==='/rest/v1/library_sync_state') {
+      const updatedAt=new Date(Date.now()-250).toISOString();
+      return route.fulfill({json:[{state:{
+        format:'thiepn-library-backup',
+        schemaVersion:1,
+        exportedAt:updatedAt,
+        state:{
+          main:{
+            schemaVersion:1,
+            epubProgress:{
+              schemaVersion:1,
+              records:[{
+                schemaVersion:2,
+                workId:book.workId,
+                edition:book.edition,
+                releaseVersion:book.releaseVersion,
+                cfi:'epubcfi(/6/2[SECRET-CFI])',
+                percentage:.6,
+                furthestPercentage:.85,
+                updatedAt,
+              }],
+            },
+          },
+        },
+      }}]});
     }
+    if(u.pathname.startsWith('/rest/v1/rpc/')) return route.fulfill({status:405,json:{message:'Hub reading must not invoke Library write RPCs'}});
     return route.fulfill({status:404,json:{message:'Fixture endpoint unavailable'}});
   }
   if(u.origin!==HUB)return route.abort();
