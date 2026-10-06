@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PrismHome from '../../../components/prism/PrismHome.astro';
+import { getHubProjects } from '../../../lib/hub';
+import '../../../styles/prism/tokens.css';
+import '../../../styles/prism/home.css';
+
+const entries = await getHubProjects();
+---
+<BaseLayout
+  title="Prism Home Preview — THIEPN"
+  description="Internal preview of the THIEPN Prism Home."
+  portal
+  noindex
+  hideFooter
+>
+  <PrismHome entries={entries} />
+</BaseLayout>
