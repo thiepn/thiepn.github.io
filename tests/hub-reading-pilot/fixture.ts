@@ -8,9 +8,28 @@ const catalogue=JSON.parse(fs.readFileSync(path.join(OWNER,'hub/bridge/index.htm
 export const book=catalogue.find((b:any)=>b.format==='epub');
 const grant={schemaVersion:1,deviceId:'11111111-1111-4111-8111-111111111111',revision:'22222222-2222-4222-8222-222222222222',permissions:['summary','continue','search'],includePersonal:false};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.json')?'application/json':p.endsWith('.html')?'text/html':'application/octet-stream';
-export async function fixture(page:Page){
- const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=false,release=()=>{};
- await page.addInitScript(()=>{(window as any).__opens=[];(window as any).__results=[];if(location.pathname.startsWith('/home')){const open=indexedDB.open.bind(indexedDB);indexedDB.open=(...args:Parameters<IDBFactory['open']>)=>{(window as any).__opens.push(args[0]);return open(...args);};window.addEventListener('message',e=>{if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);});}});
+export async function fixture(page:Page, options:{account?:boolean}={}){
+ const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=options.account===true,release=()=>{};
+ await page.addInitScript(({account})=>{
+   (window as any).__opens=[];(window as any).__results=[];
+   if(account){
+     const accountId='33333333-3333-4333-8333-333333333333';
+     const session={
+       access_token:'fixture-hub-access-token',
+       refresh_token:'fixture-hub-refresh-token',
+       token_type:'bearer',
+       expires_in:3600,
+       expires_at:Math.floor(Date.now()/1000)+3600,
+       user:{id:accountId,aud:'authenticated',role:'authenticated',email:'reader@example.test'},
+     };
+     localStorage.setItem('thiepn:hub-auth:v1',JSON.stringify(session));
+   }
+   if(location.pathname.startsWith('/home')){
+     const open=indexedDB.open.bind(indexedDB);
+     indexedDB.open=(...args:Parameters<IDBFactory['open']>)=>{(window as any).__opens.push(args[0]);return open(...args);};
+     window.addEventListener('message',e=>{if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);});
+   }
+ },{account:options.account===true});
  await page.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url());calls.push({url:u.href,method:req.method()});
   if(u.origin===SUPABASE && accountMock){
@@ -90,6 +109,5 @@ export async function seedAccountAwareReading(page: Page) {
       expires_at:Math.floor(Date.now()/1000)+3600,
       user:{id:accountId,aud:'authenticated',role:'authenticated',email:'reader@example.test'},
     }));
-    window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-in',id:accountId,label:'reader@example.test'}}));
   },{KEY,accountId});
 }
