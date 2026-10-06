@@ -5,7 +5,7 @@ const enabled = READING_PILOT_ENABLED && import.meta.env.PUBLIC_HUB_LIBRARY_PRIV
 ---
 {enabled && <section class="portal-daily" data-reading-pilot data-home-personal aria-labelledby="reading-pilot-heading">
  <header class="portal-section-heading"><div><h2 id="reading-pilot-heading">Pick up your reading</h2><p class="portal-muted">Library connection · optional · read-only</p></div></header>
- <p>See saved book titles and reading progress, then resume the exact edition in Library. By default the result comes from this browser. If you explicitly enable Account-synced sharing in Library and both apps verify the same THIEPN Account, Library may reconcile this device first.</p>
+ <p>See saved book titles and reading progress, then resume the exact edition in Library. By default the result comes from this browser. If you explicitly enable Account-synced sharing in Library and both apps verify the same THIEPN Account, Library may compare this device with its read-only Account snapshot and only report Account-synced coverage when the exact reading progress matches.</p>
  <p class="portal-muted">Hub receives only bounded title/progress metadata. It never receives book files, exact reader anchors, highlights, notes, annotations, shelves, tags, or Library’s raw cloud snapshot. Phone and tablet behavior remains subject to the physical-device acceptance campaign.</p>
  <ol class="portal-reading-steps" aria-label="Reading setup">
   <li><strong>Join this tab</strong><span>Nothing loads automatically.</span></li>
