@@ -22,6 +22,8 @@ jobs:
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
         run: node scripts/validate-folio-p9.mjs
+      - name: Platform P10 Bible + Games projection
+        run: node scripts/validate-family-p10.mjs
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run audit:studio
