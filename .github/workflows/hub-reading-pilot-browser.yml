@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: thiepn/library
-          ref: 32fbc555f51481683aad13a5abc06126cdbb2eeb
+          ref: a0edc592c4930223da3f259fcea88a35878a0946
           path: .cache/h21-source-library
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
