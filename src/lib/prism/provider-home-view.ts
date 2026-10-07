@@ -1,5 +1,5 @@
 import { providerAction } from '../providers/registry';
-import type { ContinueItem, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
+import type { ContinueItem, Operation, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
 
 export interface PrismContinueView {
   state: 'empty' | 'ready' | 'stale' | 'offline' | 'error' | 'unconnected' | 'unsupported';
@@ -17,6 +17,11 @@ export interface PrismNowItem {
   detail: string | null;
   href: string;
   priority: number;
+}
+
+export interface PrismProviderContribution {
+  operation: Operation;
+  result: ProviderResult;
 }
 
 export interface PrismProviderHomeView {
@@ -50,8 +55,9 @@ function progressFor(providerId: ProviderId, item: ContinueItem): number | null 
     : null;
 }
 
-function bestUnavailable(results: readonly ProviderResult[]): PrismContinueView {
-  const candidate = [...results]
+function bestUnavailable(contributions: readonly PrismProviderContribution[]): PrismContinueView {
+  const candidate = [...contributions]
+    .map((item) => item.result)
     .filter((result) => result.status !== 'ready' && result.status !== 'empty')
     .sort((a, b) => severity[a.status] - severity[b.status])[0];
 
@@ -65,10 +71,13 @@ function bestUnavailable(results: readonly ProviderResult[]): PrismContinueView 
   };
 }
 
-export function buildPrismProviderHomeView(results: readonly ProviderResult[]): PrismProviderHomeView {
-  const continueItems = results.flatMap((result) => {
+export function buildPrismProviderHomeView(contributions: readonly PrismProviderContribution[]): PrismProviderHomeView {
+  const continueContributions = contributions.filter((item) => item.operation === 'continue');
+  const summaryContributions = contributions.filter((item) => item.operation === 'summary');
+
+  const continueItems = continueContributions.flatMap(({ result }) => {
     const envelope = result.envelope;
-    if (result.status !== 'ready' || !envelope || envelope.operation !== 'continue' || !envelope.data) return [];
+    if (result.status !== 'ready' || !envelope || !envelope.data) return [];
     return envelope.data.items.map((item) => ({ providerId: result.providerId, item }));
   });
 
@@ -84,14 +93,14 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
         href: continueHref(best.providerId, best.item),
         progress: progressFor(best.providerId, best.item),
       }
-    : results.some((result) => result.status === 'empty' && result.envelope?.operation === 'continue')
+    : continueContributions.some(({ result }) => result.status === 'empty')
       ? { state: 'empty', providerId: null, title: null, updatedAt: null, href: null, progress: null }
-      : bestUnavailable(results.filter((result) => result.envelope?.operation === 'continue' || !result.envelope));
+      : bestUnavailable(continueContributions);
 
   const now: PrismNowItem[] = [];
-  for (const result of results) {
+  for (const { result } of summaryContributions) {
     const envelope = result.envelope;
-    if (result.providerId !== 'tms60' || result.status !== 'ready' || !envelope || envelope.operation !== 'summary' || !envelope.data) continue;
+    if (result.providerId !== 'tms60' || result.status !== 'ready' || !envelope || !envelope.data) continue;
 
     const due = envelope.data.dueTaskCount ?? 0;
     if (due > 0) {
