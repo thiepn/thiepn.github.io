@@ -103,7 +103,7 @@ const items = [
     </div>
   </header>
 
-  <PrismAccount returnTo={path} />
+  <PrismAccount returnTo={path} enableManagedProviders={path === '/home/'} />
 
   <nav class="prism-mobile-nav" aria-label="THIEPN navigation">
     {items.map((item) => (
