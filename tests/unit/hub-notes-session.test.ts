@@ -43,6 +43,22 @@ describe('H14 standard managed OAuth and private Notes boundary',()=>{
   });
   it('rejects implicit tokens and clears a failed callback',async()=>{const f=fixture();await f.session.begin(A,consent);const p=JSON.parse(f.storage.getItem(NOTES_PENDING_KEY)!);await expect(f.session.complete(new URLSearchParams({code:'x',state:p.state}),'#access_token=secret')).rejects.toThrow();expect(f.http).not.toHaveBeenCalled();});
   it.each([{sub:B},{client_id:B},{aud:'thiepn-hub'},{role:'service_role'},{iss:'https://evil.test/auth/v1'},{exp:1},{is_anonymous:true},{session_id:'bad'}])('rejects wrong token claims %j without using them as authority',async(claims)=>{const f=fixture({claims});await expect(connect(f)).rejects.toThrow();expect(f.session.connected()).toBe(false);});
+  it('exposes only sanitized provider access after a verified Notes connection',async()=>{
+    const f=fixture();await connect(f);
+    const access=await f.session.providerAccess(consent);
+    expect(access).toEqual({
+      providerId:'notes',
+      context:{scope:'account',accountId:A,workspaceId:null,grantRevision:REV,translationId:null},
+      permissions:consent.permissions,
+      expiresAt:NOW+3600*1000,
+    });
+    expect(JSON.stringify(access)).not.toMatch(/access_token|refresh_token|fictional_refresh|Bearer eyJ/);
+  });
+  it('rejects provider access when current consent no longer matches the connected grant',async()=>{
+    const f=fixture();await connect(f);
+    await expect(f.session.providerAccess({...consent,revision:B})).rejects.toThrow();
+    await expect(f.session.providerAccess({permissions:['app_data.read'],revision:REV})).rejects.toThrow();
+  });
   it('fails closed before private data when current authority denies access',async()=>{const f=fixture({denied:true});await connect(f);await expect(f.session.read('summary',new AbortController().signal)).rejects.toThrow();expect(f.http).toHaveBeenCalledTimes(2);expect(f.session.connected()).toBe(false);});
   it('rejects an extra body field from the owner response',async()=>{const f=fixture({badRow:true});await connect(f);await expect(f.session.read('summary',new AbortController().signal)).rejects.toThrow();expect(f.session.connected()).toBe(false);});
   it('withholds late results after account changes and clearing',async()=>{let release!:()=>void;const f=fixture({delay:()=>new Promise<void>(r=>{release=r;})});await connect(f);const pending=f.session.read('summary',new AbortController().signal);await vi.waitFor(()=>expect(release).toBeTypeOf('function'));f.owner(B);f.session.clear();release();await expect(pending).rejects.toThrow();expect(f.session.connected()).toBe(false);});
