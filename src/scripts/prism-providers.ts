@@ -108,7 +108,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
       return;
     }
 
-    if (item.state === 'empty' && connected) {
+    if (item.state === 'empty' && prismProviderRuntime.connectedProviders().length > 0) {
       titleNode.textContent = 'Nothing connected to resume';
       copyNode.textContent = 'Connected providers have no current resumable activity.';
       setAction('Browse apps','/#apps');
