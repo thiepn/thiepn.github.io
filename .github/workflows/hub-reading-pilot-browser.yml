@@ -1,4 +1,4 @@
-name: Hub controlled reading pilot browsers
+name: Hub Library ecosystem browsers
 on:
   pull_request:
     paths:
@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: thiepn/library
-          ref: a0edc592c4930223da3f259fcea88a35878a0946
+          ref: db010b21c8152d7fd9518d25d9154a27ca632a2f
           path: .cache/h21-source-library
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -48,15 +48,15 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: corepack enable
-      - name: Build and check actual Library owner
+      - name: Build and check P4 corrected Library owner
         working-directory: .cache/h21-source-library
         run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
       - name: Build the production pilot profile
         run: npm run build
-      - name: Qualify device-only public release
+      - name: Qualify read-only Library ecosystem release
         run: npm run hub:qualify
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Explicit opt-in, actual reading bridge, pause and mobile preview
+      - name: Device + Account opt-in, bounded reading bridge, pause and mobile preview
         run: npx playwright test -c playwright.hub-reading-pilot.config.ts
         env:
           H21_LIBRARY_DIST: .cache/h21-source-library/dist/library
