@@ -248,3 +248,55 @@ test('Prism pointer drag commits the same deterministic reorder as keyboard cont
     .map((item: { blockId: string }) => item.blockId);
   expect(start).toEqual(['block-now', 'block-continue']);
 });
+
+
+test('Prism Add Block restores a hidden registered block', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(route);
+  await page.locator('.prism-topbar__customize').click();
+
+  await page.locator('[data-prism-layout-open]').click();
+  const recentVisibility = page.locator('[data-prism-block-visibility][value="block-recent"]');
+  await recentVisibility.uncheck();
+  await expect(page.locator('[data-prism-block-id="block-recent"]')).toBeHidden();
+  await page.locator('[data-prism-layout-close]').click();
+
+  await page.locator('[data-prism-add-open]').click();
+  const addRecent = page.locator('[data-prism-add-block="block-recent"]');
+  await expect(addRecent).toBeEnabled();
+  await addRecent.click();
+  await expect(page.locator('[data-prism-block-id="block-recent"]')).toBeVisible();
+  await expect(addRecent).toBeDisabled();
+  await expect(addRecent).toHaveText('On Home');
+});
+
+test('Prism Theme Editor persists and applies core appearance axes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(route);
+  await page.locator('.prism-topbar__customize').click();
+  await page.locator('[data-prism-theme-open]').click();
+
+  await page.locator('[data-prism-appearance="mode"]').selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await page.locator('[data-prism-appearance="density"]').selectOption('compact');
+  await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-density', 'compact');
+
+  await page.locator('[data-prism-appearance="intensity"]').selectOption('rich');
+  await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-intensity', 'rich');
+
+  await page.locator('[data-prism-appearance="motion"]').selectOption('reduced');
+  await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-motion', 'reduced');
+
+  const appearance = await page.evaluate(() => {
+    const raw = localStorage.getItem('thiepn:home-document:v2');
+    return raw ? JSON.parse(raw).appearance : null;
+  });
+  expect(appearance).toMatchObject({
+    theme: 'prism',
+    mode: 'dark',
+    density: 'compact',
+    intensity: 'rich',
+    motion: 'reduced',
+  });
+});
