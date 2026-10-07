@@ -119,9 +119,26 @@ if (root) {
     }
   }
 
+  function applyAppearance(document: HomeDocumentV2) {
+    const mode = document.appearance.mode;
+    const resolved = mode === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : mode;
+
+    homeRoot.dataset.density = document.appearance.density;
+    homeRoot.dataset.prismIntensity = document.appearance.intensity;
+    homeRoot.dataset.prismMotion = document.appearance.motion;
+    homeRoot.dataset.prismMode = mode;
+
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved;
+    const themeColor = resolved === 'dark' ? '#0C0F13' : '#F7F8FA';
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', themeColor);
+  }
+
   function applyDocument(document: HomeDocumentV2, source: string) {
     currentDocument = structuredClone(document);
-    homeRoot.dataset.density = document.appearance.density;
+    applyAppearance(document);
     homeRoot.dataset.prismHomeSource = source;
 
     for (const block of homeRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
@@ -203,6 +220,11 @@ if (root) {
     const owner = identity.status === 'signed-in' ? identity.id : null;
     if (event.key !== homeDocumentStorageKey(owner)) return;
     void loadIdentity(identity);
+  });
+
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+  systemTheme.addEventListener('change', () => {
+    if (currentDocument.appearance.mode === 'system') applyAppearance(currentDocument);
   });
 
   let resizeFrame = 0;
