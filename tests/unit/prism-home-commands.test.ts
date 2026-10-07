@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   moveBlock,
+  moveBlockToIndex,
   orderedSectionPlacements,
   resizeBlock,
   setBlockHidden,
@@ -18,6 +19,15 @@ describe('Prism Home commands', () => {
     expect(order[0]).toMatchObject({ x: 0, y: 0, w: 4 });
     expect(order[1]).toMatchObject({ x: 4, y: 0, w: 8 });
     expect(validateHomeDocument(doc).valid).toBe(true);
+  });
+
+  it('moves directly to a requested index for pointer-drag commits', () => {
+    const doc = createDefaultHomeDocument();
+    expect(moveBlockToIndex(doc, 'desktop', 'block-now', 0)).toBe(true);
+    const order = orderedSectionPlacements(doc, 'desktop', 'section-start');
+    expect(order.map((item) => item.blockId)).toEqual(['block-now', 'block-continue']);
+    expect(validateHomeDocument(doc).valid).toBe(true);
+    expect(moveBlockToIndex(doc, 'desktop', 'block-now', 0)).toBe(false);
   });
 
   it('preserves full-width mobile spatial order by reflowing rows', () => {
