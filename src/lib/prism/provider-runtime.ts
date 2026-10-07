@@ -1,4 +1,4 @@
-import type { ProviderAccess, ProviderAdapter, ProviderId } from '../providers/types';
+import type { ProviderAccess, ProviderAdapter, ProviderId, ProviderResult } from '../providers/types';
 import { PrismProviderCoordinator, type PrismVisibleProviderOperation } from './provider-coordinator';
 import type { PrismProviderHomeView } from './provider-home-view';
 
@@ -40,6 +40,10 @@ export class PrismProviderRuntime {
 
   view():PrismProviderHomeView {
     return this.#coordinator.snapshotView();
+  }
+
+  results():readonly ProviderResult[] {
+    return this.#coordinator.snapshotResults();
   }
 
   async refresh():Promise<void> {
