@@ -1,6 +1,6 @@
 import { providerAction } from '../providers/registry';
 import { libraryContinueUrl } from '../hub-library-session';
-import type { ContinueItem, Operation, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
+import type { ContinueItem, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
 
 export interface PrismContinueView {
   state: 'empty' | 'ready' | 'stale' | 'offline' | 'error' | 'unconnected' | 'unsupported';
@@ -18,11 +18,6 @@ export interface PrismNowItem {
   detail: string | null;
   href: string;
   priority: number;
-}
-
-export interface PrismProviderContribution {
-  operation: Operation;
-  result: ProviderResult;
 }
 
 export interface PrismProviderHomeView {
@@ -56,9 +51,8 @@ function progressFor(providerId: ProviderId, item: ContinueItem): number | null 
     : null;
 }
 
-function bestUnavailable(contributions: readonly PrismProviderContribution[]): PrismContinueView {
-  const candidate = [...contributions]
-    .map((item) => item.result)
+function bestUnavailable(results: readonly ProviderResult[]): PrismContinueView {
+  const candidate = [...results]
     .filter((result) => result.status !== 'ready' && result.status !== 'empty')
     .sort((a, b) => severity[a.status] - severity[b.status])[0];
 
@@ -72,11 +66,11 @@ function bestUnavailable(contributions: readonly PrismProviderContribution[]): P
   };
 }
 
-export function buildPrismProviderHomeView(contributions: readonly PrismProviderContribution[]): PrismProviderHomeView {
-  const continueContributions = contributions.filter((item) => item.operation === 'continue');
-  const summaryContributions = contributions.filter((item) => item.operation === 'summary');
+export function buildPrismProviderHomeView(results: readonly ProviderResult[]): PrismProviderHomeView {
+  const continueResults = results.filter((result) => result.operation === 'continue');
+  const summaryResults = results.filter((result) => result.operation === 'summary');
 
-  const continueItems = continueContributions.flatMap(({ result }) => {
+  const continueItems = continueResults.flatMap((result) => {
     const envelope = result.envelope;
     if (result.status !== 'ready' || !envelope || !envelope.data) return [];
     return envelope.data.items.map((item) => ({ providerId: result.providerId, item }));
@@ -94,12 +88,12 @@ export function buildPrismProviderHomeView(contributions: readonly PrismProvider
         href: continueHref(best.providerId, best.item),
         progress: progressFor(best.providerId, best.item),
       }
-    : continueContributions.some(({ result }) => result.status === 'empty')
+    : continueResults.some((result) => result.status === 'empty')
       ? { state: 'empty', providerId: null, title: null, updatedAt: null, href: null, progress: null }
-      : bestUnavailable(continueContributions);
+      : bestUnavailable(continueResults);
 
   const now: PrismNowItem[] = [];
-  for (const { result } of summaryContributions) {
+  for (const result of summaryResults) {
     const envelope = result.envelope;
     if (result.providerId !== 'tms60' || result.status !== 'ready' || !envelope || !envelope.data) continue;
 
