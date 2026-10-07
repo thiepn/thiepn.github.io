@@ -1,30 +1,63 @@
 ---
 const blocks = [
-  ['block-continue', 'Continue'],
-  ['block-now', 'Now'],
-  ['block-apps', 'Apps'],
-  ['block-study', 'Study'],
-  ['block-recent', 'Recent'],
+  ['block-continue', 'Continue', 'Resume the most relevant active work.', 'M · L · XL'],
+  ['block-now', 'Now', 'Time-sensitive actions and current priorities.', 'S · M'],
+  ['block-apps', 'Apps', 'Your THIEPN app launcher.', 'L · XL'],
+  ['block-study', 'Study', 'Compact learning progress and next steps.', 'M · L'],
+  ['block-recent', 'Recent', 'Quiet access to recent work.', 'M · L'],
 ] as const;
 ---
 
 <div class="prism-edit-toolbar" data-prism-edit-toolbar hidden role="toolbar" aria-label="Customize Home">
+  <button type="button" data-prism-add-open>Add Block</button>
   <button type="button" data-prism-layout-open>Layout</button>
+  <button type="button" data-prism-theme-open>Theme</button>
   <button type="button" data-prism-undo disabled>Undo</button>
   <button type="button" class="prism-edit-toolbar__done" data-prism-edit-done>Done</button>
   <span class="prism-edit-toolbar__status" data-prism-edit-status role="status" aria-live="polite"></span>
 </div>
 
+<dialog class="prism-add-dialog" id="prism-add-dialog" data-prism-add-dialog aria-labelledby="prism-add-title">
+  <div class="prism-dialog-surface">
+    <header class="prism-dialog-header">
+      <div>
+        <p>Blocks</p>
+        <h2 id="prism-add-title">Add to Home</h2>
+      </div>
+      <button type="button" data-prism-add-close>Close</button>
+    </header>
+    <p class="prism-dialog-intro">Add a hidden Prism block back to Home. New provider blocks will use this same catalogue later.</p>
+    <div class="prism-add-list">
+      {blocks.map(([id, title, description, sizes]) => (
+        <article data-prism-add-item={id}>
+          <div class="prism-add-list__preview" aria-hidden="true">
+            <span>{title.slice(0, 1)}</span>
+            <i></i>
+            <i></i>
+          </div>
+          <div class="prism-add-list__copy">
+            <strong>{title}</strong>
+            <p>{description}</p>
+            <small>{sizes}</small>
+          </div>
+          <button type="button" data-prism-add-block={id}>Add</button>
+        </article>
+      ))}
+    </div>
+    <p class="prism-dialog-empty" data-prism-add-empty hidden>All available blocks are already on Home.</p>
+  </div>
+</dialog>
+
 <dialog class="prism-layout-dialog" id="prism-layout-dialog" data-prism-layout-dialog aria-labelledby="prism-layout-title">
-  <div class="prism-layout-dialog__surface">
-    <header>
+  <div class="prism-dialog-surface">
+    <header class="prism-dialog-header">
       <div>
         <p>Home layout</p>
         <h2 id="prism-layout-title">Visible blocks</h2>
       </div>
       <button type="button" data-prism-layout-close>Close</button>
     </header>
-    <p class="prism-layout-dialog__intro">Choose which blocks are visible. Hidden blocks keep their layout and settings.</p>
+    <p class="prism-dialog-intro">Choose which blocks are visible. Hidden blocks keep their layout and settings.</p>
     <div class="prism-layout-dialog__blocks">
       {blocks.map(([id, title]) => (
         <label>
@@ -32,6 +65,53 @@ const blocks = [
           <input type="checkbox" value={id} data-prism-block-visibility />
         </label>
       ))}
+    </div>
+  </div>
+</dialog>
+
+<dialog class="prism-theme-dialog" id="prism-theme-dialog" data-prism-theme-dialog aria-labelledby="prism-theme-title">
+  <div class="prism-dialog-surface">
+    <header class="prism-dialog-header">
+      <div>
+        <p>Appearance</p>
+        <h2 id="prism-theme-title">Prism</h2>
+      </div>
+      <button type="button" data-prism-theme-close>Close</button>
+    </header>
+    <p class="prism-dialog-intro">Change appearance without changing Home structure or information hierarchy.</p>
+    <div class="prism-theme-controls">
+      <label>
+        <span><strong>Mode</strong><small>Light, dark, or follow the device.</small></span>
+        <select data-prism-appearance="mode">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <label>
+        <span><strong>Density</strong><small>Changes spacing, not content structure.</small></span>
+        <select data-prism-appearance="density">
+          <option value="compact">Compact</option>
+          <option value="balanced">Balanced</option>
+          <option value="comfortable">Comfortable</option>
+        </select>
+      </label>
+      <label>
+        <span><strong>Visual intensity</strong><small>Controls atmospheric Prism graphics.</small></span>
+        <select data-prism-appearance="intensity">
+          <option value="quiet">Quiet</option>
+          <option value="balanced">Balanced</option>
+          <option value="rich">Rich</option>
+        </select>
+      </label>
+      <label>
+        <span><strong>Motion</strong><small>Reduced, balanced, or expressive feedback.</small></span>
+        <select data-prism-appearance="motion">
+          <option value="reduced">Reduced</option>
+          <option value="balanced">Balanced</option>
+          <option value="expressive">Expressive</option>
+        </select>
+      </label>
     </div>
   </div>
 </dialog>
