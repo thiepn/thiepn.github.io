@@ -213,3 +213,38 @@ test('Prism Edit Mode mutates HomeDocument with move, resize, visibility and Und
   await expect(page.locator('[data-prism-edit-toolbar]')).toBeHidden();
   await expect(customize).toBeFocused();
 });
+
+
+test('Prism pointer drag commits the same deterministic reorder as keyboard controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(route);
+
+  await page.locator('.prism-topbar__customize').click();
+  const continuation = page.locator('[data-prism-block-id="block-continue"]');
+  const now = page.locator('[data-prism-block-id="block-now"]');
+  await now.click();
+
+  const handle = now.locator('[data-prism-drag]');
+  const handleBox = await handle.boundingBox();
+  const continueBox = await continuation.boundingBox();
+  expect(handleBox && continueBox).toBeTruthy();
+
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(continueBox!.x + 8, continueBox!.y + continueBox!.height / 2, { steps: 6 });
+  await page.mouse.up();
+
+  await expect.poll(async () => {
+    const a = await now.boundingBox();
+    const b = await continuation.boundingBox();
+    return Boolean(a && b && a.x < b.x);
+  }).toBe(true);
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('thiepn:home-document:v2') ?? 'null'));
+  expect(stored).not.toBeNull();
+  const start = stored.layouts.desktop.placements
+    .filter((item: { sectionId: string }) => item.sectionId === 'section-start')
+    .sort((a: { x: number; y: number }, b: { x: number; y: number }) => a.y - b.y || a.x - b.x)
+    .map((item: { blockId: string }) => item.blockId);
+  expect(start).toEqual(['block-now', 'block-continue']);
+});
