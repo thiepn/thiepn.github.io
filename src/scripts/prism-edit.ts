@@ -4,7 +4,7 @@ import {
   type PrismBreakpoint,
   type PrismBlockSize,
 } from '../lib/prism/block-registry';
-import { moveBlock, orderedSectionPlacements, resizeBlock, setBlockHidden } from '../lib/prism/home-commands';
+import { moveBlock, moveBlockToIndex, orderedSectionPlacements, resizeBlock, setBlockHidden } from '../lib/prism/home-commands';
 import { getActiveHomeStore, subscribeActiveHomeStore } from '../lib/prism/home-runtime';
 import type { HomeStore } from '../lib/prism/home-store';
 
@@ -32,6 +32,15 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   let editing = false;
   let selectedId: string | null = null;
   let returnFocus: HTMLElement | null = null;
+  let dragState: {
+    pointerId: number;
+    blockId: string;
+    sectionId: string;
+    startIndex: number;
+    targetIndex: number;
+    handle: HTMLButtonElement;
+    block: HTMLElement;
+  } | null = null;
 
   function breakpoint(): PrismBreakpoint {
     if (window.matchMedia('(max-width: 639px)').matches) return 'mobile';
@@ -95,6 +104,12 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
       controls.className = 'prism-block-edit-controls';
       controls.setAttribute('aria-label', `${definition.title} layout controls`);
 
+      const drag = document.createElement('button');
+      drag.type = 'button';
+      drag.dataset.prismDrag = '';
+      drag.textContent = '⋮⋮';
+      drag.setAttribute('aria-label', `Drag ${definition.title}`);
+
       const earlier = document.createElement('button');
       earlier.type = 'button';
       earlier.dataset.prismMove = '-1';
@@ -123,14 +138,136 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
       hide.textContent = 'Hide';
       hide.setAttribute('aria-label', `Hide ${definition.title}`);
 
-      controls.append(earlier, later, size, hide);
+      controls.append(drag, earlier, later, size, hide);
       block.append(controls);
 
+      drag.addEventListener('pointerdown', (event) => beginDrag(event, blockId, drag));
+      drag.addEventListener('pointermove', updateDrag);
+      drag.addEventListener('pointerup', (event) => finishDrag(event, true));
+      drag.addEventListener('pointercancel', (event) => finishDrag(event, false));
       earlier.addEventListener('click', () => void mutateMove(blockId, -1));
       later.addEventListener('click', () => void mutateMove(blockId, 1));
       size.addEventListener('change', () => void mutateSize(blockId, size.value as PrismBlockSize));
       hide.addEventListener('click', () => void mutateVisibility(blockId, true));
     }
+  }
+
+  function clearDropPreview() {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+      delete block.dataset.prismDropTarget;
+      delete block.dataset.prismDragging;
+    }
+    delete editRoot.dataset.prismDragging;
+  }
+
+  function beginDrag(event: PointerEvent, blockId: string, handle: HTMLButtonElement) {
+    if (!editing || !store || dragState) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    const snapshot = store.getSnapshot();
+    const active = breakpoint();
+    const placement = snapshot.layouts[active].placements.find((item) => item.blockId === blockId);
+    if (!placement) return;
+    const order = orderedSectionPlacements(snapshot, active, placement.sectionId).map((item) => item.blockId);
+    const startIndex = order.indexOf(blockId);
+    const block = editRoot.querySelector<HTMLElement>(`[data-prism-block-id="${blockId}"]`);
+    if (startIndex < 0 || !block) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    handle.setPointerCapture(event.pointerId);
+    dragState = {
+      pointerId: event.pointerId,
+      blockId,
+      sectionId: placement.sectionId,
+      startIndex,
+      targetIndex: startIndex,
+      handle,
+      block,
+    };
+    block.dataset.prismDragging = 'true';
+    editRoot.dataset.prismDragging = 'true';
+    setSelected(blockId);
+    announce(`Dragging ${titleFor(blockId)}.`);
+  }
+
+  function dragTargetIndex(event: PointerEvent): number {
+    if (!dragState || !store) return 0;
+    const snapshot = store.getSnapshot();
+    const active = breakpoint();
+    const order = orderedSectionPlacements(snapshot, active, dragState.sectionId)
+      .map((item) => item.blockId)
+      .filter((id) => id !== dragState!.blockId);
+
+    let insertion = order.length;
+    for (let index = 0; index < order.length; index += 1) {
+      const id = order[index]!;
+      const block = editRoot.querySelector<HTMLElement>(`[data-prism-block-id="${id}"]`);
+      const rect = block?.getBoundingClientRect();
+      if (!rect || block?.hidden) continue;
+
+      const sameRow = event.clientY >= rect.top && event.clientY <= rect.bottom;
+      if (event.clientY < rect.top || (sameRow && event.clientX < rect.left + rect.width / 2)) {
+        insertion = index;
+        break;
+      }
+      if (sameRow && event.clientX >= rect.left + rect.width / 2) insertion = index + 1;
+    }
+
+    return Math.max(0, Math.min(insertion, order.length));
+  }
+
+  function updateDrag(event: PointerEvent) {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    event.preventDefault();
+    const targetIndex = dragTargetIndex(event);
+    dragState.targetIndex = targetIndex;
+
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-drop-target]')) {
+      delete block.dataset.prismDropTarget;
+    }
+
+    const snapshot = store?.getSnapshot();
+    if (!snapshot) return;
+    const active = breakpoint();
+    const order = orderedSectionPlacements(snapshot, active, dragState.sectionId)
+      .map((item) => item.blockId)
+      .filter((id) => id !== dragState!.blockId);
+    const targetId = order[Math.min(targetIndex, Math.max(0, order.length - 1))];
+    if (targetId) {
+      editRoot.querySelector<HTMLElement>(`[data-prism-block-id="${targetId}"]`)?.setAttribute('data-prism-drop-target', 'true');
+    }
+  }
+
+  function finishDrag(event: PointerEvent, commit: boolean) {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    event.preventDefault();
+    const completed = dragState;
+    dragState = null;
+
+    if (completed.handle.hasPointerCapture(event.pointerId)) completed.handle.releasePointerCapture(event.pointerId);
+    clearDropPreview();
+
+    if (!commit || !store || completed.targetIndex === completed.startIndex) {
+      announce(commit ? 'Block position unchanged.' : 'Drag cancelled.');
+      completed.handle.focus();
+      return;
+    }
+
+    void (async () => {
+      try {
+        let moved = false;
+        await store!.mutate((draft) => {
+          moved = moveBlockToIndex(draft, breakpoint(), completed.blockId, completed.targetIndex);
+        });
+        if (moved) announce(`${titleFor(completed.blockId)} moved.`);
+        refresh();
+      } catch {
+        announce('Could not save that drag.');
+      } finally {
+        completed.handle.focus();
+      }
+    })();
   }
 
   async function mutateMove(blockId: string, direction: -1 | 1) {
@@ -278,6 +415,12 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
 
   document.addEventListener('keydown', (event) => {
     if (!editing || event.key !== 'Escape' || layoutModal.open) return;
+    if (dragState) {
+      event.preventDefault();
+      const synthetic = new PointerEvent('pointercancel', { pointerId: dragState.pointerId });
+      finishDrag(synthetic, false);
+      return;
+    }
     if (selectedId) {
       event.preventDefault();
       setSelected(null);
