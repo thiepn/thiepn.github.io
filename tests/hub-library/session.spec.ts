@@ -9,7 +9,7 @@ const book = catalogue.find((b: any) => b.format === 'epub');
 if (!book) throw new Error('Actual owner catalogue has no EPUB');
 const grant = { schemaVersion: 1, deviceId: '11111111-1111-4111-8111-111111111111', revision: '22222222-2222-4222-8222-222222222222', permissions: ['summary','continue','search'], includePersonal: false };
 const mime = (p: string) => p.endsWith('.js') ? 'application/javascript' : p.endsWith('.css') ? 'text/css' : p.endsWith('.html') ? 'text/html' : p.endsWith('.json') ? 'application/json' : p.endsWith('.svg') ? 'image/svg+xml' : p.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream';
-async function fixture(page: Page) {
+async function fixture(page: Page, homePath = '/home/') {
   const calls: string[] = []; let hold = false; let release: () => void = () => {};
   await page.addInitScript(() => {
     (window as any).__requests = []; window.addEventListener('message', e => { if(e.data?.kind === 'read') (window as any).__requests.push(e.data); });
@@ -31,8 +31,8 @@ async function fixture(page: Page) {
     if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: mime(file) });
     return route.fulfill({ status: 404, body: 'Fictional fixture: unavailable' });
   });
-  await page.goto(HUB+'/home/');
-  await expect(page.locator('[data-private-library]')).toBeVisible();
+  await page.goto(HUB+homePath);
+  if (homePath === '/home/') await expect(page.locator('[data-private-library]')).toBeVisible();
   return { calls, hold: () => { hold = true; }, release: () => { hold = false; release(); } };
 }
 async function seed(page: Page, permissions = grant.permissions, personal = false, version = 9) {
@@ -51,6 +51,23 @@ async function seed(page: Page, permissions = grant.permissions, personal = fals
   }, { book, grant, KEY, INDEX, permissions, personal, version });
 }
 async function connect(page: Page) { await page.getByRole('button',{name:'Connect this browser',exact:true}).click(); await expect(page.locator('[data-library-items]')).toContainText(book.title); }
+test('Prism Continue hydrates from the real device-local Library provider', async ({page}) => {
+  await fixture(page,'/home/prism-preview/');
+  await seed(page);
+  await page.getByRole('button',{name:'Open THIEPN Account',exact:true}).first().click();
+  const connectButton=page.locator('[data-prism-library-connect]');
+  await expect(connectButton).toBeVisible();
+  await connectButton.click();
+
+  const continuation=page.locator('[data-prism-block-id="block-continue"]');
+  await expect(continuation.locator('[data-prism-continue-title]')).toHaveText(book.title);
+  await expect(continuation.locator('[data-prism-continue-copy]')).toContainText('Library · 20%');
+  const href=await continuation.locator('[data-prism-continue-action]').getAttribute('href');
+  expect(href).toContain('/library/hub/continue?');
+  expect(href).toContain('release=');
+  expect(href).not.toContain('CFI');
+  expect(JSON.stringify(await page.evaluate(() => (window as any).__results))).not.toContain('SECRET');
+});
 test('no automatic owner load or reading-storage access; connection without consent reads nothing', async ({page}) => {
   const f = await fixture(page);
   expect(f.calls.some(u => u.includes('/library/hub/bridge'))).toBe(false);
