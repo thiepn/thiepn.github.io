@@ -20,6 +20,14 @@ const visibilityInputs = root ? Array.from(root.querySelectorAll<HTMLInputElemen
 const customizeTriggers = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-prism-customize-open]'));
 
 if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && layoutClose) {
+  const editRoot = root;
+  const editToolbar = toolbar;
+  const undoButton = undo;
+  const doneButton = done;
+  const statusNode = status;
+  const layoutButton = layoutOpen;
+  const layoutModal = layoutDialog;
+  const layoutCloseButton = layoutClose;
   let store: HomeStore | null = getActiveHomeStore();
   let editing = false;
   let selectedId: string | null = null;
@@ -32,27 +40,27 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   }
 
   function announce(message: string) {
-    status.textContent = '';
-    requestAnimationFrame(() => { status.textContent = message; });
+    statusNode.textContent = '';
+    requestAnimationFrame(() => { statusNode.textContent = message; });
   }
 
   function titleFor(blockId: string): string {
-    const type = root.querySelector<HTMLElement>(`[data-prism-block-id="${blockId}"]`)?.dataset.prismBlock;
+    const type = editRoot.querySelector<HTMLElement>(`[data-prism-block-id="${blockId}"]`)?.dataset.prismBlock;
     return type && isPrismBlockType(type) ? PRISM_BLOCK_REGISTRY[type].title : 'Block';
   }
 
   function setSelected(blockId: string | null, focus = false) {
     selectedId = blockId;
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       const selected = block.dataset.prismBlockId === blockId;
       if (selected) block.dataset.prismSelected = 'true';
       else delete block.dataset.prismSelected;
     }
-    if (focus && blockId) root.querySelector<HTMLElement>(`[data-prism-block-id="${blockId}"]`)?.focus();
+    if (focus && blockId) editRoot.querySelector<HTMLElement>(`[data-prism-block-id="${blockId}"]`)?.focus();
   }
 
   function disableNormalInteractions() {
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       block.tabIndex = 0;
       for (const node of block.querySelectorAll<HTMLElement>('a,button,input,select,textarea,[tabindex]')) {
         if (node.closest('.prism-block-edit-controls')) continue;
@@ -64,7 +72,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   }
 
   function restoreNormalInteractions() {
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       block.removeAttribute('tabindex');
       for (const node of block.querySelectorAll<HTMLElement>('[data-prism-previous-tabindex]')) {
         const previous = node.dataset.prismPreviousTabindex;
@@ -76,7 +84,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   }
 
   function ensureControls() {
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       if (block.querySelector('.prism-block-edit-controls')) continue;
       const type = block.dataset.prismBlock;
       const blockId = block.dataset.prismBlockId;
@@ -164,7 +172,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   function refresh() {
     const snapshot = store?.getSnapshot();
     const active = breakpoint();
-    undo.disabled = !store?.canUndo();
+    undoButton.disabled = !store?.canUndo();
 
     for (const trigger of customizeTriggers) trigger.disabled = !store || editing;
 
@@ -174,7 +182,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
       input.checked = Boolean(block && block.hidden !== true);
     }
 
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       const blockId = block.dataset.prismBlockId!;
       const placement = snapshot.layouts[active].placements.find((item) => item.blockId === blockId);
       const controls = block.querySelector<HTMLElement>('.prism-block-edit-controls');
@@ -196,23 +204,23 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     editing = true;
     returnFocus = trigger;
     document.documentElement.dataset.prismEditing = 'true';
-    root.dataset.prismEditing = 'true';
-    toolbar.hidden = false;
+    editRoot.dataset.prismEditing = 'true';
+    editToolbar.hidden = false;
     document.querySelector<HTMLDialogElement>('#prism-account-dialog')?.close();
     ensureControls();
     disableNormalInteractions();
     setSelected(null);
     refresh();
-    done.focus();
+    doneButton.focus();
   }
 
   function exit() {
     if (!editing) return;
     editing = false;
     delete document.documentElement.dataset.prismEditing;
-    delete root.dataset.prismEditing;
-    toolbar.hidden = true;
-    if (layoutDialog.open) layoutDialog.close();
+    delete editRoot.dataset.prismEditing;
+    editToolbar.hidden = true;
+    if (layoutModal.open) layoutModal.close();
     setSelected(null);
     restoreNormalInteractions();
     refresh();
@@ -221,9 +229,9 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   }
 
   customizeTriggers.forEach((trigger) => trigger.addEventListener('click', () => enter(trigger)));
-  done.addEventListener('click', exit);
+  doneButton.addEventListener('click', exit);
 
-  undo.addEventListener('click', () => void (async () => {
+  undoButton.addEventListener('click', () => void (async () => {
     if (!store) return;
     try {
       if (await store.undo()) announce('Last Home change undone.');
@@ -233,21 +241,21 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     }
   })());
 
-  layoutOpen.addEventListener('click', () => {
+  layoutButton.addEventListener('click', () => {
     refresh();
-    if (!layoutDialog.open) layoutDialog.showModal();
-    layoutClose.focus();
+    if (!layoutModal.open) layoutModal.showModal();
+    layoutCloseButton.focus();
   });
-  layoutClose.addEventListener('click', () => layoutDialog.close());
-  layoutDialog.addEventListener('click', (event) => {
-    if (event.target === layoutDialog) layoutDialog.close();
+  layoutCloseButton.addEventListener('click', () => layoutModal.close());
+  layoutModal.addEventListener('click', (event) => {
+    if (event.target === layoutModal) layoutModal.close();
   });
 
   visibilityInputs.forEach((input) => input.addEventListener('change', () => {
     void mutateVisibility(input.value, !input.checked);
   }));
 
-  root.addEventListener('click', (event) => {
+  editRoot.addEventListener('click', (event) => {
     if (!editing) return;
     const target = event.target as Element;
     if (target.closest('.prism-block-edit-controls')) return;
@@ -257,7 +265,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     setSelected(block.dataset.prismBlockId ?? null, true);
   }, true);
 
-  root.addEventListener('keydown', (event) => {
+  editRoot.addEventListener('keydown', (event) => {
     if (!editing) return;
     const target = event.target as HTMLElement;
     const block = target.closest<HTMLElement>('[data-prism-block-id]');
@@ -269,7 +277,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!editing || event.key !== 'Escape' || layoutDialog.open) return;
+    if (!editing || event.key !== 'Escape' || layoutModal.open) return;
     if (selectedId) {
       event.preventDefault();
       setSelected(null);
