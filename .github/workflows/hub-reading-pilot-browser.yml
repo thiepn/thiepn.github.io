@@ -1,4 +1,4 @@
-name: Hub controlled reading pilot browsers
+name: Hub Library ecosystem browsers
 on:
   pull_request:
     paths:
@@ -27,13 +27,19 @@ jobs:
   pilot-paired:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PUBLIC_HUB_ACCOUNT_ENTRY: v1
+      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
+      PUBLIC_THIEPN_ACCOUNT_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Check out immutable Library owner
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: thiepn/library
-          ref: 77058023894f4d7935c79e291a5dba7daacb8666
+          ref: c4abe7d809c577fcfb9a0690890e79db9fc16277
           path: .cache/h21-source-library
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -42,15 +48,15 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: corepack enable
-      - name: Build and check actual Library owner
+      - name: Build and check P4 corrected Library owner
         working-directory: .cache/h21-source-library
         run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
       - name: Build the production pilot profile
         run: npm run build
-      - name: Qualify device-only public release
+      - name: Qualify read-only Library ecosystem release
         run: npm run hub:qualify
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Explicit opt-in, actual reading bridge, pause and mobile preview
+      - name: Device + Account opt-in, bounded reading bridge, pause and mobile preview
         run: npx playwright test -c playwright.hub-reading-pilot.config.ts
         env:
           H21_LIBRARY_DIST: .cache/h21-source-library/dist/library

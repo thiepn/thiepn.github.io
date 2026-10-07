@@ -1,6 +1,7 @@
 import { checkReadingPilot, desktopReadingPilot, READING_PILOT_MOBILE_ENABLED } from '../lib/reading-pilot';
 import {integratedWorkflows} from '../lib/workflows/integrated';
 import { HubLibrarySession, libraryContinueUrl } from '../lib/hub-library-session';
+import { hubIdentity } from './portal-auth';
 import type { Operation } from '../lib/providers/types';
 const root = document.querySelector<HTMLElement>('[data-private-library]');
 if (root) {
@@ -13,7 +14,7 @@ if (root) {
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
-  function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared. To return, try the reading pilot and connect this browser again.') {
+  function endPilot(message = 'Library connection ended. This tab’s reading snapshot was cleared. To return, choose Connect Library, then connect this browser again.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;
     join!.hidden = false; end!.hidden = true; pilotStatus!.textContent = message; clear();
   }
@@ -74,7 +75,9 @@ if (root) {
       if(empty)empty.hidden=envelope.status!=='empty';
       if(pilot)pilotStatus!.textContent='Connected for this tab. Reading metadata clears when you leave Home.';
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
-      freshness.textContent = `Device-local · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Legacy web progress and other browsers are not included.`;
+      freshness.textContent = envelope.coverage === 'account-synced'
+        ? `Account-synced through Library · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Library verified that this device already matches the Account snapshot before sharing bounded reading metadata.`
+        : `This browser · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Account-synced reading was not included in this snapshot.`;
       timer = setTimeout(() => clear('This reading snapshot expired. Connect again to check Library.'), Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
     } catch { if (epoch === generation) clear('Library could not be checked. Review sharing or open My Library; unavailable storage is not an empty library.'); }
     finally { if (epoch === generation) controller = null; controls(); }
@@ -83,7 +86,10 @@ if (root) {
     if (!available() || !await verifyPilot()) return;
     clear('Checking your Library sharing choices…', true); const epoch = generation; controller = new AbortController(); connect.disabled = true;
     try {
-      const consent = await session.connect(controller.signal);
+      const consent = await session.connect(
+        controller.signal,
+        hubIdentity.status === 'signed-in' ? hubIdentity.id : null,
+      );
       if (epoch !== generation || root!.hidden || document.hidden) return;
       permissions = new Set(consent.permissions.filter(p => !pilot || p === 'summary' || p === 'continue')); controls();
       const initial = permissions.has('summary') ? 'summary' : permissions.has('continue') ? 'continue' : null;
@@ -97,10 +103,13 @@ if (root) {
   disconnect.addEventListener('click', () => clear('Library disconnected in this tab. Manage Library sharing to revoke it in this browser.'));
   radios.forEach(r => r.addEventListener('change', () => void run(() => load(r.value as Operation))));
   form.addEventListener('submit', event => { event.preventDefault(); const query = (form.elements.namedItem('query') as HTMLInputElement).value.trim(); if (query) void run(() => load('search', query)); });
-  window.addEventListener('hub:identity', () => { clear(); if (pilot) endPilot(); });
+  window.addEventListener('hub:identity', () => {
+    clear();
+    if (pilot) endPilot();
+  });
   window.addEventListener('pagehide', () => { clear(); if (pilot) endPilot(); });
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: try the reading pilot, then connect this browser for fresh progress.'); } controls(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Choose Connect Library, then connect this browser for fresh progress.'); } controls(); });
   new MutationObserver(() => { if (root!.hidden) clear(); controls(); }).observe(root, { attributes: true, attributeFilter: ['hidden'] });
   if (pilot) {
     join!.disabled = !eligible;

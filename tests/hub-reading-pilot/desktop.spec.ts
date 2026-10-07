@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {fixture,seed,join,connect,book} from './fixture';
+import {fixture,seed,seedAccountAwareReading,join,connect,book} from './fixture';
 test('join is optional, creates no owner load; absent consent yields no reading metadata',async({page})=>{
  const f=await fixture(page);await expect(page.locator('[data-private-library]')).toBeHidden();
  expect(f.calls.some(c=>c.url.includes('/library/hub/bridge'))).toBe(false);expect(await page.evaluate(()=>(window as any).__opens)).toEqual([]);
@@ -17,38 +17,90 @@ test('actual device metadata resumes the exact revision with no cloud calls, wri
  expect(await page.evaluate(()=>(window as any).__opens)).toEqual([]);expect(await page.evaluate(()=>JSON.stringify((window as any).__results))).not.toContain('SECRET');
  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toContain(book.title);
 });
+test('explicit same-account sharing verifies matching Library state and exposes only the bounded account-synced projection',async({page})=>{
+ const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);await seedAccountAwareReading(page);await connect(page);
+ const messages=await page.evaluate(()=>(window as any).__libraryMessages);
+ const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
+ expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
+ const outbound=await page.evaluate(()=>(window as any).__libraryOutbound);
+ const connectRequest=outbound.filter((message:any)=>message?.kind==='connect').at(-1);
+ expect(connectRequest?.accountId, `Expected verified Hub account ID in connect request. Outbound: ${JSON.stringify(outbound)}`).toBe('33333333-3333-4333-8333-333333333333');
+ const ownerFrame=page.frames().find(frame=>new URL(frame.url()).pathname==='/library/hub/bridge');
+ expect(ownerFrame, 'Expected Library owner frame to remain connected.').toBeTruthy();
+ const ownerState=await ownerFrame!.evaluate(()=>({
+   sync:localStorage.getItem('thiepn.library.account-sync.v1'),
+   tokens:localStorage.getItem('thiepn:library-sso:v1:tokens'),
+ }));
+ expect(JSON.parse(ownerState.sync??'null')?.userId, `Library sync metadata missing: ${JSON.stringify(ownerState)}`).toBe('33333333-3333-4333-8333-333333333333');
+ expect(JSON.parse(ownerState.tokens??'null')?.accessToken, `Library SSO tokens missing: ${JSON.stringify(ownerState)}`).toBe('fixture-'+ 'a'.repeat(40));
+ await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
+ await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
+ const results=await page.evaluate(()=>(window as any).__results);
+ expect(results.at(-1)?.coverage).toBe('account-synced');
+ const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
+ expect(f.calls.some(call=>call.url.includes('/auth/v1/user'))).toBe(true);
+ expect(
+  f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state')),
+  `Expected Library Account snapshot request. Captured: ${f.calls.filter(call=>call.url.includes('supabase.co')).map(call=>`${call.method} ${new URL(call.url).pathname}`).join(', ') || 'none'}`,
+ ).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
+ expect(f.calls.filter(call=>new URL(call.url).origin==='https://hycegznamzjhwinegaai.supabase.co').every(call=>call.method==='GET')).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/storage/v1/'))).toBe(false);
+ const href=await page.locator('[data-library-items] a').first().getAttribute('href');
+ expect(href).toContain('release=');expect(href).not.toContain('CFI');
+});
+
+test('divergent cloud progress never replaces the exact local Continue position',async({page})=>{
+ const f=await fixture(page,{account:true});await expect(page.locator('[data-auth-status]')).toContainText('reader@example.test');await seed(page);f.driftAccount();await seedAccountAwareReading(page);await connect(page);
+ const messages=await page.evaluate(()=>(window as any).__libraryMessages);
+ const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
+ expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
+ const outbound=await page.evaluate(()=>(window as any).__libraryOutbound);
+ const connectRequest=outbound.filter((message:any)=>message?.kind==='connect').at(-1);
+ expect(connectRequest?.accountId, `Expected verified Hub account ID in connect request. Outbound: ${JSON.stringify(outbound)}`).toBe('33333333-3333-4333-8333-333333333333');
+ await expect(page.locator('[data-library-freshness]')).toContainText('This browser');
+ await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
+ const results=await page.evaluate(()=>(window as any).__results);
+ expect(results.at(-1)?.coverage).toBe('device-local');
+ expect(
+  f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state')),
+  `Expected Library Account snapshot request. Captured: ${f.calls.filter(call=>call.url.includes('supabase.co')).map(call=>`${call.method} ${new URL(call.url).pathname}`).join(', ') || 'none'}`,
+ ).toBe(true);
+ expect(f.calls.some(call=>call.url.includes('/rest/v1/rpc/'))).toBe(false);
+});
+
 test('ending, masking and reloading never restore a reading snapshot automatically',async({page})=>{
- await fixture(page);await seed(page);await connect(page);await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
+ await fixture(page);await seed(page);await connect(page);await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
  await connect(page);await page.getByRole('button',{name:'Hide Home',exact:true}).click();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();
  await page.reload();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('pause and configuration outage fail closed before the next owner read',async({page})=>{
  const f=await fixture(page);await seed(page);await connect(page);f.pause();await page.getByRole('button',{name:'Refresh',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);await expect(page.locator('[data-library-items]')).toBeEmpty();
- f.fail();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-reading-pilot-status]')).toContainText('unavailable or paused');await expect(page.locator('iframe')).toHaveCount(0);
+ f.fail();await page.getByRole('button',{name:'Connect Library',exact:true}).click();await expect(page.locator('[data-reading-pilot-status]')).toContainText('unavailable or paused');await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('late join and read controls cannot reopen or read after ending',async({page})=>{
- const f=await fixture(page);f.hold();await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.release();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+ const f=await fixture(page);f.hold();await page.getByRole('button',{name:'Connect Library',exact:true}).click();await page.getByRole('button',{name:'Hide Home',exact:true}).click();f.release();await page.getByRole('button',{name:'Show Home',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
  await seed(page);await connect(page);const before=f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length;f.hold();await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect.poll(()=>f.calls.filter(c=>c.url.includes('/reading-pilot.json')).length).toBe(before+1);
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/reading-pilot.json');f.release();await (await response).finished();await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));await expect(page.locator('[data-private-library]')).toBeVisible();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await join(page);const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/reading-pilot.json');f.release();await (await response).finished();await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));await expect(page.locator('[data-private-library]')).toBeVisible();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('backgrounding ends the pilot; returning requires a fresh join',async({page})=>{
  await fixture(page);await seed(page);await connect(page);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
  await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
- await expect(page.locator('[data-reading-pilot-status]')).toContainText('Welcome back');await connect(page);await expect(page.locator('[data-library-items]')).toContainText('Current 20%');
+ await expect(page.locator('[data-reading-pilot-status]')).toContainText('reading snapshot was cleared');await connect(page);await expect(page.locator('[data-library-items]')).toContainText('Current 20%');
 });
 
 test('consented empty progress offers a reading next step and clears on exit',async({page})=>{
  await fixture(page);await seed(page);await page.evaluate(()=>new Promise<void>((resolve,reject)=>{const r=indexedDB.open('thiepn-library',9);r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('progress','readwrite');tx.objectStore('progress').clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}));
  await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeVisible();await expect(page.getByRole('link',{name:'Browse Library',exact:true})).toHaveAttribute('href','/library/');await expect(page.locator('[data-library-items]')).toBeEmpty();
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await expect(page.locator('[data-library-empty]')).toBeHidden();await expect(page.locator('iframe')).toHaveCount(0);
 });
 
 test('connection controls stay busy during a delayed check and exit cancels it',async({page})=>{
  const f=await fixture(page);await seed(page);await connect(page);f.hold();
  await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
  await expect(page.locator('[data-library-connect]')).toBeDisabled();await expect(page.locator('[data-library-refresh]')).toBeDisabled();await expect(page.locator('[data-private-library]')).toHaveAttribute('aria-busy','true');
- await page.getByRole('button',{name:'End pilot and clear this tab',exact:true}).click();await join(page);
+ await page.getByRole('button',{name:'Disconnect Library and clear this tab',exact:true}).click();await join(page);
  await expect(page.locator('[data-library-connect]')).toBeEnabled();f.release();
  await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });

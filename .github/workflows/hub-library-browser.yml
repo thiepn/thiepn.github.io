@@ -12,13 +12,15 @@ jobs:
   staged-paired:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PUBLIC_THIEPN_ACCOUNT_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Check out immutable H16 Library owner
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: thiepn/library
-          ref: b84930b991f4819c9c22fc1d63e23b12a5c6ff4d
+          ref: c4abe7d809c577fcfb9a0690890e79db9fc16277
           path: .cache/h16-source-library
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -26,8 +28,10 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: corepack enable
-      - name: Build actual Library owner (no publication files required)
+      - name: Build exact P4 Library owner (no publication files required)
         working-directory: .cache/h16-source-library
+        env:
+          PUBLIC_THIEPN_ACCOUNT_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
         run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
       - name: Build isolated Hub fixture (never deploy these artifacts)
         run: npx astro build --outDir .cache/h16-hub

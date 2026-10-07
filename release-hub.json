@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "releaseId": "H23-device-reading-pilot-v1",
-  "profile": "device-reading-pilot",
+  "releaseId": "P4-library-ecosystem-v1",
+  "profile": "library-ecosystem",
   "expectedFeaturedProjects": 6,
   "socialBrand": "THIEPN.",
   "status": "review-candidate",
