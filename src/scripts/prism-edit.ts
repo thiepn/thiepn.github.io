@@ -4,7 +4,7 @@ import {
   type PrismBreakpoint,
   type PrismBlockSize,
 } from '../lib/prism/block-registry';
-import { moveBlock, moveBlockToIndex, orderedSectionPlacements, resizeBlock, setBlockHidden } from '../lib/prism/home-commands';
+import { moveBlock, moveBlockToIndex, orderedSectionPlacements, resizeBlock, setBlockHidden, setDensity, setIntensity, setMode, setMotion } from '../lib/prism/home-commands';
 import { getActiveHomeStore, subscribeActiveHomeStore } from '../lib/prism/home-runtime';
 import type { HomeStore } from '../lib/prism/home-store';
 
@@ -13,21 +13,37 @@ const toolbar = root?.querySelector<HTMLElement>('[data-prism-edit-toolbar]');
 const undo = root?.querySelector<HTMLButtonElement>('[data-prism-undo]');
 const done = root?.querySelector<HTMLButtonElement>('[data-prism-edit-done]');
 const status = root?.querySelector<HTMLElement>('[data-prism-edit-status]');
+const addOpen = root?.querySelector<HTMLButtonElement>('[data-prism-add-open]');
+const addDialog = root?.querySelector<HTMLDialogElement>('[data-prism-add-dialog]');
+const addClose = root?.querySelector<HTMLButtonElement>('[data-prism-add-close]');
+const addButtons = root ? Array.from(root.querySelectorAll<HTMLButtonElement>('[data-prism-add-block]')) : [];
+const addEmpty = root?.querySelector<HTMLElement>('[data-prism-add-empty]');
 const layoutOpen = root?.querySelector<HTMLButtonElement>('[data-prism-layout-open]');
 const layoutDialog = root?.querySelector<HTMLDialogElement>('[data-prism-layout-dialog]');
 const layoutClose = root?.querySelector<HTMLButtonElement>('[data-prism-layout-close]');
+const themeOpen = root?.querySelector<HTMLButtonElement>('[data-prism-theme-open]');
+const themeDialog = root?.querySelector<HTMLDialogElement>('[data-prism-theme-dialog]');
+const themeClose = root?.querySelector<HTMLButtonElement>('[data-prism-theme-close]');
+const appearanceControls = root ? Array.from(root.querySelectorAll<HTMLSelectElement>('[data-prism-appearance]')) : [];
 const visibilityInputs = root ? Array.from(root.querySelectorAll<HTMLInputElement>('[data-prism-block-visibility]')) : [];
 const customizeTriggers = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-prism-customize-open]'));
 
-if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && layoutClose) {
+if (root && toolbar && undo && done && status && addOpen && addDialog && addClose && addEmpty && layoutOpen && layoutDialog && layoutClose && themeOpen && themeDialog && themeClose) {
   const editRoot = root;
   const editToolbar = toolbar;
   const undoButton = undo;
   const doneButton = done;
   const statusNode = status;
+  const addButton = addOpen;
+  const addModal = addDialog;
+  const addCloseButton = addClose;
+  const addEmptyState = addEmpty;
   const layoutButton = layoutOpen;
   const layoutModal = layoutDialog;
   const layoutCloseButton = layoutClose;
+  const themeButton = themeOpen;
+  const themeModal = themeDialog;
+  const themeCloseButton = themeClose;
   let store: HomeStore | null = getActiveHomeStore();
   let editing = false;
   let selectedId: string | null = null;
@@ -294,6 +310,31 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     }
   }
 
+  async function mutateAppearance(control: HTMLSelectElement) {
+    if (!store) return;
+    const key = control.dataset.prismAppearance;
+    try {
+      await store.mutate((draft) => {
+        if (key === 'mode' && ['system', 'light', 'dark'].includes(control.value)) {
+          setMode(draft, control.value as 'system' | 'light' | 'dark');
+        } else if (key === 'density' && ['compact', 'balanced', 'comfortable'].includes(control.value)) {
+          setDensity(draft, control.value as 'compact' | 'balanced' | 'comfortable');
+        } else if (key === 'intensity' && ['quiet', 'balanced', 'rich'].includes(control.value)) {
+          setIntensity(draft, control.value as 'quiet' | 'balanced' | 'rich');
+        } else if (key === 'motion' && ['reduced', 'balanced', 'expressive'].includes(control.value)) {
+          setMotion(draft, control.value as 'reduced' | 'balanced' | 'expressive');
+        } else {
+          throw new Error('Unsupported appearance control');
+        }
+      });
+      announce('Appearance saved.');
+      refresh();
+    } catch {
+      announce('Could not save that appearance change.');
+      refresh();
+    }
+  }
+
   async function mutateVisibility(blockId: string, hidden: boolean) {
     if (!store) return;
     try {
@@ -317,6 +358,26 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     for (const input of visibilityInputs) {
       const block = snapshot.blocks[input.value];
       input.checked = Boolean(block && block.hidden !== true);
+    }
+
+    let hiddenAvailable = 0;
+    for (const button of addButtons) {
+      const blockId = button.dataset.prismAddBlock!;
+      const block = snapshot.blocks[blockId];
+      const canAdd = Boolean(block && block.hidden === true);
+      button.disabled = !canAdd;
+      button.textContent = canAdd ? 'Add' : 'On Home';
+      button.closest<HTMLElement>('[data-prism-add-item]')?.toggleAttribute('data-prism-add-available', canAdd);
+      if (canAdd) hiddenAvailable += 1;
+    }
+    addEmptyState.hidden = hiddenAvailable > 0;
+
+    for (const control of appearanceControls) {
+      const key = control.dataset.prismAppearance;
+      if (key === 'mode') control.value = snapshot.appearance.mode;
+      if (key === 'density') control.value = snapshot.appearance.density;
+      if (key === 'intensity') control.value = snapshot.appearance.intensity;
+      if (key === 'motion') control.value = snapshot.appearance.motion;
     }
 
     for (const block of editRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
@@ -357,7 +418,9 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
     delete document.documentElement.dataset.prismEditing;
     delete editRoot.dataset.prismEditing;
     editToolbar.hidden = true;
+    if (addModal.open) addModal.close();
     if (layoutModal.open) layoutModal.close();
+    if (themeModal.open) themeModal.close();
     setSelected(null);
     restoreNormalInteractions();
     refresh();
@@ -377,6 +440,34 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
       announce('Could not undo that change.');
     }
   })());
+
+  addButton.addEventListener('click', () => {
+    refresh();
+    if (!addModal.open) addModal.showModal();
+    addCloseButton.focus();
+  });
+  addCloseButton.addEventListener('click', () => addModal.close());
+  addModal.addEventListener('click', (event) => {
+    if (event.target === addModal) addModal.close();
+  });
+  addButtons.forEach((button) => button.addEventListener('click', () => {
+    const blockId = button.dataset.prismAddBlock;
+    if (!blockId || button.disabled) return;
+    void mutateVisibility(blockId, false);
+  }));
+
+  themeButton.addEventListener('click', () => {
+    refresh();
+    if (!themeModal.open) themeModal.showModal();
+    themeCloseButton.focus();
+  });
+  themeCloseButton.addEventListener('click', () => themeModal.close());
+  themeModal.addEventListener('click', (event) => {
+    if (event.target === themeModal) themeModal.close();
+  });
+  appearanceControls.forEach((control) => control.addEventListener('change', () => {
+    void mutateAppearance(control);
+  }));
 
   layoutButton.addEventListener('click', () => {
     refresh();
@@ -414,7 +505,7 @@ if (root && toolbar && undo && done && status && layoutOpen && layoutDialog && l
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!editing || event.key !== 'Escape' || layoutModal.open) return;
+    if (!editing || event.key !== 'Escape' || addModal.open || layoutModal.open || themeModal.open) return;
     if (dragState) {
       event.preventDefault();
       const synthetic = new PointerEvent('pointercancel', { pointerId: dragState.pointerId });
