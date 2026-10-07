@@ -13,17 +13,15 @@ export async function fixture(page:Page, options:{account?:boolean}={}){
  const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,accountMock=options.account===true,accountDrift=false,release=()=>{};
  await page.addInitScript(({account})=>{
    (window as any).__opens=[];(window as any).__results=[];(window as any).__libraryMessages=[];(window as any).__libraryOutbound=[];
-   const originalPostMessage=Window.prototype.postMessage;
-   Window.prototype.postMessage=function(message:any,...rest:any[]){
+   window.addEventListener('message',event=>{
      try{
-       if(message?.protocol==='thiepn-library-hub-v1'&&message?.kind==='connect'){
+       if(window!==window.top && event.data?.protocol==='thiepn-library-hub-v1' && event.data?.kind==='connect'){
          const topWindow=window.top as any;
          topWindow.__libraryOutbound=topWindow.__libraryOutbound??[];
-         topWindow.__libraryOutbound.push(structuredClone(message));
+         topWindow.__libraryOutbound.push(structuredClone(event.data));
        }
      }catch{}
-     return (originalPostMessage as any).call(this,message,...rest);
-   };
+   });
    if(account){
      const accountId='33333333-3333-4333-8333-333333333333';
      const session={
