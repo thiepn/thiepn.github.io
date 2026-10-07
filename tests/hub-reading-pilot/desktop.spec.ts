@@ -22,6 +22,17 @@ test('explicit same-account sharing verifies matching Library state and exposes 
  const messages=await page.evaluate(()=>(window as any).__libraryMessages);
  const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
  expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
+ const outbound=await page.evaluate(()=>(window as any).__libraryOutbound);
+ const connectRequest=outbound.filter((message:any)=>message?.kind==='connect').at(-1);
+ expect(connectRequest?.accountId, `Expected verified Hub account ID in connect request. Outbound: ${JSON.stringify(outbound)}`).toBe('33333333-3333-4333-8333-333333333333');
+ const ownerFrame=page.frames().find(frame=>new URL(frame.url()).pathname==='/library/hub/bridge');
+ expect(ownerFrame, 'Expected Library owner frame to remain connected.').toBeTruthy();
+ const ownerState=await ownerFrame!.evaluate(()=>({
+   sync:localStorage.getItem('thiepn.library.account-sync.v1'),
+   tokens:localStorage.getItem('thiepn:library-sso:v1:tokens'),
+ }));
+ expect(JSON.parse(ownerState.sync??'null')?.userId, `Library sync metadata missing: ${JSON.stringify(ownerState)}`).toBe('33333333-3333-4333-8333-333333333333');
+ expect(JSON.parse(ownerState.tokens??'null')?.accessToken, `Library SSO tokens missing: ${JSON.stringify(ownerState)}`).toBe('fixture-'+ 'a'.repeat(40));
  await expect(page.locator('[data-library-freshness]')).toContainText('Account-synced through Library');
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
@@ -45,6 +56,9 @@ test('divergent cloud progress never replaces the exact local Continue position'
  const messages=await page.evaluate(()=>(window as any).__libraryMessages);
  const connected=messages.filter((message:any)=>message?.kind==='connected').at(-1);
  expect(connected?.consent?.includeAccount, `Expected Account-aware Library handshake. Connected response: ${JSON.stringify(connected)}`).toBe(true);
+ const outbound=await page.evaluate(()=>(window as any).__libraryOutbound);
+ const connectRequest=outbound.filter((message:any)=>message?.kind==='connect').at(-1);
+ expect(connectRequest?.accountId, `Expected verified Hub account ID in connect request. Outbound: ${JSON.stringify(outbound)}`).toBe('33333333-3333-4333-8333-333333333333');
  await expect(page.locator('[data-library-freshness]')).toContainText('This browser');
  await expect(page.locator('[data-library-items]')).toContainText('Current 20% · furthest 80%');
  const results=await page.evaluate(()=>(window as any).__results);
