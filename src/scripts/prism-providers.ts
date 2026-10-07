@@ -1,6 +1,6 @@
 import { HubLibrarySession } from '../lib/hub-library-session';
 import { sessionProviderAdapter } from '../lib/providers/session-adapters';
-import { PrismProviderCoordinator, type PrismVisibleProviderOperation } from '../lib/prism/provider-coordinator';
+import { prismProviderRuntime } from '../lib/prism/provider-runtime';
 import type { PrismProviderHomeView } from '../lib/prism/provider-home-view';
 import type { ProviderAdapter, ProviderId, ProviderResult } from '../lib/providers/types';
 
@@ -35,7 +35,6 @@ if (home && connection && status && connect && refresh && disconnect && continue
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
   let libraryAdapter: ProviderAdapter | null = null;
 
-  const coordinator = new PrismProviderCoordinator();
   const defaultContinue = {
     title: titleNode.textContent ?? 'No resumable activity yet',
     copy: copyNode.textContent ?? 'Open an app and Prism will keep your next meaningful step here.',
@@ -148,12 +147,6 @@ if (home && connection && status && connect && refresh && disconnect && continue
     expiryTimer = undefined;
   }
 
-  function visibleOperations(): PrismVisibleProviderOperation[] {
-    const visible: PrismVisibleProviderOperation[] = [];
-    if (connected && !continueRoot.hidden) visible.push({providerId:'library',operation:'continue'});
-    return visible;
-  }
-
   function scheduleExpiry(results: readonly ProviderResult[]) {
     clearExpiry();
     const result = results.find(item => item.providerId === 'library' && item.operation === 'continue' && item.envelope);
@@ -161,20 +154,20 @@ if (home && connection && status && connect && refresh && disconnect && continue
     const delay = Math.max(0,Date.parse(result.envelope.expiresAt)-Date.now());
     expiryTimer = setTimeout(()=>{
       if (!connected) return;
-      renderView(coordinator.snapshotView());
+      renderView(prismProviderRuntime.view());
     },delay+5);
   }
 
   function clearConnection(message = 'Not connected in this tab.') {
     ++generation;
     clearExpiry();
-    coordinator.removeConnection('library');
+    prismProviderRuntime.removeConnection('library');
     libraryAdapter = null;
     session.clear();
     connected = false;
     busy = false;
     statusNode.textContent = message;
-    renderView(coordinator.snapshotView());
+    renderView(prismProviderRuntime.view());
     controls();
   }
 
@@ -189,14 +182,13 @@ if (home && connection && status && connect && refresh && disconnect && continue
       : 'Checking current Library progress…';
     controls();
     try {
-      coordinator.setConnection(libraryAdapter,session.providerAccess());
-      await coordinator.refresh(visibleOperations(),(view,results)=>{
-        if (current !== generation || document.hidden) return;
-        renderView(view);
-        scheduleExpiry(results);
-      });
+      prismProviderRuntime.setConnection(libraryAdapter,session.providerAccess());
+      prismProviderRuntime.setVisible('library','continue',connected && !continueRoot.hidden);
+      await prismProviderRuntime.refresh();
+      if (current !== generation || document.hidden) return;
+      scheduleExpiry(prismProviderRuntime.results());
       if (current !== generation || !connected) return;
-      const result = coordinator.snapshotResults().find(item=>item.providerId==='library'&&item.operation==='continue');
+      const result = prismProviderRuntime.results().find(item=>item.providerId==='library'&&item.operation==='continue');
       statusNode.textContent = continueRoot.hidden
         ? 'Connected · Continue is hidden, so Library is not being read.'
         : result?.status === 'ready'
@@ -226,7 +218,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
       const consent=await session.connect(AbortSignal.timeout(2500));
       if (current!==generation || document.hidden) return;
       libraryAdapter=sessionProviderAdapter('library',session);
-      coordinator.setConnection(libraryAdapter,session.providerAccess());
+      prismProviderRuntime.setConnection(libraryAdapter,session.providerAccess());
       connected=true;
       statusNode.textContent=`Connected in this tab · ${consent.permissions.join(', ')}.`;
       busy=false;
@@ -244,8 +236,12 @@ if (home && connection && status && connect && refresh && disconnect && continue
     if (!connected) return;
     if (continueRoot.hidden) {
       clearExpiry();
-      void coordinator.refresh(visibleOperations(),(view)=>renderView(view));
-    } else if (!document.hidden) void refreshVisible();
+      prismProviderRuntime.setVisible('library','continue',false);
+      void prismProviderRuntime.refresh();
+    } else if (!document.hidden) {
+      prismProviderRuntime.setVisible('library','continue',true);
+      void refreshVisible();
+    }
     controls();
   });
   visibility.observe(continueRoot,{attributes:true,attributeFilter:['hidden']});
@@ -257,6 +253,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
     controls();
   });
 
-  renderView(coordinator.snapshotView());
+  prismProviderRuntime.subscribe(renderView);
+  prismProviderRuntime.setVisible('library','continue',false);
   controls();
 }
