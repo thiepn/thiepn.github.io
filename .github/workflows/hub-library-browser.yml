@@ -28,8 +28,10 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: corepack enable
-      - name: Build actual Library owner (no publication files required)
+      - name: Build exact P4 Library owner (no publication files required)
         working-directory: .cache/h16-source-library
+        env:
+          PUBLIC_THIEPN_ACCOUNT_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
         run: pnpm install --frozen-lockfile && pnpm check && pnpm test:reader && pnpm exec astro build
       - name: Build isolated Hub fixture (never deploy these artifacts)
         run: npx astro build --outDir .cache/h16-hub
