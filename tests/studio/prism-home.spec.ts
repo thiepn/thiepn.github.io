@@ -300,3 +300,27 @@ test('Prism Theme Editor persists and applies core appearance axes', async ({ pa
     motion: 'reduced',
   });
 });
+
+
+test('Prism omnibar opens the existing lazy search engine as a command palette', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(route);
+
+  const omnibar = page.locator('.prism-omnibar');
+  await omnibar.focus();
+  await page.keyboard.press('Enter');
+
+  const dialog = page.locator('.catalogue-search--prism [data-catalogue-search-dialog]');
+  const input = page.locator('.catalogue-search--prism [data-catalogue-search-input]');
+  await expect(dialog).toHaveJSProperty('open', true);
+  await expect(input).toBeFocused();
+  await expect(page.locator('#catalogue-search-title')).toHaveText('Search THIEPN');
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveJSProperty('open', false);
+  await expect(omnibar).toBeFocused();
+
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
+  await expect(dialog).toHaveJSProperty('open', true);
+  await expect(input).toBeFocused();
+});
