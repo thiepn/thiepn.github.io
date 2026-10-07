@@ -1,14 +1,14 @@
 ---
-interface Props { portal?: boolean; }
-const { portal = false } = Astro.props;
+interface Props { portal?: boolean; prism?: boolean; }
+const { portal = false, prism = false } = Astro.props;
 ---
-<div class="catalogue-search" data-catalogue-search data-search-scope={portal ? 'apps' : 'work'}>
+<div class:list={['catalogue-search', prism && 'catalogue-search--prism']} data-catalogue-search data-search-scope={portal ? 'apps' : 'work'}>
   <dialog class="catalogue-search__dialog" data-catalogue-search-dialog aria-labelledby="catalogue-search-title">
     <div class="catalogue-search__surface">
       <header class="catalogue-search__header">
         <div>
-          <p class="meta">{portal ? 'Find an app or task' : 'Find something interesting'}</p>
-          <strong id="catalogue-search-title">{portal ? 'Search apps' : 'Search the work'}</strong>
+          <p class="meta">{prism ? 'THIEPN' : portal ? 'Find an app or task' : 'Find something interesting'}</p>
+          <strong id="catalogue-search-title">{prism ? 'Search THIEPN' : portal ? 'Search apps' : 'Search the work'}</strong>
         </div>
         <button type="button" data-catalogue-search-close aria-label={portal ? 'Close app search' : 'Close portfolio search'}>Close</button>
       </header>
@@ -16,7 +16,7 @@ const { portal = false } = Astro.props;
       <label class="catalogue-search__query" for="catalogue-query">
         <span class="sr-only">{portal ? 'Search public apps and tasks' : 'Search projects and collections'}</span>
         <span class="sr-only" id="catalogue-search-help">Type a title, topic, subject, or project code. Use the up and down arrow keys to move through results, Enter to open a result, and Escape to close search.</span>
-        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder={portal ? 'Search apps or tasks' : 'Search projects or topics'} maxlength="200" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-describedby="catalogue-search-help" aria-expanded="false" data-catalogue-search-input />
+        <input id="catalogue-query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder={prism ? 'Search apps or tasks' : portal ? 'Search apps or tasks' : 'Search projects or topics'} maxlength="200" role="combobox" aria-autocomplete="list" aria-controls="catalogue-search-results" aria-describedby="catalogue-search-help" aria-expanded="false" data-catalogue-search-input />
       </label>
 
       <div class="catalogue-search__shortcuts" aria-label="Search suggestions">
@@ -64,4 +64,27 @@ const { portal = false } = Astro.props;
   @media(max-width:430px){.catalogue-search__footer a:last-of-type{display:none}}
   @media(prefers-reduced-motion:reduce){.catalogue-search__dialog::backdrop{transition:none}}
   @media(forced-colors:active){.catalogue-search__dialog{border:2px solid CanvasText}.catalogue-search__result.is-selected{outline:3px solid Highlight;outline-offset:-3px}.catalogue-search__result.is-selected::before{background:Highlight}}
+
+  .catalogue-search--prism .catalogue-search__dialog{width:min(700px,calc(100vw - 40px));max-height:min(680px,calc(100dvh - 56px));margin:56px auto auto;border:1px solid var(--line);border-radius:22px;background:var(--surface-1);box-shadow:0 20px 64px rgb(0 0 0 / 20%);overflow:hidden}
+  .catalogue-search--prism .catalogue-search__dialog::backdrop{background:rgb(7 10 14 / 42%);backdrop-filter:blur(3px)}
+  .catalogue-search--prism .catalogue-search__surface{grid-template-rows:auto auto auto auto minmax(170px,1fr) auto}
+  .catalogue-search--prism .catalogue-search__header{min-height:54px;padding:8px 16px;border-bottom:1px solid var(--line-soft)}
+  .catalogue-search--prism .catalogue-search__header .meta{font-size:10.5px;letter-spacing:.055em}
+  .catalogue-search--prism .catalogue-search__header strong{font-size:15px;font-weight:600;letter-spacing:-.018em}
+  .catalogue-search--prism .catalogue-search__header button{border-radius:8px;color:var(--ink-secondary)}
+  .catalogue-search--prism .catalogue-search__header button:hover{background:var(--surface-2)}
+  .catalogue-search--prism .catalogue-search__query{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .catalogue-search--prism .catalogue-search__query input{font-size:18px;font-weight:560;letter-spacing:-.025em}
+  .catalogue-search--prism .catalogue-search__query input:focus-visible{outline:2px solid var(--accent);outline-offset:7px}
+  .catalogue-search--prism .catalogue-search__shortcuts{min-height:46px;padding:4px 16px;border-bottom:1px solid var(--line-soft)}
+  .catalogue-search--prism .catalogue-search__shortcuts button,.catalogue-search--prism .catalogue-search__shortcuts a{min-height:34px;padding:0 9px;border-radius:8px;font-size:10.5px;letter-spacing:.035em;text-transform:none}
+  .catalogue-search--prism .catalogue-search__status{min-height:34px;padding:0 16px;border-bottom:1px solid var(--line-soft);font-size:10.5px;letter-spacing:.045em}
+  .catalogue-search--prism .catalogue-search__result{grid-template-columns:minmax(0,1fr) 90px;min-height:56px;padding:8px 16px;border-bottom:1px solid var(--line-soft)}
+  .catalogue-search--prism .catalogue-search__result.is-selected{background:var(--accent-soft)}
+  .catalogue-search--prism .catalogue-search__result.is-selected::before{background:var(--accent)}
+  .catalogue-search--prism .catalogue-search__result-copy strong{font-size:14px;font-weight:570}
+  .catalogue-search--prism .catalogue-search__result-copy small{font-size:12px}
+  .catalogue-search--prism .catalogue-search__result-type{font-size:10px;letter-spacing:.04em}
+  .catalogue-search--prism .catalogue-search__footer{min-height:42px;padding:0 16px;border-top:1px solid var(--line);font-size:10px;letter-spacing:.035em;text-transform:none}
+  @media(max-width:599px){.catalogue-search--prism .catalogue-search__dialog{width:100%;height:100dvh;max-height:none;margin:0;border:0;border-radius:0}.catalogue-search--prism .catalogue-search__header,.catalogue-search--prism .catalogue-search__query,.catalogue-search--prism .catalogue-search__shortcuts,.catalogue-search--prism .catalogue-search__status,.catalogue-search--prism .catalogue-search__footer{padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right))}}
 </style>
