@@ -137,14 +137,11 @@ export async function seedAccountAwareReading(page: Page) {
       enabled:true,
       deviceId:'44444444-4444-4444-8444-444444444444',
     }));
-    const expiresAt=Math.floor(Date.now()/1000)+3600;
-    localStorage.setItem('sb-hycegznamzjhwinegaai-auth-token',JSON.stringify({
-      access_token:'fixture-library-access-token',
-      refresh_token:'fixture-library-refresh-token',
-      token_type:'bearer',
-      expires_in:3600,
-      expires_at:expiresAt,
-      user:{id:accountId,aud:'authenticated',role:'authenticated',email:'reader@example.test'},
+    localStorage.setItem('thiepn:library-sso:v1:tokens',JSON.stringify({
+      accessToken:'fixture-'+ 'a'.repeat(40),
+      refreshToken:'refresh-'+ 'b'.repeat(40),
+      expiresAt:Date.now()+3600_000,
+      scope:'email offline_access openid profile',
     }));
   },{KEY,accountId});
 }
