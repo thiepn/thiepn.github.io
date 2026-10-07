@@ -42,12 +42,12 @@ export class ProviderRunner {
       while (cursor < requests.length && epoch === this.epoch) {
         const item = requests[cursor++]!;
         const adapter = this.adapters.find(value => value.manifest.id === item.providerId);
-        if (!adapter) { emit({ providerId:item.providerId, status:'unsupported' }); continue; }
+        if (!adapter) { emit({ providerId:item.providerId, operation:item.operation, status:'unsupported' }); continue; }
         const access = this.access.get(item.providerId);
         let result: ProviderResult;
         const allowed = adapter.manifest.privateReadsEnabled && adapter.manifest.operations[item.operation];
-        if (!allowed) result = { providerId:item.providerId, status:'unsupported' };
-        else if (!access || access.expiresAt <= this.now() || !providerContextAllowed(access.context, adapter.manifest) || !access.permissions.includes(adapter.manifest.requiredPermissions[item.operation])) result = { providerId:item.providerId, status:'unconnected' };
+        if (!allowed) result = { providerId:item.providerId, operation:item.operation, status:'unsupported' };
+        else if (!access || access.expiresAt <= this.now() || !providerContextAllowed(access.context, adapter.manifest) || !access.permissions.includes(adapter.manifest.requiredPermissions[item.operation])) result = { providerId:item.providerId, operation:item.operation, status:'unconnected' };
         else {
           const controller = new AbortController(); this.controllers.add(controller);
           const request: RequestContext = { ...item, requestId:crypto.randomUUID(), context:structuredClone(access.context) };
@@ -62,10 +62,10 @@ export class ProviderRunner {
             const deadline = new Promise<never>((_,reject) => { timer = setTimeout(() => { reject(new Error('deadline')); controller.abort(); }, PROVIDER_BUDGETS.deadlineMs); });
             const raw = await Promise.race([adapter.read(request,controller.signal),deadline,cancelled]);
             const envelope = validateProviderEnvelope(raw,adapter.manifest,request,this.now());
-            result = { providerId:item.providerId, status:envelope.status, envelope };
+            result = { providerId:item.providerId, operation:item.operation, status:envelope.status, envelope };
             if (epoch === this.epoch && access.expiresAt > this.now()) this.results.set(requestKey(request),structuredClone(result));
           } catch (error) {
-            result = { providerId:item.providerId, status:error instanceof ProviderContractError && error.code === 'version' ? 'unsupported' : controller.signal.aborted ? 'offline' : 'error' };
+            result = { providerId:item.providerId, operation:item.operation, status:error instanceof ProviderContractError && error.code === 'version' ? 'unsupported' : controller.signal.aborted ? 'offline' : 'error' };
           } finally { clearTimeout(timer); detach(); this.controllers.delete(controller); }
         }
         // A grant/account/consent change makes every late response ineligible.
