@@ -127,7 +127,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     <main id="main-content" tabindex="-1"><slot /></main>
     {!hideFooter && <SiteFooter  />}
     {portal && !prismShell && <PortalNavigation />}
-    <CatalogueSearch portal={portal} />
+    <CatalogueSearch portal={portal} prism={prismShell} />
     <script>import '../scripts/catalogue-search-bootstrap';</script>
     <PrivacyAnalytics noindex={noindex || pathname === '/search/'} />
   </body>
