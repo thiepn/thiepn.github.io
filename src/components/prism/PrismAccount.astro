@@ -31,8 +31,26 @@ const { returnTo = '/home/' } = Astro.props;
       <a href="https://account.thiepn.dev/" rel="noreferrer">Open Account</a>
     </div>
 
+    <section class="prism-account-dialog__connections" aria-labelledby="prism-connections-title">
+      <div>
+        <p class="prism-account-dialog__eyebrow">Connections</p>
+        <h3 id="prism-connections-title">Home data</h3>
+      </div>
+      <div class="prism-provider-row" data-prism-provider="library">
+        <div>
+          <strong>Library</strong>
+          <p data-prism-library-status>Not connected in this tab.</p>
+        </div>
+        <div class="prism-provider-row__actions">
+          <button type="button" data-prism-library-connect>Connect</button>
+          <button type="button" data-prism-library-refresh hidden>Refresh</button>
+          <button type="button" data-prism-library-disconnect hidden>Disconnect</button>
+        </div>
+      </div>
+    </section>
+
     <button type="button" class="prism-account-dialog__customize" data-prism-customize-open disabled>Customize Home</button>
-    <p class="prism-account-dialog__meta">Hub uses your verified THIEPN Account session. App data remains subject to each connected provider's permissions.</p>
+    <p class="prism-account-dialog__meta">Hub uses your verified THIEPN Account session. Library access is device-local and clears with this tab session. App data remains subject to each provider's permissions.</p>
   </div>
 </dialog>
 
