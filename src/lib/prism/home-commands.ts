@@ -74,6 +74,27 @@ export function moveBlock(
   return true;
 }
 
+export function moveBlockToIndex(
+  document: HomeDocumentV2,
+  breakpoint: PrismBreakpoint,
+  blockId: string,
+  targetIndex: number,
+): boolean {
+  const placement = document.layouts[breakpoint].placements.find((item) => item.blockId === blockId);
+  if (!placement) throw new Error(`Missing ${breakpoint} placement for ${blockId}`);
+
+  const ordered = orderedSectionPlacements(document, breakpoint, placement.sectionId).map((item) => item.blockId);
+  const from = ordered.indexOf(blockId);
+  if (from < 0) throw new Error(`Block ${blockId} is not in section ${placement.sectionId}`);
+  const bounded = Math.max(0, Math.min(targetIndex, ordered.length - 1));
+  if (from === bounded) return false;
+
+  ordered.splice(from, 1);
+  ordered.splice(bounded, 0, blockId);
+  reflowSection(document, breakpoint, placement.sectionId, ordered);
+  return true;
+}
+
 export function resizeBlock(
   document: HomeDocumentV2,
   breakpoint: PrismBreakpoint,
