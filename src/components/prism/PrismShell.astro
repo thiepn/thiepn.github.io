@@ -67,7 +67,7 @@ const items = [
       <span>THIEPN</span>
     </a>
 
-    <a class="prism-omnibar" href="/search/" data-prism-search>
+    <a class="prism-omnibar" href="/search/" data-prism-search data-catalogue-search-open>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
         <circle cx="10" cy="10" r="6.5"/>
         <path d="m15 15 5 5"/>
@@ -91,7 +91,7 @@ const items = [
       <span>THIEPN</span>
     </a>
     <div class="prism-mobile-header__actions">
-      <a href="/search/" aria-label="Search THIEPN">
+      <a href="/search/" aria-label="Search THIEPN" data-catalogue-search-open>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <circle cx="10" cy="10" r="6.5"/>
           <path d="m15 15 5 5"/>
@@ -107,7 +107,12 @@ const items = [
 
   <nav class="prism-mobile-nav" aria-label="THIEPN navigation">
     {items.map((item) => (
-      <a href={item.href} aria-current={item.current ? 'page' : undefined} data-prism-nav={item.label.toLowerCase()}>
+      <a
+        href={item.href}
+        aria-current={item.current ? 'page' : undefined}
+        data-prism-nav={item.label.toLowerCase()}
+        data-catalogue-search-open={item.label === 'Search' ? '' : undefined}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" set:html={item.icon}></svg>
         <span>{item.label}</span>
       </a>
