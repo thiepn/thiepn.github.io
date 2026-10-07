@@ -287,3 +287,33 @@ html[data-prism-editing='true'] .prism-block[data-prism-selected='true'] > .pris
     outline-color: Highlight;
   }
 }
+
+
+.prism-block-edit-controls [data-prism-drag] {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.prism-block-edit-controls [data-prism-drag]:active {
+  cursor: grabbing;
+}
+
+html[data-prism-editing='true'] .prism-block[data-prism-dragging='true'] {
+  z-index: 11;
+  opacity: .82;
+  outline-color: var(--accent);
+  box-shadow: var(--prism-shadow-float);
+  transform: scale(1.012);
+}
+
+html[data-prism-editing='true'] .prism-block[data-prism-drop-target='true'] {
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, var(--prism-cyan));
+  outline-offset: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-prism-editing='true'] .prism-block[data-prism-dragging='true'] {
+    transform: none;
+  }
+}
