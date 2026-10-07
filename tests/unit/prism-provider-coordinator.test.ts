@@ -26,6 +26,17 @@ function response(request:RequestContext){
 }
 
 describe('PrismProviderCoordinator',()=>{
+  it('erases private cached contributions when their access expires',async()=>{
+    let clock=now;
+    const coordinator=new PrismProviderCoordinator(()=>clock);
+    coordinator.setConnection(sessionProviderAdapter('notes',{readRequest:async request=>response(request)}),{...access,expiresAt:now+1000});
+    await coordinator.refresh([{providerId:'notes',operation:'continue'}],()=>{});
+    expect(coordinator.snapshotView().continue.title).toBe('Current note');
+    clock=now+1000;
+    expect(coordinator.snapshotResults()).toEqual([]);
+    expect(coordinator.connectedProviders()).toEqual([]);
+    expect(coordinator.snapshotView().continue.title).toBeNull();
+  });
   it('retains operation-bound results for visible provider work',async()=>{
     const coordinator=new PrismProviderCoordinator(()=>now);
     const adapter=sessionProviderAdapter('notes',{readRequest:async request=>response(request)});

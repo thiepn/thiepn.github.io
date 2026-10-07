@@ -98,6 +98,7 @@ export class HomeStore {
   #listeners = new Set<HomeListener>();
   #history: HomeDocumentV2[] = [];
   #maxHistory = 50;
+  #pending: Promise<void> = Promise.resolve();
 
   constructor(document: HomeDocumentV2, persistence: HomePersistence) {
     const validation = validateHomeDocument(document);
@@ -127,7 +128,18 @@ export class HomeStore {
     for (const listener of this.#listeners) listener(this.getSnapshot());
   }
 
-  async replace(next: HomeDocumentV2, options: { recordHistory?: boolean } = {}): Promise<void> {
+  #enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.#pending.then(operation);
+    this.#pending = result.then(() => {}, () => {});
+    return result;
+  }
+
+  replace(next: HomeDocumentV2, options: { recordHistory?: boolean } = {}): Promise<void> {
+    const candidate = structuredClone(next);
+    return this.#enqueue(() => this.#replace(candidate, options));
+  }
+
+  async #replace(next: HomeDocumentV2, options: { recordHistory?: boolean }): Promise<void> {
     const candidate = structuredClone(next);
     const validation = validateHomeDocument(candidate);
     if (!validation.valid) throw new Error(`Invalid HomeDocument mutation: ${validation.errors.join(' | ')}`);
@@ -148,13 +160,19 @@ export class HomeStore {
     this.#publish();
   }
 
-  async mutate(mutator: (draft: HomeDocumentV2) => void): Promise<void> {
-    const candidate = this.getSnapshot();
-    mutator(candidate);
-    await this.replace(candidate);
+  mutate(mutator: (draft: HomeDocumentV2) => void): Promise<void> {
+    return this.#enqueue(async () => {
+      const candidate = this.getSnapshot();
+      mutator(candidate);
+      await this.#replace(candidate, {});
+    });
   }
 
-  async undo(): Promise<boolean> {
+  undo(): Promise<boolean> {
+    return this.#enqueue(() => this.#undo());
+  }
+
+  async #undo(): Promise<boolean> {
     const previous = this.#history.at(-1);
     if (!previous) return false;
 

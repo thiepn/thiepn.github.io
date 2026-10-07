@@ -10,6 +10,7 @@ import {
 } from '../lib/prism/home-store';
 import { createDefaultHomeDocument, type HomeDocumentV2 } from '../lib/prism/home-document';
 import { setActiveHomeStore } from '../lib/prism/home-runtime';
+import { isThemePreference, THEME_STORAGE_KEY } from '../lib/theme';
 
 interface PrismAppManifestItem {
   slug: string;
@@ -185,6 +186,12 @@ if (root) {
       const rawV2 = await persistence.load();
       const rawV1 = readLegacyPreference(localStorage, owner);
       const boot = bootstrapHomeDocument({ rawV2, rawV1, availableApps });
+      // V2 owns appearance after migration; preserve the existing site choice
+      // when bootstrapping an older Home instead of replacing it with system.
+      if (boot.source !== 'v2') {
+        const preference = localStorage.getItem(THEME_STORAGE_KEY);
+        if (isThemePreference(preference)) boot.document.appearance.mode = preference;
+      }
       if (current !== generation) return;
 
       const nextStore = new HomeStore(boot.document, persistence);

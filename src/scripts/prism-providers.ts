@@ -34,6 +34,9 @@ if (home && connection && status && connect && refresh && disconnect && continue
   let busy = false;
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
   let libraryAdapter: ProviderAdapter | null = null;
+  // The Library owner accepts only canonical Home. A preview must not widen
+  // its caller allowlist or present a connection that can never succeed.
+  const libraryAvailable = location.pathname === '/home/' || location.pathname === '/home';
 
   const defaultContinue = {
     title: titleNode.textContent ?? 'No resumable activity yet',
@@ -136,7 +139,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
     connectButton.hidden = connected;
     refreshButton.hidden = !connected;
     disconnectButton.hidden = !connected;
-    connectButton.disabled = busy || document.hidden;
+    connectButton.disabled = !libraryAvailable || busy || document.hidden;
     refreshButton.disabled = Boolean(busy || document.hidden || continueRoot.hidden);
     disconnectButton.disabled = busy;
     connectionRoot.setAttribute('aria-busy',String(busy));
@@ -209,7 +212,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
   }
 
   connectButton.addEventListener('click',()=>void(async()=>{
-    if (busy || document.hidden) return;
+    if (!libraryAvailable || busy || document.hidden) return;
     const current=++generation;
     busy=true;
     statusNode.textContent='Checking Library sharing on this device…';
@@ -255,5 +258,6 @@ if (home && connection && status && connect && refresh && disconnect && continue
 
   prismProviderRuntime.subscribe(renderView);
   prismProviderRuntime.setVisible('library','continue',false);
+  if (!libraryAvailable) statusNode.textContent = 'Library connection is available only on the qualified Home route.';
   controls();
 }

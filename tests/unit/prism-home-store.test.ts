@@ -121,6 +121,40 @@ describe('Prism HomeStore durability', () => {
 
 
 describe('Prism HomeStore Undo', () => {
+  it('serializes rapid edits and Undo against the last persisted document', async () => {
+    let release!: () => void;
+    let started!: () => void;
+    const began = new Promise<void>(resolve => { started = resolve; });
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const saves: string[] = [];
+    const store = new HomeStore(createDefaultHomeDocument(), {
+      load: async () => null,
+      save: async raw => { saves.push(raw); if (saves.length === 1) { started(); await held; } },
+    });
+    const first = store.mutate(draft => { draft.appearance.density = 'compact'; });
+    await began;
+    const second = store.mutate(draft => { draft.appearance.mode = 'dark'; });
+    const undo = store.undo();
+    expect(saves).toHaveLength(1);
+    release();
+    await Promise.all([first, second, undo]);
+    expect(JSON.parse(saves[1]!).appearance).toMatchObject({ density: 'compact', mode: 'dark' });
+    expect(store.getSnapshot().appearance).toMatchObject({ density: 'compact', mode: 'system' });
+    expect(JSON.parse(saves[2]!)).toEqual(store.getSnapshot());
+  });
+
+  it('allows later edits after a failed persistence attempt', async () => {
+    let fail = true;
+    const store = new HomeStore(createDefaultHomeDocument(), {
+      load: async () => null,
+      save: async () => { if (fail) { fail = false; throw new Error('storage unavailable'); } },
+    });
+    const failed = store.mutate(draft => { draft.appearance.mode = 'dark'; });
+    const next = store.mutate(draft => { draft.appearance.density = 'compact'; });
+    await expect(failed).rejects.toThrow('storage unavailable');
+    await next;
+    expect(store.getSnapshot().appearance).toMatchObject({ mode: 'system', density: 'compact' });
+  });
   it('restores and persists the previous valid document', async () => {
     const saves: string[] = [];
     const store = new HomeStore(createDefaultHomeDocument(), {

@@ -240,7 +240,7 @@ html[data-prism-shell='true'] #main-content {
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1199px) {
   html[data-prism-shell='true'] {
     --prism-shell-rail: 0px;
   }

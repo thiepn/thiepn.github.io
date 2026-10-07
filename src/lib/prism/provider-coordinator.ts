@@ -50,6 +50,15 @@ export class PrismProviderCoordinator {
   }
 
   snapshotResults(): readonly ProviderResult[] {
+    let expired = false;
+    for (const [providerId, connection] of this.#connections) {
+      if (connection.access.expiresAt > this.now()) continue;
+      this.#connections.delete(providerId);
+      this.#results.delete(key(providerId, 'summary'));
+      this.#results.delete(key(providerId, 'continue'));
+      expired = true;
+    }
+    if (expired) this.#rebuild();
     for (const result of this.#runner?.snapshot() ?? []) {
       const resultKey = key(result.providerId, result.operation);
       if (this.#results.has(resultKey)) this.#results.set(resultKey, structuredClone(result));
