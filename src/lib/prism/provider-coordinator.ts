@@ -50,6 +50,10 @@ export class PrismProviderCoordinator {
   }
 
   snapshotResults(): readonly ProviderResult[] {
+    for (const result of this.#runner?.snapshot() ?? []) {
+      const resultKey = key(result.providerId, result.operation);
+      if (this.#results.has(resultKey)) this.#results.set(resultKey, structuredClone(result));
+    }
     return [...this.#results.values()].map((result) => structuredClone(result));
   }
 
