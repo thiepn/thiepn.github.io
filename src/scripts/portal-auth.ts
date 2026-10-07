@@ -7,7 +7,12 @@ const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSear
 const callbackFragment = callbackQuery ? location.hash : '';
 if (callbackQuery) history.replaceState(null, '', '/home/auth/callback/');
 const root = document.querySelector<HTMLElement>('[data-hub-account]');
-const config = { url: import.meta.env.PUBLIC_THIEPN_SUPABASE_URL, key: import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY, origin: import.meta.env.PUBLIC_HUB_AUTH_ORIGIN, enabled: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1' };
+const config = {
+  url: 'https://hycegznamzjhwinegaai.supabase.co',
+  key: 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR',
+  origin: 'https://thiepn.dev',
+  enabled: true,
+};
 export let hubIdentity: HubIdentity = { status: 'checking' };
 export function publishIdentity(identity: HubIdentity) {
   hubIdentity = identity;
