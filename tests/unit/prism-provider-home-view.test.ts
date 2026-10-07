@@ -82,7 +82,7 @@ describe('Prism provider Home view model', () => {
       providerId: 'library',
       title: 'Current book',
       updatedAt: '2026-10-07T05:50:00.000Z',
-      href: 'https://thiepn.dev/library/saved/',
+      href: '/library/hub/continue?resource=book-1&edition=1&release=release-1',
       progress: 0.42,
     });
   });
