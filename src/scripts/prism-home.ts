@@ -21,9 +21,10 @@ interface PrismAppManifestItem {
 
 const root = document.querySelector<HTMLElement>('[data-prism-home]');
 if (root) {
-  const manifestNode = root.querySelector<HTMLScriptElement>('[data-prism-app-manifest]');
-  const appGrid = root.querySelector<HTMLElement>('.prism-app-grid');
-  const sectionsRoot = root.querySelector<HTMLElement>('.prism-home__grid');
+  const homeRoot = root;
+  const manifestNode = homeRoot.querySelector<HTMLScriptElement>('[data-prism-app-manifest]');
+  const appGrid = homeRoot.querySelector<HTMLElement>('.prism-app-grid');
+  const sectionsRoot = homeRoot.querySelector<HTMLElement>('.prism-home__grid');
   const defaultAppOrder = appGrid
     ? Array.from(appGrid.querySelectorAll<HTMLElement>('[data-prism-app]')).map((node) => node.dataset.prismApp!).filter(Boolean)
     : [];
@@ -96,7 +97,7 @@ if (root) {
   function applyResponsiveLayout(document: HomeDocumentV2) {
     const active = breakpoint();
     const layout = document.layouts[active];
-    root.dataset.prismBreakpoint = active;
+    homeRoot.dataset.prismBreakpoint = active;
 
     if (sectionsRoot) {
       const bySection = new Map(
@@ -110,7 +111,7 @@ if (root) {
     }
 
     for (const placement of layout.placements) {
-      const block = root.querySelector<HTMLElement>(`[data-prism-block-id="${placement.blockId}"]`);
+      const block = homeRoot.querySelector<HTMLElement>(`[data-prism-block-id="${placement.blockId}"]`);
       if (!block) continue;
       block.dataset.prismSize = placement.size;
       block.style.gridColumn = `${placement.x + 1} / span ${placement.w}`;
@@ -120,15 +121,15 @@ if (root) {
 
   function applyDocument(document: HomeDocumentV2, source: string) {
     currentDocument = structuredClone(document);
-    root.dataset.density = document.appearance.density;
-    root.dataset.prismHomeSource = source;
+    homeRoot.dataset.density = document.appearance.density;
+    homeRoot.dataset.prismHomeSource = source;
 
-    for (const block of root.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
+    for (const block of homeRoot.querySelectorAll<HTMLElement>('[data-prism-block-id]')) {
       const id = block.dataset.prismBlockId;
       block.hidden = id ? document.blocks[id]?.hidden === true : false;
     }
 
-    for (const section of root.querySelectorAll<HTMLElement>('[data-prism-section]')) {
+    for (const section of homeRoot.querySelectorAll<HTMLElement>('[data-prism-section]')) {
       const blocks = Array.from(section.querySelectorAll<HTMLElement>('[data-prism-block-id]'));
       section.hidden = blocks.length > 0 && blocks.every((block) => block.hidden);
     }
@@ -176,16 +177,16 @@ if (root) {
         try {
           await nextStore.replace(nextStore.getSnapshot());
           if (current !== generation) return;
-          root.dataset.prismMigration = 'persisted';
+          homeRoot.dataset.prismMigration = 'persisted';
         } catch {
-          root.dataset.prismMigration = 'local-save-failed';
+          homeRoot.dataset.prismMigration = 'local-save-failed';
         }
       }
     } catch {
       if (current !== generation) return;
       detachStore();
       applyDocument(createDefaultHomeDocument(), 'storage-error');
-      root.dataset.prismStorage = 'error';
+      homeRoot.dataset.prismStorage = 'error';
     }
   }
 
