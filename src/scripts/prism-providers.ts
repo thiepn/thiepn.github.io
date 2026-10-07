@@ -16,7 +16,7 @@ const continueCopy = continueBlock?.querySelector<HTMLElement>('[data-prism-cont
 const continueAction = continueBlock?.querySelector<HTMLAnchorElement>('[data-prism-continue-action]');
 
 if (home && connection && status && connect && refresh && disconnect && continueBlock && continueTitle && continueCopy && continueAction) {
-  const homeRoot = home;
+  const connectionRoot = connection;
   const statusNode = status;
   const connectButton = connect;
   const refreshButton = refresh;
@@ -97,9 +97,9 @@ if (home && connection && status && connect && refresh && disconnect && continue
     refreshButton.hidden = !connected;
     disconnectButton.hidden = !connected;
     connectButton.disabled = busy || document.hidden;
-    refreshButton.disabled = busy || document.hidden || continueRoot.hidden;
+    refreshButton.disabled = Boolean(busy || document.hidden || continueRoot.hidden);
     disconnectButton.disabled = busy;
-    connection.setAttribute('aria-busy', String(busy));
+    connectionRoot.setAttribute('aria-busy', String(busy));
   }
 
   function clearExpiry() {
