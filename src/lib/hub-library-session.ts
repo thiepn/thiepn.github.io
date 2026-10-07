@@ -43,7 +43,7 @@ export class HubLibrarySession {
     this.pending.clear(); this.frame?.remove(); this.frame = null;
   }
   dispose() { this.clear(); window.removeEventListener('message', this.receive); }
-  private request(body: Record<string, unknown>, signal: AbortSignal, requestId = crypto.randomUUID()): Promise<Record<string, unknown>> {
+  private request(body: Record<string, unknown>, signal: AbortSignal, requestId: string = crypto.randomUUID()): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       if (signal.aborted || !this.frame?.contentWindow || !uuid(requestId)) { reject(new Error('Cancelled')); return; }
       const finish = () => { clearTimeout(timer); signal.removeEventListener('abort', cancel); this.pending.delete(requestId); };
