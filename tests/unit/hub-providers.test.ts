@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { validateProviderEnvelope, contextKey, requestKey, validProviderContext } from '../../src/lib/providers/contract';
 import { PILOT_PROVIDERS, providerManifest, PROVIDER_BUDGETS } from '../../src/lib/providers/registry';
 import { ProviderRunner, readBoundedJson } from '../../src/lib/providers/runtime';
+import { sessionProviderAdapter } from '../../src/lib/providers/session-adapters';
 import { PILOT_HANDOFFS } from '../../src/lib/providers/handoffs';
 import type { ProviderAccess, ProviderAdapter, ProviderEnvelope, ProviderId, ProviderManifest, RequestContext } from '../../src/lib/providers/types';
 const now=Date.parse('2026-10-01T08:00:01.000Z');
@@ -85,6 +86,25 @@ describe('H3 isolated scheduling and cancellation',()=>{
  });
  it('removes expired permission and projection data from in-memory snapshots',async()=>{let time=now;const runner=new ProviderRunner([adapter('notes')],()=>time);runner.setAccess([{...access('notes'),expiresAt:now+300000}]);await runner.run([{providerId:'notes',operation:'summary'}],()=>{});time=now+180000;expect(runner.snapshot()[0]).toMatchObject({status:'stale',envelope:{data:null}});time=now+300001;expect(runner.snapshot()).toEqual([]);});
  it('rejects unsupported query routing and duplicate adapters',async()=>{expect(()=>new ProviderRunner([adapter('notes'),adapter('notes')])).toThrow(/Duplicate/);const runner=new ProviderRunner([adapter('notes')],()=>now);await expect(runner.run([{providerId:'notes',operation:'continue',query:'secret'}],()=>{})).rejects.toThrow(/query/);});
+});
+describe('P6 reusable bound-session adapters',()=>{
+ it('enables only a runtime manifest clone and leaves the canonical registry frozen off',()=>{
+  const readRequest=vi.fn(async(r:RequestContext)=>response(r));
+  const runtime=sessionProviderAdapter('notes',{readRequest});
+  expect(runtime.manifest.privateReadsEnabled).toBe(true);
+  expect(runtime.manifest.inlineWritesEnabled).toBe(false);
+  expect(runtime.manifest.operations).toMatchObject({summary:true,continue:true,search:true,capture:false,inbox:false});
+  expect(providerManifest('notes').privateReadsEnabled).toBe(false);
+  expect(Object.values(providerManifest('notes').operations).every(Boolean)).toBe(false);
+ });
+ it('forwards the exact runner request and signal without replacing request identity',async()=>{
+  const seen:RequestContext[]=[];
+  const runtime=sessionProviderAdapter('notes',{readRequest:async(r)=>{seen.push(structuredClone(r));return response(r);}});
+  const req={...request('notes'),requestId:'runner-bound-request'};
+  const signal=new AbortController().signal;
+  await runtime.read(req,signal);
+  expect(seen).toEqual([req]);
+ });
 });
 describe('H3 streaming byte budget',()=>{
  it('counts streamed bytes with and without a content-length header',async()=>{const signal=new AbortController().signal;expect(await readBoundedJson(new Response('{"x":1}',{headers:{'content-type':'application/json'}}),7,signal)).toBe('{"x":1}');await expect(readBoundedJson(new Response('😀😀',{headers:{'content-type':'application/json'}}),7,signal)).rejects.toThrow(/size/);await expect(readBoundedJson(new Response('{}',{headers:{'content-type':'application/json','content-length':'100'}}),7,signal)).rejects.toThrow(/size/);});
