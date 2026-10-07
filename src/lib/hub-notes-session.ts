@@ -127,6 +127,26 @@ export class HubNotesSession {
     if (!object(raw) || Object.keys(raw).sort().join(',') !== 'accountId,createdAt,destination,grantRevision,noteId,requestId,schemaVersion,status' || raw.schemaVersion !== 1 || raw.accountId !== tokens.owner || raw.grantRevision !== tokens.revision || raw.requestId !== command.requestId || raw.destination !== command.destination || raw.status !== 'confirmed' || !uuid(raw.noteId) || !Number.isSafeInteger(raw.createdAt) || Number(raw.createdAt)<0 || epoch !== this.epoch || tokens.owner !== this.owner() || external.aborted) throw new Error('Unavailable');
     return raw as import('./notes-capture').CaptureReceipt;
   }
+  async providerAccess(raw: unknown): Promise<ProviderAccess> {
+    if (this.config.inbox || this.config.capture) throw new Error('Unavailable');
+    const provider = this.config.provider ?? 'notes';
+    const consent = parseNotesConsent(raw, provider);
+    const tokens = await this.freshTokens();
+    if (consent.revision !== tokens.revision || !consent.permissions.length) throw new Error('Unavailable');
+    return {
+      providerId: provider,
+      context: {
+        scope: 'account',
+        accountId: tokens.owner,
+        workspaceId: null,
+        grantRevision: tokens.revision,
+        translationId: provider === 'tms60' ? this.config.translationId! : null,
+      },
+      permissions: [...consent.permissions],
+      expiresAt: tokens.expiresAt,
+    };
+  }
+
   async inboxAccess(raw: unknown): Promise<ProviderAccess> {
     const consent = parseNotesConsent(raw);
     const tokens = await this.freshTokens();
