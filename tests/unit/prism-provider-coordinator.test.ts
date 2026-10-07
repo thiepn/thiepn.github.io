@@ -26,6 +26,31 @@ function response(request:RequestContext){
 }
 
 describe('PrismProviderCoordinator',()=>{
+  it('expires retained private snapshots after another connection rebuilds the runner',async()=>{
+    let clock=now;
+    const coordinator=new PrismProviderCoordinator(()=>clock);
+    const adapter=sessionProviderAdapter('notes',{readRequest:async request=>response(request)});
+    coordinator.setConnection(adapter,access);
+    await coordinator.refresh([{providerId:'notes',operation:'continue'}],()=>{});
+    coordinator.removeConnection('library');
+    clock=now+120000;
+    expect(coordinator.snapshotView().continue).toMatchObject({state:'stale',title:null});
+    expect(coordinator.snapshotResults()[0]?.envelope?.data).toBeNull();
+  });
+  it('publishes hidden removals before waiting for another operation',async()=>{
+    const coordinator=new PrismProviderCoordinator(()=>now);
+    let hold=false,release!:()=>void;
+    coordinator.setConnection(sessionProviderAdapter('notes',{readRequest:async request=>{
+      if(hold)await new Promise<void>(resolve=>{release=resolve;});
+      return response(request);
+    }}),access);
+    await coordinator.refresh([{providerId:'notes',operation:'continue'}],()=>{});
+    hold=true;
+    const emissions:any[]=[];
+    const pending=coordinator.refresh([{providerId:'notes',operation:'summary'}],view=>emissions.push(view));
+    expect(emissions[0].continue.title).toBeNull();
+    release();await pending;
+  });
   it('erases private cached contributions when their access expires',async()=>{
     let clock=now;
     const coordinator=new PrismProviderCoordinator(()=>clock);

@@ -5,7 +5,7 @@ const A='11111111-1111-4111-8111-111111111111',CLIENT='33333333-3333-4333-8333-3
 const token=(managed=false)=>'eyJhbGciOiJFUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:A,iss:ISSUER+'/auth/v1',aud:'authenticated',role:'authenticated',session_id:REV,exp:Math.floor(Date.now()/1000)+3600,...(managed?{client_id:CLIENT}:{})})).toString('base64url')+'.fictional_signature';
 const user={id:A,email:'fictional@example.test',aud:'authenticated',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.html')?'text/html':p.endsWith('.svg')?'image/svg+xml':p.endsWith('.woff2')?'font/woff2':'application/octet-stream';
-async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hub.search.read','tms60.hub.continue.read']){
+async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hub.search.read','tms60.hub.continue.read'],prism=false){
   let projectionStatus='ready',state='',challenge='',denied=false,held=false,release!:()=>void,expires=300000;
   const managedToken=token(true);
   const calls:{url:string;body:string|null}[]=[];
@@ -31,12 +31,14 @@ async function fixture(page:Page,permissions=['tms60.hub.summary.read','tms60.hu
       if(url.pathname.endsWith('/oauth/token')){const body=new URLSearchParams(req.postData()!);expect(crypto.createHash('sha256').update(body.get('code_verifier')!).digest('base64url')).toBe(challenge);return route.fulfill({json:{access_token:managedToken,refresh_token:'managed_refresh_sentinel',token_type:'bearer',expires_in:3600,scope:'email'}});}
       if(url.pathname.endsWith('/user'))return route.fulfill({json:user});
       if(url.pathname.endsWith('/get_thiepn_hub_tms60_consent'))return route.fulfill({json:{permissions,revision:REV}});
+      if(url.pathname.endsWith('/resolve_thiepn_first_party_oauth_client'))return route.fulfill({status:403,json:{message:'first_party_oauth_client_unavailable'}});
       if(url.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
       return route.fulfill({status:404,json:{message:'Fictional unavailable'}});
     }
     if(url.origin===TMS){let file=path.join(path.resolve(process.env.H15_TMS_DIR??'../tms60'),url.pathname);if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(fs.existsSync(file))return route.fulfill({path:file,contentType:mime(file)});}
     if(url.origin===HUB||url.origin===ACCOUNT){
       const root=path.resolve(url.origin===HUB?'.cache/h15-hub':'.cache/h15-account');let file=path.join(root,url.pathname);
+      if(prism && url.origin===HUB && url.pathname==='/home/')file=path.join(root,'home/prism-preview/index.html');
       if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');
       if(url.origin===ACCOUNT&&!fs.existsSync(file))file=path.join(root,'index.html');
       if(fs.existsSync(file))return route.fulfill({path:file,contentType:mime(file)});
@@ -83,4 +85,49 @@ test('real TMS60 entry displays the requested reference before explicit practice
 
 test('missing cloud snapshot never becomes sixty new verses or revoked sharing',async({page})=>{
  const f=await fixture(page);f.missing();await page.goto(HUB+'/home/');await expect(page.locator('[data-auth-status]')).toContainText(user.email);await page.getByRole('button',{name:'Connect TMS60',exact:true}).click();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-tms60-status]')).toContainText('No cloud snapshot');await expect(page.locator('[data-tms60-counts]')).toBeEmpty();await expect(page.getByRole('button',{name:'Refresh',exact:true})).toBeVisible();
+});
+
+async function connectPrismTms(page:Page,expectData=true) {
+  await page.goto(HUB+'/home/'); await expect(page.locator('[data-auth-status]')).toContainText(user.email);
+  await page.locator('[data-prism-account-open]:visible').first().click(); await page.locator('[data-prism-tms60-connect]').click();
+  await page.getByRole('button',{name:'Connect Hub',exact:true}).click();
+  if(expectData)await expect(page.locator('[data-prism-continue-title]')).toContainText('2 Corinthians 5:17');
+}
+for(const width of [320,1440])test(`Prism TMS60 hydrates Continue, Now, Study and Recent at ${width}`,async({page})=>{
+  await page.setViewportSize({width,height:900}); const f=await fixture(page,undefined,true); await connectPrismTms(page);
+  await expect(page.locator('[data-prism-now-list]')).toContainText('2 Bible reviews due');
+  await expect(page.locator('[data-prism-study-content]')).toContainText('2 Bible review tasks · 1 verse · 59 new verses');
+  await expect(page.locator('[data-prism-recent-content]')).toContainText('2 Corinthians 5:17');
+  await expect(page.locator('[data-prism-continue-action]')).toHaveAttribute('href',TMS+'/#hub=esv%3A1%3Awording');
+  expect(new Set(f.calls.filter(c=>c.url.endsWith('/read_thiepn_hub_tms60')).map(c=>JSON.parse(c.body!).p_operation))).toEqual(new Set(['summary','continue']));
+  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toMatch(/managed_refresh_sentinel|2 Corinthians/);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  await page.locator('[data-prism-account-open]:visible').first().click(); await page.locator('[data-prism-tms60-translation]').selectOption('niv');
+  await expect(page.locator('[data-prism-study-content]')).not.toContainText('59 new verses');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('2 Corinthians');
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText('2 Corinthians');
+  await page.locator('[data-prism-tms60-connect]').click(); await page.getByRole('button',{name:'Connect Hub',exact:true}).click();
+  await expect(page.locator('[data-prism-continue-action]')).toHaveAttribute('href',TMS+'/#hub=niv%3A1%3Awording');
+});
+for(const status of ['missing','unsupported'] as const)test(`Prism TMS60 ${status} cloud data never invents Study counts`,async({page})=>{
+  const f=await fixture(page,undefined,true); f[status](); await connectPrismTms(page,false);
+  await page.locator('[data-prism-account-open]:visible').first().click();
+  await expect(page.locator('[data-prism-tms60-status]')).toContainText(status==='missing'?'No cloud snapshot':'cannot be read yet');
+  await expect(page.locator('[data-prism-study-content]')).not.toContainText('new verses');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('2 Corinthians');
+});
+test('Prism TMS60 Continue-only sharing withholds summary counts',async({page})=>{
+  const f=await fixture(page,['tms60.hub.continue.read'],true); await connectPrismTms(page);
+  await expect(page.locator('[data-prism-study-content]')).not.toContainText('new verses');
+  await expect(page.locator('[data-prism-now-list]')).not.toContainText('Bible reviews due');
+  expect(f.calls.filter(c=>c.url.endsWith('/read_thiepn_hub_tms60')).every(c=>JSON.parse(c.body!).p_operation==='continue')).toBe(true);
+});
+test('Prism TMS60 hidden Study and Recent do not retain private metadata',async({page})=>{
+  await fixture(page,undefined,true); await connectPrismTms(page);
+  await page.evaluate(()=>{
+    document.querySelector<HTMLElement>('[data-prism-block="study"]')!.hidden=true;
+    document.querySelector<HTMLElement>('[data-prism-block="recent"]')!.hidden=true;
+  });
+  await expect(page.locator('[data-prism-study-content]')).not.toContainText('59 new verses');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('2 Corinthians');
 });

@@ -72,6 +72,7 @@ test('Prism Continue hydrates from the real device-local Library provider on can
   const continuation=page.locator('[data-prism-block-id="block-continue"]');
   await expect(continuation.locator('[data-prism-continue-title]')).toHaveText(book.title);
   await expect(continuation.locator('[data-prism-continue-copy]')).toContainText('Library · 20%');
+  await expect(page.locator('[data-prism-recent-content]')).toContainText(book.title);
   const href=await continuation.locator('[data-prism-continue-action]').getAttribute('href');
   expect(href).toContain('/library/hub/continue?');
   expect(href).toContain('release=');
@@ -85,6 +86,20 @@ test('no automatic owner load or reading-storage access; connection without cons
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
   await expect(page.locator('[data-library-status]')).toContainText('Choose sharing');
   expect(await page.evaluate(() => (window as any).__results)).toEqual([]);
+});
+test('Prism summary-only Library data expires from Recent with Continue hidden',async({page})=>{
+  await page.clock.install();
+  await fixture(page,'/home/',true);await seed(page,['summary']);
+  await page.evaluate(()=>{document.querySelector<HTMLElement>('[data-prism-block="continue"]')!.hidden=true;});
+  await page.getByRole('button',{name:'Open THIEPN Account',exact:true}).first().click();
+  await page.locator('[data-prism-library-connect]').click();
+  await expect(page.locator('[data-prism-recent-content]')).toContainText(book.title);
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText(book.title);
+  const requests=await page.locator('iframe').evaluate(frame=>(frame as HTMLIFrameElement).contentWindow && ((frame as HTMLIFrameElement).contentWindow as any).__requests);
+  expect(requests.map((request:any)=>request.operation)).toEqual(['summary']);
+  await expect(page.locator('[data-prism-library-refresh]')).toBeEnabled();
+  await page.clock.fastForward(120010);
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText(book.title);
 });
 test('actual owner reads metadata, renders current/furthest separately, and search stays out of URLs', async ({page}) => {
   const f = await fixture(page); await seed(page); await connect(page);

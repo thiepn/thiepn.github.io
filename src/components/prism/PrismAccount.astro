@@ -1,9 +1,10 @@
 ---
 interface Props {
   returnTo?: string;
-  enableManagedProviders?: boolean;
+  enableNotes?: boolean;
+  enableTms60?: boolean;
 }
-const { returnTo = '/home/', enableManagedProviders = false } = Astro.props;
+const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.props;
 ---
 
 <dialog
@@ -49,7 +50,7 @@ const { returnTo = '/home/', enableManagedProviders = false } = Astro.props;
         </div>
       </div>
 
-      {enableManagedProviders && (
+      {enableNotes && (
         <>
           <div class="prism-provider-row" data-prism-provider="notes">
             <div>
@@ -62,7 +63,10 @@ const { returnTo = '/home/', enableManagedProviders = false } = Astro.props;
               <button type="button" data-prism-notes-disconnect hidden>Disconnect</button>
             </div>
           </div>
-
+        </>
+      )}
+      {enableTms60 && (
+        <>
           <div class="prism-provider-row prism-provider-row--tms" data-prism-provider="tms60">
             <div>
               <strong>TMS60</strong>

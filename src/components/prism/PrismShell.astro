@@ -103,7 +103,9 @@ const items = [
     </div>
   </header>
 
-  <PrismAccount returnTo={path} enableManagedProviders={path === '/home/'} />
+  <PrismAccount returnTo={path}
+    enableNotes={import.meta.env.PUBLIC_HUB_NOTES_PRIVATE === 'staged-v1'}
+    enableTms60={import.meta.env.PUBLIC_HUB_TMS60_PRIVATE === 'staged-v1'} />
 
   <nav class="prism-mobile-nav" aria-label="THIEPN navigation">
     {items.map((item) => (

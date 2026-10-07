@@ -5,7 +5,7 @@ const A='11111111-1111-4111-8111-111111111111',CLIENT='33333333-3333-4333-8333-3
 const token=(managed=false)=>'eyJhbGciOiJFUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:A,iss:ISSUER+'/auth/v1',aud:'authenticated',role:'authenticated',session_id:REV,exp:Math.floor(Date.now()/1000)+3600,...(managed?{client_id:CLIENT}:{})})).toString('base64url')+'.fictional_signature';
 const user={id:A,email:'fictional@example.test',aud:'authenticated',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.html')?'text/html':p.endsWith('.svg')?'image/svg+xml':p.endsWith('.woff2')?'font/woff2':'application/octet-stream';
-async function fixture(page:Page,permissions=['notes.hub.summary.read','notes.hub.search.read','notes.hub.continue.read']){
+async function fixture(page:Page,permissions=['notes.hub.summary.read','notes.hub.search.read','notes.hub.continue.read'],prism=false){
   let state='',challenge='',denied=false,held=false,release!:()=>void,expires=300000;
   const managedToken=token(true),managedExpiry=JSON.parse(Buffer.from(managedToken.split('.')[1]!,'base64url').toString()).exp*1000;
   const calls:{url:string;body:string|null}[]=[];
@@ -25,6 +25,7 @@ async function fixture(page:Page,permissions=['notes.hub.summary.read','notes.hu
       if(url.pathname.endsWith('/oauth/token')){const body=new URLSearchParams(req.postData()!);expect(crypto.createHash('sha256').update(body.get('code_verifier')!).digest('base64url')).toBe(challenge);return route.fulfill({json:{access_token:managedToken,refresh_token:'managed_refresh_sentinel',token_type:'bearer',expires_in:3600,scope:'email'}});}
       if(url.pathname.endsWith('/user'))return route.fulfill({json:user});
       if(url.pathname.endsWith('/get_thiepn_hub_notes_consent'))return route.fulfill({json:{permissions,revision:REV}});
+      if(url.pathname.endsWith('/resolve_thiepn_first_party_oauth_client'))return route.fulfill({status:403,json:{message:'first_party_oauth_client_unavailable'}});
       if(url.pathname.startsWith('/rest/v1/'))return route.fulfill({json:[]});
       return route.fulfill({status:404,json:{message:'Fictional unavailable'}});
     }
@@ -36,6 +37,7 @@ async function fixture(page:Page,permissions=['notes.hub.summary.read','notes.hu
     }
     if(url.origin===HUB||url.origin===ACCOUNT){
       const root=path.resolve(url.origin===HUB?'.cache/h14-hub':'.cache/h14-account');let file=path.join(root,url.pathname);
+      if(prism && url.origin===HUB && url.pathname==='/home/')file=path.join(root,'home/prism-preview/index.html');
       if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');
       if(url.origin===ACCOUNT&&!fs.existsSync(file))file=path.join(root,'index.html');
       if(fs.existsSync(file))return route.fulfill({path:file,contentType:mime(file)});
@@ -64,3 +66,54 @@ test('explicit Account denial returns safely without a token exchange',async({pa
 test('reload discards managed connection and private results',async({page})=>{const f=await fixture(page);await connect(page);const exchanges=f.calls.filter(c=>c.url.endsWith('/oauth/token')).length;await page.reload();await expect(page.locator('[data-auth-status]')).toContainText(user.email);await expect(page.locator('[data-notes-items]')).toBeEmpty();await expect(page.getByRole('button',{name:'Connect Notes',exact:true})).toBeEnabled();expect(f.calls.filter(c=>c.url.endsWith('/oauth/token')).length).toBe(exchanges);});
 test('search-only sharing never requests recent titles or Continue',async({page})=>{const f=await fixture(page,['notes.hub.search.read']);await page.goto(HUB+'/home/');await expect(page.locator('[data-auth-status]')).toContainText(user.email);await page.getByRole('button',{name:'Connect Notes',exact:true}).click();await page.getByRole('button',{name:'Connect Hub',exact:true}).click();await expect(page.locator('[data-notes-status]')).toContainText('Connected. Search');await page.getByRole('searchbox',{name:'Search synced titles'}).fill('fictional');await page.getByRole('button',{name:'Search Notes',exact:true}).click();await expect(page.locator('[data-notes-items]')).toContainText('Search fixture title');expect(f.calls.filter(c=>c.url.endsWith('/hub/notes/v1')).every(c=>JSON.parse(c.body!).operation==='search')).toBe(true);});
 test('Continue-only sharing opens the permitted view directly',async({page})=>{const f=await fixture(page,['notes.hub.continue.read']);await connect(page);await expect(page.getByRole('radio',{name:'Recent titles',exact:true})).toBeDisabled();await expect(page.getByRole('radio',{name:'Continue',exact:true})).toBeChecked();await expect(page.getByRole('searchbox',{name:'Search synced titles'})).toBeHidden();expect(f.calls.filter(c=>c.url.endsWith('/hub/notes/v1')).every(c=>JSON.parse(c.body!).operation==='continue')).toBe(true);});
+
+async function connectPrismNotes(page:Page) {
+  await page.goto(HUB+'/home/'); await expect(page.locator('[data-auth-status]')).toContainText(user.email);
+  await page.locator('[data-prism-account-open]:visible').first().click();
+  await page.locator('[data-prism-notes-connect]').click();
+  await page.getByRole('button',{name:'Connect Hub',exact:true}).click();
+  await expect(page.locator('[data-prism-continue-title]')).toContainText('Fictional private title');
+}
+for(const width of [320,1440])test(`Prism Notes hydrates title-only Continue and Recent at ${width}`,async({page})=>{
+  await page.setViewportSize({width,height:900}); const f=await fixture(page,undefined,true); await connectPrismNotes(page);
+  await expect(page.locator('[data-prism-recent-content]')).toContainText('Fictional private title');
+  expect(await page.locator('[data-prism-recent-content] b').count()).toBe(0);
+  expect(new Set(f.calls.filter(c=>c.url.endsWith('/hub/notes/v1')).map(c=>JSON.parse(c.body!).operation))).toEqual(new Set(['summary','continue']));
+  expect(await page.evaluate(()=>Object.values(localStorage).join('')+Object.values(sessionStorage).join(''))).not.toMatch(/managed_refresh_sentinel|Fictional private title/);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  await page.locator('[data-prism-account-open]:visible').first().click(); await page.locator('[data-prism-notes-disconnect]').click();
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText('Fictional private title');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('Fictional private title');
+});
+test('Prism Notes respects Continue-only sharing and clears revoked or expired contributions',async({page})=>{
+  const f=await fixture(page,['notes.hub.continue.read'],true); f.shortExpiry(); await connectPrismNotes(page);
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('Fictional private title');
+  expect(f.calls.filter(c=>c.url.endsWith('/hub/notes/v1')).every(c=>JSON.parse(c.body!).operation==='continue')).toBe(true);
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText('Fictional private title',{timeout:5000});
+  f.revoke(); await page.locator('[data-prism-account-open]:visible').first().click(); await page.locator('[data-prism-notes-refresh]').click();
+  await expect(page.locator('[data-prism-notes-status]')).toContainText('could not be checked');
+  await expect(page.locator('[data-prism-notes-connect]')).toBeVisible();
+});
+test('Prism Notes hiding a block cancels late private hydration',async({page})=>{
+  const f=await fixture(page,undefined,true); await connectPrismNotes(page); f.hold();
+  await page.locator('[data-prism-account-open]:visible').first().click(); await page.locator('[data-prism-notes-refresh]').click();
+  await page.evaluate(()=>{document.querySelector<HTMLElement>('[data-prism-block="continue"]')!.hidden=true;});
+  f.release(); await expect(page.locator('[data-prism-notes-status]')).toContainText('Hidden Home data cleared');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('Fictional private title');
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText('Fictional private title');
+});
+test('Prism preview never starts the canonical Notes authorization',async({page})=>{
+  const f=await fixture(page); await page.goto(HUB+'/home/prism-preview/');
+  await page.locator('[data-prism-account-open]:visible').first().click(); await expect(page.locator('[data-prism-notes-connect]')).toBeDisabled();
+  expect(f.calls.some(c=>c.url.endsWith('/oauth/authorize')||c.url.endsWith('/get_thiepn_hub_notes_consent'))).toBe(false);
+});
+test('Prism Notes summary-only sharing expires Recent without reading Continue',async({page})=>{
+  const f=await fixture(page,['notes.hub.summary.read'],true);f.shortExpiry();
+  await page.goto(HUB+'/home/');await expect(page.locator('[data-auth-status]')).toContainText(user.email);
+  await page.locator('[data-prism-account-open]:visible').first().click();await page.locator('[data-prism-notes-connect]').click();
+  await page.getByRole('button',{name:'Connect Hub',exact:true}).click();
+  await expect(page.locator('[data-prism-recent-content]')).toContainText('Fictional private title');
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText('Fictional private title');
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText('Fictional private title',{timeout:5000});
+  expect(f.calls.filter(c=>c.url.endsWith('/hub/notes/v1')).map(c=>JSON.parse(c.body!).operation)).toEqual(['summary']);
+});

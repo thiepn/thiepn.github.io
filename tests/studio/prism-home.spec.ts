@@ -2,6 +2,22 @@ import { test, expect } from '@playwright/test';
 
 const route = '/home/prism-preview/';
 
+for (const width of [320, 1440]) for (const theme of ['light', 'dark']) {
+  test(`Prism accessibility at ${width} in ${theme}, including Account`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(theme => localStorage.setItem('thiepn:index-theme', theme), theme);
+    await page.goto(route);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await page.addScriptTag({ path: process.env.AXE_PATH || '/tmp/audit-tools/node_modules/axe-core/axe.min.js' });
+    const audit = () => page.evaluate(async () => (await (window as any).axe.run(document, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
+    })).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) })));
+    expect(await audit()).toEqual([]);
+    await page.locator('[data-prism-account-open]:visible').first().click();
+    expect(await audit()).toEqual([]);
+  });
+}
+
 test('Prism preview locks the canonical desktop composition without legacy Home chrome', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(route);

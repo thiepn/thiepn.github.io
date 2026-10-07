@@ -330,6 +330,22 @@ html[data-portal][data-theme='dark'] .prism-app {
 }
 
 /* Study + Recent remain quiet and mostly typographic. */
+.prism-quiet-state [data-prism-study-provider] {
+  grid-column: 1 / -1;
+  color: var(--prism-text-primary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.prism-recent-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.prism-recent-list li { min-width: 0; overflow-wrap: anywhere; }
+.prism-recent-list a { color: var(--prism-text-primary); }
+.prism-recent-list small { display: block; color: var(--prism-text-secondary); font-size: 12px; }
 .prism-study {
   grid-column: span 7;
 }

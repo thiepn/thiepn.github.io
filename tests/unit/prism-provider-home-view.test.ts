@@ -105,6 +105,7 @@ describe('Prism provider Home view model', () => {
       href: 'https://tms60.thiepn.dev/',
       priority: 100,
     }]);
+    expect(view.study).toEqual({ providerId: 'tms60', dueTaskCount: 23, dueVerseCount: 9, newVerseCount: 2, href: 'https://tms60.thiepn.dev/' });
   });
 
   it('keeps summary failures isolated from Continue state', () => {
@@ -139,5 +140,22 @@ describe('Prism provider Home view model', () => {
       }),
     }));
     expect(buildPrismProviderHomeView(repeated).now.length).toBeLessThanOrEqual(3);
+  });
+  it('projects only ready summary metadata into bounded Recent, not failed or stale titles', () => {
+    const items = Array.from({ length: 8 }, (_, n) => ({ resourceId: `note-${n}`, title: `Note ${n}`, updatedAt: new Date(Date.parse('2026-10-07T05:00:00Z') + n * 1000).toISOString() }));
+    const ready = envelope('notes', 'summary', account, { items });
+    const view = buildPrismProviderHomeView([
+      { providerId: 'notes', operation: 'summary', status: 'ready', envelope: ready },
+      { providerId: 'tms60', operation: 'summary', status: 'stale', envelope: envelope('tms60', 'summary', account, { items: [items[0]!] }) },
+    ]);
+    expect(view.recent.map(item => item.title)).toEqual(['Note 7', 'Note 6', 'Note 5', 'Note 4', 'Note 3']);
+    expect(view.recent.every(item => item.href === 'https://thiepn.dev/notes/')).toBe(true);
+    expect(view.study).toBeNull();
+  });
+  it('withholds Study counts for an absent or unsupported cloud snapshot', () => {
+    for (const status of ['unconnected', 'unsupported'] as const) {
+      const view = buildPrismProviderHomeView([{ providerId: 'tms60', operation: 'summary', status, envelope: envelope('tms60', 'summary', account, null, status) }]);
+      expect(view.study).toBeNull(); expect(view.recent).toEqual([]); expect(view.now).toEqual([]);
+    }
   });
 });

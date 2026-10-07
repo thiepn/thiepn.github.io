@@ -23,6 +23,8 @@ export interface PrismNowItem {
 export interface PrismProviderHomeView {
   continue: PrismContinueView;
   now: PrismNowItem[];
+  study: { providerId: 'tms60'; dueTaskCount: number; dueVerseCount: number; newVerseCount: number; href: string } | null;
+  recent: { providerId: ProviderId; title: string; updatedAt: string; href: string }[];
 }
 
 const severity: Record<ProviderStatus, number> = {
@@ -114,5 +116,15 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   }
 
   now.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
-  return { continue: continueView, now: now.slice(0, 3) };
+  const studyResult = summaryResults.find(result => result.providerId === 'tms60' && ['ready', 'empty'].includes(result.status) && result.envelope?.data);
+  const studyData = studyResult?.envelope?.data;
+  const studyHref = providerAction('tms60', 'open');
+  const study = studyData && studyHref ? { providerId: 'tms60' as const,
+    dueTaskCount: studyData.dueTaskCount ?? 0, dueVerseCount: studyData.dueVerseCount ?? 0,
+    newVerseCount: studyData.newVerseCount ?? 0, href: studyHref } : null;
+  const recent = summaryResults.flatMap(result => result.status === 'ready' ? (result.envelope?.data?.items ?? []).flatMap(item => {
+    const href = continueHref(result.providerId, item);
+    return href ? [{ providerId: result.providerId, title: item.title, updatedAt: item.updatedAt, href }] : [];
+  }) : []).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
+  return { continue: continueView, now: now.slice(0, 3), study, recent };
 }

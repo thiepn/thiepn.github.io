@@ -63,6 +63,15 @@ export class PrismProviderCoordinator {
       const resultKey = key(result.providerId, result.operation);
       if (this.#results.has(resultKey)) this.#results.set(resultKey, structuredClone(result));
     }
+    // A different provider's reconnect rebuilds the runner, but retained
+    // snapshots still have their own deadline and must lose private data.
+    for (const result of this.#results.values()) {
+      if (result.envelope && ['ready', 'empty'].includes(result.status) && Date.parse(result.envelope.expiresAt) <= this.now()) {
+        result.status = 'stale';
+        result.envelope.status = 'stale';
+        result.envelope.data = null;
+      }
+    }
     return [...this.#results.values()].map((result) => structuredClone(result));
   }
 
@@ -79,6 +88,8 @@ export class PrismProviderCoordinator {
     for (const resultKey of [...this.#results.keys()]) {
       if (!visibleKeys.has(resultKey)) this.#results.delete(resultKey);
     }
+    // Publish removals before a visible provider's asynchronous read completes.
+    emit(this.snapshotView(), this.snapshotResults());
 
     const runner = this.#runner;
     if (!runner || allowed.length === 0) {

@@ -15,6 +15,8 @@ const continueTitle = continueBlock?.querySelector<HTMLElement>('[data-prism-con
 const continueCopy = continueBlock?.querySelector<HTMLElement>('[data-prism-continue-copy]');
 const continueAction = continueBlock?.querySelector<HTMLAnchorElement>('[data-prism-continue-action]');
 const nowList = home?.querySelector<HTMLElement>('[data-prism-now-list]');
+const studyContent = home?.querySelector<HTMLElement>('[data-prism-study-content]');
+const recentContent = home?.querySelector<HTMLElement>('[data-prism-recent-content]');
 
 if (home && connection && status && connect && refresh && disconnect && continueBlock && continueTitle && continueCopy && continueAction && nowList) {
   const connectionRoot = connection;
@@ -28,12 +30,15 @@ if (home && connection && status && connect && refresh && disconnect && continue
   const actionNode = continueAction;
   const nowRoot = nowList;
   const defaultNowNodes = Array.from(nowRoot.childNodes).map((node) => node.cloneNode(true));
+  const defaultStudyNodes = Array.from(studyContent?.childNodes ?? []).map(node => node.cloneNode(true));
+  const defaultRecentNodes = Array.from(recentContent?.childNodes ?? []).map(node => node.cloneNode(true));
 
   let generation = 0;
   let connected = false;
   let busy = false;
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
   let libraryAdapter: ProviderAdapter | null = null;
+  let libraryPermissions = new Set<string>();
   // The Library owner accepts only canonical Home. A preview must not widen
   // its caller allowlist or present a connection that can never succeed.
   const libraryAvailable = location.pathname === '/home/' || location.pathname === '/home';
@@ -67,7 +72,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
   }
 
   function renderNow(view: PrismProviderHomeView) {
-    if (view.now.length === 0) {
+    if (home!.hidden || nowRoot.closest<HTMLElement>('[data-prism-block]')?.hidden || view.now.length === 0) {
       nowRoot.replaceChildren(...defaultNowNodes.map((node) => node.cloneNode(true)));
       return;
     }
@@ -98,6 +103,35 @@ if (home && connection && status && connect && refresh && disconnect && continue
 
   function renderView(view: PrismProviderHomeView) {
     renderNow(view);
+    if (studyContent) {
+      if (home!.hidden || studyContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.study) studyContent.replaceChildren(...defaultStudyNodes.map(node => node.cloneNode(true)));
+      else {
+        const link = document.createElement('a');
+        link.href = view.study.href;
+        link.textContent = `${view.study.dueTaskCount} Bible review ${view.study.dueTaskCount === 1 ? 'task' : 'tasks'} · ${view.study.dueVerseCount} ${view.study.dueVerseCount === 1 ? 'verse' : 'verses'} · ${view.study.newVerseCount} new ${view.study.newVerseCount === 1 ? 'verse' : 'verses'}`;
+        link.dataset.prismStudyProvider = view.study.providerId;
+        studyContent.replaceChildren(link);
+      }
+    }
+    if (recentContent) {
+      if (home!.hidden || recentContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.recent.length) recentContent.replaceChildren(...defaultRecentNodes.map(node => node.cloneNode(true)));
+      else {
+        const list = document.createElement('ul');
+        list.className = 'prism-recent-list';
+        for (const item of view.recent) {
+          const row = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = item.href;
+          link.textContent = item.title;
+          const meta = document.createElement('small');
+          meta.textContent = `${providerLabel[item.providerId]} · ${new Date(item.updatedAt).toLocaleString()}`;
+          row.append(link, meta);
+          list.append(row);
+        }
+        recentContent.replaceChildren(list);
+      }
+    }
+    if (home!.hidden || continueRoot.hidden) { resetContinue(); return; }
     const item = view.continue;
     continueRoot.dataset.prismProviderState = item.state;
 
@@ -140,7 +174,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
     refreshButton.hidden = !connected;
     disconnectButton.hidden = !connected;
     connectButton.disabled = !libraryAvailable || busy || document.hidden;
-    refreshButton.disabled = Boolean(busy || document.hidden || continueRoot.hidden);
+    refreshButton.disabled = Boolean(busy || document.hidden || home!.hidden || (continueRoot.hidden && recentContent?.closest<HTMLElement>('[data-prism-block]')?.hidden));
     disconnectButton.disabled = busy;
     connectionRoot.setAttribute('aria-busy',String(busy));
   }
@@ -152,12 +186,14 @@ if (home && connection && status && connect && refresh && disconnect && continue
 
   function scheduleExpiry(results: readonly ProviderResult[]) {
     clearExpiry();
-    const result = results.find(item => item.providerId === 'library' && item.operation === 'continue' && item.envelope);
-    if (!result?.envelope) return;
-    const delay = Math.max(0,Date.parse(result.envelope.expiresAt)-Date.now());
+    const deadlines = results.filter(item => item.providerId === 'library' && ['ready', 'empty'].includes(item.status))
+      .flatMap(item => item.envelope ? [Date.parse(item.envelope.expiresAt)] : []).filter(deadline => deadline > Date.now());
+    if (!deadlines.length) return;
+    const delay = Math.max(0,Math.min(...deadlines)-Date.now());
     expiryTimer = setTimeout(()=>{
       if (!connected) return;
-      renderView(prismProviderRuntime.view());
+      prismProviderRuntime.expireSnapshots();
+      scheduleExpiry(prismProviderRuntime.results());
     },delay+5);
   }
 
@@ -166,6 +202,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
     clearExpiry();
     prismProviderRuntime.removeConnection('library');
     libraryAdapter = null;
+    libraryPermissions.clear();
     session.clear();
     connected = false;
     busy = false;
@@ -178,22 +215,23 @@ if (home && connection && status && connect && refresh && disconnect && continue
 
   async function refreshVisible() {
     if (!connected || document.hidden || !libraryAdapter) return;
-    const current = generation;
+    const current = ++generation;
     busy = true;
     statusNode.textContent = continueRoot.hidden
-      ? 'Connected · Continue is hidden, so Library is not being read.'
+      ? 'Checking visible Library metadata…'
       : 'Checking current Library progress…';
     controls();
     try {
       prismProviderRuntime.setConnection(libraryAdapter,session.providerAccess());
-      prismProviderRuntime.setVisible('library','continue',connected && !continueRoot.hidden);
+      prismProviderRuntime.setVisible('library','continue',!home!.hidden && !continueRoot.hidden && libraryPermissions.has('continue'));
+      prismProviderRuntime.setVisible('library','summary',Boolean(!home!.hidden && recentContent && !recentContent.closest<HTMLElement>('[data-prism-block]')?.hidden && libraryPermissions.has('summary')));
       await prismProviderRuntime.refresh();
       if (current !== generation || document.hidden) return;
       scheduleExpiry(prismProviderRuntime.results());
       if (current !== generation || !connected) return;
       const result = prismProviderRuntime.results().find(item=>item.providerId==='library'&&item.operation==='continue');
       statusNode.textContent = continueRoot.hidden
-        ? 'Connected · Continue is hidden, so Library is not being read.'
+        ? 'Connected · only visible, shared Library metadata is being read.'
         : result?.status === 'ready'
           ? 'Connected · current saved progress shown in Continue.'
           : result?.status === 'empty'
@@ -221,6 +259,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
       const consent=await session.connect(AbortSignal.timeout(2500));
       if (current!==generation || document.hidden) return;
       libraryAdapter=sessionProviderAdapter('library',session);
+      libraryPermissions=new Set(consent.permissions);
       prismProviderRuntime.setConnection(libraryAdapter,session.providerAccess());
       connected=true;
       statusNode.textContent=`Connected in this tab · ${consent.permissions.join(', ')}.`;
@@ -237,17 +276,12 @@ if (home && connection && status && connect && refresh && disconnect && continue
 
   const visibility=new MutationObserver(()=>{
     if (!connected) return;
-    if (continueRoot.hidden) {
-      clearExpiry();
-      prismProviderRuntime.setVisible('library','continue',false);
-      void prismProviderRuntime.refresh();
-    } else if (!document.hidden) {
-      prismProviderRuntime.setVisible('library','continue',true);
-      void refreshVisible();
-    }
+    if (!document.hidden) void refreshVisible();
     controls();
   });
   visibility.observe(continueRoot,{attributes:true,attributeFilter:['hidden']});
+  const recentBlock=recentContent?.closest<HTMLElement>('[data-prism-block]');
+  if (recentBlock) visibility.observe(recentBlock,{attributes:true,attributeFilter:['hidden']});
 
   window.addEventListener('hub:identity',()=>clearConnection());
   window.addEventListener('pagehide',()=>clearConnection());

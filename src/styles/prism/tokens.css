@@ -81,7 +81,7 @@ html[data-portal]:has(.prism-home) {
   --surface-3: #eaedf2;
   --ink: #15181d;
   --ink-secondary: #626a75;
-  --ink-muted: #8a929d;
+  --ink-muted: #68717d;
   --line: rgb(24 28 35 / 12%);
   --line-soft: rgb(24 28 35 / 8%);
   --line-strong: rgb(24 28 35 / 20%);
@@ -100,7 +100,7 @@ html[data-portal][data-theme='dark']:has(.prism-home) {
   --surface-3: #20262f;
   --ink: #f2f4f7;
   --ink-secondary: #aab1bc;
-  --ink-muted: #777f8b;
+  --ink-muted: #99a2ae;
   --line: rgb(255 255 255 / 10%);
   --line-soft: rgb(255 255 255 / 6%);
   --line-strong: rgb(255 255 255 / 16%);

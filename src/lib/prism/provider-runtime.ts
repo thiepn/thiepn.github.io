@@ -46,6 +46,10 @@ export class PrismProviderRuntime {
     return this.#coordinator.snapshotResults();
   }
 
+  expireSnapshots():void {
+    this.#publish();
+  }
+
   async refresh():Promise<void> {
     const generation=++this.#refreshGeneration;
     await this.#coordinator.refresh([...this.#visible.values()],view=>{
