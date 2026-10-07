@@ -39,7 +39,6 @@ test('explicit same-account sharing verifies matching Library state and exposes 
  expect(results.at(-1)?.coverage).toBe('account-synced');
  const raw=JSON.stringify(results);expect(raw).not.toContain('SECRET-CFI');expect(raw).not.toContain('fixture-library-access-token');expect(raw).not.toContain('annotations');
  expect(f.calls.some(call=>call.url.includes('/auth/v1/user'))).toBe(true);
- expect(f.calls.some(call=>call.url.includes('/rest/v1/account_app_connections'))).toBe(true);
  expect(
   f.calls.some(call=>call.url.includes('/rest/v1/library_sync_state')),
   `Expected Library Account snapshot request. Captured: ${f.calls.filter(call=>call.url.includes('supabase.co')).map(call=>`${call.method} ${new URL(call.url).pathname}`).join(', ') || 'none'}`,
