@@ -1,8 +1,8 @@
 import { HubLibrarySession } from '../lib/hub-library-session';
-import { ProviderRunner } from '../lib/providers/runtime';
 import { sessionProviderAdapter } from '../lib/providers/session-adapters';
-import { buildPrismProviderHomeView } from '../lib/prism/provider-home-view';
-import type { ProviderResult } from '../lib/providers/types';
+import { PrismProviderCoordinator, type PrismVisibleProviderOperation } from '../lib/prism/provider-coordinator';
+import type { PrismProviderHomeView } from '../lib/prism/provider-home-view';
+import type { ProviderAdapter, ProviderId, ProviderResult } from '../lib/providers/types';
 
 const home = document.querySelector<HTMLElement>('[data-prism-home]');
 const connection = document.querySelector<HTMLElement>('[data-prism-provider="library"]');
@@ -27,12 +27,12 @@ if (home && connection && status && connect && refresh && disconnect && continue
   const actionNode = continueAction;
 
   let generation = 0;
-  let runner: ProviderRunner | null = null;
   let connected = false;
   let busy = false;
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
-  let contribution: ProviderResult | null = null;
+  let libraryAdapter: ProviderAdapter | null = null;
 
+  const coordinator = new PrismProviderCoordinator();
   const defaultContinue = {
     title: titleNode.textContent ?? 'No resumable activity yet',
     copy: copyNode.textContent ?? 'Open an app and Prism will keep your next meaningful step here.',
@@ -40,52 +40,59 @@ if (home && connection && status && connect && refresh && disconnect && continue
     label: actionNode.firstChild?.textContent?.trim() || 'Browse apps',
   };
 
+  const providerLabel: Record<ProviderId,string> = {
+    notes: 'Notes',
+    library: 'Library',
+    tms60: 'TMS60',
+  };
+
   function setAction(label: string, href: string) {
-    actionNode.replaceChildren(document.createTextNode(label + ' '), Object.assign(document.createElement('span'), { textContent: '→' }));
-    actionNode.lastElementChild?.setAttribute('aria-hidden', 'true');
+    const arrow = document.createElement('span');
+    arrow.textContent = '→';
+    arrow.setAttribute('aria-hidden','true');
+    actionNode.replaceChildren(document.createTextNode(label + ' '),arrow);
     actionNode.href = href;
   }
 
   function resetContinue() {
     titleNode.textContent = defaultContinue.title;
     copyNode.textContent = defaultContinue.copy;
-    setAction(defaultContinue.label, defaultContinue.href);
+    setAction(defaultContinue.label,defaultContinue.href);
     delete continueRoot.dataset.prismProviderState;
   }
 
-  function renderResult() {
-    const view = buildPrismProviderHomeView(contribution ? [contribution] : []);
+  function renderView(view: PrismProviderHomeView) {
     const item = view.continue;
     continueRoot.dataset.prismProviderState = item.state;
 
-    if (item.state === 'ready' && item.title && item.href) {
+    if (item.state === 'ready' && item.title && item.href && item.providerId) {
       titleNode.textContent = item.title;
-      const pieces = ['Library'];
+      const pieces = [providerLabel[item.providerId]];
       if (item.progress !== null) pieces.push(`${Math.round(item.progress * 100)}%`);
       if (item.updatedAt) pieces.push(`updated ${new Date(item.updatedAt).toLocaleString()}`);
       copyNode.textContent = pieces.join(' · ');
-      setAction('Continue reading', item.href);
+      setAction(item.providerId === 'library' ? 'Continue reading' : 'Continue',item.href);
       return;
     }
 
-    if (item.state === 'empty') {
-      titleNode.textContent = 'No saved reading to continue';
-      copyNode.textContent = 'Library is connected, but no current saved EPUB/PDF progress is available.';
-      setAction('Open Library', '/library/');
+    if (item.state === 'empty' && connected) {
+      titleNode.textContent = 'Nothing connected to resume';
+      copyNode.textContent = 'Connected providers have no current resumable activity.';
+      setAction('Browse apps','/#apps');
       return;
     }
 
     if (item.state === 'stale') {
-      titleNode.textContent = 'Library snapshot expired';
-      copyNode.textContent = 'Refresh the Library connection to check current saved reading progress.';
-      setAction('Open Library', '/library/');
+      titleNode.textContent = 'Continue snapshot expired';
+      copyNode.textContent = 'Refresh connected Home data to check the current activity.';
+      setAction('Browse apps','/#apps');
       return;
     }
 
     if (item.state === 'offline' || item.state === 'error') {
-      titleNode.textContent = 'Library could not be checked';
-      copyNode.textContent = 'Your Library data is unchanged. Refresh the connection or open Library directly.';
-      setAction('Open Library', '/library/');
+      titleNode.textContent = 'Continue could not be refreshed';
+      copyNode.textContent = 'No private activity is shown until the connected provider can be checked again.';
+      setAction('Browse apps','/#apps');
       return;
     }
 
@@ -99,7 +106,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
     connectButton.disabled = busy || document.hidden;
     refreshButton.disabled = Boolean(busy || document.hidden || continueRoot.hidden);
     disconnectButton.disabled = busy;
-    connectionRoot.setAttribute('aria-busy', String(busy));
+    connectionRoot.setAttribute('aria-busy',String(busy));
   }
 
   function clearExpiry() {
@@ -107,62 +114,66 @@ if (home && connection && status && connect && refresh && disconnect && continue
     expiryTimer = undefined;
   }
 
+  function visibleOperations(): PrismVisibleProviderOperation[] {
+    const visible: PrismVisibleProviderOperation[] = [];
+    if (connected && !continueRoot.hidden) visible.push({providerId:'library',operation:'continue'});
+    return visible;
+  }
+
+  function scheduleExpiry(results: readonly ProviderResult[]) {
+    clearExpiry();
+    const result = results.find(item => item.providerId === 'library' && item.operation === 'continue' && item.envelope);
+    if (!result?.envelope) return;
+    const delay = Math.max(0,Date.parse(result.envelope.expiresAt)-Date.now());
+    expiryTimer = setTimeout(()=>{
+      if (!connected) return;
+      renderView(coordinator.snapshotView());
+    },delay+5);
+  }
+
   function clearConnection(message = 'Not connected in this tab.') {
     ++generation;
     clearExpiry();
-    runner?.clear();
-    runner = null;
+    coordinator.removeConnection('library');
+    libraryAdapter = null;
     session.clear();
     connected = false;
     busy = false;
-    contribution = null;
     statusNode.textContent = message;
-    resetContinue();
+    renderView(coordinator.snapshotView());
     controls();
   }
 
-  const session = new HubLibrarySession(() => clearConnection('Library sharing changed. Connect this browser again.'));
+  const session = new HubLibrarySession(()=>clearConnection('Library sharing changed. Connect this browser again.'));
 
-  function accept(result: ProviderResult) {
-    contribution = result;
-    renderResult();
-    if (result.envelope) {
-      clearExpiry();
-      const delay = Math.max(0, Date.parse(result.envelope.expiresAt) - Date.now());
-      expiryTimer = setTimeout(() => {
-        if (!runner || !connected) return;
-        const snapshot = runner.snapshot().find((item) => item.providerId === 'library');
-        if (snapshot) {
-          contribution = snapshot;
-          renderResult();
-        }
-      }, delay + 5);
-    }
-  }
-
-  async function loadContinue() {
-    if (!runner || !connected || continueRoot.hidden || document.hidden) return;
+  async function refreshVisible() {
+    if (!connected || document.hidden || !libraryAdapter) return;
     const current = generation;
     busy = true;
-    statusNode.textContent = 'Checking current Library progress…';
+    statusNode.textContent = continueRoot.hidden
+      ? 'Connected · Continue is hidden, so Library is not being read.'
+      : 'Checking current Library progress…';
     controls();
     try {
-      runner.setAccess([session.providerAccess()]);
-      await runner.run([{ providerId: 'library', operation: 'continue' }], (result) => {
-        if (current !== generation || !connected || continueRoot.hidden || document.hidden) return;
-        accept(result);
+      coordinator.setConnection(libraryAdapter,session.providerAccess());
+      await coordinator.refresh(visibleOperations(),(view,results)=>{
+        if (current !== generation || document.hidden) return;
+        renderView(view);
+        scheduleExpiry(results);
       });
       if (current !== generation || !connected) return;
-      const state = contribution?.status;
-      statusNode.textContent = state === 'ready'
-        ? 'Connected · current saved progress shown in Continue.'
-        : state === 'empty'
-          ? 'Connected · no resumable saved progress.'
-          : state === 'offline'
-            ? 'Library is temporarily unavailable in this tab.'
-            : state === 'error'
-              ? 'Library could not be checked.'
-              : 'Connected in this tab.';
+      const result = coordinator.snapshotResults().find(item=>item.providerId==='library'&&item.operation==='continue');
+      statusNode.textContent = continueRoot.hidden
+        ? 'Connected · Continue is hidden, so Library is not being read.'
+        : result?.status === 'ready'
+          ? 'Connected · current saved progress shown in Continue.'
+          : result?.status === 'empty'
+            ? 'Connected · no resumable saved progress.'
+            : result?.status === 'offline'
+              ? 'Library is temporarily unavailable in this tab.'
+              : result?.status === 'error'
+                ? 'Library could not be checked.'
+                : 'Connected in this tab.';
     } finally {
       if (current === generation) {
         busy = false;
@@ -171,51 +182,47 @@ if (home && connection && status && connect && refresh && disconnect && continue
     }
   }
 
-  connectButton.addEventListener('click', () => void (async () => {
+  connectButton.addEventListener('click',()=>void(async()=>{
     if (busy || document.hidden) return;
-    const current = ++generation;
-    busy = true;
-    statusNode.textContent = 'Checking Library sharing on this device…';
+    const current=++generation;
+    busy=true;
+    statusNode.textContent='Checking Library sharing on this device…';
     controls();
     try {
-      const consent = await session.connect(AbortSignal.timeout(2500));
-      if (current !== generation || document.hidden) return;
-      const access = session.providerAccess();
-      const adapter = sessionProviderAdapter('library', session);
-      runner = new ProviderRunner([adapter]);
-      runner.setAccess([access]);
-      connected = true;
-      statusNode.textContent = `Connected in this tab · ${consent.permissions.join(', ')}.`;
-      busy = false;
+      const consent=await session.connect(AbortSignal.timeout(2500));
+      if (current!==generation || document.hidden) return;
+      libraryAdapter=sessionProviderAdapter('library',session);
+      coordinator.setConnection(libraryAdapter,session.providerAccess());
+      connected=true;
+      statusNode.textContent=`Connected in this tab · ${consent.permissions.join(', ')}.`;
+      busy=false;
       controls();
-      await loadContinue();
+      await refreshVisible();
     } catch {
-      if (current === generation) clearConnection('Choose Library sharing, then connect this browser again.');
+      if (current===generation) clearConnection('Choose Library sharing, then connect this browser again.');
     }
   })());
 
-  refreshButton.addEventListener('click', () => void loadContinue());
-  disconnectButton.addEventListener('click', () => clearConnection('Library disconnected in this tab.'));
+  refreshButton.addEventListener('click',()=>void refreshVisible());
+  disconnectButton.addEventListener('click',()=>clearConnection('Library disconnected in this tab.'));
 
-  const visibility = new MutationObserver(() => {
+  const visibility=new MutationObserver(()=>{
+    if (!connected) return;
     if (continueRoot.hidden) {
-      runner?.run([], () => {}).catch(() => {});
-      contribution = null;
-      resetContinue();
-      statusNode.textContent = connected ? 'Connected · Continue is hidden, so Library is not being read.' : 'Not connected in this tab.';
-      controls();
-    } else if (connected && !document.hidden) {
-      void loadContinue();
-    }
+      clearExpiry();
+      void coordinator.refresh(visibleOperations(),(view)=>renderView(view));
+    } else if (!document.hidden) void refreshVisible();
+    controls();
   });
-  visibility.observe(continueRoot, { attributes: true, attributeFilter: ['hidden'] });
+  visibility.observe(continueRoot,{attributes:true,attributeFilter:['hidden']});
 
-  window.addEventListener('hub:identity', () => clearConnection());
-  window.addEventListener('pagehide', () => clearConnection());
-  document.addEventListener('visibilitychange', () => {
+  window.addEventListener('hub:identity',()=>clearConnection());
+  window.addEventListener('pagehide',()=>clearConnection());
+  document.addEventListener('visibilitychange',()=>{
     if (document.hidden) clearConnection('Library cleared when this tab was hidden.');
     controls();
   });
 
+  renderView(coordinator.snapshotView());
   controls();
 }
