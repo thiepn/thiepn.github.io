@@ -119,15 +119,15 @@ if (root) {
     }
   }
 
-  function applyAppearance(document: HomeDocumentV2) {
-    const mode = document.appearance.mode;
+  function applyAppearance(homeDocument: HomeDocumentV2) {
+    const mode = homeDocument.appearance.mode;
     const resolved = mode === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : mode;
 
-    homeRoot.dataset.density = document.appearance.density;
-    homeRoot.dataset.prismIntensity = document.appearance.intensity;
-    homeRoot.dataset.prismMotion = document.appearance.motion;
+    homeRoot.dataset.density = homeDocument.appearance.density;
+    homeRoot.dataset.prismIntensity = homeDocument.appearance.intensity;
+    homeRoot.dataset.prismMotion = homeDocument.appearance.motion;
     homeRoot.dataset.prismMode = mode;
 
     document.documentElement.dataset.theme = resolved;
