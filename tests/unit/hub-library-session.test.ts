@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseLibraryConsent, libraryContinueUrl, libraryProviderAccess } from '../../src/lib/hub-library-session';
-const consent = { schemaVersion: 1, deviceId: '11111111-1111-4111-8111-111111111111', revision: '22222222-2222-4222-8222-222222222222', permissions: ['continue'], includePersonal: false };
+import { parseLibraryConsent, libraryContinueUrl, libraryProviderAccess, type LibraryConsent } from '../../src/lib/hub-library-session';
+const consent: LibraryConsent = { schemaVersion: 1, deviceId: '11111111-1111-4111-8111-111111111111', revision: '22222222-2222-4222-8222-222222222222', permissions: ['continue'], includePersonal: false };
 describe('Library device consent', () => {
   it('accepts owner-issued purposes and excludes imported titles by default', () => expect(parseLibraryConsent(consent)).toEqual(consent));
   it.each([null, {}, { ...consent, permissions: ['capture'] }, { ...consent, permissions: ['search','search'] }, { ...consent, revision: 'old' }, { ...consent, accountId: 'owner' }, { ...consent, includePersonal: 1 }])('rejects malformed consent %j', value => expect(parseLibraryConsent(value)).toBeNull());
