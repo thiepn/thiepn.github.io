@@ -9,7 +9,7 @@ export function preferenceKey(id: string | null): string {
   return `thiepn:hub-preferences:user:${id.toLowerCase()}:v1`;
 }
 export function safeHubReturn(value: unknown): string {
-  return value === '/search/' ? '/search/' : '/home/';
+  return value === '/search/' || value === '/home/prism-preview/' ? value : '/home/';
 }
 export function readPendingLogin(raw: string | null, flow: string | null, now = Date.now()): { returnTo: string } | null {
   try {

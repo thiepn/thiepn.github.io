@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PrismHome from '../../../components/prism/PrismHome.astro';
+import { getHubProjects } from '../../../lib/hub';
+import '../../../styles/prism/tokens.css';
+import '../../../styles/prism/home.css';
+import '../../../styles/prism/shell.css';
+import '../../../styles/prism/edit.css';
+
+const entries = await getHubProjects();
+---
+<BaseLayout
+  title="Prism Home Preview — THIEPN"
+  description="Internal preview of the THIEPN Prism Home."
+  portal
+  prismShell
+  noindex
+  hideFooter
+>
+  <PrismHome entries={entries} />
+</BaseLayout>
+<script>import '../../../scripts/portal-auth'; import '../../../scripts/prism-home'; import '../../../scripts/prism-edit'; import '../../../scripts/prism-providers';
+if (import.meta.env.PUBLIC_HUB_NOTES_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_TMS60_PRIVATE === 'staged-v1') void import('../../../scripts/prism-managed-providers');</script>

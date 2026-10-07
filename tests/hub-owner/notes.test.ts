@@ -55,21 +55,21 @@ describe('H11 actual Notes owner → Hub v1 validator and runner',()=>{
     const handler=createHandler({authorize:async()=>{calls++;return authorization();},query:async()=>[row()],now:()=>NOW});
     const runner=new ProviderRunner([adapter(handler)],()=>NOW);runner.setAccess([{...access(),permissions:['identity.basic','app_data.read']}]);
     const results:ProviderResult[]=[];await runner.run([{providerId:'notes',operation:'summary'}],r=>results.push(r));
-    expect(results).toEqual([{providerId:'notes',status:'unconnected'}]);expect(calls).toBe(0);
+    expect(results).toEqual([{providerId:'notes',operation:'summary',status:'unconnected'}]);expect(calls).toBe(0);
   });
   it.each([{consumer:'wrong-client'},{accountId:B},{permissions:['app_data.read']},{grantRevision:'revoked'},{accountState:'deleted' as const},{notesSyncAccess:false}])('the owner independently denies stale or forged frontend authorization %j',async patch=>{
     let reads=0;
     const handler=createHandler({authorize:async()=>authorization(patch),query:async()=>{reads++;return[row()];},now:()=>NOW});
     const runner=new ProviderRunner([adapter(handler)],()=>NOW);runner.setAccess([access()]);
     const results:ProviderResult[]=[];await runner.run([{providerId:'notes',operation:'summary'}],r=>results.push(r));
-    expect(reads).toBe(0);expect(results).toEqual([{providerId:'notes',status:'error'}]);expect(runner.snapshot()).toEqual([]);
+    expect(reads).toBe(0);expect(results).toEqual([{providerId:'notes',operation:'summary',status:'error'}]);expect(runner.snapshot()).toEqual([]);
   });
   it('grant revocation during the SQL read prevents the result reaching Hub',async()=>{
     let revoked=false;
     const handler=createHandler({authorize:async()=>revoked?null:authorization(),query:async()=>{revoked=true;return[row()];},now:()=>NOW});
     const runner=new ProviderRunner([adapter(handler)],()=>NOW);runner.setAccess([access()]);
     const results:ProviderResult[]=[];await runner.run([{providerId:'notes',operation:'summary'}],r=>results.push(r));
-    expect(results).toEqual([{providerId:'notes',status:'error'}]);expect(runner.snapshot()).toEqual([]);
+    expect(results).toEqual([{providerId:'notes',operation:'summary',status:'error'}]);expect(runner.snapshot()).toEqual([]);
   });
   it('sign-out cancels the owner request and a late row never enters the cache',async()=>{
     let release!:(value:unknown[])=>void,started!:()=>void;

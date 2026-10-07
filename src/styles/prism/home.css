@@ -1,0 +1,641 @@
+.prism-home {
+  --prism-art-opacity: .72;
+  color: var(--prism-text-primary);
+  padding-block: 24px 64px;
+}
+
+.prism-home[data-prism-intensity='quiet'] { --prism-art-opacity: .38; }
+.prism-home[data-prism-intensity='balanced'] { --prism-art-opacity: .72; }
+.prism-home[data-prism-intensity='rich'] { --prism-art-opacity: 1; }
+
+.prism-home[data-prism-motion='reduced'] {
+  --prism-motion-fast: 0ms;
+  --prism-motion-normal: 0ms;
+  --prism-motion-deliberate: 0ms;
+}
+
+.prism-home[data-prism-motion='expressive'] {
+  --prism-motion-fast: 160ms;
+  --prism-motion-normal: 240ms;
+  --prism-motion-deliberate: 320ms;
+}
+
+.prism-home__grid {
+  display: grid;
+  row-gap: 32px;
+  align-items: start;
+}
+
+.prism-home__section {
+  min-width: 0;
+}
+
+.prism-section-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+.prism-block {
+  min-width: 0;
+}
+
+.prism-block--focus {
+  background: var(--prism-surface);
+  border: 1px solid var(--prism-border-subtle);
+  box-shadow: var(--prism-shadow-focus);
+}
+
+.prism-eyebrow {
+  color: var(--prism-text-secondary);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 16px;
+}
+
+.prism-copy,
+.prism-quiet-state p,
+.prism-recent-empty p,
+.prism-timeline p {
+  color: var(--prism-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.prism-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.prism-section-heading h2 {
+  color: var(--prism-text-primary);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -.015em;
+}
+
+.prism-section-heading a,
+.prism-inline-action {
+  color: var(--prism-text-secondary);
+  font-size: 12.5px;
+  font-weight: 520;
+  line-height: 18px;
+  text-decoration: none;
+  transition: color var(--prism-motion-fast) var(--prism-ease);
+}
+
+.prism-section-heading a:hover,
+.prism-inline-action:hover {
+  color: var(--prism-indigo);
+}
+
+.prism-section-heading a:focus-visible,
+.prism-inline-action:focus-visible,
+.prism-app:focus-visible {
+  outline: 2px solid var(--prism-focus);
+  outline-offset: 3px;
+}
+
+/* Continue — the only dominant focus surface on the default Home. */
+.prism-continue {
+  grid-column: span 8;
+  position: relative;
+  min-height: 168px;
+  overflow: hidden;
+  padding: 20px;
+  border-radius: var(--prism-radius-xl);
+  isolation: isolate;
+}
+
+.prism-continue__copy {
+  position: relative;
+  z-index: 2;
+  width: min(58%, 560px);
+}
+
+.prism-continue h1 {
+  max-width: 24ch;
+  margin-top: 8px;
+  color: var(--prism-text-primary);
+  font-size: clamp(21px, 2vw, 26px);
+  font-weight: 620;
+  line-height: 1.16;
+  letter-spacing: -.025em;
+}
+
+.prism-continue .prism-copy {
+  max-width: 48ch;
+  margin-top: 8px;
+}
+
+.prism-continue .prism-inline-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-top: 10px;
+}
+
+.prism-continue__art {
+  position: absolute;
+  opacity: var(--prism-art-opacity);
+  z-index: 1;
+  inset: 0 0 0 38%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--prism-cyan) 13%, transparent), transparent 43%),
+    radial-gradient(circle at 40% 85%, color-mix(in srgb, var(--prism-violet) 10%, transparent), transparent 50%);
+  mask-image: linear-gradient(to right, transparent, #000 28%);
+}
+
+.prism-continue__art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.prism-path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--prism-indigo) 56%, var(--prism-text-tertiary));
+  stroke-width: 1.3;
+  vector-effect: non-scaling-stroke;
+}
+
+.prism-path--soft {
+  opacity: .22;
+}
+
+.prism-node {
+  fill: var(--prism-cyan);
+  opacity: .58;
+}
+
+.prism-node--active {
+  fill: var(--prism-indigo);
+  opacity: .9;
+}
+
+/* Now — compact timeline, not another card. */
+.prism-now {
+  grid-column: span 4;
+  padding-top: 4px;
+}
+
+.prism-timeline {
+  position: relative;
+  display: grid;
+  gap: 0;
+  min-height: 92px;
+  padding: 6px 0;
+}
+
+.prism-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 24px;
+  bottom: 14px;
+  width: 1px;
+  background: var(--prism-border);
+}
+
+.prism-timeline__item {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 44px;
+  align-items: start;
+  padding: 7px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.prism-timeline__item:hover strong {
+  color: var(--prism-indigo);
+}
+
+a.prism-timeline__item:focus-visible {
+  outline: 2px solid var(--prism-focus);
+  outline-offset: 3px;
+}
+
+.prism-timeline__node {
+  position: relative;
+  z-index: 1;
+  width: 13px;
+  height: 13px;
+  margin-top: 3px;
+  border: 2px solid var(--prism-text-tertiary);
+  border-radius: 50%;
+  background: var(--prism-canvas);
+}
+
+.prism-timeline strong,
+.prism-quiet-state strong,
+.prism-recent-empty strong {
+  display: block;
+  color: var(--prism-text-primary);
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 20px;
+}
+
+.prism-timeline p,
+.prism-quiet-state p,
+.prism-recent-empty p {
+  margin-top: 3px;
+}
+
+/* Apps — intentionally unboxed. */
+.prism-apps {
+  grid-column: 1 / -1;
+}
+
+.prism-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 84px));
+  gap: 12px 16px;
+}
+
+.prism-app {
+  --app-accent: var(--prism-app-accent);
+  display: flex;
+  min-width: 0;
+  min-height: 78px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 4px 2px;
+  color: var(--prism-text-secondary);
+  text-align: center;
+  text-decoration: none;
+}
+
+html[data-portal][data-theme='dark'] .prism-app {
+  --app-accent: var(--prism-app-accent-dark);
+}
+
+.prism-app__icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, var(--prism-border));
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--app-accent) 13%, var(--prism-surface)),
+      color-mix(in srgb, var(--app-accent) 5%, var(--prism-surface-soft)));
+  color: color-mix(in srgb, var(--app-accent) 78%, var(--prism-text-primary));
+  font-size: 12px;
+  font-weight: 640;
+  letter-spacing: -.02em;
+  transition:
+    transform var(--prism-motion-fast) var(--prism-ease),
+    border-color var(--prism-motion-fast) var(--prism-ease);
+}
+
+.prism-app__label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .prism-app:hover {
+    color: var(--prism-text-primary);
+  }
+
+  .prism-app:hover .prism-app__icon {
+    border-color: color-mix(in srgb, var(--app-accent) 48%, var(--prism-border));
+    transform: translateY(-1px);
+  }
+}
+
+/* Study + Recent remain quiet and mostly typographic. */
+.prism-quiet-state [data-prism-study-provider] {
+  grid-column: 1 / -1;
+  color: var(--prism-text-primary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.prism-recent-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.prism-recent-list li { min-width: 0; overflow-wrap: anywhere; }
+.prism-recent-list a { color: var(--prism-text-primary); }
+.prism-recent-list small { display: block; color: var(--prism-text-secondary); font-size: 12px; }
+.prism-study {
+  grid-column: span 7;
+}
+
+.prism-recent {
+  grid-column: span 5;
+}
+
+.prism-quiet-state {
+  display: grid;
+  grid-template-columns: minmax(92px, 26%) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 82px;
+}
+
+.prism-progress-path {
+  position: relative;
+  display: block;
+  height: 10px;
+}
+
+.prism-progress-path::before,
+.prism-progress-path i {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  height: 1px;
+  border-radius: 999px;
+}
+
+.prism-progress-path::before {
+  right: 0;
+  background: var(--prism-border);
+}
+
+.prism-progress-path i {
+  width: 34%;
+  background: linear-gradient(90deg, var(--prism-indigo), var(--prism-cyan));
+}
+
+.prism-progress-path i::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--prism-indigo);
+}
+
+.prism-recent-empty {
+  min-height: 82px;
+  padding-block: 13px;
+  border-top: 1px solid var(--prism-border-subtle);
+}
+
+/* Tablet reference: 8-column intentional middle layout. */
+@media (min-width: 640px) and (max-width: 1199px) {
+  .prism-home {
+    padding-block-start: 20px;
+  }
+
+  .prism-section-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .prism-continue { grid-column: span 5; }
+  .prism-now { grid-column: span 3; }
+  .prism-apps { grid-column: 1 / -1; }
+  .prism-study { grid-column: span 5; }
+  .prism-recent { grid-column: span 3; }
+
+  .prism-continue__copy {
+    width: min(70%, 520px);
+  }
+}
+
+/* Mobile is independently composed: Continue → Now → Apps → Study → Recent. */
+@media (max-width: 639px) {
+  .prism-home {
+    padding-block: 16px 40px;
+  }
+
+  .prism-home__grid {
+    row-gap: 20px;
+  }
+
+  .prism-section-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 12px;
+    row-gap: 20px;
+  }
+
+  .prism-continue,
+  .prism-now,
+  .prism-apps,
+  .prism-study,
+  .prism-recent {
+    grid-column: 1 / -1;
+  }
+
+  .prism-continue {
+    min-height: 136px;
+    padding: 16px;
+    border-radius: var(--prism-radius-lg);
+  }
+
+  .prism-continue__copy {
+    width: min(76%, 360px);
+  }
+
+  .prism-continue h1 {
+    max-width: 20ch;
+    margin-top: 4px;
+    font-size: 19px;
+  }
+
+  .prism-continue .prism-copy {
+    display: none;
+  }
+
+  .prism-continue .prism-inline-action {
+    min-height: 36px;
+    margin-top: 7px;
+  }
+
+  .prism-continue__art {
+    left: 34%;
+  }
+
+  .prism-now {
+    padding-top: 0;
+  }
+
+  .prism-now .prism-section-heading {
+    margin-bottom: 2px;
+  }
+
+  .prism-timeline {
+    min-height: 66px;
+    padding: 4px 0;
+  }
+
+  .prism-timeline__item {
+    min-height: 38px;
+    padding: 5px 0;
+  }
+
+  .prism-timeline p {
+    display: none;
+  }
+
+  .prism-app-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .prism-app {
+    min-height: 70px;
+    gap: 6px;
+  }
+
+  .prism-app__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+  }
+
+  .prism-app__label {
+    font-size: 11.5px;
+    line-height: 15px;
+  }
+
+  .prism-quiet-state {
+    grid-template-columns: 72px minmax(0, 1fr);
+    min-height: 68px;
+    gap: 12px;
+  }
+
+  .prism-recent-empty {
+    min-height: 68px;
+    padding-block: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-app__icon,
+  .prism-section-heading a,
+  .prism-inline-action {
+    transition: none;
+  }
+
+  .prism-app:hover .prism-app__icon {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .prism-block--focus,
+  .prism-app__icon {
+    border-color: CanvasText;
+  }
+
+  .prism-path,
+  .prism-progress-path i {
+    stroke: Highlight;
+    background: Highlight;
+  }
+
+  .prism-app:focus-visible,
+  .prism-section-heading a:focus-visible,
+  .prism-inline-action:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+
+/* Density changes spacing only; information architecture and block order remain stable. */
+.prism-home[data-density='compact'] {
+  padding-block: 18px 52px;
+}
+
+.prism-home[data-density='compact'] .prism-home__grid {
+  row-gap: 24px;
+}
+
+.prism-home[data-density='compact'] .prism-section-grid {
+  column-gap: 12px;
+  row-gap: 12px;
+}
+
+.prism-home[data-density='compact'] .prism-continue {
+  min-height: 152px;
+  padding: 16px;
+}
+
+.prism-home[data-density='compact'] .prism-quiet-state,
+.prism-home[data-density='compact'] .prism-recent-empty {
+  min-height: 68px;
+}
+
+.prism-home[data-density='comfortable'] {
+  padding-block: 30px 72px;
+}
+
+.prism-home[data-density='comfortable'] .prism-home__grid {
+  row-gap: 40px;
+}
+
+.prism-home[data-density='comfortable'] .prism-section-grid {
+  column-gap: 20px;
+  row-gap: 20px;
+}
+
+.prism-home[data-density='comfortable'] .prism-continue {
+  min-height: 184px;
+  padding: 20px;
+}
+
+.prism-home[data-density='comfortable'] .prism-quiet-state,
+.prism-home[data-density='comfortable'] .prism-recent-empty {
+  min-height: 94px;
+}
+
+@media (max-width: 639px) {
+  .prism-home[data-density='compact'],
+  .prism-home[data-density='comfortable'] {
+    padding-block-start: 14px;
+  }
+
+  .prism-home[data-density='compact'] .prism-home__grid {
+    row-gap: 16px;
+  }
+
+  .prism-home[data-density='comfortable'] .prism-home__grid {
+    row-gap: 24px;
+  }
+
+  .prism-home[data-density='compact'] .prism-continue,
+  .prism-home[data-density='comfortable'] .prism-continue {
+    min-height: 136px;
+  }
+}
+
+
+.prism-timeline__node--active {
+  border-color: var(--prism-indigo);
+  background: var(--prism-indigo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--prism-indigo) 12%, transparent);
+}

@@ -127,6 +127,26 @@ export class HubNotesSession {
     if (!object(raw) || Object.keys(raw).sort().join(',') !== 'accountId,createdAt,destination,grantRevision,noteId,requestId,schemaVersion,status' || raw.schemaVersion !== 1 || raw.accountId !== tokens.owner || raw.grantRevision !== tokens.revision || raw.requestId !== command.requestId || raw.destination !== command.destination || raw.status !== 'confirmed' || !uuid(raw.noteId) || !Number.isSafeInteger(raw.createdAt) || Number(raw.createdAt)<0 || epoch !== this.epoch || tokens.owner !== this.owner() || external.aborted) throw new Error('Unavailable');
     return raw as import('./notes-capture').CaptureReceipt;
   }
+  async providerAccess(raw: unknown): Promise<ProviderAccess> {
+    if (this.config.inbox || this.config.capture) throw new Error('Unavailable');
+    const provider = this.config.provider ?? 'notes';
+    const consent = parseNotesConsent(raw, provider);
+    const tokens = await this.freshTokens();
+    if (consent.revision !== tokens.revision || !consent.permissions.length) throw new Error('Unavailable');
+    return {
+      providerId: provider,
+      context: {
+        scope: 'account',
+        accountId: tokens.owner,
+        workspaceId: null,
+        grantRevision: tokens.revision,
+        translationId: provider === 'tms60' ? this.config.translationId! : null,
+      },
+      permissions: [...consent.permissions],
+      expiresAt: tokens.expiresAt,
+    };
+  }
+
   async inboxAccess(raw: unknown): Promise<ProviderAccess> {
     const consent = parseNotesConsent(raw);
     const tokens = await this.freshTokens();
@@ -150,21 +170,36 @@ export class HubNotesSession {
     return JSON.stringify(envelope);
   }
   async read(operation: Operation, external: AbortSignal, query?: string): Promise<ProviderEnvelope> {
+    return await this.readBound(operation,external,query);
+  }
+  async readRequest(request: RequestContext, external: AbortSignal): Promise<string> {
+    const envelope=await this.readBound(request.operation,external,request.query,request);
+    return JSON.stringify(envelope);
+  }
+  private async readBound(operation: Operation, external: AbortSignal, query?: string, boundRequest?: RequestContext): Promise<ProviderEnvelope> {
     const epoch=this.epoch,signal=AbortSignal.any([external,AbortSignal.timeout(2000)]);
     let detach=()=>{};
     try{
       const aborted=new Promise<never>((_,reject)=>{const abort=()=>reject(new Error('Unavailable'));detach=()=>signal.removeEventListener('abort',abort);if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true});});
-      return await Promise.race([this.performRead(operation,signal,query),aborted]);
+      return await Promise.race([this.performRead(operation,signal,query,boundRequest),aborted]);
     }catch{if(epoch===this.epoch&&!external.aborted)this.clear();throw new Error('Unavailable');}
     finally{detach();}
   }
-  private async performRead(operation: Operation, signal: AbortSignal, query?: string): Promise<ProviderEnvelope> {
+  private async performRead(operation: Operation, signal: AbortSignal, query?: string, boundRequest?: RequestContext): Promise<ProviderEnvelope> {
     const epoch = this.epoch;
     try {
       const tokens = await this.freshTokens();
-      if(this.config.provider==='tms60'){
-        if(operation==='search' && (typeof query!=='string'||!query.trim()||query.length>256||/[\u0000-\u001f\u007f]/.test(query)) || operation!=='search' && query!==undefined)throw new Error('Unavailable');
-        const request:RequestContext={providerId:'tms60',operation,requestId:crypto.randomUUID(),context:{scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:this.config.translationId!},...(query!==undefined?{query}:{})};
+      const provider = this.config.provider==='tms60' ? 'tms60' : 'notes';
+      const expectedContext:RequestContext['context']=provider==='tms60'
+        ? {scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:this.config.translationId!}
+        : {scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:null};
+      if(operation==='search' && (typeof query!=='string'||!query.trim()||query.length>256||/[\u0000-\u001f\u007f]/.test(query)) || operation!=='search' && query!==undefined)throw new Error('Unavailable');
+      if(boundRequest && (boundRequest.providerId!==provider || boundRequest.operation!==operation || contextKey(boundRequest.context)!==contextKey(expectedContext) || boundRequest.query!==query))throw new Error('Unavailable');
+      const request:RequestContext=boundRequest
+        ? structuredClone(boundRequest)
+        : {providerId:provider,operation,requestId:crypto.randomUUID(),context:expectedContext,...(query!==undefined?{query}:{})};
+
+      if(provider==='tms60'){
         const raw=await this.json(NOTES_ISSUER+'/rest/v1/rpc/read_thiepn_hub_tms60',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,apikey:this.config.publishableKey,'Content-Type':'application/json'},body:JSON.stringify({p_operation:operation,p_revision:tokens.revision,p_translation:this.config.translationId,p_request_id:request.requestId,p_query:query??null})},operation==='search'?65536:32768,signal);
         if(epoch!==this.epoch||tokens.owner!==this.owner()||signal.aborted)throw new Error('Unavailable');
         const manifest={...structuredClone(providerManifest('tms60')),privateReadsEnabled:true,operations:{summary:true,continue:true,search:true,capture:false,inbox:false}};
@@ -172,11 +207,10 @@ export class HubNotesSession {
         if(Date.parse(envelope.expiresAt)>tokens.expiresAt)throw new Error('Unavailable');
         return envelope;
       }
+
       const snapshot = await this.json(this.config.platformOrigin+'/v1/private/hub/notes/access',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify({operation,grantRevision:tokens.revision})},8192,signal);
       const auth = object(snapshot) && snapshot.ok === true ? snapshot.data : null;
       if (!object(auth) || Object.keys(auth).sort().join(',') !== 'accountId,accountState,audience,consumer,expiresAt,grantRevision,notesSyncAccess,permissions' || auth.accountId !== tokens.owner || auth.consumer !== 'thiepn-hub' || auth.audience !== 'notes-hub' || auth.accountState !== 'active' || auth.notesSyncAccess !== true || auth.grantRevision !== tokens.revision || !Array.isArray(auth.permissions) || auth.permissions.length > 6 || new Set(auth.permissions).size !== auth.permissions.length || auth.permissions.some(p=>!purposes.includes(p)) || !auth.permissions.includes(`notes.hub.${operation}.read`) || !Number.isSafeInteger(auth.expiresAt) || Number(auth.expiresAt) <= this.now() || Number(auth.expiresAt) > tokens.expiresAt || epoch !== this.epoch || tokens.owner !== this.owner()) throw new Error('Unavailable');
-      if (operation === 'search' && (typeof query !== 'string' || !query.trim() || query.length > 256 || /[\u0000-\u001f\u007f]/.test(query)) || operation !== 'search' && query !== undefined) throw new Error('Unavailable');
-      const request: RequestContext = {providerId:'notes',operation,requestId:crypto.randomUUID(),context:{scope:'account',accountId:tokens.owner,workspaceId:null,grantRevision:tokens.revision,translationId:null},...(query!==undefined?{query}:{})};
       const raw = await this.json(this.config.platformOrigin+'/hub/notes/v1',{method:'POST',headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},body:JSON.stringify(request)},operation==='search'?65536:32768,signal);
       if (epoch !== this.epoch || tokens.owner !== this.owner() || signal.aborted || Number(auth.expiresAt) <= this.now()) throw new Error('Unavailable');
       const manifest = {...structuredClone(providerManifest('notes')),privateReadsEnabled:true,operations:{summary:true,continue:true,search:true,capture:false,inbox:false}};

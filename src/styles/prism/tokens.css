@@ -1,0 +1,111 @@
+/* THIEPN Prism Canvas — P2 semantic production tokens.
+   Scoped to Prism so the public editorial site remains independent. */
+.prism-home {
+  --prism-canvas: #f7f8fa;
+  --prism-canvas-subtle: #f2f4f7;
+  --prism-surface: #ffffff;
+  --prism-surface-soft: #f3f5f8;
+  --prism-surface-strong: #eaedf2;
+  --prism-surface-hover: #eef2f7;
+
+  --prism-text-primary: #15181d;
+  --prism-text-secondary: #626a75;
+  --prism-text-tertiary: #8a929d;
+
+  --prism-border-subtle: rgb(24 28 35 / 8%);
+  --prism-border: rgb(24 28 35 / 12%);
+  --prism-border-strong: rgb(24 28 35 / 20%);
+
+  --prism-violet: #7357ff;
+  --prism-indigo: #536fff;
+  --prism-cyan: #39c6e8;
+  --prism-focus: #536fff;
+
+  --prism-space-1: 4px;
+  --prism-space-2: 8px;
+  --prism-space-3: 12px;
+  --prism-space-4: 16px;
+  --prism-space-5: 20px;
+  --prism-space-6: 24px;
+  --prism-space-8: 32px;
+  --prism-space-10: 40px;
+  --prism-space-12: 48px;
+
+  --prism-radius-xs: 6px;
+  --prism-radius-sm: 9px;
+  --prism-radius-md: 12px;
+  --prism-radius-lg: 16px;
+  --prism-radius-xl: 20px;
+  --prism-radius-float: 22px;
+
+  --prism-motion-instant: 90ms;
+  --prism-motion-fast: 140ms;
+  --prism-motion-normal: 200ms;
+  --prism-motion-deliberate: 280ms;
+  --prism-ease: cubic-bezier(.22,.61,.36,1);
+
+  --prism-shadow-focus: 0 8px 26px rgb(19 24 34 / 7%);
+  --prism-shadow-float: 0 14px 40px rgb(19 24 34 / 12%);
+}
+
+html[data-portal][data-theme='dark'] .prism-home {
+  --prism-canvas: #0c0f13;
+  --prism-canvas-subtle: #10141a;
+  --prism-surface: #13171d;
+  --prism-surface-soft: #181d24;
+  --prism-surface-strong: #20262f;
+  --prism-surface-hover: #242b35;
+
+  --prism-text-primary: #f2f4f7;
+  --prism-text-secondary: #aab1bc;
+  --prism-text-tertiary: #777f8b;
+
+  --prism-border-subtle: rgb(255 255 255 / 6%);
+  --prism-border: rgb(255 255 255 / 10%);
+  --prism-border-strong: rgb(255 255 255 / 16%);
+
+  --prism-violet: #8b78ff;
+  --prism-indigo: #6f86ff;
+  --prism-cyan: #54d2ed;
+  --prism-focus: #8296ff;
+  --prism-shadow-focus: 0 10px 30px rgb(0 0 0 / 22%);
+  --prism-shadow-float: 0 16px 44px rgb(0 0 0 / 34%);
+}
+
+/* Let the existing portal shell inherit Prism's neutral foundation on Home only. */
+html[data-portal]:has(.prism-home) {
+  --canvas: #f7f8fa;
+  --canvas-raised: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f3f5f8;
+  --surface-3: #eaedf2;
+  --ink: #15181d;
+  --ink-secondary: #626a75;
+  --ink-muted: #68717d;
+  --line: rgb(24 28 35 / 12%);
+  --line-soft: rgb(24 28 35 / 8%);
+  --line-strong: rgb(24 28 35 / 20%);
+  --accent: #536fff;
+  --accent-soft: rgb(83 111 255 / 9%);
+  --accent-ink: #ffffff;
+  --selection: rgb(83 111 255 / 14%);
+  --page-max: 1560px;
+}
+
+html[data-portal][data-theme='dark']:has(.prism-home) {
+  --canvas: #0c0f13;
+  --canvas-raised: #13171d;
+  --surface-1: #13171d;
+  --surface-2: #181d24;
+  --surface-3: #20262f;
+  --ink: #f2f4f7;
+  --ink-secondary: #aab1bc;
+  --ink-muted: #99a2ae;
+  --line: rgb(255 255 255 / 10%);
+  --line-soft: rgb(255 255 255 / 6%);
+  --line-strong: rgb(255 255 255 / 16%);
+  --accent: #8296ff;
+  --accent-soft: rgb(130 150 255 / 12%);
+  --accent-ink: #0c0f13;
+  --selection: rgb(130 150 255 / 16%);
+}
