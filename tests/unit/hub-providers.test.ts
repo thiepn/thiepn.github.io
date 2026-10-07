@@ -52,6 +52,14 @@ describe('H3 registered owner contracts',()=>{
   expect(contextKey({...r.context,grantRevision:'different'} as any)).not.toBe(contextKey(r.context));
   expect(requestKey({...r,operation:'continue'})).not.toBe(requestKey(r));
  });
+ it('accepts account-synced coverage only for the Library provider',()=>{
+  const library=fixture('library');
+  expect(validate('library',{...library,coverage:'account-synced'}).coverage).toBe('account-synced');
+  const notes=fixture('notes');
+  expect(()=>validate('notes',{...notes,coverage:'account-synced'})).toThrow();
+  const tms=fixture('tms60');
+  expect(()=>validate('tms60',{...tms,coverage:'account-synced'})).toThrow();
+ });
  it('preserves reading identity and rejects false progress, mixed due counts and full verse text',()=>{
   for(const patch of [{edition:0},{current:30},{current:.7,furthest:.6},{format:'unknown'},{releaseVersion:''}]){const f=fixture('library');Object.assign(f.data!.items[0]!,patch);expect(()=>validate('library',f)).toThrow();}
   const f=fixture('tms60');expect(f.data!.dueTaskCount).toBe(2);expect(f.data!.dueVerseCount).toBe(1);
