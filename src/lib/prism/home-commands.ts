@@ -102,7 +102,8 @@ export function setBlockHidden(document: HomeDocumentV2, blockId: string, hidden
   const block = document.blocks[blockId];
   if (!block) throw new Error(`Missing block ${blockId}`);
   if ((block.hidden === true) === hidden) return false;
-  block.hidden = hidden || undefined;
+  if (hidden) block.hidden = true;
+  else delete block.hidden;
   return true;
 }
 
