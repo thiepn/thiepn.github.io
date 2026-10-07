@@ -14,8 +14,9 @@ const continueBlock = home?.querySelector<HTMLElement>('[data-prism-block="conti
 const continueTitle = continueBlock?.querySelector<HTMLElement>('[data-prism-continue-title]');
 const continueCopy = continueBlock?.querySelector<HTMLElement>('[data-prism-continue-copy]');
 const continueAction = continueBlock?.querySelector<HTMLAnchorElement>('[data-prism-continue-action]');
+const nowList = home?.querySelector<HTMLElement>('[data-prism-now-list]');
 
-if (home && connection && status && connect && refresh && disconnect && continueBlock && continueTitle && continueCopy && continueAction) {
+if (home && connection && status && connect && refresh && disconnect && continueBlock && continueTitle && continueCopy && continueAction && nowList) {
   const connectionRoot = connection;
   const statusNode = status;
   const connectButton = connect;
@@ -25,6 +26,8 @@ if (home && connection && status && connect && refresh && disconnect && continue
   const titleNode = continueTitle;
   const copyNode = continueCopy;
   const actionNode = continueAction;
+  const nowRoot = nowList;
+  const defaultNowNodes = Array.from(nowRoot.childNodes).map((node) => node.cloneNode(true));
 
   let generation = 0;
   let connected = false;
@@ -61,7 +64,38 @@ if (home && connection && status && connect && refresh && disconnect && continue
     delete continueRoot.dataset.prismProviderState;
   }
 
+  function renderNow(view: PrismProviderHomeView) {
+    if (view.now.length === 0) {
+      nowRoot.replaceChildren(...defaultNowNodes.map((node) => node.cloneNode(true)));
+      return;
+    }
+    const nodes = view.now.map((item) => {
+      const link = document.createElement('a');
+      link.className = 'prism-timeline__item';
+      link.href = item.href;
+      link.dataset.prismNowId = item.id;
+
+      const node = document.createElement('span');
+      node.className = 'prism-timeline__node prism-timeline__node--active';
+      node.setAttribute('aria-hidden','true');
+
+      const copy = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = item.title;
+      copy.append(title);
+      if (item.detail) {
+        const detail = document.createElement('p');
+        detail.textContent = item.detail;
+        copy.append(detail);
+      }
+      link.append(node,copy);
+      return link;
+    });
+    nowRoot.replaceChildren(...nodes);
+  }
+
   function renderView(view: PrismProviderHomeView) {
+    renderNow(view);
     const item = view.continue;
     continueRoot.dataset.prismProviderState = item.state;
 
