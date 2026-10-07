@@ -1,7 +1,7 @@
 import { HubLibrarySession } from '../lib/hub-library-session';
 import { ProviderRunner } from '../lib/providers/runtime';
 import { sessionProviderAdapter } from '../lib/providers/session-adapters';
-import { buildPrismProviderHomeView, type PrismProviderContribution } from '../lib/prism/provider-home-view';
+import { buildPrismProviderHomeView } from '../lib/prism/provider-home-view';
 import type { ProviderResult } from '../lib/providers/types';
 
 const home = document.querySelector<HTMLElement>('[data-prism-home]');
@@ -31,7 +31,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
   let connected = false;
   let busy = false;
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
-  let contribution: PrismProviderContribution | null = null;
+  let contribution: ProviderResult | null = null;
 
   const defaultContinue = {
     title: titleNode.textContent ?? 'No resumable activity yet',
@@ -124,7 +124,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
   const session = new HubLibrarySession(() => clearConnection('Library sharing changed. Connect this browser again.'));
 
   function accept(result: ProviderResult) {
-    contribution = { operation: 'continue', result };
+    contribution = result;
     renderResult();
     if (result.envelope) {
       clearExpiry();
@@ -133,7 +133,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
         if (!runner || !connected) return;
         const snapshot = runner.snapshot().find((item) => item.providerId === 'library');
         if (snapshot) {
-          contribution = { operation: 'continue', result: snapshot };
+          contribution = snapshot;
           renderResult();
         }
       }, delay + 5);
@@ -153,7 +153,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
         accept(result);
       });
       if (current !== generation || !connected) return;
-      const state = contribution?.result.status;
+      const state = contribution?.status;
       statusNode.textContent = state === 'ready'
         ? 'Connected · current saved progress shown in Continue.'
         : state === 'empty'
