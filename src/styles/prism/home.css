@@ -616,3 +616,10 @@ html[data-portal][data-theme='dark'] .prism-app {
     min-height: 136px;
   }
 }
+
+
+.prism-timeline__node--active {
+  border-color: var(--prism-indigo);
+  background: var(--prism-indigo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--prism-indigo) 12%, transparent);
+}
