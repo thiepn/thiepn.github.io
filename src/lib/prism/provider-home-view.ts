@@ -1,4 +1,5 @@
 import { providerAction } from '../providers/registry';
+import { libraryContinueUrl } from '../hub-library-session';
 import type { ContinueItem, Operation, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
 
 export interface PrismContinueView {
@@ -40,7 +41,7 @@ const severity: Record<ProviderStatus, number> = {
 };
 
 function continueHref(providerId: ProviderId, item: ContinueItem): string | null {
-  if (providerId === 'library') return providerAction('library', 'continue-in-app');
+  if (providerId === 'library') return libraryContinueUrl(item);
   if (providerId === 'tms60') {
     const base = providerAction('tms60', 'open');
     return base ? `${base}#hub=${encodeURIComponent(item.resourceId)}` : null;
