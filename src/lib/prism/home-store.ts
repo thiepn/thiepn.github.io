@@ -128,6 +128,21 @@ export class HomeStore {
     for (const listener of this.#listeners) listener(this.getSnapshot());
   }
 
+  // External tab revisions clear Undo; a stale tab cannot apply old inverse actions to new state.
+  async #reloadPersisted(): Promise<boolean> {
+    const result = parseStoredHomeDocument(await this.#persistence.load());
+    if (!result.document) throw new Error('Durable HomeDocument missing or invalid');
+    const changed = JSON.stringify(this.#document) !== JSON.stringify(result.document);
+    this.#document = structuredClone(result.document);
+    this.#history = [];
+    if (changed) this.#publish();
+    return changed;
+  }
+
+  refreshFromPersistence(): Promise<boolean> {
+    return this.#enqueue(() => this.#reloadPersisted());
+  }
+
   #enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = this.#pending.then(operation);
     this.#pending = result.then(() => {}, () => {});
@@ -149,7 +164,12 @@ export class HomeStore {
     const current = this.getSnapshot();
     const changed = JSON.stringify(current) !== raw;
 
-    await this.#persistence.save(raw);
+    try {
+      await this.#persistence.save(raw);
+    } catch (error) {
+      if ((error as Error)?.name === 'HomeRevisionConflict') await this.#reloadPersisted();
+      throw error;
+    }
     if (!changed) return;
 
     if (options.recordHistory !== false) {
@@ -184,7 +204,12 @@ export class HomeStore {
     if (!validation.valid) throw new Error(`Invalid HomeDocument history: ${validation.errors.join(' | ')}`);
     const raw = JSON.stringify(candidate);
 
-    await this.#persistence.save(raw);
+    try {
+      await this.#persistence.save(raw);
+    } catch (error) {
+      if ((error as Error)?.name === 'HomeRevisionConflict') await this.#reloadPersisted();
+      throw error;
+    }
     this.#history.pop();
     this.#document = candidate;
     this.#publish();
