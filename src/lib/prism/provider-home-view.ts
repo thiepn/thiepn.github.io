@@ -1,4 +1,5 @@
 import { providerAction } from '../providers/registry';
+import { deriveDailyHomeAvailability, type DailyHomeAvailability } from './daily-home-availability';
 import { libraryContinueUrl } from '../hub-library-session';
 import type { ContinueItem, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
 
@@ -25,6 +26,7 @@ export interface PrismProviderHomeView {
   now: PrismNowItem[];
   study: { providerId: 'tms60'; dueTaskCount: number; dueVerseCount: number; newVerseCount: number; href: string } | null;
   recent: { providerId: ProviderId; title: string; updatedAt: string; href: string }[];
+  availability: DailyHomeAvailability;
 }
 
 const severity: Record<ProviderStatus, number> = {
@@ -126,5 +128,19 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
     const href = continueHref(result.providerId, item);
     return href ? [{ providerId: result.providerId, title: item.title, updatedAt: item.updatedAt, href }] : [];
   }) : []).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
-  return { continue: continueView, now: now.slice(0, 3), study, recent };
+  const availability = deriveDailyHomeAvailability(results, {
+    continue: Boolean(best),
+    now: now.length > 0,
+    study: study !== null,
+    recent: recent.length > 0,
+  });
+  // A successful empty response from one provider does not justify hiding
+  // a failed or expired contribution from another provider.
+  if (continueView.state === 'empty' && availability.continue !== 'empty' && availability.continue !== 'disconnected') {
+    continueView.state = availability.continue;
+    continueView.providerId = results.find(result =>
+      result.operation === 'continue' && result.status === availability.continue,
+    )?.providerId ?? null;
+  }
+  return { continue: continueView, now: now.slice(0, 3), study, recent, availability };
 }
