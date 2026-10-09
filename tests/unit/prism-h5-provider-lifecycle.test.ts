@@ -93,7 +93,7 @@ describe('H5 provider and device lifecycle regression', () => {
     bind(runtime, notesAccess(), 'Old owner');
     bind(runtime, libraryProviderAccess(libraryConsent), 'Device book');
     await runtime.refresh();
-    expect(runtime.connectedProviders().sort()).toEqual(['library', 'notes']);
+    expect([...runtime.connectedProviders()].sort()).toEqual(['library', 'notes']);
     runtime.clear();
     expect(runtime.connectedProviders()).toEqual([]);
     expect(runtime.view().continue.title).toBeNull();
