@@ -65,8 +65,8 @@ export function inspectH6Evidence(manifest) {
       for (const artifact of phase.artifacts) {
         if (!plain(artifact) || !['studio-certification','hub-notes-contract-evidence'].includes(artifact.name) ||
           seenNames.has(artifact.name) || !pos(artifact.id) || observedArtifacts.has(artifact.id) ||
-          !phase.checks?.some(check => check.runId === artifact.runId &&
-            check.name === (artifact.name === 'studio-certification' ? 'Quality' : 'Hub Notes integration')) ||
+          !(Array.isArray(phase.checks) && phase.checks.some(check => check && check.runId === artifact.runId &&
+            check.name === (artifact.name === 'studio-certification' ? 'Quality' : 'Hub Notes integration'))) ||
           artifact.url !== base + artifact.runId ||
           (artifact.sha256 !== undefined && !/^[0-9a-f]{64}$/.test(artifact.sha256))) {
           errors.push(`Invalid/duplicate artifact source for ${phase.phase}`);
