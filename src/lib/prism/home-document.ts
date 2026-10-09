@@ -276,8 +276,10 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         seen.add(p.blockId);
 
         const block = blocks[p.blockId];
-        if (!Object.hasOwn(blocks, p.blockId) || !block || typeof block !== 'object' || Array.isArray(block)) {
-          errors.push(`${breakpoint} layout references missing or invalid block ${p.blockId}.`);
+        if (!Object.hasOwn(blocks, p.blockId)) {
+          errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+        } else if (!block || typeof block !== 'object' || Array.isArray(block)) {
+          errors.push(`${breakpoint} layout references invalid block ${p.blockId}.`);
         } else if (isPrismBlockType(block.type)) {
           if (!isPrismBlockSize(p.size) || !PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(p.size)) {
             errors.push(`Unsupported ${breakpoint} size ${String(p.size)} for block type ${block.type}.`);
@@ -290,8 +292,10 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         }
 
         const section = sections[p.sectionId];
-        if (!Object.hasOwn(sections, p.sectionId) || !section || !Array.isArray(section.blockIds)) {
-          errors.push(`${breakpoint} layout references missing or invalid section ${p.sectionId}.`);
+        if (!Object.hasOwn(sections, p.sectionId)) {
+          errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
+        } else if (!section || !Array.isArray(section.blockIds)) {
+          errors.push(`${breakpoint} layout references invalid section ${p.sectionId}.`);
         } else if (!section.blockIds.includes(p.blockId)) {
           errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
         }
