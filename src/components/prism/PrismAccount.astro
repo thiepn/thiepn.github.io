@@ -41,12 +41,12 @@ const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.
       <div class="prism-provider-row" data-prism-provider="library">
         <div>
           <strong>Library</strong>
-          <p data-prism-library-status>Not connected in this tab.</p>
+          <p data-prism-library-status role="status" aria-live="polite" aria-atomic="true">Not connected in this tab.</p>
         </div>
         <div class="prism-provider-row__actions">
-          <button type="button" data-prism-library-connect>Connect</button>
-          <button type="button" data-prism-library-refresh hidden>Refresh</button>
-          <button type="button" data-prism-library-disconnect hidden>Disconnect</button>
+          <button type="button" data-prism-library-connect aria-label="Connect Library">Connect</button>
+          <button type="button" data-prism-library-refresh aria-label="Refresh Library sharing" hidden>Refresh</button>
+          <button type="button" data-prism-library-disconnect aria-label="Disconnect Library" hidden>Disconnect</button>
         </div>
       </div>
 
@@ -55,12 +55,12 @@ const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.
           <div class="prism-provider-row" data-prism-provider="notes">
             <div>
               <strong>Notes</strong>
-              <p data-prism-notes-status>Sign in to connect Notes.</p>
+              <p data-prism-notes-status role="status" aria-live="polite" aria-atomic="true">Sign in to connect Notes.</p>
             </div>
             <div class="prism-provider-row__actions">
-              <button type="button" data-prism-notes-connect>Connect</button>
-              <button type="button" data-prism-notes-refresh hidden>Refresh</button>
-              <button type="button" data-prism-notes-disconnect hidden>Disconnect</button>
+              <button type="button" data-prism-notes-connect aria-label="Connect Notes">Connect</button>
+              <button type="button" data-prism-notes-refresh aria-label="Refresh Notes sharing" hidden>Refresh</button>
+              <button type="button" data-prism-notes-disconnect aria-label="Disconnect Notes" hidden>Disconnect</button>
             </div>
           </div>
         </>
@@ -70,7 +70,7 @@ const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.
           <div class="prism-provider-row prism-provider-row--tms" data-prism-provider="tms60">
             <div>
               <strong>TMS60</strong>
-              <p data-prism-tms60-status>Sign in to connect TMS60.</p>
+              <p data-prism-tms60-status role="status" aria-live="polite" aria-atomic="true">Sign in to connect TMS60.</p>
             </div>
             <div class="prism-provider-row__actions">
               <select aria-label="TMS60 translation" data-prism-tms60-translation>
@@ -82,9 +82,9 @@ const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.
                 <option value="klb1985">KLB 1985</option>
                 <option value="krv1961">KRV 1961</option>
               </select>
-              <button type="button" data-prism-tms60-connect>Connect</button>
-              <button type="button" data-prism-tms60-refresh hidden>Refresh</button>
-              <button type="button" data-prism-tms60-disconnect hidden>Disconnect</button>
+              <button type="button" data-prism-tms60-connect aria-label="Connect TMS60">Connect</button>
+              <button type="button" data-prism-tms60-refresh aria-label="Refresh TMS60 sharing" hidden>Refresh</button>
+              <button type="button" data-prism-tms60-disconnect aria-label="Disconnect TMS60" hidden>Disconnect</button>
             </div>
           </div>
         </>
