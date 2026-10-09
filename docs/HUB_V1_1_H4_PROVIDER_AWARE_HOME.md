@@ -4,8 +4,9 @@
 
 H4 is a **provisional, unmerged draft** based on H2 PR #96 at
 `60ab07a304c04aef43bff5a202770f3ca42663fe`.
-H3 provider certification is not yet implemented in this stack, and H2's
-Library/capture gates were not complete when this branch was created.
+H3 provider certification is not yet implemented in this stack. All eight H2
+workflows subsequently completed successfully at its qualified head;
+H4 remains provisional because H3 is absent from its ancestry.
 Before any acceptance or promotion, reconcile this branch onto a fully
 qualified H3 successor; no green H4 check substitutes for that missing work.
 
@@ -15,6 +16,10 @@ qualified H3 successor; no green H4 check substitutes for that missing work.
   disconnected, expired, offline, error, unauthorized and unsupported reads.
 - A successful empty result from one provider cannot mask another provider's
   failed read for the same operation.
+- Private activity is projected only when the outer result and enclosed
+  envelope agree on provider, operation, and `ready` status; inconsistent or
+  invalidated envelopes are never promoted to Continue, Study, Now or Recent.
+  Another independently verified provider remains usable if its peer is invalid.
 - Availability is **coarse operational state only**: no title, resource ID,
   account UUID, device ID, verse count, session credential or query is added.
 - Continue retains its existing Library exact-edition URL, Notes handoff and
@@ -33,7 +38,8 @@ qualified H3 successor; no green H4 check substitutes for that missing work.
 
 The added tests cover disconnected states, operation isolation, provider
 failures versus empty snapshots, expiry, revocation, exact-edition handoffs,
-stale private-data redaction and disconnected 390/1440 px browser rendering.
+stale private-data redaction, mismatched provider/operation/status rejection,
+independent valid-provider handoffs, and disconnected 390/1440 px browser rendering.
 
 Run exact-head Quality, owner/Account, Library, Notes capture and TMS60
 workflows, and inspect full job logs, artifacts and Playwright reports.
