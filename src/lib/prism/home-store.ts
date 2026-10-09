@@ -164,6 +164,9 @@ export class HomeStore {
     return this.#enqueue(async () => {
       const candidate = this.getSnapshot();
       mutator(candidate);
+      // A rejected or unchanged UI action must not consume storage quota or create an Undo entry.
+      // replace() still persists identical V1 migrations during bootstrap.
+      if (JSON.stringify(candidate) === JSON.stringify(this.#document)) return;
       await this.#replace(candidate, {});
     });
   }
