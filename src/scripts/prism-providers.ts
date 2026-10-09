@@ -2,6 +2,7 @@ import { HubLibrarySession } from '../lib/hub-library-session';
 import { sessionProviderAdapter } from '../lib/providers/session-adapters';
 import { prismProviderRuntime } from '../lib/prism/provider-runtime';
 import type { PrismProviderHomeView } from '../lib/prism/provider-home-view';
+import type { DailyHomeState } from '../lib/prism/daily-home-availability';
 import type { ProviderAdapter, ProviderId, ProviderResult } from '../lib/providers/types';
 
 const home = document.querySelector<HTMLElement>('[data-prism-home]');
@@ -71,9 +72,28 @@ if (home && connection && status && connect && refresh && disconnect && continue
     delete continueRoot.dataset.prismProviderState;
   }
 
+  const unavailableCopy: Partial<Record<DailyHomeState, { heading: string; description: string }>> = {
+    stale: { heading: 'Shared activity expired.', description: 'Refresh a connected app to check for current activity.' },
+    offline: { heading: 'Shared activity unavailable offline.', description: 'Open the connected app or retry when online.' },
+    error: { heading: 'Shared activity could not be checked.', description: 'Open the app directly or reconnect to refresh.' },
+    unconnected: { heading: 'Sharing is not authorized.', description: 'Check sharing permissions in the connected app.' },
+    unsupported: { heading: 'This activity is not supported yet.', description: 'Open the app directly; no private activity was loaded.' },
+  };
+
+  function renderAvailabilityFallback(root: HTMLElement, nodes: readonly Node[], state: DailyHomeState) {
+    root.replaceChildren(...nodes.map(node => node.cloneNode(true)));
+    root.dataset.prismProviderState = state;
+    const copy = unavailableCopy[state];
+    if (!copy) return;
+    const heading = root.querySelector('strong');
+    const description = root.querySelector('p');
+    if (heading) heading.textContent = copy.heading;
+    if (description) description.textContent = copy.description;
+  }
+
   function renderNow(view: PrismProviderHomeView) {
     if (home!.hidden || nowRoot.closest<HTMLElement>('[data-prism-block]')?.hidden || view.now.length === 0) {
-      nowRoot.replaceChildren(...defaultNowNodes.map((node) => node.cloneNode(true)));
+      renderAvailabilityFallback(nowRoot, defaultNowNodes, view.availability.now);
       return;
     }
     const nodes = view.now.map((item) => {
@@ -99,22 +119,24 @@ if (home && connection && status && connect && refresh && disconnect && continue
       return link;
     });
     nowRoot.replaceChildren(...nodes);
+    nowRoot.dataset.prismProviderState = 'ready';
   }
 
   function renderView(view: PrismProviderHomeView) {
     renderNow(view);
     if (studyContent) {
-      if (home!.hidden || studyContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.study) studyContent.replaceChildren(...defaultStudyNodes.map(node => node.cloneNode(true)));
+      if (home!.hidden || studyContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.study) renderAvailabilityFallback(studyContent, defaultStudyNodes, view.availability.study);
       else {
         const link = document.createElement('a');
         link.href = view.study.href;
         link.textContent = `${view.study.dueTaskCount} Bible review ${view.study.dueTaskCount === 1 ? 'task' : 'tasks'} · ${view.study.dueVerseCount} ${view.study.dueVerseCount === 1 ? 'verse' : 'verses'} · ${view.study.newVerseCount} new ${view.study.newVerseCount === 1 ? 'verse' : 'verses'}`;
         link.dataset.prismStudyProvider = view.study.providerId;
         studyContent.replaceChildren(link);
+        studyContent.dataset.prismProviderState = 'ready';
       }
     }
     if (recentContent) {
-      if (home!.hidden || recentContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.recent.length) recentContent.replaceChildren(...defaultRecentNodes.map(node => node.cloneNode(true)));
+      if (home!.hidden || recentContent.closest<HTMLElement>('[data-prism-block]')?.hidden || !view.recent.length) renderAvailabilityFallback(recentContent, defaultRecentNodes, view.availability.recent);
       else {
         const list = document.createElement('ul');
         list.className = 'prism-recent-list';
@@ -129,6 +151,7 @@ if (home && connection && status && connect && refresh && disconnect && continue
           list.append(row);
         }
         recentContent.replaceChildren(list);
+        recentContent.dataset.prismProviderState = 'ready';
       }
     }
     if (home!.hidden || continueRoot.hidden) { resetContinue(); return; }
@@ -155,6 +178,13 @@ if (home && connection && status && connect && refresh && disconnect && continue
     if (item.state === 'stale') {
       titleNode.textContent = 'Continue snapshot expired';
       copyNode.textContent = 'Refresh connected Home data to check the current activity.';
+      setAction('Browse apps','/#apps');
+      return;
+    }
+
+    if (item.state === 'unconnected' || item.state === 'unsupported') {
+      titleNode.textContent = item.state === 'unsupported' ? 'Continue is not supported yet' : 'Continue sharing is unavailable';
+      copyNode.textContent = item.state === 'unsupported' ? 'Open the app directly to continue.' : 'Check the provider sharing permissions, then reconnect.';
       setAction('Browse apps','/#apps');
       return;
     }
