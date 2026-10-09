@@ -276,8 +276,8 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         seen.add(p.blockId);
 
         const block = blocks[p.blockId];
-        if (!Object.hasOwn(blocks, p.blockId)) {
-          errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+        if (!Object.hasOwn(blocks, p.blockId) || !block || typeof block !== 'object' || Array.isArray(block)) {
+          errors.push(`${breakpoint} layout references missing or invalid block ${p.blockId}.`);
         } else if (isPrismBlockType(block.type)) {
           if (!isPrismBlockSize(p.size) || !PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(p.size)) {
             errors.push(`Unsupported ${breakpoint} size ${String(p.size)} for block type ${block.type}.`);
@@ -289,11 +289,18 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
           }
         }
 
-        if (!Object.hasOwn(sections, p.sectionId)) errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
-        else if (!sections[p.sectionId]!.blockIds.includes(p.blockId)) errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
+        const section = sections[p.sectionId];
+        if (!Object.hasOwn(sections, p.sectionId) || !section || !Array.isArray(section.blockIds)) {
+          errors.push(`${breakpoint} layout references missing or invalid section ${p.sectionId}.`);
+        } else if (!section.blockIds.includes(p.blockId)) {
+          errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
+        }
 
-        if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
-        if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
+        if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) {
+          errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
+        } else if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) {
+          errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
+        }
       }
 
       for (const blockId of Object.keys(blocks)) if (!seen.has(blockId)) errors.push(`Missing ${breakpoint} placement for ${blockId}.`);
@@ -302,7 +309,9 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         for (let j = i + 1; j < placements.length; j += 1) {
           const a = placements[i]!;
           const b = placements[j]!;
-          if (boxesOverlap(a, b)) errors.push(`Overlapping ${breakpoint} placements: ${a.blockId} and ${b.blockId}.`);
+          if ([a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h].every(Number.isInteger) && boxesOverlap(a, b)) {
+            errors.push(`Overlapping ${breakpoint} placements: ${a.blockId} and ${b.blockId}.`);
+          }
         }
       }
     }
