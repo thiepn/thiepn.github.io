@@ -115,4 +115,46 @@ describe('Prism persisted-state validation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Block block-recent hidden must be boolean.');
   });
+  it('reports malformed stored pages and placements instead of throwing', () => {
+    const malformedPages = createDefaultHomeDocument();
+    (malformedPages as any).pages = { id: 'home', sectionIds: [] };
+    expect(validateHomeDocument(malformedPages)).toMatchObject({ valid: false });
+
+    const malformedPlacements = createDefaultHomeDocument();
+    (malformedPlacements.layouts.desktop.placements as any[]).push(null, 3, []);
+    const result = validateHomeDocument(malformedPlacements);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Invalid desktop placement object.');
+  });
+
+  it('rejects malformed block and section values without crashing validation', () => {
+    const doc = createDefaultHomeDocument();
+    (doc.blocks as any)['block-now'] = null;
+    (doc.sections as any)['section-start'] = null;
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Block block-now is invalid.');
+    expect(result.errors).toContain('Section section-start is invalid.');
+    expect(result.errors).toContain('desktop layout references invalid block block-now.');
+    expect(result.errors).toContain('desktop layout references invalid section section-start.');
+  });
+
+  it('does not accept inherited Object prototype members as stored references', () => {
+    const doc = createDefaultHomeDocument();
+    doc.sections['section-start']!.blockIds.push('toString');
+    doc.layouts.desktop.sectionOrder.push('__proto__');
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Section section-start references missing block toString.');
+    expect(result.errors).toContain('desktop sectionOrder references missing section __proto__.');
+  });
+
+  it('handles non-numeric coordinate objects without coercion errors', () => {
+    const doc = createDefaultHomeDocument();
+    (doc.layouts.desktop.placements[0] as any).x = { toString: 'not callable' };
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Non-integer desktop placement for block-continue.');
+  });
+
 });
