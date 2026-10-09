@@ -149,6 +149,20 @@ describe('Prism persisted-state validation', () => {
     expect(result.errors).toContain('desktop sectionOrder references missing section __proto__.');
   });
 
+  it('rejects malformed objects with shadowed toString without throwing', () => {
+    const doc = createDefaultHomeDocument();
+    (doc.appearance as any).density = { toString: 'broken' };
+    (doc.layouts.desktop.placements[0] as any).size = { toString: 'broken' };
+    (doc.pages[0]!.sectionIds as any[]).push({ toString: 'broken' });
+    (doc.layouts.mobile.sectionOrder as any[]).push({ toString: 'broken' });
+    const result = validateHomeDocument(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Invalid Home density.');
+    expect(result.errors).toContain('Unsupported desktop size [invalid] for block type continue.');
+    expect(result.errors).toContain('Page home references missing section [invalid].');
+    expect(result.errors).toContain('mobile sectionOrder references missing section [invalid].');
+  });
+
   it('handles non-numeric coordinate objects without coercion errors', () => {
     const doc = createDefaultHomeDocument();
     (doc.layouts.desktop.placements[0] as any).x = { toString: 'not callable' };
