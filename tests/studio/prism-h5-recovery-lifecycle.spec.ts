@@ -43,7 +43,7 @@ test('H5 device Library invalidation clears another Home tab without carrying pr
   const first = await context.newPage();
   const second = await context.newPage();
   await Promise.all([first.goto(route), second.goto(route)]);
-  await expect(second.locator('[data-prism-library-status]')).toContainText('Not connected in this tab.');
+  await expect(second.locator('[data-prism-library-status]')).toContainText('Library connection is available only on the qualified Home route.');
   await first.evaluate(() => {
     const channel = new BroadcastChannel('thiepn:hub-library:clear:v1');
     channel.postMessage({ type: 'clear' });
