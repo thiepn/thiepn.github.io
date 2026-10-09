@@ -102,6 +102,17 @@ describe('H4 provider-aware Daily Home availability', () => {
     });
   });
 
+  it('keeps Continue recovery consistent when offline and expired providers disagree', () => {
+    const view = buildPrismProviderHomeView([
+      result('notes', 'continue', 'stale'),
+      result('library', 'continue', 'offline'),
+    ]);
+    expect(view.availability.continue).toBe('offline');
+    expect(view.continue).toMatchObject({
+      state: 'offline', providerId: 'library', title: null, href: null,
+    });
+  });
+
   it('loses all activity after revocation and owner session clearing', () => {
     const shared = buildPrismProviderHomeView([privateResult('notes', 'continue', 'Owner note')]);
     expect(shared.continue.title).toBe('Owner note');
