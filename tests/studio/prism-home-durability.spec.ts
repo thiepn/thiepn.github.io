@@ -8,6 +8,7 @@ const guestKey = 'thiepn:home-document:v2';
 test('H2 offline edits are durable locally and remain pending after reconnect', async ({ page, context }) => {
   await page.goto(route);
   await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-storage', 'indexeddb');
+  await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-migration', 'persisted');
   await page.locator('.prism-topbar__customize').click();
   await page.locator('[data-prism-theme-open]').click();
   await context.setOffline(true);
@@ -74,6 +75,7 @@ test('H2 account partitions never reuse guest or another account customization',
 test('H2 rejects a racing external revision instead of silently overwriting it', async ({ page }) => {
   await page.goto(route);
   await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-storage', 'indexeddb');
+  await expect(page.locator('[data-prism-home]')).toHaveAttribute('data-prism-migration', 'persisted');
   const external = await page.evaluate(async ({ dbName, storeName, guestKey }) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
