@@ -55,7 +55,7 @@ describe('H3 provider contract and owner isolation certification', () => {
       { providerId: 'tms60', operation: 'summary' },
       { providerId: 'library', operation: 'continue' },
     ], () => {});
-    expect(coordinator.connectedProviders().sort()).toEqual(['library', 'notes', 'tms60']);
+    expect([...coordinator.connectedProviders()].sort()).toEqual(['library', 'notes', 'tms60']);
     expect(coordinator.snapshotView().now[0]?.title).toBe('1 Bible review due');
     expect(coordinator.snapshotResults().map(r => r.status)).toEqual(['ready', 'ready', 'ready']);
   });
@@ -126,7 +126,7 @@ describe('H3 provider contract and owner isolation certification', () => {
     coordinator.setConnection(adapter('tms60', 'Review'), access('tms60'));
     const revised = { ...access('tms60'), context: { ...account(alice, 'esv'), grantRevision: 'grant-2' } };
     coordinator.setConnection(adapter('tms60', 'Updated review'), revised);
-    expect(coordinator.connectedProviders().sort()).toEqual(['notes', 'tms60']);
+    expect([...coordinator.connectedProviders()].sort()).toEqual(['notes', 'tms60']);
     await coordinator.refresh([{ providerId: 'notes', operation: 'continue' }], () => {});
     expect(coordinator.snapshotView().continue.title).toBe('Note');
   });
