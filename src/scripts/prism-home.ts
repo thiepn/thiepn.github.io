@@ -10,6 +10,7 @@ import {
 } from '../lib/prism/home-store';
 import { createDefaultHomeDocument, type HomeDocumentV2 } from '../lib/prism/home-document';
 import { setActiveHomeStore } from '../lib/prism/home-runtime';
+import { createIndexedHomePersistence, type DurableHomePersistence } from '../lib/prism/home-indexeddb';
 import { isThemePreference, THEME_STORAGE_KEY } from '../lib/theme';
 
 interface PrismAppManifestItem {
@@ -48,7 +49,23 @@ if (root) {
   let generation = 0;
   let store: HomeStore | null = null;
   let unsubscribeStore: (() => void) | null = null;
+  let unsubscribeDurable: (() => void) | null = null;
+  let durablePersistence: DurableHomePersistence | null = null;
   let currentDocument = createDefaultHomeDocument();
+
+  function updateLocalSyncStatus(active: DurableHomePersistence | null) {
+    if (!active) {
+      homeRoot.dataset.prismSync = 'legacy-local-only';
+      return;
+    }
+    void active.getPending().then(pending => {
+      if (active === durablePersistence) {
+        homeRoot.dataset.prismSync = pending.length ? 'local-pending-no-server' : 'local-only';
+      }
+    }).catch(() => {
+      if (active === durablePersistence) homeRoot.dataset.prismSync = 'local-unavailable';
+    });
+  }
 
   function breakpoint(): PrismBreakpoint {
     if (window.matchMedia('(max-width: 639px)').matches) return 'mobile';
@@ -161,12 +178,19 @@ if (root) {
     store = nextStore;
     setActiveHomeStore(nextStore);
     applyDocument(nextStore.getSnapshot(), source);
-    unsubscribeStore = nextStore.subscribe((document) => applyDocument(document, 'v2'));
+    unsubscribeStore = nextStore.subscribe((document) => {
+      applyDocument(document, 'v2');
+      updateLocalSyncStatus(durablePersistence);
+    });
   }
 
   function detachStore() {
     unsubscribeStore?.();
     unsubscribeStore = null;
+    unsubscribeDurable?.();
+    unsubscribeDurable = null;
+    durablePersistence?.close();
+    durablePersistence = null;
     store = null;
     setActiveHomeStore(null);
   }
@@ -181,8 +205,18 @@ if (root) {
     }
 
     const owner = identity.status === 'signed-in' ? identity.id : null;
+    let candidateDurable: DurableHomePersistence | null = null;
     try {
-      const persistence = createBrowserHomePersistence(localStorage, owner);
+      let persistence = createBrowserHomePersistence(localStorage, owner);
+      try {
+        candidateDurable = createIndexedHomePersistence(owner, localStorage);
+        persistence = candidateDurable;
+        homeRoot.dataset.prismStorage = 'indexeddb';
+      } catch {
+        // Explicit legacy-only mode on browsers without IndexedDB.
+        // Do not treat the localStorage mirror as a Core-synced document.
+        homeRoot.dataset.prismStorage = 'legacy-only';
+      }
       const rawV2 = await persistence.load();
       const rawV1 = readLegacyPreference(localStorage, owner);
       const boot = bootstrapHomeDocument({ rawV2, rawV1, availableApps });
@@ -192,21 +226,36 @@ if (root) {
         const preference = localStorage.getItem(THEME_STORAGE_KEY);
         if (isThemePreference(preference)) boot.document.appearance.mode = preference;
       }
-      if (current !== generation) return;
+      if (current !== generation) {
+        candidateDurable?.close();
+        return;
+      }
 
       const nextStore = new HomeStore(boot.document, persistence);
+      durablePersistence = candidateDurable;
       attachStore(nextStore, boot.source);
+      if (candidateDurable) {
+        unsubscribeDurable = candidateDurable.subscribe(() => {
+          if (current !== generation || store !== nextStore) return;
+          void nextStore.refreshFromPersistence().then(() => updateLocalSyncStatus(candidateDurable)).catch(() => {
+            if (current === generation) homeRoot.dataset.prismStorage = 'conflict';
+          });
+        });
+      }
+      updateLocalSyncStatus(candidateDurable);
 
-      if (boot.source === 'v1') {
+      if (boot.source === 'v1' || candidateDurable?.needsImport) {
         try {
-          await nextStore.replace(nextStore.getSnapshot());
+          await nextStore.replace(nextStore.getSnapshot(), { recordHistory: false });
           if (current !== generation) return;
           homeRoot.dataset.prismMigration = 'persisted';
+          updateLocalSyncStatus(candidateDurable);
         } catch {
           homeRoot.dataset.prismMigration = 'local-save-failed';
         }
       }
     } catch {
+      candidateDurable?.close();
       if (current !== generation) return;
       detachStore();
       applyDocument(createDefaultHomeDocument(), 'storage-error');
@@ -226,8 +275,16 @@ if (root) {
     if (identity.status !== 'signed-in' && identity.status !== 'signed-out') return;
     const owner = identity.status === 'signed-in' ? identity.id : null;
     if (event.key !== homeDocumentStorageKey(owner)) return;
-    void loadIdentity(identity);
+    if (!store) return;
+    const active = store;
+    void active.refreshFromPersistence().then(() => updateLocalSyncStatus(durablePersistence)).catch(() => {
+      if (store === active) homeRoot.dataset.prismStorage = 'conflict';
+    });
   });
+
+  // Reconnect does not flush an outbox: Core has no verified Hub document sync route.
+  // It can only verify locally committed data and expose a truthful pending state.
+  window.addEventListener('online', () => updateLocalSyncStatus(durablePersistence));
 
   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
   systemTheme.addEventListener('change', () => {
