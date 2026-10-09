@@ -157,6 +157,14 @@ export interface HomeDocumentValidation {
   errors: string[];
 }
 
+function isOneOf(value: unknown, options: readonly string[]): boolean {
+  return typeof value === 'string' && options.includes(value);
+}
+
+function describeMalformed(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '[invalid]';
+}
+
 function boxesOverlap(a: HomePlacement, b: HomePlacement): boolean {
   if (a.sectionId !== b.sectionId) return false;
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -188,13 +196,13 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
     errors.push('appearance must be an object.');
   } else {
     if (appearance.theme !== 'prism') errors.push('Unsupported Home appearance theme.');
-    if (!['system', 'light', 'dark'].includes(String(appearance.mode))) errors.push('Invalid Home appearance mode.');
-    if (!['compact', 'balanced', 'comfortable'].includes(String(appearance.density))) errors.push('Invalid Home density.');
-    if (!['quiet', 'balanced', 'rich'].includes(String(appearance.intensity))) errors.push('Invalid Home visual intensity.');
-    if (!['reduced', 'balanced', 'expressive'].includes(String(appearance.motion))) errors.push('Invalid Home motion setting.');
+    if (!isOneOf(appearance.mode, ['system', 'light', 'dark'])) errors.push('Invalid Home appearance mode.');
+    if (!isOneOf(appearance.density, ['compact', 'balanced', 'comfortable'])) errors.push('Invalid Home density.');
+    if (!isOneOf(appearance.intensity, ['quiet', 'balanced', 'rich'])) errors.push('Invalid Home visual intensity.');
+    if (!isOneOf(appearance.motion, ['reduced', 'balanced', 'expressive'])) errors.push('Invalid Home motion setting.');
     if (appearance.surface !== 'default') errors.push('Invalid Home surface setting.');
     if (appearance.cornerStyle !== 'default') errors.push('Invalid Home corner setting.');
-    if (!['rich', 'mono'].includes(String(appearance.iconStyle))) errors.push('Invalid Home icon setting.');
+    if (!isOneOf(appearance.iconStyle, ['rich', 'mono'])) errors.push('Invalid Home icon setting.');
   }
 
   if (!doc.preferences || typeof doc.preferences !== 'object' || Array.isArray(doc.preferences)
@@ -242,7 +250,7 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
     if (new Set(page.sectionIds).size !== page.sectionIds.length) errors.push(`Page ${page.id} contains duplicate sections.`);
     for (const sectionId of page.sectionIds) {
       if (typeof sectionId !== 'string' || !Object.hasOwn(sections, sectionId)) {
-        errors.push(`Page ${page.id} references missing section ${String(sectionId)}.`);
+        errors.push(`Page ${page.id} references missing section ${describeMalformed(sectionId)}.`);
       }
     }
   }
@@ -259,7 +267,7 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
       if (new Set(layout.sectionOrder).size !== layout.sectionOrder.length) errors.push(`Duplicate sections in ${breakpoint} sectionOrder.`);
       for (const sectionId of layout.sectionOrder) {
         if (typeof sectionId !== 'string' || !Object.hasOwn(sections, sectionId)) {
-          errors.push(`${breakpoint} sectionOrder references missing section ${String(sectionId)}.`);
+          errors.push(`${breakpoint} sectionOrder references missing section ${describeMalformed(sectionId)}.`);
         }
       }
 
@@ -282,7 +290,7 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
           errors.push(`${breakpoint} layout references invalid block ${p.blockId}.`);
         } else if (isPrismBlockType(block.type)) {
           if (!isPrismBlockSize(p.size) || !PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(p.size)) {
-            errors.push(`Unsupported ${breakpoint} size ${String(p.size)} for block type ${block.type}.`);
+            errors.push(`Unsupported ${breakpoint} size ${describeMalformed(p.size)} for block type ${block.type}.`);
           } else {
             const expected = spanForBlock(block.type, p.size, breakpoint);
             if (p.w !== expected.w || p.h !== expected.h) {
