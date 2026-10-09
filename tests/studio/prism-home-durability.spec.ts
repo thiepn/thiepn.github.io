@@ -41,10 +41,13 @@ test('H2 cross-tab mutations reconcile using same-origin revision signals', asyn
   await page.goto(route);
   const second = await context.newPage();
   await second.goto(route);
+  await second.locator('.prism-topbar__customize').click();
+  await expect(second.locator('[data-prism-undo]')).toBeDisabled();
   await page.locator('.prism-topbar__customize').click();
   await page.locator('[data-prism-theme-open]').click();
   await page.locator('[data-prism-appearance="density"]').selectOption('comfortable');
   await expect(second.locator('[data-prism-home]')).toHaveAttribute('data-density', 'comfortable');
+  await expect(second.locator('[data-prism-undo]')).toBeDisabled();
   await second.close();
 });
 
