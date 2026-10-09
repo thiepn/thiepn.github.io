@@ -198,6 +198,9 @@ if (root) {
   async function loadIdentity(identity: HubIdentity) {
     const current = ++generation;
     detachStore();
+    // Remove the previous owner's customization before any asynchronous IndexedDB read.
+    applyDocument(createDefaultHomeDocument(), 'identity-transition');
+    homeRoot.dataset.prismSync = 'local-unavailable';
 
     if (identity.status === 'checking' || identity.status === 'unavailable') {
       applyDocument(createDefaultHomeDocument(), identity.status);
