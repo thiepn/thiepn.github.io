@@ -2,12 +2,14 @@
 
 ## Scope and status
 
-H4 is a **provisional, unmerged draft** based on H2 PR #96 at
-`60ab07a304c04aef43bff5a202770f3ca42663fe`.
-H2 and H3 both passed eight exact-head workflows before the branch was
-reconciled. H4 remains draft until all newly inherited exact-head checks pass.
-Before any acceptance or promotion, reconcile this branch onto a fully
-qualified H3 successor; no green H4 check substitutes for that missing work.
+H4 is an **unmerged draft** reconciled onto H3 PR #98 at
+`b67a9590a5cf01c144caf00ac7f98c6c07642ef9`, which is stacked on
+H2 PR #96 at `60ab07a304c04aef43bff5a202770f3ca42663fe`.
+H2 and H3 each passed eight exact-head workflows before reconciliation.
+The original H4 head `40c9cac754eba585aa441655f859bae8ffa677b8`
+is archived as `prism-v11-h4-pre-h3-reconcile`. The five H4
+implementation/test files retain their original Git blob SHAs.
+The new H4 exact head must pass all eight workflows before H5 may start.
 
 ## Product behavior
 
