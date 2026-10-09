@@ -2,6 +2,7 @@ import { hubIdentity, readHubNotesConsent, readHubTmsConsent } from './portal-au
 import { HubNotesSession, NOTES_PENDING_KEY } from '../lib/hub-notes-session';
 import { PrismManagedConnection, type PrismManagedState } from '../lib/prism/managed-provider-connection';
 import { prismProviderRuntime } from '../lib/prism/provider-runtime';
+import { isProviderClearSignal, providerClearChannelName, PROVIDER_CLEAR_SIGNAL } from '../lib/prism/provider-clear-signal';
 
 const home = document.querySelector<HTMLElement>('[data-prism-home]');
 const canonical = location.origin === 'https://thiepn.dev' && ['/home/', '/home'].includes(location.pathname);
@@ -20,6 +21,9 @@ if (home) void (async () => {
     const refresh = row.querySelector<HTMLButtonElement>(`[data-prism-${provider}-refresh]`)!;
     const disconnect = row.querySelector<HTMLButtonElement>(`[data-prism-${provider}-disconnect]`)!;
     const translation = row.querySelector<HTMLSelectElement>('[data-prism-tms60-translation]');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.setAttribute('aria-atomic', 'true');
     const returnedTranslation = managed?.managedTarget?.match(/^thiepn:hub-tms60:pkce:([a-z0-9]+):v1$/)?.[1];
     if (translation && returnedTranslation) translation.value = returnedTranslation;
     const targeted = Boolean(managed?.managedCallback && (provider === 'notes'
@@ -72,12 +76,31 @@ if (home) void (async () => {
       if (url) location.assign(url);
     })());
     refresh.addEventListener('click', () => void connection?.refresh());
-    const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(`thiepn:hub-${provider === 'notes' ? 'notes' : 'tms60'}:clear:v1`) : null;
-    disconnect.addEventListener('click', () => { connection?.clear('Disconnected in this tab. Manage sharing in Account to revoke everywhere.'); channel?.postMessage({ type: 'clear' }); });
-    channel?.addEventListener('message', () => connection?.clear());
-    translation?.addEventListener('change', () => { connection?.clear(); createConnection(); });
+    const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(providerClearChannelName(provider)) : null;
+    const broadcastClear = () => channel?.postMessage(PROVIDER_CLEAR_SIGNAL);
+    disconnect.addEventListener('click', () => {
+      connection?.clear('Disconnected in this tab. Manage sharing in Account to revoke everywhere.');
+      broadcastClear();
+    });
+    channel?.addEventListener('message', event => {
+      if (isProviderClearSignal(event.data)) connection?.clear('Connection cleared in another tab. Reconnect to verify sharing.');
+    });
+    // A translation switch must revoke the former local session before a new
+    // consent/translation scope can be requested, including in other tabs.
+    translation?.addEventListener('change', () => {
+      connection?.clear('Translation changed. Reconnect to verify sharing.');
+      broadcastClear();
+      createConnection();
+    });
     window.addEventListener('hub:identity', () => void identityChanged());
     window.addEventListener('pagehide', () => connection?.clear(undefined, false));
+    window.addEventListener('offline', () => {
+      connection?.clear('Offline. Private Home data cleared; reconnect after network recovery.');
+      controls();
+    });
+    // Online recovery is manual. Never silently regain consent or issue a
+    // private request after offline, revocation, device or translation changes.
+    window.addEventListener('online', controls);
     window.addEventListener('pageshow', event => { if (event.persisted) connection?.clear(); });
     window.addEventListener('storage', event => { if (event.key === 'thiepn:hub-auth:v1') connection?.clear(); });
     document.addEventListener('visibilitychange', () => {
