@@ -136,7 +136,7 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   });
   // A successful empty response from one provider does not justify hiding
   // a failed or expired contribution from another provider.
-  if (continueView.state === 'empty' && availability.continue !== 'empty' && availability.continue !== 'disconnected') {
+  if (!best && availability.continue !== 'disconnected' && continueView.state !== availability.continue) {
     continueView.state = availability.continue;
     continueView.providerId = results.find(result =>
       result.operation === 'continue' && result.status === availability.continue,
