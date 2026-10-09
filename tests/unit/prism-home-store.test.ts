@@ -71,6 +71,23 @@ describe('Prism Home local bootstrap and storage', () => {
 });
 
 describe('Prism HomeStore durability', () => {
+  it('does not persist no-op edits but still allows bootstrap migration writes', async () => {
+    const save = vi.fn(async () => {});
+    const store = new HomeStore(createDefaultHomeDocument(), { load: async () => null, save });
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    await store.mutate((draft) => { draft.appearance.mode = 'system'; });
+    expect(save).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.canUndo()).toBe(false);
+
+    await store.replace(store.getSnapshot());
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.canUndo()).toBe(false);
+  });
+
   it('persists before publishing a successful mutation', async () => {
     const saves: string[] = [];
     const persistence: HomePersistence = {

@@ -157,6 +157,14 @@ export interface HomeDocumentValidation {
   errors: string[];
 }
 
+function isOneOf(value: unknown, options: readonly string[]): boolean {
+  return typeof value === 'string' && options.includes(value);
+}
+
+function describeMalformed(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '[invalid]';
+}
+
 function boxesOverlap(a: HomePlacement, b: HomePlacement): boolean {
   if (a.sectionId !== b.sectionId) return false;
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -169,6 +177,8 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
   }
 
   const doc = input as Partial<HomeDocumentV2>;
+  // Parsed storage and future remote payloads are untrusted, regardless of the TypeScript shape.
+  const pages = Array.isArray(doc.pages) ? doc.pages : [];
   if (doc.schemaVersion !== HOME_DOCUMENT_SCHEMA_VERSION) errors.push('Unsupported HomeDocument schemaVersion.');
   if (!doc.blocks || typeof doc.blocks !== 'object' || Array.isArray(doc.blocks)) errors.push('blocks must be an object.');
   if (!doc.sections || typeof doc.sections !== 'object' || Array.isArray(doc.sections)) errors.push('sections must be an object.');
@@ -186,13 +196,13 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
     errors.push('appearance must be an object.');
   } else {
     if (appearance.theme !== 'prism') errors.push('Unsupported Home appearance theme.');
-    if (!['system', 'light', 'dark'].includes(String(appearance.mode))) errors.push('Invalid Home appearance mode.');
-    if (!['compact', 'balanced', 'comfortable'].includes(String(appearance.density))) errors.push('Invalid Home density.');
-    if (!['quiet', 'balanced', 'rich'].includes(String(appearance.intensity))) errors.push('Invalid Home visual intensity.');
-    if (!['reduced', 'balanced', 'expressive'].includes(String(appearance.motion))) errors.push('Invalid Home motion setting.');
+    if (!isOneOf(appearance.mode, ['system', 'light', 'dark'])) errors.push('Invalid Home appearance mode.');
+    if (!isOneOf(appearance.density, ['compact', 'balanced', 'comfortable'])) errors.push('Invalid Home density.');
+    if (!isOneOf(appearance.intensity, ['quiet', 'balanced', 'rich'])) errors.push('Invalid Home visual intensity.');
+    if (!isOneOf(appearance.motion, ['reduced', 'balanced', 'expressive'])) errors.push('Invalid Home motion setting.');
     if (appearance.surface !== 'default') errors.push('Invalid Home surface setting.');
     if (appearance.cornerStyle !== 'default') errors.push('Invalid Home corner setting.');
-    if (!['rich', 'mono'].includes(String(appearance.iconStyle))) errors.push('Invalid Home icon setting.');
+    if (!isOneOf(appearance.iconStyle, ['rich', 'mono'])) errors.push('Invalid Home icon setting.');
   }
 
   if (!doc.preferences || typeof doc.preferences !== 'object' || Array.isArray(doc.preferences)
@@ -201,7 +211,7 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
   }
 
   for (const [key, block] of Object.entries(blocks)) {
-    if (!block || typeof block !== 'object') { errors.push(`Block ${key} is invalid.`); continue; }
+    if (!block || typeof block !== 'object' || Array.isArray(block)) { errors.push(`Block ${key} is invalid.`); continue; }
     if (block.id !== key) errors.push(`Block key/id mismatch for ${key}.`);
     if (!isPrismBlockType(block.type)) errors.push(`Unknown block type for ${key}.`);
     if (block.hidden !== undefined && typeof block.hidden !== 'boolean') errors.push(`Block ${key} hidden must be boolean.`);
@@ -216,12 +226,13 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
 
   const blockMembership = new Map<string, string>();
   for (const [key, section] of Object.entries(sections)) {
-    if (!section || typeof section !== 'object') { errors.push(`Section ${key} is invalid.`); continue; }
+    if (!section || typeof section !== 'object' || Array.isArray(section)) { errors.push(`Section ${key} is invalid.`); continue; }
     if (section.id !== key) errors.push(`Section key/id mismatch for ${key}.`);
     if (!Array.isArray(section.blockIds)) { errors.push(`Section ${key} blockIds must be an array.`); continue; }
     if (new Set(section.blockIds).size !== section.blockIds.length) errors.push(`Section ${key} contains duplicate block IDs.`);
     for (const blockId of section.blockIds) {
-      if (!blocks[blockId]) errors.push(`Section ${key} references missing block ${blockId}.`);
+      if (typeof blockId !== 'string') { errors.push(`Section ${key} has a non-string block ID.`); continue; }
+      if (!Object.hasOwn(blocks, blockId)) errors.push(`Section ${key} references missing block ${blockId}.`);
       const existing = blockMembership.get(blockId);
       if (existing && existing !== key) errors.push(`Block ${blockId} belongs to multiple sections.`);
       else blockMembership.set(blockId, key);
@@ -231,10 +242,17 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
     if (!blockMembership.has(blockId)) errors.push(`Block ${blockId} does not belong to a section.`);
   }
 
-  for (const page of doc.pages ?? []) {
-    if (!page || typeof page !== 'object' || !Array.isArray(page.sectionIds)) { errors.push('Invalid page definition.'); continue; }
+  for (const page of pages) {
+    if (!page || typeof page !== 'object' || Array.isArray(page) || typeof page.id !== 'string' || !Array.isArray(page.sectionIds)) {
+      errors.push('Invalid page definition.');
+      continue;
+    }
     if (new Set(page.sectionIds).size !== page.sectionIds.length) errors.push(`Page ${page.id} contains duplicate sections.`);
-    for (const sectionId of page.sectionIds) if (!sections[sectionId]) errors.push(`Page ${page.id} references missing section ${sectionId}.`);
+    for (const sectionId of page.sectionIds) {
+      if (typeof sectionId !== 'string' || !Object.hasOwn(sections, sectionId)) {
+        errors.push(`Page ${page.id} references missing section ${describeMalformed(sectionId)}.`);
+      }
+    }
   }
 
   if (!doc.layouts || typeof doc.layouts !== 'object') {
@@ -247,20 +265,32 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
         continue;
       }
       if (new Set(layout.sectionOrder).size !== layout.sectionOrder.length) errors.push(`Duplicate sections in ${breakpoint} sectionOrder.`);
-      for (const sectionId of layout.sectionOrder) if (!sections[sectionId]) errors.push(`${breakpoint} sectionOrder references missing section ${sectionId}.`);
+      for (const sectionId of layout.sectionOrder) {
+        if (typeof sectionId !== 'string' || !Object.hasOwn(sections, sectionId)) {
+          errors.push(`${breakpoint} sectionOrder references missing section ${describeMalformed(sectionId)}.`);
+        }
+      }
 
       const columns = PRISM_COLUMNS[breakpoint];
       const seen = new Set<string>();
-      for (const p of layout.placements) {
+      const placements = layout.placements.filter((p) => p !== null && typeof p === 'object' && !Array.isArray(p));
+      if (placements.length !== layout.placements.length) errors.push(`Invalid ${breakpoint} placement object.`);
+      for (const p of placements) {
+        if (typeof p.blockId !== 'string' || typeof p.sectionId !== 'string') {
+          errors.push(`Invalid ${breakpoint} placement identifiers.`);
+          continue;
+        }
         if (seen.has(p.blockId)) errors.push(`Duplicate ${breakpoint} placement for ${p.blockId}.`);
         seen.add(p.blockId);
 
         const block = blocks[p.blockId];
-        if (!block) {
+        if (!Object.hasOwn(blocks, p.blockId)) {
           errors.push(`${breakpoint} layout references missing block ${p.blockId}.`);
+        } else if (!block || typeof block !== 'object' || Array.isArray(block)) {
+          errors.push(`${breakpoint} layout references invalid block ${p.blockId}.`);
         } else if (isPrismBlockType(block.type)) {
           if (!isPrismBlockSize(p.size) || !PRISM_BLOCK_REGISTRY[block.type].supportedSizes.includes(p.size)) {
-            errors.push(`Unsupported ${breakpoint} size ${String(p.size)} for block type ${block.type}.`);
+            errors.push(`Unsupported ${breakpoint} size ${describeMalformed(p.size)} for block type ${block.type}.`);
           } else {
             const expected = spanForBlock(block.type, p.size, breakpoint);
             if (p.w !== expected.w || p.h !== expected.h) {
@@ -269,20 +299,31 @@ export function validateHomeDocument(input: unknown): HomeDocumentValidation {
           }
         }
 
-        if (!sections[p.sectionId]) errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
-        else if (!sections[p.sectionId]!.blockIds.includes(p.blockId)) errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
+        const section = sections[p.sectionId];
+        if (!Object.hasOwn(sections, p.sectionId)) {
+          errors.push(`${breakpoint} layout references missing section ${p.sectionId}.`);
+        } else if (!section || !Array.isArray(section.blockIds)) {
+          errors.push(`${breakpoint} layout references invalid section ${p.sectionId}.`);
+        } else if (!section.blockIds.includes(p.blockId)) {
+          errors.push(`${breakpoint} placement ${p.blockId} is not a member of ${p.sectionId}.`);
+        }
 
-        if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
-        if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
+        if (![p.x, p.y, p.w, p.h].every(Number.isInteger)) {
+          errors.push(`Non-integer ${breakpoint} placement for ${p.blockId}.`);
+        } else if (p.x < 0 || p.y < 0 || p.w < 1 || p.h < 1 || p.x + p.w > columns) {
+          errors.push(`Out-of-bounds ${breakpoint} placement for ${p.blockId}.`);
+        }
       }
 
       for (const blockId of Object.keys(blocks)) if (!seen.has(blockId)) errors.push(`Missing ${breakpoint} placement for ${blockId}.`);
 
-      for (let i = 0; i < layout.placements.length; i += 1) {
-        for (let j = i + 1; j < layout.placements.length; j += 1) {
-          const a = layout.placements[i]!;
-          const b = layout.placements[j]!;
-          if (boxesOverlap(a, b)) errors.push(`Overlapping ${breakpoint} placements: ${a.blockId} and ${b.blockId}.`);
+      for (let i = 0; i < placements.length; i += 1) {
+        for (let j = i + 1; j < placements.length; j += 1) {
+          const a = placements[i]!;
+          const b = placements[j]!;
+          if ([a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h].every(Number.isInteger) && boxesOverlap(a, b)) {
+            errors.push(`Overlapping ${breakpoint} placements: ${a.blockId} and ${b.blockId}.`);
+          }
         }
       }
     }
