@@ -1,4 +1,5 @@
 import { ProviderRunner } from '../providers/runtime';
+import { providerContextAllowed } from '../providers/contract';
 import type { Operation, ProviderAccess, ProviderAdapter, ProviderId, ProviderResult } from '../providers/types';
 import { buildPrismProviderHomeView, type PrismProviderHomeView } from './provider-home-view';
 
@@ -21,6 +22,25 @@ export class PrismProviderCoordinator {
 
   setConnection(adapter: ProviderAdapter, access: ProviderAccess): void {
     if (adapter.manifest.id !== access.providerId) throw new Error('Provider adapter/access mismatch');
+    if (!providerContextAllowed(access.context, adapter.manifest) ||
+        !Number.isFinite(access.expiresAt) ||
+        !Array.isArray(access.permissions) ||
+        access.permissions.some(permission => typeof permission !== 'string')) {
+      throw new Error('Invalid provider authority');
+    }
+    // A Home can combine Notes and TMS60 only for the same signed-in owner.
+    // A new owner invalidates *every* existing private snapshot and device
+    // contribution before any new adapter can be attached. No cross-owner UI
+    // frame may contain results from both sessions.
+    if (access.context.scope === 'account') {
+      const owner = access.context.accountId.toLowerCase();
+      const previousOwner = [...this.#connections.values()].find(connection =>
+        connection.access.context.scope === 'account',
+      )?.access.context;
+      if (previousOwner?.scope === 'account' && previousOwner.accountId.toLowerCase() !== owner) {
+        this.clear();
+      }
+    }
     this.#connections.set(access.providerId, {
       adapter,
       access: structuredClone(access),
