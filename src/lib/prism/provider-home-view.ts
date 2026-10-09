@@ -1,4 +1,5 @@
 import { providerAction } from '../providers/registry';
+import { deriveDailyHomeAvailability, type DailyHomeAvailability } from './daily-home-availability';
 import { libraryContinueUrl } from '../hub-library-session';
 import type { ContinueItem, ProviderId, ProviderResult, ProviderStatus } from '../providers/types';
 
@@ -25,6 +26,7 @@ export interface PrismProviderHomeView {
   now: PrismNowItem[];
   study: { providerId: 'tms60'; dueTaskCount: number; dueVerseCount: number; newVerseCount: number; href: string } | null;
   recent: { providerId: ProviderId; title: string; updatedAt: string; href: string }[];
+  availability: DailyHomeAvailability;
 }
 
 const severity: Record<ProviderStatus, number> = {
@@ -36,6 +38,18 @@ const severity: Record<ProviderStatus, number> = {
   unconnected: 4,
   unsupported: 5,
 };
+
+// The runtime already validates provider contracts. Keep the projection fail-closed
+// if an inconsistent or previously invalidated snapshot reaches Home anyway:
+// never promote a stale envelope under a superficially ready outer result.
+function readyData(result: ProviderResult) {
+  const envelope = result.envelope;
+  return result.status === 'ready' &&
+    envelope?.status === 'ready' &&
+    envelope.providerId === result.providerId &&
+    envelope.operation === result.operation &&
+    envelope.data ? envelope.data : null;
+}
 
 function continueHref(providerId: ProviderId, item: ContinueItem): string | null {
   if (providerId === 'library') return libraryContinueUrl(item);
@@ -73,9 +87,9 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   const summaryResults = results.filter((result) => result.operation === 'summary');
 
   const continueItems = continueResults.flatMap((result) => {
-    const envelope = result.envelope;
-    if (result.status !== 'ready' || !envelope || !envelope.data) return [];
-    return envelope.data.items.map((item) => ({ providerId: result.providerId, item }));
+    const data = readyData(result);
+    if (!data) return [];
+    return data.items.map((item) => ({ providerId: result.providerId, item }));
   });
 
   continueItems.sort((a, b) => Date.parse(b.item.updatedAt) - Date.parse(a.item.updatedAt));
@@ -96,10 +110,10 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
 
   const now: PrismNowItem[] = [];
   for (const result of summaryResults) {
-    const envelope = result.envelope;
-    if (result.providerId !== 'tms60' || result.status !== 'ready' || !envelope || !envelope.data) continue;
+    const data = readyData(result);
+    if (result.providerId !== 'tms60' || !data) continue;
 
-    const due = envelope.data.dueTaskCount ?? 0;
+    const due = data.dueTaskCount ?? 0;
     if (due > 0) {
       const href = providerAction('tms60', 'open');
       if (href) {
@@ -107,7 +121,7 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
           id: 'tms60:due',
           providerId: 'tms60',
           title: `${due} Bible ${due === 1 ? 'review' : 'reviews'} due`,
-          detail: envelope.data.dueVerseCount ? `${envelope.data.dueVerseCount} ${envelope.data.dueVerseCount === 1 ? 'verse' : 'verses'}` : null,
+          detail: data.dueVerseCount ? `${data.dueVerseCount} ${data.dueVerseCount === 1 ? 'verse' : 'verses'}` : null,
           href,
           priority: 100,
         });
@@ -116,15 +130,36 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   }
 
   now.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
-  const studyResult = summaryResults.find(result => result.providerId === 'tms60' && ['ready', 'empty'].includes(result.status) && result.envelope?.data);
+  const studyResult = summaryResults.find(result =>
+    result.providerId === 'tms60' &&
+    (result.status === 'ready' || result.status === 'empty') &&
+    result.envelope?.status === result.status &&
+    result.envelope?.providerId === result.providerId &&
+    result.envelope?.operation === result.operation &&
+    result.envelope?.data,
+  );
   const studyData = studyResult?.envelope?.data;
   const studyHref = providerAction('tms60', 'open');
   const study = studyData && studyHref ? { providerId: 'tms60' as const,
     dueTaskCount: studyData.dueTaskCount ?? 0, dueVerseCount: studyData.dueVerseCount ?? 0,
     newVerseCount: studyData.newVerseCount ?? 0, href: studyHref } : null;
-  const recent = summaryResults.flatMap(result => result.status === 'ready' ? (result.envelope?.data?.items ?? []).flatMap(item => {
+  const recent = summaryResults.flatMap(result => (readyData(result)?.items ?? []).flatMap(item => {
     const href = continueHref(result.providerId, item);
     return href ? [{ providerId: result.providerId, title: item.title, updatedAt: item.updatedAt, href }] : [];
-  }) : []).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
-  return { continue: continueView, now: now.slice(0, 3), study, recent };
+  })).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
+  const availability = deriveDailyHomeAvailability(results, {
+    continue: Boolean(best),
+    now: now.length > 0,
+    study: study !== null,
+    recent: recent.length > 0,
+  });
+  // A successful empty response from one provider does not justify hiding
+  // a failed or expired contribution from another provider.
+  if (!best && availability.continue !== 'disconnected' && continueView.state !== availability.continue) {
+    continueView.state = availability.continue;
+    continueView.providerId = results.find(result =>
+      result.operation === 'continue' && result.status === availability.continue,
+    )?.providerId ?? null;
+  }
+  return { continue: continueView, now: now.slice(0, 3), study, recent, availability };
 }
