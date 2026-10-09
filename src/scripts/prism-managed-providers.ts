@@ -95,7 +95,7 @@ if (home) void (async () => {
     window.addEventListener('hub:identity', () => void identityChanged());
     window.addEventListener('pagehide', () => connection?.clear(undefined, false));
     window.addEventListener('offline', () => {
-      connection?.clear('Offline. Private Home data cleared; reconnect after network recovery.', false);
+      connection?.clear('Offline. Private Home data cleared; reconnect after network recovery.');
       controls();
     });
     // Online recovery is manual. Never silently regain consent or issue a
