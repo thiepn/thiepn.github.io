@@ -30,6 +30,8 @@ describe('H6 independent evidence integrity and nondeploy rehearsal', () => {
       mutate(m => { m.parents[2].checks[3].runId = m.parents[0].checks[3].runId; }),
       mutate(m => { m.parents[2].checks[1].name = m.parents[2].checks[0].name; }),
       mutate(m => { m.parents[1].head = 'a'.repeat(39); }),
+      mutate(m => { m.parents[1].head = 'a'.repeat(40); }),
+      mutate(m => { m.parents[2].checks[0].runId = 38009999999; m.parents[2].checks[0].url = 'https://github.com/thiepn/thiepn.github.io/actions/runs/38009999999'; }),
       mutate(m => { m.parents[1].pr = 999; }),
     ]) {
       expect(inspectH6Evidence(edited).valid).toBe(false);
@@ -43,6 +45,8 @@ describe('H6 independent evidence integrity and nondeploy rehearsal', () => {
       mutate(m => { m.parents[2].artifacts[0].id = m.parents[0].artifacts[0].id; }),
       mutate(m => { m.parents[0].artifacts[0].name = 'hub-notes-contract-evidence'; }),
       mutate(m => { m.parents[2].artifacts[0].sha256 = 'unsafe'; }),
+      mutate(m => { m.parents[2].artifacts[0].sha256 = 'a'.repeat(64); }),
+      mutate(m => { m.parents[1].artifacts[0].id = 99999999; }),
     ]) {
       expect(inspectH6Evidence(edited).valid).toBe(false);
     }
