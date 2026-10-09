@@ -42,13 +42,13 @@ const severity: Record<ProviderStatus, number> = {
 // The runtime already validates provider contracts. Keep the projection fail-closed
 // if an inconsistent or previously invalidated snapshot reaches Home anyway:
 // never promote a stale envelope under a superficially ready outer result.
-function readyEnvelope(result: ProviderResult) {
+function readyData(result: ProviderResult) {
   const envelope = result.envelope;
   return result.status === 'ready' &&
     envelope?.status === 'ready' &&
     envelope.providerId === result.providerId &&
     envelope.operation === result.operation &&
-    envelope.data ? envelope : null;
+    envelope.data ? envelope.data : null;
 }
 
 function continueHref(providerId: ProviderId, item: ContinueItem): string | null {
@@ -87,9 +87,9 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   const summaryResults = results.filter((result) => result.operation === 'summary');
 
   const continueItems = continueResults.flatMap((result) => {
-    const envelope = readyEnvelope(result);
-    if (!envelope) return [];
-    return envelope.data.items.map((item) => ({ providerId: result.providerId, item }));
+    const data = readyData(result);
+    if (!data) return [];
+    return data.items.map((item) => ({ providerId: result.providerId, item }));
   });
 
   continueItems.sort((a, b) => Date.parse(b.item.updatedAt) - Date.parse(a.item.updatedAt));
@@ -110,10 +110,10 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
 
   const now: PrismNowItem[] = [];
   for (const result of summaryResults) {
-    const envelope = readyEnvelope(result);
-    if (result.providerId !== 'tms60' || !envelope) continue;
+    const data = readyData(result);
+    if (result.providerId !== 'tms60' || !data) continue;
 
-    const due = envelope.data.dueTaskCount ?? 0;
+    const due = data.dueTaskCount ?? 0;
     if (due > 0) {
       const href = providerAction('tms60', 'open');
       if (href) {
@@ -121,7 +121,7 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
           id: 'tms60:due',
           providerId: 'tms60',
           title: `${due} Bible ${due === 1 ? 'review' : 'reviews'} due`,
-          detail: envelope.data.dueVerseCount ? `${envelope.data.dueVerseCount} ${envelope.data.dueVerseCount === 1 ? 'verse' : 'verses'}` : null,
+          detail: data.dueVerseCount ? `${data.dueVerseCount} ${data.dueVerseCount === 1 ? 'verse' : 'verses'}` : null,
           href,
           priority: 100,
         });
@@ -143,7 +143,7 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   const study = studyData && studyHref ? { providerId: 'tms60' as const,
     dueTaskCount: studyData.dueTaskCount ?? 0, dueVerseCount: studyData.dueVerseCount ?? 0,
     newVerseCount: studyData.newVerseCount ?? 0, href: studyHref } : null;
-  const recent = summaryResults.flatMap(result => (readyEnvelope(result)?.data?.items ?? []).flatMap(item => {
+  const recent = summaryResults.flatMap(result => (readyData(result)?.items ?? []).flatMap(item => {
     const href = continueHref(result.providerId, item);
     return href ? [{ providerId: result.providerId, title: item.title, updatedAt: item.updatedAt, href }] : [];
   })).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
