@@ -1,6 +1,7 @@
 import { HubLibrarySession } from '../lib/hub-library-session';
 import { sessionProviderAdapter } from '../lib/providers/session-adapters';
 import { prismProviderRuntime } from '../lib/prism/provider-runtime';
+import { isProviderClearSignal, providerClearChannelName, PROVIDER_CLEAR_SIGNAL } from '../lib/prism/provider-clear-signal';
 import type { PrismProviderHomeView } from '../lib/prism/provider-home-view';
 import type { DailyHomeState } from '../lib/prism/daily-home-availability';
 import type { ProviderAdapter, ProviderId, ProviderResult } from '../lib/providers/types';
@@ -22,6 +23,9 @@ const recentContent = home?.querySelector<HTMLElement>('[data-prism-recent-conte
 if (home && connection && status && connect && refresh && disconnect && continueBlock && continueTitle && continueCopy && continueAction && nowList) {
   const connectionRoot = connection;
   const statusNode = status;
+  statusNode.setAttribute('role', 'status');
+  statusNode.setAttribute('aria-live', 'polite');
+  statusNode.setAttribute('aria-atomic', 'true');
   const connectButton = connect;
   const refreshButton = refresh;
   const disconnectButton = disconnect;
@@ -241,7 +245,18 @@ if (home && connection && status && connect && refresh && disconnect && continue
     controls();
   }
 
-  const session = new HubLibrarySession(()=>clearConnection('Library sharing changed. Connect this browser again.'));
+  // Do not send any consent/device identifiers across tabs. An invalidate
+  // from the owner frame clears all same-origin Hub Library projections.
+  const clearChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel(providerClearChannelName('library')) : null;
+  const broadcastClear = () => clearChannel?.postMessage(PROVIDER_CLEAR_SIGNAL);
+  const session = new HubLibrarySession(() => {
+    clearConnection('Library sharing changed. Connect this browser again.');
+    broadcastClear();
+  });
+  clearChannel?.addEventListener('message', event => {
+    if (isProviderClearSignal(event.data)) clearConnection('Library sharing cleared in another tab. Reconnect with consent.');
+  });
 
   async function refreshVisible() {
     if (!connected || document.hidden || !libraryAdapter) return;
@@ -302,7 +317,10 @@ if (home && connection && status && connect && refresh && disconnect && continue
   })());
 
   refreshButton.addEventListener('click',()=>void refreshVisible());
-  disconnectButton.addEventListener('click',()=>clearConnection('Library disconnected in this tab.'));
+  disconnectButton.addEventListener('click', () => {
+    clearConnection('Library disconnected in this tab.');
+    broadcastClear();
+  });
 
   const visibility=new MutationObserver(()=>{
     if (!connected) return;
@@ -313,7 +331,17 @@ if (home && connection && status && connect && refresh && disconnect && continue
   const recentBlock=recentContent?.closest<HTMLElement>('[data-prism-block]');
   if (recentBlock) visibility.observe(recentBlock,{attributes:true,attributeFilter:['hidden']});
 
-  window.addEventListener('hub:identity',()=>clearConnection());
+  window.addEventListener('hub:identity', () => {
+    clearConnection('Identity changed. Reconnect Library with device consent.');
+    broadcastClear();
+  });
+  window.addEventListener('offline', () => {
+    clearConnection('Offline. Library sharing cleared; reconnect when online.');
+  });
+  window.addEventListener('online', controls);
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) clearConnection('This restored page requires fresh Library consent.');
+  });
   window.addEventListener('pagehide',()=>clearConnection());
   document.addEventListener('visibilitychange',()=>{
     if (document.hidden) clearConnection('Library cleared when this tab was hidden.');
