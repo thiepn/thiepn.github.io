@@ -521,9 +521,14 @@ if (root && toolbar && undo && done && status && addOpen && addDialog && addClos
     exit();
   });
 
+  let unsubscribeDocument: (() => void) | null = null;
   subscribeActiveHomeStore((nextStore) => {
     if (store !== nextStore && editing) exit();
+    unsubscribeDocument?.();
     store = nextStore;
+    // A cross-tab revision can invalidate Undo and change available layout controls
+    // even while this tab is in Edit Mode. Refresh from the durable snapshot.
+    unsubscribeDocument = nextStore?.subscribe(() => refresh()) ?? null;
     refresh();
   });
 

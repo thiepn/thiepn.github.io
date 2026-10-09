@@ -137,6 +137,59 @@ describe('Prism HomeStore durability', () => {
 });
 
 
+describe('H2 external-revision recovery', () => {
+  it('refreshes a changed durable snapshot and invalidates stale Undo history', async () => {
+    const initial = createDefaultHomeDocument();
+    let raw = JSON.stringify(initial);
+    const store = new HomeStore(initial, {
+      load: async () => raw,
+      save: async next => { raw = next; },
+    });
+    await store.mutate(d => { d.appearance.density = 'compact'; });
+    expect(store.canUndo()).toBe(true);
+    const remote = createDefaultHomeDocument();
+    remote.appearance.density = 'comfortable';
+    raw = JSON.stringify(remote);
+    await expect(store.refreshFromPersistence()).resolves.toBe(true);
+    expect(store.getSnapshot().appearance.density).toBe('comfortable');
+    expect(store.canUndo()).toBe(false);
+  });
+
+  it('rejects stale same-owner writes then adopts the durable competing revision', async () => {
+    const initial = createDefaultHomeDocument();
+    let raw = JSON.stringify(initial);
+    let conflicted = false;
+    const store = new HomeStore(initial, {
+      load: async () => raw,
+      save: async next => {
+        if (conflicted) {
+          const error = new Error('another tab won');
+          error.name = 'HomeRevisionConflict';
+          conflicted = false;
+          throw error;
+        }
+        raw = next;
+      },
+    });
+    const remote = createDefaultHomeDocument();
+    remote.appearance.intensity = 'rich';
+    raw = JSON.stringify(remote);
+    conflicted = true;
+    await expect(store.mutate(d => { d.appearance.density = 'compact'; })).rejects.toThrow('another tab won');
+    expect(store.getSnapshot().appearance.intensity).toBe('rich');
+    expect(store.getSnapshot().appearance.density).toBe('balanced');
+    expect(JSON.parse(raw)).toEqual(remote);
+    expect(store.canUndo()).toBe(false);
+  });
+
+  it('fails closed on corrupted external revisions', async () => {
+    const initial = createDefaultHomeDocument();
+    const store = new HomeStore(initial, { load: async () => '{broken', save: async () => {} });
+    await expect(store.refreshFromPersistence()).rejects.toThrow('Durable HomeDocument missing or invalid');
+    expect(store.getSnapshot()).toEqual(initial);
+  });
+});
+
 describe('Prism HomeStore Undo', () => {
   it('serializes rapid edits and Undo against the last persisted document', async () => {
     let release!: () => void;
