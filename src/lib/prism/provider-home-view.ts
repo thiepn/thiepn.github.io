@@ -39,6 +39,18 @@ const severity: Record<ProviderStatus, number> = {
   unsupported: 5,
 };
 
+// The runtime already validates provider contracts. Keep the projection fail-closed
+// if an inconsistent or previously invalidated snapshot reaches Home anyway:
+// never promote a stale envelope under a superficially ready outer result.
+function readyEnvelope(result: ProviderResult) {
+  const envelope = result.envelope;
+  return result.status === 'ready' &&
+    envelope?.status === 'ready' &&
+    envelope.providerId === result.providerId &&
+    envelope.operation === result.operation &&
+    envelope.data ? envelope : null;
+}
+
 function continueHref(providerId: ProviderId, item: ContinueItem): string | null {
   if (providerId === 'library') return libraryContinueUrl(item);
   if (providerId === 'tms60') {
@@ -75,8 +87,8 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   const summaryResults = results.filter((result) => result.operation === 'summary');
 
   const continueItems = continueResults.flatMap((result) => {
-    const envelope = result.envelope;
-    if (result.status !== 'ready' || !envelope || !envelope.data) return [];
+    const envelope = readyEnvelope(result);
+    if (!envelope) return [];
     return envelope.data.items.map((item) => ({ providerId: result.providerId, item }));
   });
 
@@ -98,8 +110,8 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
 
   const now: PrismNowItem[] = [];
   for (const result of summaryResults) {
-    const envelope = result.envelope;
-    if (result.providerId !== 'tms60' || result.status !== 'ready' || !envelope || !envelope.data) continue;
+    const envelope = readyEnvelope(result);
+    if (result.providerId !== 'tms60' || !envelope) continue;
 
     const due = envelope.data.dueTaskCount ?? 0;
     if (due > 0) {
@@ -118,16 +130,23 @@ export function buildPrismProviderHomeView(results: readonly ProviderResult[]): 
   }
 
   now.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
-  const studyResult = summaryResults.find(result => result.providerId === 'tms60' && ['ready', 'empty'].includes(result.status) && result.envelope?.data);
+  const studyResult = summaryResults.find(result =>
+    result.providerId === 'tms60' &&
+    (result.status === 'ready' || result.status === 'empty') &&
+    result.envelope?.status === result.status &&
+    result.envelope?.providerId === result.providerId &&
+    result.envelope?.operation === result.operation &&
+    result.envelope?.data,
+  );
   const studyData = studyResult?.envelope?.data;
   const studyHref = providerAction('tms60', 'open');
   const study = studyData && studyHref ? { providerId: 'tms60' as const,
     dueTaskCount: studyData.dueTaskCount ?? 0, dueVerseCount: studyData.dueVerseCount ?? 0,
     newVerseCount: studyData.newVerseCount ?? 0, href: studyHref } : null;
-  const recent = summaryResults.flatMap(result => result.status === 'ready' ? (result.envelope?.data?.items ?? []).flatMap(item => {
+  const recent = summaryResults.flatMap(result => (readyEnvelope(result)?.data?.items ?? []).flatMap(item => {
     const href = continueHref(result.providerId, item);
     return href ? [{ providerId: result.providerId, title: item.title, updatedAt: item.updatedAt, href }] : [];
-  }) : []).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
+  })).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 5);
   const availability = deriveDailyHomeAvailability(results, {
     continue: Boolean(best),
     now: now.length > 0,
