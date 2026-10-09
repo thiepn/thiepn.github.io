@@ -113,6 +113,47 @@ describe('H4 provider-aware Daily Home availability', () => {
     });
   });
 
+  it('rejects mismatched envelope ownership, operation and invalidated ready status', () => {
+    const notes = privateResult('notes', 'summary', 'Sensitive notes title');
+    const invalidatedNotes: ProviderResult = {
+      ...notes, envelope: { ...notes.envelope!, status: 'stale' },
+    };
+    const library = privateResult('library', 'continue', 'Wrong provider book');
+    const crossedProvider: ProviderResult = {
+      ...library, providerId: 'notes',
+    };
+    const continuation = privateResult('notes', 'continue', 'Wrong operation note');
+    const crossedOperation: ProviderResult = {
+      ...continuation, envelope: { ...continuation.envelope!, operation: 'summary' },
+    };
+    const invalidStudy: ProviderResult = {
+      ...notes, providerId: 'tms60', envelope: { ...notes.envelope!, status: 'empty' },
+    };
+    const view = buildPrismProviderHomeView([
+      invalidatedNotes, crossedProvider, crossedOperation, invalidStudy,
+    ]);
+    expect(view.continue.title).toBeNull();
+    expect(view.continue.href).toBeNull();
+    expect(view.recent).toEqual([]);
+    expect(view.now).toEqual([]);
+    expect(view.study).toBeNull();
+    expect(JSON.stringify(view)).not.toMatch(/Sensitive notes title|Wrong provider book|Wrong operation note/);
+  });
+
+  it('preserves a valid provider when another result has an inconsistent header', () => {
+    const wrong = privateResult('notes', 'continue', 'Untrusted note');
+    const valid = privateResult('library', 'continue', 'Trusted reading');
+    const view = buildPrismProviderHomeView([
+      { ...wrong, envelope: { ...wrong.envelope!, providerId: 'library' } },
+      valid,
+    ]);
+    expect(view.continue).toMatchObject({
+      providerId: 'library', state: 'ready', title: 'Trusted reading',
+      href: '/library/hub/continue?resource=book-1&edition=1&release=release-1',
+    });
+    expect(JSON.stringify(view)).not.toContain('Untrusted note');
+  });
+
   it('loses all activity after revocation and owner session clearing', () => {
     const shared = buildPrismProviderHomeView([privateResult('notes', 'continue', 'Owner note')]);
     expect(shared.continue.title).toBe('Owner note');
