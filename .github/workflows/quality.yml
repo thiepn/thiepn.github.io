@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: H6 recorded-evidence audit and nondeploying release rehearsal
+        run: node scripts/h6-release-rehearsal.mjs --rehearse
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
@@ -41,5 +43,6 @@ jobs:
             playwright-report/
             test-results/
             .cache/hub-release-qualification.json
+            .cache/prism-h6/nondeploy-rehearsal.json
           retention-days: 7
           include-hidden-files: true
