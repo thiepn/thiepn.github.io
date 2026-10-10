@@ -1,46 +1,75 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Exact qualified main SHA (40 lowercase hex characters)"
+        required: true
+        type: string
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
 concurrency:
   group: pages-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build:
+  authorize:
+    name: Authorize exact-main release
+    if: github.ref == 'refs/heads/main' && github.actor == 'thiepn' && github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout exact requested main commit
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Verify owner, exact main SHA and successful push Quality
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HUB_RELEASE_EXPECTED_SHA: ${{ inputs.release_sha }}
+        run: node scripts/authorize-pages-release.mjs
+
+  build:
+    needs: authorize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact authorized release
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+
+      - name: Set up Node for release revalidation
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Revalidate exact main and CI before build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HUB_RELEASE_EXPECTED_SHA: ${{ inputs.release_sha }}
+        run: node scripts/authorize-pages-release.mjs
 
       - name: Validate production source invariants
         run: node scripts/validate-phase15.mjs
 
-      - name: Inspect and migrate Pages publishing mode
-        shell: bash
+      - name: Verify existing Pages workflow publishing (read-only)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -u
-          mode="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type // "legacy"' 2>/dev/null || echo unknown)"
-          echo "GitHub Pages publishing mode: ${mode}"
-          if [ "${mode}" != "workflow" ] && [ "${mode}" != "unknown" ]; then
-            if gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow >/dev/null 2>&1; then
-              echo "Switched GitHub Pages publishing mode to workflow."
-            else
-              echo "::warning::GitHub Pages is still configured for branch/Jekyll publishing. The repository token cannot change that admin setting. In Settings → Pages → Build and deployment, set Source to GitHub Actions. This Astro workflow remains the authoritative deployment path."
-            fi
-          elif [ "${mode}" = "unknown" ]; then
-            echo "::warning::Could not read GitHub Pages publishing mode; continuing with the authoritative Astro deployment workflow."
-          fi
+          set -euo pipefail
+          mode="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type // "legacy"')"
+          test "$mode" = workflow || { echo "::error::GitHub Pages publishing must already use GitHub Actions."; exit 1; }
 
       - name: Install, enrich, build, and upload Astro site
         uses: withastro/action@v6
@@ -67,11 +96,29 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main' && github.actor == 'thiepn' && github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout exact authorized source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+
+      - name: Set up Node for final release check
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Revalidate main and Quality immediately before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HUB_RELEASE_EXPECTED_SHA: ${{ inputs.release_sha }}
+        run: node scripts/authorize-pages-release.mjs
+
       - name: Deploy Astro artifact to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
@@ -83,6 +130,9 @@ jobs:
     steps:
       - name: Checkout deployed source
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
