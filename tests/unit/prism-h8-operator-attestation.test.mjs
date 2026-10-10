@@ -77,6 +77,8 @@ describe('H8 independent cryptographic evidence intake',()=>{
       {observedAt:'2026-08-10T07:00:00.000Z'},
       {expiresAt:'2026-10-10T07:00:00.000Z'},
       {expiresAt:'2026-11-10T07:00:00.000Z'},
+      {observedAt:'2026-02-30T07:00:00.000Z'},
+      {observedAt:'2026-10-10T24:00:00.000Z'},
     ];
     for(const update of values){const p=payload(update);expect(evaluate(fixture(receipt(p))).valid).toBe(false);}
   });
