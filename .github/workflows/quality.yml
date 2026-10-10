@@ -30,6 +30,8 @@ jobs:
         run: node scripts/h10-release-reconciliation.mjs --rehearse
       - name: H11 external witness, original rights and prior-stable restore NO-GO
         run: node scripts/h11-external-witness-intake.mjs --rehearse
+      - name: H12 independently pinned multi-party precutover and rollback default-denial
+        run: node scripts/h12-precutover-reconciliation.mjs --rehearse
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
@@ -59,5 +61,6 @@ jobs:
             .cache/prism-h9/custody-acceptance-no-go.json
             .cache/prism-h10/release-readiness-no-go.json
             .cache/prism-h11/external-witness-no-go.json
+            .cache/prism-h12/multiparty-precutover-no-go.json
           retention-days: 7
           include-hidden-files: true
