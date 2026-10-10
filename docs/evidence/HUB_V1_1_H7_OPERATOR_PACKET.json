@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "mode": "independent-operator-review-preparation",
+  "predecessors": [
+    {
+      "phase": "H3",
+      "pr": 98,
+      "head": "b67a9590a5cf01c144caf00ac7f98c6c07642ef9"
+    },
+    {
+      "phase": "H4",
+      "pr": 97,
+      "head": "10d964fcd232f604110aa4105bd397923ff9e57e"
+    },
+    {
+      "phase": "H5",
+      "pr": 99,
+      "head": "501b91bd742da3e7014fc4bba304edf77764b6d5"
+    }
+  ],
+  "qualifiedH6": {
+    "pr": 100,
+    "head": "0001e2ace97b965f8142751d2c025b90e77df2eb",
+    "base": "501b91bd742da3e7014fc4bba304edf77764b6d5",
+    "testedPrMergeTree": "2b3d9deb589d47e4e9dfa817f46c1b38e0784513",
+    "checks": [
+      {
+        "name": "Quality",
+        "runId": 38007120521,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120521"
+      },
+      {
+        "name": "Hub Account integration",
+        "runId": 38007120456,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120456"
+      },
+      {
+        "name": "Hub device Library browsers",
+        "runId": 38007120516,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120516"
+      },
+      {
+        "name": "Hub Notes Inbox browsers",
+        "runId": 38007120512,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120512"
+      },
+      {
+        "name": "Hub Notes capture browsers",
+        "runId": 38007120451,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120451"
+      },
+      {
+        "name": "Hub managed Notes browsers",
+        "runId": 38007120599,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120599"
+      },
+      {
+        "name": "Hub managed TMS60 browsers",
+        "runId": 38007120448,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120448"
+      },
+      {
+        "name": "Hub Notes integration",
+        "runId": 38007120548,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38007120548"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "studio-certification",
+        "id": 11651539301,
+        "runId": 38007120521,
+        "reportedArchiveDigest": "04046786a026846af54d38297d59ef37ef811b3bd7cc7f5bd78f69c40f747a93",
+        "independentlyRechecked": true,
+        "archiveZipCrcValid": true,
+        "rehearsalPublishAllowed": false,
+        "rehearsalRollbackExecuted": false
+      }
+    ]
+  },
+  "operatorGates": [
+    {
+      "id": "two-owner-oauth-consent",
+      "scope": "Real, independent owner A/B OAuth, privacy boundaries and revoked grants",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "physical-android-ios",
+      "scope": "Physical Android Chrome/Samsung Internet and iPad/iOS Safari recovery",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "screen-reader-keyboard",
+      "scope": "Human TalkBack/VoiceOver, focus sequence and keyboard evaluation",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "device-local-reconsent",
+      "scope": "Real device owner-issued Library consent, revocation and restore",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "security-review",
+      "scope": "Independent security/privacy and provider-chain verification",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "prism-visual-owner",
+      "scope": "Human locked-Prism reference, responsive and DPR visual signoff",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    },
+    {
+      "id": "release-owner-authorization",
+      "scope": "Named release-owner written go/no-go authorization",
+      "status": "OPEN",
+      "reviewer": null,
+      "observedAt": null,
+      "proof": null,
+      "observation": null
+    }
+  ],
+  "realWorldSignoff": "NOT_COLLECTED",
+  "releaseDecision": "NO_GO",
+  "publicationAllowed": false,
+  "mergeAllowed": false,
+  "migrationAllowed": false,
+  "rollbackExecuted": false,
+  "releaseAuthorization": false,
+  "operatorChallenge": null,
+  "approvalSignatures": [],
+  "h7ExactHead": null
+}
