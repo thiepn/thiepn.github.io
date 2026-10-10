@@ -24,10 +24,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.actor == 'thiepn' && github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact requested main commit
+      - name: Checkout the dispatch SHA (never unverified user input)
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Set up Node
         uses: actions/setup-node@v6
