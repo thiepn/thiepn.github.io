@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "phase": "H13",
+  "qualifiedH12": {
+    "pr": 107,
+    "head": "92948683834e1f03d6f8ff2bf390bd62603305b1",
+    "base": "8434f4143894c8b693f858375eb31d0770b6d5e1",
+    "testedMerge": "9d710f6bb534a537c3910f273996a10962d88246",
+    "checks": [
+      {
+        "name": "Quality",
+        "runId": 38066420751,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420751"
+      },
+      {
+        "name": "Hub Account integration",
+        "runId": 38066420754,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420754"
+      },
+      {
+        "name": "Hub device Library browsers",
+        "runId": 38066420798,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420798"
+      },
+      {
+        "name": "Hub Notes integration",
+        "runId": 38066420734,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420734"
+      },
+      {
+        "name": "Hub Notes capture browsers",
+        "runId": 38066420742,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420742"
+      },
+      {
+        "name": "Hub Notes Inbox browsers",
+        "runId": 38066420747,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420747"
+      },
+      {
+        "name": "Hub managed Notes browsers",
+        "runId": 38066420756,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420756"
+      },
+      {
+        "name": "Hub managed TMS60 browsers",
+        "runId": 38066420738,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38066420738"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "studio-certification",
+        "id": 11674184694,
+        "runId": 38066420751,
+        "sha256": "ca63a0398429e30ea3c9e2c73138a73a6a964da0d59ed9d3033e0e71b28bc680",
+        "entryCount": 52,
+        "crcVerified": true
+      },
+      {
+        "name": "hub-notes-contract-evidence",
+        "id": 11674958928,
+        "runId": 38066420734,
+        "sha256": "eb7a4936d3a0a94426be5c580e527d4e090d98cd12dbebdcd7ad8799da41afb3",
+        "entryCount": 1,
+        "crcVerified": true
+      }
+    ]
+  },
+  "externalTrustRoot": "UNCONFIGURED",
+  "externalReviewers": [],
+  "witnessReceipts": [],
+  "signerEpochs": [],
+  "revocationLedger": [],
+  "replayLedger": [],
+  "rightsObjects": [],
+  "physicalObservations": [],
+  "restorationPackets": [],
+  "releaseOwnerDecisions": [],
+  "rollbackOwnerDecisions": [],
+  "provenance": [
+    {
+      "domain": "original-source-objects",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "content-rights-and-licenses",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "cdn-cache-and-rollback",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "pwa-service-worker-provenance",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "offline-data-recovery",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "physical-device-observations",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    },
+    {
+      "domain": "assistive-technology-observations",
+      "status": "UNVERIFIED",
+      "proofDigest": null
+    }
+  ],
+  "humanGates": [
+    {
+      "id": "two-owner-oauth-consent",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "physical-android-ios",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "screen-reader-keyboard",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "device-local-reconsent",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "security-review",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "prism-visual-owner",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    },
+    {
+      "id": "release-owner-authorization",
+      "status": "OPEN",
+      "reviewer": null,
+      "receiptDigest": null
+    }
+  ],
+  "decisions": {
+    "precutover": "NO_GO",
+    "postrelease": "NOT_REQUESTED",
+    "publish": false,
+    "deploy": false,
+    "merge": false,
+    "migrate": false,
+    "purge": false,
+    "rollbackExecuted": false
+  }
+}
