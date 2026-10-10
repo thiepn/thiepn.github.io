@@ -10,7 +10,8 @@ import {
 } from '../lib/prism/home-store';
 import { createDefaultHomeDocument, type HomeDocumentV2 } from '../lib/prism/home-document';
 import { setActiveHomeStore } from '../lib/prism/home-runtime';
-import { createIndexedHomePersistence, type DurableHomePersistence } from '../lib/prism/home-indexeddb';
+import { createIndexedHomePersistence, type DurableHomePersistence, type PendingHomeEdit } from '../lib/prism/home-indexeddb';
+import { describeLocalHomeSync } from '../lib/prism/home-sync-preflight';
 import { isThemePreference, THEME_STORAGE_KEY } from '../lib/theme';
 
 interface PrismAppManifestItem {
@@ -52,18 +53,31 @@ if (root) {
   let unsubscribeDurable: (() => void) | null = null;
   let durablePersistence: DurableHomePersistence | null = null;
   let currentDocument = createDefaultHomeDocument();
+  let syncIdentity: HubIdentity = { status: 'checking' };
+  const syncStatusNode = document.querySelector<HTMLElement>('[data-prism-home-sync-status]');
+
+  function showLocalSync(pending: readonly PendingHomeEdit[] | null, storage: 'indexeddb' | 'legacy-only' | 'error' | 'loading') {
+    const status = describeLocalHomeSync(syncIdentity.status, pending, storage);
+    if (syncStatusNode) syncStatusNode.textContent = status.message;
+    homeRoot.dataset.prismCloudVerified = 'false';
+  }
 
   function updateLocalSyncStatus(active: DurableHomePersistence | null) {
     if (!active) {
-      homeRoot.dataset.prismSync = 'legacy-local-only';
+      homeRoot.dataset.prismSync = homeRoot.dataset.prismStorage === 'error' ? 'local-unavailable' : 'legacy-local-only';
+      showLocalSync(null, homeRoot.dataset.prismStorage === 'error' ? 'error' : 'legacy-only');
       return;
     }
     void active.getPending().then(pending => {
       if (active === durablePersistence) {
         homeRoot.dataset.prismSync = pending.length ? 'local-pending-no-server' : 'local-only';
+        showLocalSync(pending, 'indexeddb');
       }
     }).catch(() => {
-      if (active === durablePersistence) homeRoot.dataset.prismSync = 'local-unavailable';
+      if (active === durablePersistence) {
+        homeRoot.dataset.prismSync = 'local-unavailable';
+        showLocalSync(null, 'error');
+      }
     });
   }
 
@@ -198,11 +212,15 @@ if (root) {
   async function loadIdentity(identity: HubIdentity) {
     const current = ++generation;
     detachStore();
-    // Remove the previous owner's customization before any asynchronous IndexedDB read.
+    // Remove the previous owner's customization and pending counts before asynchronous reads.
+    syncIdentity = { status: 'checking' };
+    showLocalSync(null, 'loading');
     applyDocument(createDefaultHomeDocument(), 'identity-transition');
     homeRoot.dataset.prismSync = 'local-unavailable';
 
     if (identity.status === 'checking' || identity.status === 'unavailable') {
+      syncIdentity = identity;
+      showLocalSync(null, 'loading');
       applyDocument(createDefaultHomeDocument(), identity.status);
       return;
     }
@@ -236,6 +254,7 @@ if (root) {
 
       const nextStore = new HomeStore(boot.document, persistence);
       durablePersistence = candidateDurable;
+      syncIdentity = identity;
       attachStore(nextStore, boot.source);
       if (candidateDurable) {
         unsubscribeDurable = candidateDurable.subscribe(() => {
@@ -263,6 +282,8 @@ if (root) {
       detachStore();
       applyDocument(createDefaultHomeDocument(), 'storage-error');
       homeRoot.dataset.prismStorage = 'error';
+      syncIdentity = identity;
+      updateLocalSyncStatus(null);
     }
   }
 
