@@ -37,7 +37,7 @@ Six existing workflows can push generated assets back to main or the triggering 
 - .github/workflows/og-assets.yml
 - .github/workflows/refresh-generated.yml
 
-These are not modified in M3. Before enabling strict rules, migrate bot changes to reviewable PR branches or upload-only artifacts. Do not bypass protection for the automation token.
+The media-capture workflow is changed only to remove its automatic production dispatch after committing generated media, and no longer needs actions:write. Its ordinary main-writing behavior remains. The other five writers are unchanged. Before enabling strict rules, migrate bot changes to reviewable PR branches or upload-only artifacts. Do not bypass protection for the automation token.
 
 ## Safe acceptance
 
