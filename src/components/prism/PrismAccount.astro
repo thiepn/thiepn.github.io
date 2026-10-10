@@ -91,6 +91,14 @@ const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.
       )}
     </section>
 
+    <section class="prism-account-dialog__connections" aria-labelledby="prism-home-recovery-title">
+      <div>
+        <p class="prism-account-dialog__eyebrow">Layout &amp; recovery</p>
+        <h3 id="prism-home-recovery-title">Home layout</h3>
+      </div>
+      <p data-prism-home-sync-status role="status" aria-live="polite" aria-atomic="true">Checking local Home storage. Cross-device Home sync is not enabled.</p>
+    </section>
+
     <button type="button" class="prism-account-dialog__customize" data-prism-customize-open disabled>Customize Home</button>
     <p class="prism-account-dialog__meta">Hub uses your verified THIEPN Account session. Library access is device-local and clears with this tab session. App data remains subject to each provider's permissions.</p>
   </div>
