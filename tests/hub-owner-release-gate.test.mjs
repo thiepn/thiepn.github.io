@@ -97,6 +97,8 @@ test('release YAML requires manual dispatch, exact-main approval and does not mu
   assert.match(config.jobs.authorize.if, /triggering_actor/);
   assert.match(source, /actions\/deploy-pages@v5/);
   assert.doesNotMatch(source, /gh api --method PUT|git push|vercel deploy/);
+  const capture = readFileSync(new URL('../.github/workflows/capture-hub-media.yml', import.meta.url), 'utf8');
+  assert.doesNotMatch(capture, /gh workflow run deploy\.yml/, 'generated media must never auto-dispatch Pages');
   const steps = config.jobs.deploy.steps;
   const guard = steps.findIndex(s => s.run === 'node scripts/authorize-pages-release.mjs');
   const publish = steps.findIndex(s => s.uses === 'actions/deploy-pages@v5');
