@@ -80,7 +80,10 @@
         "id": 11651539301,
         "runId": 38007120521,
         "reportedArchiveDigest": "04046786a026846af54d38297d59ef37ef811b3bd7cc7f5bd78f69c40f747a93",
-        "independentlyRechecked": false
+        "independentlyRechecked": true,
+        "archiveZipCrcValid": true,
+        "rehearsalPublishAllowed": false,
+        "rehearsalRollbackExecuted": false
       }
     ]
   },
