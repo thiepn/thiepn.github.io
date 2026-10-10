@@ -36,6 +36,8 @@ jobs:
         run: node scripts/h13-external-acceptance.mjs --rehearse
       - name: H14 independently witnessed source rights/recovery and owner release NO-GO
         run: node scripts/h14-independent-evidence.mjs --rehearse
+      - name: H15 original physical evidence intake and conflict-escrow NO-GO
+        run: node scripts/h15-external-intake.mjs --rehearse
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
@@ -68,5 +70,6 @@ jobs:
             .cache/prism-h12/multiparty-precutover-no-go.json
             .cache/prism-h13/external-acceptance-no-go.json
             .cache/prism-h14/independent-evidence-no-go.json
+            .cache/prism-h15/external-intake-no-go.json
           retention-days: 7
           include-hidden-files: true
