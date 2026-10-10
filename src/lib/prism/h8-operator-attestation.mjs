@@ -18,7 +18,14 @@ const KEY_ID=/^[a-z0-9][a-z0-9._-]{3,63}$/;
 const SAFE_NONCE=/^[A-Za-z0-9_-]{24,128}$/;
 const EXACT_PAYLOAD=['schemaVersion','gateId','subjectHead','keyId','evidenceDigest','observedAt','expiresAt','nonce'];
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
-const date=x=>typeof x==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(Date.parse(x)).toISOString()===new Date(x).toISOString();
+const date=x=>{
+  if(typeof x!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(x))return false;
+  const parsed=Date.parse(x);
+  if(!Number.isFinite(parsed))return false;
+  // Reject impossible dates and the JS Date rollover of 24:00 or Feb 30.
+  const canonical=x.includes('.')?x:x.slice(0,-1)+'.000Z';
+  return new Date(parsed).toISOString()===canonical;
+};
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const exact=(input,keys)=>plain(input)&&Object.keys(input).length===keys.length&&keys.every(k=>Object.hasOwn(input,k));
 export const canonicalAttestationPayload=value=>JSON.stringify(Object.fromEntries(EXACT_PAYLOAD.map(k=>[k,value[k]])));
