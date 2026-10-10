@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "qualifyingParentHead": "55a2aa4ff3e41971e4bdf538f33be174a87466f1",
+  "trustRoot": "UNCONFIGURED",
+  "keys": [],
+  "revokedKeyIds": [],
+  "receipts": [],
+  "usedNonceDigests": [],
+  "gateStates": [
+    {
+      "id": "two-owner-oauth-consent",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "physical-android-ios",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "screen-reader-keyboard",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "device-local-reconsent",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "security-review",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "prism-visual-owner",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    },
+    {
+      "id": "release-owner-authorization",
+      "status": "OPEN",
+      "reviewedBy": null,
+      "proofDigest": null
+    }
+  ],
+  "signedReviewsCollected": 0,
+  "releaseDecision": "NO_GO",
+  "publicationAllowed": false,
+  "mergeAllowed": false,
+  "deployAllowed": false,
+  "rollbackExecuted": false,
+  "operatorTrustRootApproved": false
+}
