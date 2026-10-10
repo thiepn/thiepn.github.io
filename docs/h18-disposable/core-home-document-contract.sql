@@ -13,7 +13,7 @@ grant usage on schema hub_h18_private to authenticated;
 create or replace function hub_h18_private.h19_home_structure_valid(p_doc jsonb)
 returns boolean language plpgsql immutable security invoker
 set search_path = pg_catalog
-as $
+as $h20$
 declare
   k text;
   v jsonb;
@@ -28,6 +28,10 @@ declare
   seen_places text[];
   seen_sections text[];
   col_limit integer;
+  expected_width integer;
+  expected_height integer;
+  previous_placements jsonb[];
+  prior_rect jsonb;
 begin
   if jsonb_typeof(p_doc) is distinct from 'object'
     or p_doc->'schemaVersion' is distinct from '2'::jsonb
@@ -114,6 +118,7 @@ begin
     end loop;
     col_limit := case bp when 'desktop' then 12 when 'tablet' then 8 else 4 end;
     seen_places := array[]::text[];
+    previous_placements := array[]::jsonb[];
     for entry in select value from jsonb_array_elements(layout_obj->'placements') loop
       if jsonb_typeof(entry) is distinct from 'object'
         or jsonb_typeof(entry->'blockId') is distinct from 'string'
@@ -140,6 +145,63 @@ begin
         or (entry->>'w')::numeric < 1 or (entry->>'h')::numeric < 1
         or (entry->>'x')::numeric + (entry->>'w')::numeric > col_limit
       then return false; end if;
+      -- Locked Prism block registry exact size/span table, source-custody only.
+      -- Not a generated migration: require authorized PostgreSQL acceptance.
+      select candidate.w, candidate.h into expected_width, expected_height
+      from (values
+      ('continue','m','desktop',4,1),
+      ('continue','m','tablet',4,1),
+      ('continue','m','mobile',4,1),
+      ('continue','l','desktop',8,1),
+      ('continue','l','tablet',5,1),
+      ('continue','l','mobile',4,1),
+      ('continue','xl','desktop',12,1),
+      ('continue','xl','tablet',8,1),
+      ('continue','xl','mobile',4,1),
+      ('now','s','desktop',3,1),
+      ('now','s','tablet',2,1),
+      ('now','s','mobile',4,1),
+      ('now','m','desktop',4,1),
+      ('now','m','tablet',3,1),
+      ('now','m','mobile',4,1),
+      ('apps','l','desktop',8,1),
+      ('apps','l','tablet',6,1),
+      ('apps','l','mobile',4,1),
+      ('apps','xl','desktop',12,1),
+      ('apps','xl','tablet',8,1),
+      ('apps','xl','mobile',4,1),
+      ('study','m','desktop',5,1),
+      ('study','m','tablet',4,1),
+      ('study','m','mobile',4,1),
+      ('study','l','desktop',7,1),
+      ('study','l','tablet',5,1),
+      ('study','l','mobile',4,1),
+      ('recent','m','desktop',5,1),
+      ('recent','m','tablet',3,1),
+      ('recent','m','mobile',4,1),
+      ('recent','l','desktop',7,1),
+      ('recent','l','tablet',5,1),
+      ('recent','l','mobile',4,1)
+      ) as candidate(block_type,block_size,breakpoint,w,h)
+      where candidate.block_type = p_doc->'blocks'->block_id->>'type'
+        and candidate.block_size = entry->>'size'
+        and candidate.breakpoint = bp;
+      if not found or expected_width is null or expected_height is null
+        or (entry->>'w')::integer <> expected_width
+        or (entry->>'h')::integer <> expected_height
+      then return false; end if;
+
+      -- Rectangles in separate sections are independent; intersections inside
+      -- the same section must fail exactly as boxesOverlap() in HomeDocumentV2.
+      foreach prior_rect in array previous_placements loop
+        if prior_rect->>'sectionId' = section_id
+          and (prior_rect->>'x')::numeric < (entry->>'x')::numeric + (entry->>'w')::numeric
+          and (entry->>'x')::numeric < (prior_rect->>'x')::numeric + (prior_rect->>'w')::numeric
+          and (prior_rect->>'y')::numeric < (entry->>'y')::numeric + (entry->>'h')::numeric
+          and (entry->>'y')::numeric < (prior_rect->>'y')::numeric + (prior_rect->>'h')::numeric
+        then return false; end if;
+      end loop;
+      previous_placements := array_append(previous_placements,entry);
     end loop;
     if coalesce(array_length(seen_places,1),0) is distinct from
        (select count(*)::integer from jsonb_each(p_doc->'blocks'))
@@ -149,7 +211,7 @@ begin
 exception when others then
   -- Unexpected JSON shape / numeric cast must deny, never allow.
   return false;
-end $;
+end $h20$;
 revoke all on function hub_h18_private.h19_home_structure_valid(jsonb) from public, anon;
 grant execute on function hub_h18_private.h19_home_structure_valid(jsonb) to authenticated;
 
