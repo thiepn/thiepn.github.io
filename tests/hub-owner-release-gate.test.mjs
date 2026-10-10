@@ -89,6 +89,7 @@ test('release YAML requires manual dispatch, exact-main approval and does not mu
   const source = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
   const config = YAML.parse(source);
   assert.deepEqual(Object.keys(config.on), ['workflow_dispatch']);
+  assert.equal(config.jobs.authorize.steps[0].with.ref, '${{ github.sha }}', 'untrusted SHA input must not be checked out before validation');
   assert.equal(config.jobs.build.needs, 'authorize');
   assert.equal(config.jobs.deploy.needs, 'build');
   assert.equal(config.jobs.deploy.environment.name, 'github-pages');
