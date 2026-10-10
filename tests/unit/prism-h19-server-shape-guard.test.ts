@@ -6,10 +6,12 @@ import { createDefaultHomeDocument, validateHomeDocument } from '../../src/lib/p
 // top-level keys, regardless of the types, references or deeper shape. These
 // are SOURCE-LEVEL guards; they cannot replace real disposable Postgres tests.
 const sql = readFileSync('docs/h18-disposable/core-home-document-contract.sql','utf8');
-const originalH18Guard = (input:Record<string,unknown>):boolean=>
-  input.schemaVersion === 2 &&
-  ['pages','sections','blocks','layouts','appearance','preferences']
-    .every(key=>Object.hasOwn(input,key));
+const originalH18Guard = (input:object):boolean=>{
+  const record=input as Record<string,unknown>;
+  return record.schemaVersion === 2 &&
+    ['pages','sections','blocks','layouts','appearance','preferences']
+      .every(key=>Object.hasOwn(record,key));
+};
 const baseline = () => structuredClone(createDefaultHomeDocument());
 describe('H19 demonstrated H18 server-validation bypass', () => {
   it('shows old minimum admits null pages while actual HomeDocumentV2 does not', () => {
