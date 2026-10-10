@@ -13,7 +13,7 @@ grant usage on schema hub_h18_private to authenticated;
 create or replace function hub_h18_private.h19_home_structure_valid(p_doc jsonb)
 returns boolean language plpgsql immutable security invoker
 set search_path = pg_catalog
-as $
+as $h20$
 declare
   k text;
   v jsonb;
@@ -211,7 +211,7 @@ begin
 exception when others then
   -- Unexpected JSON shape / numeric cast must deny, never allow.
   return false;
-end $;
+end $h20$;
 revoke all on function hub_h18_private.h19_home_structure_valid(jsonb) from public, anon;
 grant execute on function hub_h18_private.h19_home_structure_valid(jsonb) to authenticated;
 
