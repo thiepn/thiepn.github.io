@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "intent": "nondeploying-release-rehearsal",
+  "provenance": "read-only GitHub Actions jobs, logs and available artifacts inspected before H6 branch",
+  "parents": [
+    {
+      "phase": "H3",
+      "pr": 98,
+      "head": "b67a9590a5cf01c144caf00ac7f98c6c07642ef9",
+      "checks": [
+        {
+          "name": "Quality",
+          "runId": 37998329510,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329510"
+        },
+        {
+          "name": "Hub Account integration",
+          "runId": 37998329395,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329395"
+        },
+        {
+          "name": "Hub device Library browsers",
+          "runId": 37998329335,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329335"
+        },
+        {
+          "name": "Hub Notes Inbox browsers",
+          "runId": 37998329246,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329246"
+        },
+        {
+          "name": "Hub Notes capture browsers",
+          "runId": 37998329266,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329266"
+        },
+        {
+          "name": "Hub managed Notes browsers",
+          "runId": 37998329410,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329410"
+        },
+        {
+          "name": "Hub managed TMS60 browsers",
+          "runId": 37998329273,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329273"
+        },
+        {
+          "name": "Hub Notes integration",
+          "runId": 37998329245,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329245"
+        }
+      ],
+      "artifacts": [
+        {
+          "runId": 37998329510,
+          "id": 11648765383,
+          "name": "studio-certification",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329510"
+        },
+        {
+          "runId": 37998329245,
+          "id": 11648540751,
+          "name": "hub-notes-contract-evidence",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/37998329245"
+        }
+      ]
+    },
+    {
+      "phase": "H4",
+      "pr": 97,
+      "head": "10d964fcd232f604110aa4105bd397923ff9e57e",
+      "checks": [
+        {
+          "name": "Quality",
+          "runId": 38000467101,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467101"
+        },
+        {
+          "name": "Hub Account integration",
+          "runId": 38000467150,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467150"
+        },
+        {
+          "name": "Hub device Library browsers",
+          "runId": 38000467240,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467240"
+        },
+        {
+          "name": "Hub Notes Inbox browsers",
+          "runId": 38000467177,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467177"
+        },
+        {
+          "name": "Hub Notes capture browsers",
+          "runId": 38000467092,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467092"
+        },
+        {
+          "name": "Hub managed Notes browsers",
+          "runId": 38000467176,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467176"
+        },
+        {
+          "name": "Hub managed TMS60 browsers",
+          "runId": 38000467157,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467157"
+        },
+        {
+          "name": "Hub Notes integration",
+          "runId": 38000467249,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467249"
+        }
+      ],
+      "artifacts": [
+        {
+          "runId": 38000467101,
+          "id": 11648778460,
+          "name": "studio-certification",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467101"
+        },
+        {
+          "runId": 38000467249,
+          "id": 11648851794,
+          "name": "hub-notes-contract-evidence",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38000467249"
+        }
+      ]
+    },
+    {
+      "phase": "H5",
+      "pr": 99,
+      "head": "501b91bd742da3e7014fc4bba304edf77764b6d5",
+      "checks": [
+        {
+          "name": "Quality",
+          "runId": 38002555366,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555366"
+        },
+        {
+          "name": "Hub Account integration",
+          "runId": 38002555320,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555320"
+        },
+        {
+          "name": "Hub device Library browsers",
+          "runId": 38002555400,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555400"
+        },
+        {
+          "name": "Hub Notes Inbox browsers",
+          "runId": 38002555306,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555306"
+        },
+        {
+          "name": "Hub Notes capture browsers",
+          "runId": 38002555468,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555468"
+        },
+        {
+          "name": "Hub managed Notes browsers",
+          "runId": 38002555313,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555313"
+        },
+        {
+          "name": "Hub managed TMS60 browsers",
+          "runId": 38002555411,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555411"
+        },
+        {
+          "name": "Hub Notes integration",
+          "runId": 38002555374,
+          "conclusion": "success",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555374"
+        }
+      ],
+      "artifacts": [
+        {
+          "runId": 38002555366,
+          "id": 11650326047,
+          "name": "studio-certification",
+          "sha256": "e4da781d3950eebc945eca11fbeeb84d20ba1e2824031bf4f45e20d5c16f15bb",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555366"
+        },
+        {
+          "runId": 38002555374,
+          "id": 11649508062,
+          "name": "hub-notes-contract-evidence",
+          "sha256": "f2f9a4a0f3e34f5ad485319024ae2ba8bd9ec2ca651a55c5ded2e86d3b29ee5b",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38002555374"
+        }
+      ]
+    }
+  ],
+  "externalGates": [
+    {
+      "id": "real-two-owner-oauth",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "android-ios-physical-devices",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "talkback-voiceover-operator",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "security-privacy-approval",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "locked-prism-visual-signoff",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "release-owner-authorization",
+      "status": "pending",
+      "evidence": null
+    }
+  ],
+  "h6ExactHead": null,
+  "releaseAuthorization": "denied"
+}
