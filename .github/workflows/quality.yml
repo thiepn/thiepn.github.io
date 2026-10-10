@@ -26,6 +26,8 @@ jobs:
         run: node scripts/h8-evidence-intake.mjs --rehearse
       - name: H9 independent custody/provenance and human acceptance NO-GO gate
         run: node scripts/h9-custody-acceptance.mjs --rehearse
+      - name: H10 independent source/rights, signer epochs, accessibility and release NO-GO
+        run: node scripts/h10-release-reconciliation.mjs --rehearse
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
@@ -53,5 +55,6 @@ jobs:
             .cache/prism-h7/operator-no-go.json
             .cache/prism-h8/offline-intake-no-go.json
             .cache/prism-h9/custody-acceptance-no-go.json
+            .cache/prism-h10/release-readiness-no-go.json
           retention-days: 7
           include-hidden-files: true
