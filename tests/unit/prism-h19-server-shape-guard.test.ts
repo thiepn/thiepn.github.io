@@ -67,7 +67,7 @@ describe('H19 SQL contract hardening, static source preflight ONLY', () => {
   it('checks all breakpoints, section and placement refs and integer bounded coordinates',()=>{
     expect(sql).toContain("array['desktop','tablet','mobile']");
     expect(sql).toContain("jsonb_typeof(layout_obj->'placements') is distinct from 'array'");
-    expect(sql).toContain("or not (p_doc->'blocks' ? block_id)");
+    expect(sql).toContain("if not (p_doc->'blocks' ? block_id)");
     expect(sql).toContain("or block_id = any(seen_places)");
     expect(sql).toContain("jsonb_typeof(entry->'x') is distinct from 'number'");
     expect(sql).toContain("(entry->>'x')::numeric % 1 <> 0");
