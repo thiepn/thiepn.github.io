@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "phase": "H11",
+  "parentH10": {
+    "pr": 104,
+    "head": "31f267fca6a3e227b45c34893b0f5532022359d9",
+    "testedPrMergeTree": "e0e9b90bc60f7264a2b01742f0bab486b024a0ca",
+    "checks": [
+      {
+        "name": "Quality",
+        "runId": 38059640861,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640861"
+      },
+      {
+        "name": "Hub Account integration",
+        "runId": 38059640874,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640874"
+      },
+      {
+        "name": "Hub device Library browsers",
+        "runId": 38059640894,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640894"
+      },
+      {
+        "name": "Hub Notes integration",
+        "runId": 38059640864,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640864"
+      },
+      {
+        "name": "Hub Notes capture browsers",
+        "runId": 38059640875,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640875"
+      },
+      {
+        "name": "Hub Notes Inbox browsers",
+        "runId": 38059640857,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640857"
+      },
+      {
+        "name": "Hub managed Notes browsers",
+        "runId": 38059640804,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640804"
+      },
+      {
+        "name": "Hub managed TMS60 browsers",
+        "runId": 38059640877,
+        "conclusion": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38059640877"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "studio-certification",
+        "id": 11672613218,
+        "runId": 38059640861,
+        "sha256": "5ef93274c1b48fec8ae59745fdcfbcd65c06eb72c104985f0523507b4868c82e",
+        "entries": 50,
+        "crcOk": true
+      },
+      {
+        "name": "hub-notes-contract-evidence",
+        "id": 11673235138,
+        "runId": 38059640864,
+        "sha256": "3d452730c9c111435c66d1fe02c0fc1b54f6579071b44c9cb1d75bce6abbd5f5",
+        "entries": 1,
+        "crcOk": true
+      }
+    ]
+  },
+  "trustRoot": "UNCONFIGURED",
+  "operatorKeysRegistered": false,
+  "externalPackets": [],
+  "signerEpochs": [],
+  "revocations": [],
+  "replayLedger": [],
+  "externalReviewers": [],
+  "provenance": [
+    {
+      "domain": "original-source-objects",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "content-rights-and-licenses",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "cdn-cache-and-rollback",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "pwa-service-worker-provenance",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "offline-data-recovery",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "physical-device-observations",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    },
+    {
+      "domain": "assistive-technology-observations",
+      "status": "UNVERIFIED",
+      "sourceSha256": null,
+      "objectSha256": null,
+      "rightsSha256": null,
+      "proofSha256": null
+    }
+  ],
+  "humanGates": [
+    {
+      "gate": "two-owner-oauth-consent",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "physical-android-ios",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "screen-reader-keyboard",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "device-local-reconsent",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "security-review",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "prism-visual-owner",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    },
+    {
+      "gate": "release-owner-authorization",
+      "status": "OPEN",
+      "reviewer": null,
+      "proofSha256": null
+    }
+  ],
+  "decisions": {
+    "release": "NO_GO",
+    "rollback": "NOT_EXECUTED",
+    "merge": false,
+    "deploy": false,
+    "migration": false,
+    "purge": false
+  }
+}
