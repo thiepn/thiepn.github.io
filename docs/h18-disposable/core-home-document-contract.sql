@@ -7,15 +7,159 @@ create schema if not exists hub_h18_private;
 revoke all on schema hub_h18_private from public, anon;
 grant usage on schema hub_h18_private to authenticated;
 
+-- H19: the H18 top-level ?& guard accepted e.g. pages:null and blocks:null.
+-- Validate nested types and object references independently ON THE SERVER;
+-- this is not a deployed approval nor a replacement for exact JS parity.
+create or replace function hub_h18_private.h19_home_structure_valid(p_doc jsonb)
+returns boolean language plpgsql immutable security invoker
+set search_path = pg_catalog
+as $
+declare
+  k text;
+  v jsonb;
+  item jsonb;
+  section_item jsonb;
+  bp text;
+  layout_obj jsonb;
+  entry jsonb;
+  block_id text;
+  section_id text;
+  seen_blocks text[] := array[]::text[];
+  seen_places text[];
+  seen_sections text[];
+  col_limit integer;
+begin
+  if jsonb_typeof(p_doc) is distinct from 'object'
+    or p_doc->'schemaVersion' is distinct from '2'::jsonb
+    or jsonb_typeof(p_doc->'pages') is distinct from 'array'
+    or jsonb_typeof(p_doc->'sections') is distinct from 'object'
+    or jsonb_typeof(p_doc->'blocks') is distinct from 'object'
+    or jsonb_typeof(p_doc->'layouts') is distinct from 'object'
+    or jsonb_typeof(p_doc->'appearance') is distinct from 'object'
+    or jsonb_typeof(p_doc->'preferences') is distinct from 'object'
+  then return false; end if;
+
+  if jsonb_array_length(p_doc->'pages') < 1
+    or jsonb_typeof(p_doc #> '{preferences,customizeMobileSeparately}') is distinct from 'boolean'
+    or coalesce(p_doc #>> '{appearance,theme}', '') <> 'prism'
+    or coalesce(p_doc #>> '{appearance,mode}', '') not in ('system','light','dark')
+    or coalesce(p_doc #>> '{appearance,density}', '') not in ('compact','balanced','comfortable')
+    or coalesce(p_doc #>> '{appearance,intensity}', '') not in ('quiet','balanced','rich')
+    or coalesce(p_doc #>> '{appearance,motion}', '') not in ('reduced','balanced','expressive')
+    or coalesce(p_doc #>> '{appearance,surface}', '') <> 'default'
+    or coalesce(p_doc #>> '{appearance,cornerStyle}', '') <> 'default'
+    or coalesce(p_doc #>> '{appearance,iconStyle}', '') not in ('rich','mono')
+  then return false; end if;
+
+  for k,v in select key,value from jsonb_each(p_doc->'blocks') loop
+    if jsonb_typeof(v) is distinct from 'object'
+      or coalesce(v->>'id','') <> k
+      or coalesce(v->>'type','') not in ('continue','now','apps','study','recent')
+      or jsonb_typeof(v->'settings') is distinct from 'object'
+      or (v ? 'hidden' and jsonb_typeof(v->'hidden') is distinct from 'boolean')
+    then return false; end if;
+    if v->>'type' = 'apps' and v->'settings' ? 'appOrder' then
+      if jsonb_typeof(v #> '{settings,appOrder}') is distinct from 'array'
+        or jsonb_array_length(v #> '{settings,appOrder}') > 128
+        or exists (select 1 from jsonb_array_elements(v #> '{settings,appOrder}') x
+          where jsonb_typeof(x.value) <> 'string')
+        or (select count(*) from jsonb_array_elements(v #> '{settings,appOrder}'))
+          <> (select count(distinct x.value) from jsonb_array_elements(v #> '{settings,appOrder}') x)
+      then return false; end if;
+    end if;
+  end loop;
+
+  for k,v in select key,value from jsonb_each(p_doc->'sections') loop
+    if jsonb_typeof(v) is distinct from 'object'
+      or coalesce(v->>'id','') <> k
+      or jsonb_typeof(v->'blockIds') is distinct from 'array'
+    then return false; end if;
+    for item in select value from jsonb_array_elements(v->'blockIds') loop
+      if jsonb_typeof(item) <> 'string' or not (p_doc->'blocks' ? (item #>> '{}'))
+        or (item #>> '{}') = any(seen_blocks)
+      then return false; end if;
+      seen_blocks := array_append(seen_blocks,item #>> '{}');
+    end loop;
+  end loop;
+  if coalesce(array_length(seen_blocks,1),0) is distinct from
+     (select count(*)::integer from jsonb_each(p_doc->'blocks'))
+  then return false; end if;
+
+  for v in select value from jsonb_array_elements(p_doc->'pages') loop
+    if jsonb_typeof(v) is distinct from 'object'
+      or jsonb_typeof(v->'id') is distinct from 'string'
+      or jsonb_typeof(v->'sectionIds') is distinct from 'array'
+    then return false; end if;
+    seen_sections := array[]::text[];
+    for item in select value from jsonb_array_elements(v->'sectionIds') loop
+      if jsonb_typeof(item) <> 'string' or not (p_doc->'sections' ? (item #>> '{}'))
+        or (item #>> '{}') = any(seen_sections)
+      then return false; end if;
+      seen_sections := array_append(seen_sections,item #>> '{}');
+    end loop;
+  end loop;
+
+  for bp in select unnest(array['desktop','tablet','mobile']) loop
+    layout_obj := p_doc->'layouts'->bp;
+    if jsonb_typeof(layout_obj) is distinct from 'object'
+      or jsonb_typeof(layout_obj->'sectionOrder') is distinct from 'array'
+      or jsonb_typeof(layout_obj->'placements') is distinct from 'array'
+    then return false; end if;
+    seen_sections := array[]::text[];
+    for item in select value from jsonb_array_elements(layout_obj->'sectionOrder') loop
+      if jsonb_typeof(item) <> 'string' or not (p_doc->'sections' ? (item #>> '{}'))
+        or (item #>> '{}') = any(seen_sections)
+      then return false; end if;
+      seen_sections := array_append(seen_sections,item #>> '{}');
+    end loop;
+    col_limit := case bp when 'desktop' then 12 when 'tablet' then 8 else 4 end;
+    seen_places := array[]::text[];
+    for entry in select value from jsonb_array_elements(layout_obj->'placements') loop
+      if jsonb_typeof(entry) is distinct from 'object'
+        or jsonb_typeof(entry->'blockId') is distinct from 'string'
+        or jsonb_typeof(entry->'sectionId') is distinct from 'string'
+        or jsonb_typeof(entry->'size') is distinct from 'string'
+        or coalesce(entry->>'size','') not in ('s','m','l','xl')
+      then return false; end if;
+      block_id := entry->>'blockId';
+      section_id := entry->>'sectionId';
+      section_item := p_doc->'sections'->section_id;
+      if not (p_doc->'blocks' ? block_id) or not (p_doc->'sections' ? section_id)
+        or block_id = any(seen_places)
+        or not exists (select 1 from jsonb_array_elements_text(section_item->'blockIds') t
+          where t.value = block_id)
+      then return false; end if;
+      seen_places := array_append(seen_places,block_id);
+      if jsonb_typeof(entry->'x') is distinct from 'number'
+        or jsonb_typeof(entry->'y') is distinct from 'number'
+        or jsonb_typeof(entry->'w') is distinct from 'number'
+        or jsonb_typeof(entry->'h') is distinct from 'number'
+        or (entry->>'x')::numeric % 1 <> 0 or (entry->>'y')::numeric % 1 <> 0
+        or (entry->>'w')::numeric % 1 <> 0 or (entry->>'h')::numeric % 1 <> 0
+        or (entry->>'x')::numeric < 0 or (entry->>'y')::numeric < 0
+        or (entry->>'w')::numeric < 1 or (entry->>'h')::numeric < 1
+        or (entry->>'x')::numeric + (entry->>'w')::numeric > col_limit
+      then return false; end if;
+    end loop;
+    if coalesce(array_length(seen_places,1),0) is distinct from
+       (select count(*)::integer from jsonb_each(p_doc->'blocks'))
+    then return false; end if;
+  end loop;
+  return true;
+exception when others then
+  -- Unexpected JSON shape / numeric cast must deny, never allow.
+  return false;
+end $;
+revoke all on function hub_h18_private.h19_home_structure_valid(jsonb) from public, anon;
+grant execute on function hub_h18_private.h19_home_structure_valid(jsonb) to authenticated;
+
 create table if not exists hub_h18_private.home_documents (
   owner_id uuid primary key,
   revision text not null check (revision ~ '^[a-f0-9]{64}$'),
   raw text not null check (octet_length(raw) <= 131072),
   updated_at timestamptz not null default now(),
   constraint home_doc_v2_minimum check (
-    jsonb_typeof(raw::jsonb) = 'object' and
-    raw::jsonb->>'schemaVersion' = '2' and
-    raw::jsonb ?& array['pages','sections','blocks','layouts','appearance','preferences']
+    hub_h18_private.h19_home_structure_valid(raw::jsonb)
   )
 );
 create table if not exists hub_h18_private.home_receipts (
@@ -99,8 +243,7 @@ begin
     raise exception 'invalid home payload' using errcode = '22023';
   end if;
   v_document := p_raw::jsonb;
-  if jsonb_typeof(v_document) <> 'object' or v_document->>'schemaVersion' <> '2'
-    or not (v_document ?& array['pages','sections','blocks','layouts','appearance','preferences']) then
+  if not hub_h18_private.h19_home_structure_valid(v_document) then
     raise exception 'invalid HomeDocumentV2' using errcode = '22023';
   end if;
   v_payload_hash := encode(sha256(convert_to(p_raw,'UTF8')),'hex');
