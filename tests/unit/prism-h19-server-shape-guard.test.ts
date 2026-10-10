@@ -71,6 +71,17 @@ describe('H19 SQL contract hardening, static source preflight ONLY', () => {
     expect(sql).toContain("(entry->>'x')::numeric % 1 <> 0");
     expect(sql).toContain("then 12 when 'tablet' then 8 else 4 end");
   });
+  it('does not reject a schema-valid empty page solely because arrays are empty',()=>{
+    const empty=baseline();
+    empty.blocks={};
+    empty.sections={};
+    empty.pages=[{id:'home',sectionIds:[]}];
+    for(const bp of ['desktop','tablet','mobile'] as const)
+      empty.layouts[bp]={sectionOrder:[],placements:[]};
+    expect(validateHomeDocument(empty).valid).toBe(true);
+    expect(sql).toContain('coalesce(array_length(seen_blocks,1),0)');
+    expect(sql).toContain('coalesce(array_length(seen_places,1),0)');
+  });
   it('unexpected JSON/cast errors fail closed rather than permitting writes',()=>{
     expect(sql).toMatch(/exception when others then\s*-- Unexpected JSON shape \/ numeric cast must deny, never allow\.\s*return false;/);
   });
