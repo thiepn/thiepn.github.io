@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "repository": "thiepn/thiepn.github.io",
+  "parentH8": {
+    "pr": 102,
+    "head": "ed5dfe10be6aadf1575ae37ce28d49e22d4d4855",
+    "base": "55a2aa4ff3e41971e4bdf538f33be174a87466f1",
+    "testedPrMergeTree": "621fe28ef7da23e9575271314176844a397659bb",
+    "checks": [
+      {
+        "name": "Quality",
+        "runId": 38035724066,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724066"
+      },
+      {
+        "name": "Hub Account integration",
+        "runId": 38035724236,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724236"
+      },
+      {
+        "name": "Hub device Library browsers",
+        "runId": 38035724201,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724201"
+      },
+      {
+        "name": "Hub Notes Inbox browsers",
+        "runId": 38035724026,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724026"
+      },
+      {
+        "name": "Hub Notes capture browsers",
+        "runId": 38035724056,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724056"
+      },
+      {
+        "name": "Hub managed Notes browsers",
+        "runId": 38035724101,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724101"
+      },
+      {
+        "name": "Hub managed TMS60 browsers",
+        "runId": 38035724036,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724036"
+      },
+      {
+        "name": "Hub Notes integration",
+        "runId": 38035724132,
+        "result": "success",
+        "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/38035724132"
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "studio-certification",
+        "id": 11663852738,
+        "runId": 38035724066,
+        "digest": "28f977b05a05b209d0c74f517812a468ef86ec1da37d7fe27d2ef5c824844d4e",
+        "crcOk": true
+      },
+      {
+        "kind": "hub-notes-contract-evidence",
+        "id": 11664191649,
+        "runId": 38035724132,
+        "digest": "f3983595a0dd738382dbfc24174f7862eb31c4ad4b0cd4e734633d300a2565d9",
+        "crcOk": true
+      }
+    ]
+  },
+  "operatorTrustRoot": "UNCONFIGURED",
+  "custodyEvents": [],
+  "compromiseEvents": [],
+  "witnessReceipts": [],
+  "replayLedger": [],
+  "sourceSurfaces": [
+    {
+      "id": "original-source-objects",
+      "status": "UNVERIFIED",
+      "sourceSha": null,
+      "objectDigest": null,
+      "rightsDigest": null,
+      "cdnDigest": null,
+      "offlineDigest": null,
+      "proofUri": null
+    },
+    {
+      "id": "content-rights-and-licenses",
+      "status": "UNVERIFIED",
+      "sourceSha": null,
+      "objectDigest": null,
+      "rightsDigest": null,
+      "cdnDigest": null,
+      "offlineDigest": null,
+      "proofUri": null
+    },
+    {
+      "id": "cdn-cache-and-rollback",
+      "status": "UNVERIFIED",
+      "sourceSha": null,
+      "objectDigest": null,
+      "rightsDigest": null,
+      "cdnDigest": null,
+      "offlineDigest": null,
+      "proofUri": null
+    },
+    {
+      "id": "pwa-service-worker-provenance",
+      "status": "UNVERIFIED",
+      "sourceSha": null,
+      "objectDigest": null,
+      "rightsDigest": null,
+      "cdnDigest": null,
+      "offlineDigest": null,
+      "proofUri": null
+    },
+    {
+      "id": "offline-data-recovery",
+      "status": "UNVERIFIED",
+      "sourceSha": null,
+      "objectDigest": null,
+      "rightsDigest": null,
+      "cdnDigest": null,
+      "offlineDigest": null,
+      "proofUri": null
+    }
+  ],
+  "operatorGates": [
+    {
+      "id": "two-owner-oauth-consent",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "physical-android-ios",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "screen-reader-keyboard",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "device-local-reconsent",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "security-review",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "prism-visual-owner",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    },
+    {
+      "id": "release-owner-authorization",
+      "status": "OPEN",
+      "proofDigest": null,
+      "reviewer": null,
+      "device": null,
+      "observedAt": null
+    }
+  ],
+  "realDeviceAcceptance": "NOT_COLLECTED",
+  "signerContinuity": "UNESTABLISHED",
+  "decision": "NO_GO",
+  "mergeAllowed": false,
+  "publicationAllowed": false,
+  "deployAllowed": false,
+  "rollbackExecuted": false
+}
