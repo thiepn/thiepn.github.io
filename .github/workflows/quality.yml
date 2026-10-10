@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Owner-approved release gate regression tests (no publishing)
+        run: node --test tests/hub-owner-release-gate.test.mjs
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
