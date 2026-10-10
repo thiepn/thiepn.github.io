@@ -81,7 +81,7 @@ begin
       seen_blocks := array_append(seen_blocks,item #>> '{}');
     end loop;
   end loop;
-  if array_length(seen_blocks,1) is distinct from
+  if coalesce(array_length(seen_blocks,1),0) is distinct from
      (select count(*)::integer from jsonb_each(p_doc->'blocks'))
   then return false; end if;
 
@@ -141,7 +141,7 @@ begin
         or (entry->>'x')::numeric + (entry->>'w')::numeric > col_limit
       then return false; end if;
     end loop;
-    if array_length(seen_places,1) is distinct from
+    if coalesce(array_length(seen_places,1),0) is distinct from
        (select count(*)::integer from jsonb_each(p_doc->'blocks'))
     then return false; end if;
   end loop;
