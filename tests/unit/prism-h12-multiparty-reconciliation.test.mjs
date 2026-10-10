@@ -118,6 +118,12 @@ describe('H12 independently pinned multi-party reconciliation',()=>{
   duplicate[1].witnessPin=duplicate[0].witnessPin;
   const v=reconcileH12MultiParty(groups(),{...opts,registry:duplicate});
   expect(v.valid).toBe(false);
+  const alias=registry();
+  alias[1].witnessSpkiPem=alias[0].witnessSpkiPem;
+  alias[1].witnessPin=alias[0].witnessPin; // different witness IDs, same underlying key
+  expect(reconcileH12MultiParty(groups({domain:'original-source-objects'},
+    {domain:'content-rights-and-licenses',rightsDigest:sha('license fixture')}),
+    {...opts,registry:alias}).valid).toBe(false);
   const preUsed=sha(payload(0).nonce);
   expect(reconcileH12MultiParty(groups(),{...opts,usedNonceDigests:[preUsed]}).valid).toBe(false);
  });

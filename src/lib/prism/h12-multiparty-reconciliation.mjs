@@ -115,7 +115,7 @@ export function reconcileH12MultiParty(groups,{registry=[],usedNonceDigests=[],
  // An operator must never appear in the witness pool, including under another alias.
  const operatorPins=new Set(operators.values()),witnessPins=new Set(witnesses.values());
  for(const pin of operatorPins)if(witnessPins.has(pin))errors.push('Operator is also independent witness');
- if(new Set(witnessPins).size!==witnessPins.size)errors.push('Duplicate witness signing identity');
+ if(new Set(witnesses.values()).size!==witnesses.size)errors.push('Duplicate witness signing identity across aliases');
  const nonces=new Set(usedNonceDigests),receipts=new Set(usedReceiptDigests);
  const source=new Map(),rights=new Map(),stable=new Map(),proofs=new Map(),peerIds=new Map();
  if(Array.isArray(groups))for(const [index,g] of groups.entries()){
