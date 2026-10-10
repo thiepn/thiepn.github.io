@@ -35,7 +35,8 @@ const transition=(patch={})=>{const p={schemaVersion:1,subjectHead:H14_PARENT,
  const b=Buffer.from(canonicalH14Custody(p));
  return {payload:p,oldSignerSignature:sign(null,b,keys[2].privateKey).toString('base64url'),
  independentWitnessSignature:sign(null,b,keys[3].privateKey).toString('base64url')};};
-const custody={previousSignerSpki:pem(2),previousSignerPin:pin(2),witnessSpki:pem(3),witnessPin:pin(3),nowMs:now};
+const custody={previousSignerSpki:pem(2),previousSignerPin:pin(2),witnessSpki:pem(3),witnessPin:pin(3),
+ nextSignerKeys:[{pin:pin(4),spkiPem:pem(4)},{pin:pin(5),spkiPem:pem(5)}],nowMs:now};
 const hw=(d)=>({kind:d[0],platform:d[1],browser:d[2],assistiveTechnology:d[3],
  subjectHead:H14_PARENT,deviceSessionDigest:sha('independent-device-session'),
  originalCaptureDigest:sha('pending-capture'),witnessReceiptDigest:sha('pending-witness'),
@@ -85,6 +86,24 @@ describe('H14 independent witnessed signer custody',()=>{
   expect(r).toMatchObject({valid:true,originalSignerIndependentlyAuthenticated:false,
    trustRootInstalled:false,finalPin:pin(4),decision:'NO_GO'});
   expect(JSON.stringify(r)).not.toContain('BEGIN PUBLIC KEY');
+ });
+ it('checks the newly pinned signer at epoch 2, rejects old-key reuse and identity switching',()=>{
+  const first=transition();
+  const secondPayload={...first.payload,epoch:2,priorSignerPin:pin(4),
+   nextSignerPin:pin(5),effectiveAt:'2026-10-10T17:00:00.000Z',
+   nonce:'second_signer_transition_nonce_abcdefghijk'};
+  const bytes=Buffer.from(canonicalH14Custody(secondPayload));
+  const signSecond=(index)=>({payload:secondPayload,
+   oldSignerSignature:sign(null,bytes,keys[index].privateKey).toString('base64url'),
+   independentWitnessSignature:sign(null,bytes,keys[3].privateKey).toString('base64url')});
+  expect(reviewH14SignerTransitions([first,signSecond(4)],custody))
+    .toMatchObject({valid:true,finalPin:pin(5),releaseAllowed:false});
+  expect(reviewH14SignerTransitions([first,signSecond(2)],custody).valid).toBe(false);
+  const changed=signSecond(4);
+  changed.payload.identity='different-external-operator';
+  expect(reviewH14SignerTransitions([first,changed],custody).valid).toBe(false);
+  expect(reviewH14SignerTransitions([first,signSecond(4)],
+    {...custody,nextSignerKeys:[{pin:pin(4),spkiPem:pem(4)}]}).valid).toBe(false);
  });
  it('rejects forged signer/witness, key self-rotation, pin replacement, replay and compromised/ revoked root',()=>{
   const forged=transition();forged.payload.reasonDigest=sha('tamper');

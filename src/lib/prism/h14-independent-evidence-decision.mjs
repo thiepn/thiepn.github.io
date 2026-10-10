@@ -74,9 +74,17 @@ const CUSTODY=['schemaVersion','subjectHead','identity','epoch','event','priorSi
 export const canonicalH14Custody=p=>JSON.stringify(Object.fromEntries(CUSTODY.map(k=>[k,p[k]])));
 export function reviewH14SignerTransitions(records,{
  previousSignerSpki,previousSignerPin,witnessSpki,witnessPin,nowMs=Date.now(),
- priorNonceDigests=[],compromisedPins=[],revokedPins=[]
+ priorNonceDigests=[],compromisedPins=[],revokedPins=[],nextSignerKeys=[]
 }={}){
  const errors=[],items=[],seen=new Set(priorNonceDigests);
+ const nextKeys=new Map();
+ if(!Array.isArray(nextSignerKeys)||nextSignerKeys.length>32)errors.push('Invalid independent next-key custody registry');
+ if(Array.isArray(nextSignerKeys))for(const x of nextSignerKeys){
+  if(!exact(x,['pin','spkiPem'])||!HEX.test(x.pin)||!validPin(x.spkiPem,x.pin)||
+     nextKeys.has(x.pin)||x.pin===witnessPin||x.pin===previousSignerPin)
+    errors.push('Unknown, duplicated or aliased next-epoch signer key');
+  else nextKeys.set(x.pin,x.spkiPem);
+ }
  if(!Array.isArray(records)||records.length<1||records.length>24||
   !Array.isArray(priorNonceDigests)||priorNonceDigests.some(x=>!HEX.test(x))||
   !Array.isArray(compromisedPins)||compromisedPins.some(x=>!HEX.test(x))||
@@ -85,7 +93,8 @@ export function reviewH14SignerTransitions(records,{
   previousSignerPin===witnessPin||!validPin(previousSignerSpki,previousSignerPin)||
   !validPin(witnessSpki,witnessPin)||compromisedPins.includes(witnessPin)||revokedPins.includes(witnessPin))
    errors.push('Independent original signer/witness custody not established');
- let current=previousSignerPin,priorEpoch=0,priorTime=-Infinity;
+ let current=previousSignerPin,currentSpki=previousSignerSpki,priorEpoch=0,priorTime=-Infinity;
+ const originalIdentity=records?.[0]?.payload?.identity;
  if(Array.isArray(records))for(const [i,e] of records.entries()){
   const p=e?.payload,reasons=[];
   if(!exact(e,['payload','oldSignerSignature','independentWitnessSignature'])||
@@ -98,20 +107,25 @@ export function reviewH14SignerTransitions(records,{
     errors.push('Invalid externally witnessed custody event '+i);items.push({index:i,verified:false});continue;
   }
   const t=Date.parse(p.effectiveAt),expiry=Date.parse(p.expiresAt),nonce=sha(p.nonce);
+  if(p.identity!==originalIdentity)reasons.push('Custody identity switched between epochs');
   if(p.priorSignerPin!==current||p.epoch<=priorEpoch||t<=priorTime||t>nowMs||
    expiry<=nowMs||expiry<=t||expiry-t>7*86400000)reasons.push('Broken monotonic key epoch/expiry/custody link');
   if(seen.has(nonce))reasons.push('Custody nonce replay');
   seen.add(nonce);
   if(compromisedPins.includes(current)||revokedPins.includes(current))reasons.push('Previously compromised/revoked signer cannot delegate');
-  if(p.event==='ROTATE'&&(p.nextSignerPin===current||p.nextSignerPin===witnessPin))
-   reasons.push('Non-independent or unchanged next signer');
+  if(p.event==='ROTATE'&&(p.nextSignerPin===current||p.nextSignerPin===witnessPin||
+      !nextKeys.has(p.nextSignerPin)))
+   reasons.push('Next signer not independently pinned or lacks registered public key');
   if(p.event!=='ROTATE'&&p.nextSignerPin!==current)
    reasons.push('Revocation/compromise may not silently rotate key');
-  if(!checkSignature(canonicalH14Custody(p),e.oldSignerSignature,previousSignerSpki)||
+  if(!checkSignature(canonicalH14Custody(p),e.oldSignerSignature,currentSpki)||
    !checkSignature(canonicalH14Custody(p),e.independentWitnessSignature,witnessSpki))
    reasons.push('Independent signer/witness signatures missing');
-  if(reasons.length===0){priorEpoch=p.epoch;priorTime=t;current=p.nextSignerPin;
-   if(p.event!=='ROTATE')errors.push('Custody '+i+': terminal revocation/compromise forbids future authority');}
+  if(reasons.length===0){
+   priorEpoch=p.epoch;priorTime=t;current=p.nextSignerPin;
+   if(p.event==='ROTATE')currentSpki=nextKeys.get(current);
+   else errors.push('Custody '+i+': revocation/compromise terminates signer authority');
+  }
   if(reasons.length)errors.push('Custody '+i+': '+reasons.join('; '));
   items.push({index:i,cryptographicCheck:reasons.length===0,event:p.event});
  }
