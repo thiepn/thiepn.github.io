@@ -141,6 +141,7 @@ export function qualifyH14SourceReview(packets,{
  reviewerKeys=[],baselineNonceDigests=[],nowMs=Date.now()
 }={}){
  const errors=[],claims=[],seen=new Set(baselineNonceDigests),ledger=new Map(),reviewerPins=new Set();
+ const independentlyRequiredRoles=['source-reviewer','rights-reviewer','release-operator','recovery-operator'];
  if(!Array.isArray(packets)||packets.length<2||packets.length>32||
    !Array.isArray(reviewerKeys)||reviewerKeys.length<2||reviewerKeys.length>32||
    !Array.isArray(baselineNonceDigests)||baselineNonceDigests.some(x=>!HEX.test(x))||
@@ -178,12 +179,17 @@ export function qualifyH14SourceReview(packets,{
   if(prior?.pins.includes(reg?.pin))
    reasons.push('Duplicate or aliased reviewer for one original');
   if(!reasons.length){
-   if(!prior)ledger.set(objectKey,{values,pins:[reg.pin]});
-   else prior.pins.push(reg.pin);
+   if(!prior)ledger.set(objectKey,{values,pins:[reg.pin],roles:[reg.domain]});
+   else {prior.pins.push(reg.pin);prior.roles.push(reg.domain);}
    claims.push({index:i,scopeDigest:sha(objectKey),cryptographicallyChecked:true});
   }else errors.push('Source '+i+': '+reasons.join('; '));
  }
- const corroborated=[...ledger.entries()].filter(([,v])=>v.pins.length>=2).map(([k])=>sha(k));
+ const corroborated=[];
+ for(const [scope,value] of ledger){
+  const missing=independentlyRequiredRoles.filter(role=>!value.roles.includes(role));
+  if(missing.length)errors.push('Owner-scoped original missing independent source/rights/release/recovery reviewers: '+missing.join(','));
+  else corroborated.push(sha(scope));
+ }
  return {valid:errors.length===0,errors,claims,syntheticCorroboratedScopes:corroborated,
    originalObjectVerified:false,legalRightsApproved:false,cdnRecoveryProven:false,
    pwaOfflineRestoreProven:false,actualEncryptedRestoreProven:false,...DENIAL()};

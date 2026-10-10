@@ -25,7 +25,9 @@ const source=(i,patch={})=>({
  nonce:'source_review_nonce_abcdefghijklmnop_'+i,status:'REVIEW_ONLY',...patch
 });
 const sealSource=(i,patch={})=>{const p=source(i,patch);return {payload:p,signature:sign(null,Buffer.from(canonicalH14Source(p)),keys[i].privateKey).toString('base64url')}};
-const reviewers=[0,1].map(i=>({id:'synthetic-reviewer-'+(i+1),spkiPem:pem(i),pin:pin(i),domain:'source-reviewer'}));
+const reviewers=[0,1,2,3].map((i)=>({id:'synthetic-reviewer-'+(i+1),spkiPem:pem(i),pin:pin(i),
+ domain:['source-reviewer','rights-reviewer','release-operator','recovery-operator'][i]}));
+const fullSourceReview=(overrides={})=>[sealSource(0),sealSource(1),sealSource(2),sealSource(3,overrides)];
 const srcArgs={reviewerKeys:reviewers,nowMs:now};
 const transition=(patch={})=>{const p={schemaVersion:1,subjectHead:H14_PARENT,
  identity:'external-signer-alpha',epoch:1,event:'ROTATE',priorSignerPin:pin(2),
@@ -121,15 +123,18 @@ describe('H14 independent witnessed signer custody',()=>{
 });
 describe('H14 immutable original/rights/CDN/PWA/offline/prior-stable evidence exchange',()=>{
  it('checks independently pinned synthetic reviewers yet never promotes source or rights',()=>{
-  expect(qualifyH14SourceReview([sealSource(0),sealSource(1)],srcArgs))
+  expect(qualifyH14SourceReview(fullSourceReview(),srcArgs))
    .toMatchObject({valid:true,originalObjectVerified:false,legalRightsApproved:false,
     actualEncryptedRestoreProven:false,decision:'NO_GO'});
-  expect(qualifyH14SourceReview([sealSource(0),sealSource(1)],srcArgs).syntheticCorroboratedScopes).toHaveLength(1);
+  expect(qualifyH14SourceReview(fullSourceReview(),srcArgs).syntheticCorroboratedScopes).toHaveLength(1);
+  const insufficient=qualifyH14SourceReview([sealSource(0),sealSource(1)],srcArgs);
+  expect(insufficient.valid).toBe(false);
+  expect(insufficient.errors.join(' ')).toMatch(/missing independent source\/rights\/release\/recovery/);
  });
  it('rejects conflicting source/rights/CDN/PWA/offline/backup/recovery byte continuity',()=>{
   for(const field of ['originalObjectDigest','licenseDigest','cdnStableDigest','pwaStableDigest',
    'offlineStableDigest','priorStableDigest','backupCiphertextDigest','restoredPlaintextDigest','objectVersionDigest']){
-   const r=qualifyH14SourceReview([sealSource(0),sealSource(1,{[field]:sha(field+'-conflict')})],srcArgs);
+   const r=qualifyH14SourceReview(fullSourceReview({[field]:sha(field+'-conflict')}),srcArgs);
    expect(r.valid,field).toBe(false);expect(r.errors.join(' ')).toMatch(/continuity conflict/);
   }
  });
@@ -139,12 +144,12 @@ describe('H14 immutable original/rights/CDN/PWA/offline/prior-stable evidence ex
   const changedPin=structuredClone(reviewers);changedPin[1].pin=sha('wrong');
   const alias=[reviewers[0],{...reviewers[1],spkiPem:pem(0),pin:pin(0)}];
   for(const [set,options] of [
-   [[tampered,sealSource(1)],srcArgs],
-   [[synthetic,sealSource(1)],srcArgs],
-   [[sealSource(0),sealSource(1,{nonce:source(0).nonce})],srcArgs],
-   [[sealSource(0),sealSource(1)],{...srcArgs,reviewerKeys:changedPin}],
-   [[sealSource(0),sealSource(1)],{...srcArgs,reviewerKeys:alias}],
-   [[sealSource(0),sealSource(1)],{...srcArgs,baselineNonceDigests:[sha(source(0).nonce)]}],
+   [[tampered,sealSource(1),sealSource(2),sealSource(3)],srcArgs],
+   [[synthetic,sealSource(1),sealSource(2),sealSource(3)],srcArgs],
+   [fullSourceReview({nonce:source(0).nonce}),srcArgs],
+   [fullSourceReview(),{...srcArgs,reviewerKeys:changedPin}],
+   [fullSourceReview(),{...srcArgs,reviewerKeys:alias}],
+   [fullSourceReview(),{...srcArgs,baselineNonceDigests:[sha(source(0).nonce)]}],
   ])expect(qualifyH14SourceReview(set,options).valid).toBe(false);
  });
 });
