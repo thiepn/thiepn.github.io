@@ -129,7 +129,7 @@ export function createIndexedHomePersistence(
   const db = () => cachedDb ??= openHomeDatabase(factory);
   channel?.addEventListener('message', (event: MessageEvent<unknown>) => {
     if (closed || !event.data || typeof event.data !== 'object') return;
-    const payload = event.data as { key?: unknown; revision?: unknown };
+    const payload = event.data as { key?: unknown; revision?: unknown; kind?: unknown };
     if (payload.key !== key || !Number.isSafeInteger(payload.revision)) return;
     if (expectedRevision !== null && payload.revision === expectedRevision && payload.kind !== 'sync-ack') return;
     for (const listener of listeners) listener();
