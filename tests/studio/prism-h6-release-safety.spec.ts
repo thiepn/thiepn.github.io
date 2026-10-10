@@ -9,11 +9,12 @@ for (const width of [390, 1440]) {
     const home = page.locator('[data-prism-home]');
     await expect(home).toBeVisible();
     await expect(page.locator('#main-content')).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'THIEPN navigation' }).first()).toBeAttached();
+    // Desktop and mobile expose different named navigation landmarks.
+    await expect(page.locator('nav[aria-label="Workspace navigation"]:visible, nav[aria-label="THIEPN navigation"]:visible').first()).toBeVisible();
 
     // The preview is intentionally unapproved for privileged connection.
     await expect(page.locator('[data-prism-library-status]')).toContainText(
-      'Connection is available only on the qualified Home route.'
+      'Library connection is available only on the qualified Home route.'
     );
     await expect(page.locator('[data-prism-recent-content]')).toHaveAttribute('data-prism-provider-state', 'disconnected');
     await expect(page.locator('[data-prism-now-list]')).toHaveAttribute('data-prism-provider-state', 'disconnected');
@@ -51,7 +52,7 @@ test('H6 two-tab revoked device data cannot be restored by malformed or late cle
     c.close();
   });
   await expect(b.locator('[data-prism-library-status]')).toContainText(
-    'Connection is available only on the qualified Home route.'
+    'Library connection is available only on the qualified Home route.'
   );
 
   await a.evaluate(() => {
@@ -64,7 +65,7 @@ test('H6 two-tab revoked device data cannot be restored by malformed or late cle
   );
   await b.reload();
   await expect(b.locator('[data-prism-library-status]')).toContainText(
-    'Connection is available only on the qualified Home route.'
+    'Library connection is available only on the qualified Home route.'
   );
   await expect(b.locator('[data-prism-continue-title]')).toContainText('No activity connected yet');
   await expect(b.locator('[data-prism-now-list]')).toHaveAttribute('data-prism-provider-state', 'disconnected');
