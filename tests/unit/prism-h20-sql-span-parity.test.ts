@@ -11,8 +11,8 @@ const baseline = () => structuredClone(createDefaultHomeDocument());
 describe('H20 demonstrated server SQL contract mismatches', () => {
   it('rejects missing dollar delimiter in H19 SQL function source', () => {
     const helper = sql.split('create or replace function hub_h18_private.h19_home_structure_valid(p_doc jsonb)')[1]!.split('revoke all on function hub_h18_private.h19_home_structure_valid')[0]!;
-    expect(helper).toMatch(/set search_path = pg_catalog\s+as \$\$\s+declare/);
-    expect(helper).toMatch(/end \$\$;/);
+    expect(helper).toMatch(/set search_path = pg_catalog\s+as \$h20\$\s+declare/);
+    expect(helper).toMatch(/end \$h20\$;/);
     expect(helper).not.toMatch(/\bas \$\s*declare\b/);
     expect(helper).not.toMatch(/\bend \$;/);
   });
