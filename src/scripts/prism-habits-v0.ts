@@ -96,7 +96,7 @@ if (root) {
     model = next;
     deviceButton.hidden = true;
     panel.hidden = false;
-    for (const editor of root.querySelectorAll<HTMLElement>('[data-habit-editor]')) editor.hidden = true;
+    for (const editor of panel.querySelectorAll<HTMLElement>('[data-habit-editor]')) editor.hidden = true;
     status.textContent = scope + ' · stored in this browser only, not synced.';
     render();
   }
