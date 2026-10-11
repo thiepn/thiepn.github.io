@@ -1,0 +1,12 @@
+/* V1 recovery styling only on the isolated Habits preview route. */
+.prism-habits__portability { margin-top: 32px; border: 1px solid var(--prism-border); padding: 20px; background: var(--prism-surface); }
+.prism-habits__portability h2 { font-size: 20px; margin-bottom: 12px; }
+.prism-habits__portability p { font-size: 13px; line-height: 1.55; color: var(--prism-text-secondary); }
+.prism-habits__portability-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin: 18px 0; }
+.prism-habits__portability-actions label { display: grid; gap: 6px; font-size: 13px; min-width: 0; }
+.prism-habits__portability-actions input { min-width: 0; max-width: 100%; font: inherit; }
+.prism-habits__portability button { border: 1px solid var(--prism-border-strong); background: var(--prism-surface-soft); color: var(--prism-text-primary); padding: 10px 12px; min-height: 44px; font: inherit; font-size: 13px; cursor: pointer; }
+.prism-habits__portability [data-habits-import-review] { border-top: 1px solid var(--prism-border); padding-top: 15px; margin-top: 12px; }
+.prism-habits__portability [data-habits-import-confirm] { border-color: var(--prism-indigo); }
+.prism-habits__portability :is(button,input):focus-visible { outline: 2px solid var(--prism-focus); outline-offset: 3px; }
+@media (max-width: 600px) { .prism-habits__portability { padding: 14px; } .prism-habits__portability-actions { align-items: stretch; flex-direction: column; } }
