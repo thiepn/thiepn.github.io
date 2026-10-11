@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-10-05T13:24:26.720Z",
+  "capturedAt": "2026-10-11T01:14:46.895Z",
   "width": 1440,
   "height": 900,
   "format": "webp",
@@ -8,12 +8,12 @@
     "notes": {
       "file": "/src/assets/hub/notes.webp",
       "url": "https://thiepn.dev/notes/",
-      "bytes": 22444
+      "bytes": 22468
     },
     "canvas": {
       "file": "/src/assets/hub/canvas.webp",
       "url": "https://thiepn.dev/canvas/",
-      "bytes": 52654
+      "bytes": 52092
     },
     "tiny-tools": {
       "file": "/src/assets/hub/tiny-tools.webp",
@@ -23,7 +23,7 @@
     "thiepn-library": {
       "file": "/src/assets/hub/thiepn-library.webp",
       "url": "https://thiepn.dev/library",
-      "bytes": 93834
+      "bytes": 94278
     },
     "atelier": {
       "file": "/src/assets/hub/atelier.webp",
@@ -48,12 +48,12 @@
     "signal-earth": {
       "file": "/src/assets/hub/signal-earth.webp",
       "url": "https://thiepn.dev/signal-earth/",
-      "bytes": 42418
+      "bytes": 37584
     },
     "steadybar": {
       "file": "/src/assets/hub/steadybar.webp",
       "url": "https://thiepn.dev/steadybar/",
-      "bytes": 33840
+      "bytes": 33810
     },
     "wordstrike": {
       "file": "/src/assets/hub/wordstrike.webp",
@@ -63,7 +63,7 @@
     "mathlab": {
       "file": "/src/assets/hub/mathlab.webp",
       "url": "https://thiepn.dev/mathlab/",
-      "bytes": 50290
+      "bytes": 51678
     },
     "the-bible-challenge": {
       "file": "/src/assets/hub/the-bible-challenge.webp",
@@ -103,7 +103,7 @@
     "gomoku": {
       "file": "/src/assets/hub/gomoku.webp",
       "url": "https://thiepn.dev/gomoku/",
-      "bytes": 22880
+      "bytes": 23064
     },
     "artikelwerk": {
       "file": "/src/assets/hub/artikelwerk.webp",
@@ -118,17 +118,17 @@
     "french-3000": {
       "file": "/src/assets/hub/french-3000.webp",
       "url": "https://french.thiepn.dev/",
-      "bytes": 48636
+      "bytes": 50364
     },
     "micro-arcade": {
       "file": "/src/assets/hub/micro-arcade.webp",
       "url": "https://thiepn.dev/arcade/",
-      "bytes": 18440
+      "bytes": 18518
     },
     "voidcut": {
       "file": "/src/assets/hub/voidcut.webp",
       "url": "https://thiepn.dev/voidcut/",
-      "bytes": 9604
+      "bytes": 9580
     },
     "impossible-transit": {
       "file": "/src/assets/hub/impossible-transit.webp",
@@ -138,7 +138,7 @@
     "skyspire": {
       "file": "/src/assets/hub/skyspire.webp",
       "url": "https://thiepn.dev/skyspire/",
-      "bytes": 18996
+      "bytes": 19062
     }
   }
 }
