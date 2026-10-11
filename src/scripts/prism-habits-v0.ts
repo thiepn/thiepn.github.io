@@ -195,13 +195,13 @@ if (root) {
 
   deviceButton.addEventListener('click', () => {
     deviceOverride = true;
-    load(habitsStorageKey(null)!, 'Device-only progress');
+    load(habitsStorageKey(null)!, 'Device-only progress', { kind: 'device' });
   });
   window.addEventListener('hub:identity', (event: Event) => {
     onIdentity((event as CustomEvent<HubIdentity>).detail);
   });
   window.addEventListener('storage', event => {
-    if (storageKey && event.key === storageKey) load(storageKey, 'Updated in another tab');
+    if (storageKey && activeScope && event.key === storageKey) load(storageKey, 'Updated in another tab', activeScope);
   });
   window.addEventListener('focus', render);
   window.addEventListener('pageshow', render);
