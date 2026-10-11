@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Validate M5 offline artifact acceptance and exact-source replay
+        run: python3 -m unittest discover -s tests -p test_generated_asset_acceptance.py -v
       - name: Verify six generated-output artifact-only workflows (no publishing)
         run: node --test tests/hub-automated-writer-gates.test.mjs
       - name: Owner-approved release gate regression tests (no publishing)
