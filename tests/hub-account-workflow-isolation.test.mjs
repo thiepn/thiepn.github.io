@@ -53,3 +53,45 @@ test('private-job token is scoped to the checkout and existence guard, not build
   }
   assert.doesNotMatch(source, /pull_request_target|repository_dispatch|deploy-pages|vercel deploy/);
 });
+
+const affectedWorkflowPaths = [
+  'hub-capture-browser.yml',
+  'hub-inbox-browser.yml',
+  'hub-notes-browser.yml',
+  'hub-tms60-browser.yml',
+  'hub-workflows-browser.yml',
+];
+
+test('every additional Account-dependent browser workflow denies private access to PRs', () => {
+  for (const name of affectedWorkflowPaths) {
+    const workflow = YAML.parse(readFileSync(
+      new URL('../.github/workflows/' + name, import.meta.url), 'utf8'));
+    assert.ok(Object.hasOwn(workflow.on, 'pull_request'), name);
+    assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'), name);
+    assert.deepEqual(workflow.permissions, { contents: 'read' }, name);
+    const publicJob = workflow.jobs['public-contract'];
+    assert.ok(publicJob, name + ' needs public contract evidence');
+    assert.equal(publicJob.if, undefined, name);
+    assert.doesNotMatch(JSON.stringify(publicJob), /secrets\\.|HUB_ACCOUNT_READ_TOKEN|thiepn\\/account/, name);
+    assert.match(JSON.stringify(publicJob), /hub-account-workflow-isolation\\.test\\.mjs/, name);
+    const paired = workflow.jobs['staged-paired'];
+    assert.ok(paired, name + ' original paired suite must remain');
+    for (const gate of ['workflow_dispatch', 'refs/heads/main', 'github.actor', 'github.triggering_actor']) {
+      assert.ok(paired.if.includes(gate), name + ' missing gate ' + gate);
+    }
+    assert.doesNotMatch(paired.if, /pull_request|\\|\\||push/, name);
+    const checkout = paired.steps.find(step => step.with?.repository === 'thiepn/account');
+    assert.ok(checkout, name + ' must retain paired Account fixture');
+    assert.match(checkout.with.ref, /^[a-f0-9]{40}$/, name);
+    assert.equal(checkout.with.token, '${{ secrets.HUB_ACCOUNT_READ_TOKEN }}', name);
+    assert.equal(checkout.with['persist-credentials'], false, name);
+    const protection = paired.steps.findIndex(step => step.name?.startsWith('Require authorized private Account read token'));
+    assert.ok(protection >= 0 && protection < paired.steps.indexOf(checkout), name + ' missing pre-check');
+    assert.match(paired.steps[protection].run, /exit 1/, name);
+    assert.match(JSON.stringify(paired), /playwright test/, name + ' must preserve actual browser acceptance');
+    for (const step of paired.steps) {
+      if (step === checkout || step === paired.steps[protection]) continue;
+      assert.doesNotMatch(JSON.stringify(step), /secrets\\.|HUB_ACCOUNT_READ_TOKEN/, name);
+    }
+  }
+});

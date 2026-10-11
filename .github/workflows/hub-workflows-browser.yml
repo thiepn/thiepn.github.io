@@ -25,17 +25,51 @@ concurrency:
   group: hub-cross-app-workflows-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-contract:
+    name: Public contract only (private browser qualification NOT TESTED)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Guard all public/private Account workflow boundaries
+        run: node --test tests/hub-account-workflow-isolation.test.mjs
+      - name: Check public Account SDK contract (no private source)
+        run: node --test tests/account-platform/*.test.mjs
+
   staged-paired:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'thiepn' &&
+      github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Require authorized private Account read token
+        env:
+          ACCOUNT_READ_TOKEN: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ACCOUNT_READ_TOKEN" ]; then
+            echo "::error::Private Account browser qualification blocked until owner provisions read-only access."
+            exit 1
+          fi
       - name: Check out immutable H20 Account authorization source
         uses: actions/checkout@v4
         with:
           repository: thiepn/account
           ref: 9cddcbcdb36e6260be3761ae35b221b1a7b8e271
           path: .cache/h19-source-account
+          token: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+          persist-credentials: false
       - name: Check out immutable Library bridge source
         uses: actions/checkout@v4
         with:
