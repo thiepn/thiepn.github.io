@@ -3,23 +3,58 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: hub-notes-inbox-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-contract:
+    name: Public contract only (private browser qualification NOT TESTED)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Guard all public/private Account workflow boundaries
+        run: node --test tests/hub-account-workflow-isolation.test.mjs
+      - name: Check public Account SDK contract (no private source)
+        run: node --test tests/account-platform/*.test.mjs
+
   staged-paired:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'thiepn' &&
+      github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Require authorized private Account read token
+        env:
+          ACCOUNT_READ_TOKEN: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ACCOUNT_READ_TOKEN" ]; then
+            echo "::error::Private Account browser qualification blocked until owner provisions read-only access."
+            exit 1
+          fi
       - name: Check out immutable H17 Account authorization source
         uses: actions/checkout@v4
         with:
           repository: thiepn/account
           ref: 5b426c40e9e174c11c36604c1ef2c18a6aa155d8
           path: .cache/h17-source-account
+          token: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
