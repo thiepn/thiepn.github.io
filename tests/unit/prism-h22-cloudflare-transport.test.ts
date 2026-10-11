@@ -121,6 +121,28 @@ describe('H22 isolated Cloudflare client: source-only authorization and identity
     await expect(t.read(A)).rejects.toThrow(/session changed/);
     expect(f.calls).toHaveLength(1);
   });
+  it('rejects sign-out while decoding a streamed response, even after HTTP headers',async()=>{
+    const f=fixture(),t=f.port();
+    f.setFetch(()=>{
+      const response=reply({ownerId:A,revision:R1,raw:raw()});
+      const read=response.arrayBuffer.bind(response);
+      response.arrayBuffer=async()=>{const result=await read();f.setUser(null);return result;};
+      return response;
+    });
+    await expect(t.read(A)).rejects.toThrow(/owner unavailable/);
+    expect(f.calls).toHaveLength(1);
+  });
+  it('rejects same-UUID token replacement while decoding a recovery response',async()=>{
+    const f=fixture(),t=f.port();
+    f.setFetch(()=>{
+      const response=reply({ownerId:A,revision:R1,raw:raw('dark')});
+      const read=response.arrayBuffer.bind(response);
+      response.arrayBuffer=async()=>{const result=await read();f.setToken(TB);return result;};
+      return response;
+    });
+    await expect(t.readRecoveryRevision(A,R1)).rejects.toThrow(/session changed/);
+    expect(f.calls).toHaveLength(1);
+  });
   it('honors an independent lifecycle cancellation guard',async()=>{
     const f=fixture(),t=f.port();f.setActive(false);
     await expect(t.read(A)).rejects.toThrow();expect(f.calls).toHaveLength(0);

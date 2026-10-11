@@ -143,7 +143,11 @@ export function createH22CloudflareHomeTransport(
       return {status:404,data:null};
     }
     if (response.status !== 200) throw new Error('H22 remote unavailable or unauthorized');
-    return { status: 200, data: await parseReply(response) };
+    const data = await parseReply(response);
+    const afterBody = await checked(ownerId);
+    if (afterBody.owner !== user.owner || afterBody.token !== user.token)
+      throw new Error('H22 session changed during response body');
+    return { status: 200, data };
   };
   return {
     async verifiedOwner() { return (await snapshot())?.owner ?? null; },
