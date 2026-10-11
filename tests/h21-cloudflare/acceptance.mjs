@@ -116,7 +116,7 @@ async function main() {
     assert.equal(first.outcome,'applied');
     assert.match(first.revision,/^[a-f0-9]{64}$/);
     assert.deepEqual(await (await get(a)).json(),{ownerId:a,revision:first.revision,raw:raw1});
-    assert.equal(await (await get(b)).json(),null);
+    assert.equal(await (await get(b,tb)).json(),null);
   });
   await check('replay idempotency and mismatched reuse',async()=>{
     assert.deepEqual(await (await cas(a,null,firstKey,raw1)).json(),first);
