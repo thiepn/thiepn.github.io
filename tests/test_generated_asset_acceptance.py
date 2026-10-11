@@ -178,6 +178,7 @@ class AcceptanceTests(ReviewFixture):
         # Symlink creating an allowed child path, on platforms supporting symlinks.
         target = self.cwd / "src" / "generated"
         target.parent.mkdir(exist_ok=True)
+        (self.cwd / ".git" / "info" / "exclude").write_text("src/generated\n")
         target.symlink_to(self.root, target_is_directory=True)
         manifest = dict(self.manifest, profile="refresh-generated",
                         files=[{"path": "src/generated/new.json", "status": "A"}])
