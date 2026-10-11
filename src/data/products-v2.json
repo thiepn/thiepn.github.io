@@ -180,11 +180,11 @@
           "id": "devotion",
           "name": "Devotion",
           "repo": "thiepn/my-daily-devotion",
-          "launchUrl": null,
+          "launchUrl": "https://mdd.thiepn.dev/",
           "capabilities": [
             "devotion"
           ],
-          "state": "staged"
+          "state": "active"
         },
         {
           "id": "tms60",
