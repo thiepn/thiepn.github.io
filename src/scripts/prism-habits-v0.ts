@@ -1,4 +1,6 @@
 import { hubIdentity } from './portal-auth';
+import { mountHabitsPortability } from './prism-habits-portability';
+import type { HabitsBackupScope } from '../lib/prism/habits-backup';
 import type { HubIdentity } from '../lib/hub-auth';
 import {
   HABITS_V0, createHabitsV0, habitsStorageKey, localDayKey,
@@ -23,11 +25,33 @@ if (root) {
   let storageKey: string | null = null;
   let model: HabitsV0Document | null = null;
   let deviceOverride = false;
+  let activeScope: HabitsBackupScope | null = null;
+
+  const portability = mountHabitsPortability(panel, {
+    getActive: () => model && storageKey && activeScope ? { doc: model, scope: activeScope } : null,
+    replaceDocument: (next) => {
+      if (!model || !storageKey || !activeScope) return false;
+      try {
+        const json = JSON.stringify(next);
+        localStorage.setItem(storageKey, json);
+        if (localStorage.getItem(storageKey) !== json) throw new Error('Readback mismatch');
+      } catch {
+        status.textContent = 'Restore could not persist. No successful import is claimed.';
+        return false;
+      }
+      model = next;
+      render();
+      status.textContent = 'Backup imported into this browser only.';
+      return true;
+    },
+  });
 
   function hideProgress(message: string, allowDevice = false) {
     // Hide the old owner's check-ins before any identity change.
     storageKey = null;
     model = null;
+    activeScope = null;
+    portability.reset();
     panel.hidden = true;
     status.textContent = message;
     deviceButton.hidden = !allowDevice;
@@ -75,13 +99,14 @@ if (root) {
     weekLabel.textContent = achieved + ' of ' + targetTotal + ' target sessions';
   }
 
-  function load(key: string, scope: string) {
+  function load(key: string, scope: string, backupScope: HabitsBackupScope) {
     hideProgress('Loading browser-local habits…');
     let raw: string | null;
     try { raw = localStorage.getItem(key); }
     catch {
       storageKey = key;
       model = createHabitsV0(defaultLinks);
+      activeScope = backupScope;
       panel.hidden = false;
       render();
       status.textContent = 'Browser storage unavailable. Changes will not survive a refresh.';
@@ -94,6 +119,7 @@ if (root) {
     }
     storageKey = key;
     model = next;
+    activeScope = backupScope;
     deviceButton.hidden = true;
     panel.hidden = false;
     for (const editor of panel.querySelectorAll<HTMLElement>('[data-habit-editor]')) editor.hidden = true;
@@ -105,10 +131,10 @@ if (root) {
     if (identity.status === 'signed-in') {
       deviceOverride = false;
       const key = habitsStorageKey(identity.id);
-      if (key) load(key, 'Account-separated local progress');
+      if (key) load(key, 'Account-separated local progress', { kind: 'account', owner: identity.id.toLowerCase() });
       else hideProgress('Invalid account identity; habits are locked.');
     } else if (identity.status === 'signed-out' || deviceOverride) {
-      load(habitsStorageKey(null)!, 'Device-only progress');
+      load(habitsStorageKey(null)!, 'Device-only progress', { kind: 'device' });
     } else {
       hideProgress(
         identity.status === 'checking'

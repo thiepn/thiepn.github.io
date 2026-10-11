@@ -5,6 +5,7 @@ import { HABITS_V0, safeHabitLink } from '../../../../lib/prism/habits-v0';
 import '../../../../styles/prism/tokens.css';
 import '../../../../styles/prism/shell.css';
 import '../../../../styles/prism/habits-v0.css';
+import '../../../../styles/prism/habits-portable.css';
 
 const entries = await getHubProjects();
 const appLinks = new Map(entries.map(({ project }) => [project.data.slug, project.data.liveUrl ?? '']));
@@ -85,6 +86,23 @@ const defaultLink = (slug: string | null) => slug ? (safeHabitLink(appLinks.get(
             </li>
           ))}
         </ul>
+      </section>
+      <section class="prism-habits__portability" data-habits-portability aria-labelledby="habits-backup-title">
+        <h2 id="habits-backup-title">Local backup & recovery</h2>
+        <p>Download your manual progress and links. Restore only to the same Hub account, or to another device-only browser.</p>
+        <div class="prism-habits__portability-actions">
+          <button type="button" data-habits-export>Download backup</button>
+          <label>Select JSON backup
+            <input type="file" data-habits-import accept=".json,application/json" aria-label="Select Habits JSON backup" />
+          </label>
+        </div>
+        <div data-habits-import-review hidden>
+          <p data-habits-import-summary></p>
+          <p>Import will replace your existing check-ins, targets and launch links in this browser. Download a copy of your current data first.</p>
+          <button type="button" data-habits-import-confirm>Replace local habits</button>
+          <button type="button" data-habits-import-cancel>Cancel</button>
+        </div>
+        <p data-habits-portability-status role="status" aria-live="polite">No backup selected.</p>
       </section>
       <p class="prism-habits__footnote">Stored only in this browser and separated by verified Hub account when available. Device mode is shared by anyone using this browser. No cloud backup, app activity verification, reminders, or cross-device sync.</p>
     </div>
