@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "h21-ephemeral-test-only",
+  "main": "./worker-local.ts",
+  "compatibility_date": "2025-07-01",
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "h21-disposable",
+      "database_id": "00000000-0000-4000-8000-000000000021",
+      "preview_database_id": "00000000-0000-4000-8000-000000000021"
+    }
+  ]
+}
