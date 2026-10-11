@@ -80,7 +80,14 @@ const ticks=[];
 async function check(name,run) {await run();ticks.push(name);console.log('PASS',name);}
 let child,logs='';
 let done=false;
-const cleanup=()=>{if(child&&!child.killed)child.kill('SIGTERM');};
+const cleanup=()=>{
+  if(!child)return;
+  if(!child.killed)child.kill('SIGTERM');
+  // Wrangler's grandchild workerd may retain inherited stdout/stderr after the
+  // npx wrapper exits; close local pipes so the Node test runner can terminate.
+  child.stdout?.destroy(); child.stderr?.destroy();
+  child.unref();
+};
 async function main() {
   const config='tests/h21-cloudflare/wrangler.jsonc';
   const cli=['--yes','wrangler@4.50.0'];
