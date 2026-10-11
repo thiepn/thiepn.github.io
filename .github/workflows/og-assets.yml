@@ -10,7 +10,7 @@ on:
       - .github/workflows/og-assets.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: thiepn-og-assets-${{ github.ref }}
@@ -40,16 +40,14 @@ jobs:
       - name: Generate social-card derivatives
         run: node scripts/rasterize-og.mjs
 
-      - name: Commit refreshed social-card derivatives
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- public/og src/generated/og-raster-manifest.json
-          if git diff --cached --quiet; then
-            echo "Social-card derivatives are already current."
-            exit 0
-          fi
-          git commit -m "Refresh THIEPN social card derivatives"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Package generated changes as an owner-reviewable binary patch
+        run: node scripts/prepare-generated-review.mjs og-assets
+
+      - name: Retain complete generated change patch and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-og-assets
+          path: .cache/generated-review/og-assets/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
