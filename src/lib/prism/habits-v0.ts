@@ -38,7 +38,7 @@ export function localDayKey(day: Date): string {
 
 export function validDayKey(key: unknown): key is string {
   if (typeof key !== 'string' || !/^20\d{2}-\d{2}-\d{2}$/.test(key)) return false;
-  const [year, month, day] = key.split('-').map(Number);
+  const year = Number(key.slice(0, 4)), month = Number(key.slice(5, 7)), day = Number(key.slice(8, 10));
   const actual = new Date(Date.UTC(year, month - 1, day));
   return actual.getUTCFullYear() === year && actual.getUTCMonth() + 1 === month && actual.getUTCDate() === day;
 }
@@ -82,11 +82,11 @@ export function parseHabitsV0(raw: string | null, defaults = createHabitsV0()): 
     const doc = createHabitsV0();
     for (const habit of HABITS_V0) {
       const id = habit.id, target = targets[id], link = links[id], days = dates[id];
-      if (!Number.isInteger(target) || (target as number) < 1 || (target as number) > 7) return null;
+      if (typeof target !== 'number' || !Number.isInteger(target) || target < 1 || target > 7) return null;
       if (typeof link !== 'string' || safeHabitLink(link) !== link) return null;
       if (!Array.isArray(days) || days.length > 4000 || !days.every(validDayKey)) return null;
       if (new Set(days).size !== days.length) return null;
-      doc.targets[id] = target as number;
+      doc.targets[id] = target;
       doc.links[id] = link;
       doc.dates[id] = [...days].sort();
     }
