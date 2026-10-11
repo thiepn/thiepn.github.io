@@ -3,22 +3,70 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: hub-integration-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
+  public-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify the unprivileged Account integration boundary
+        run: node --test tests/hub-account-workflow-isolation.test.mjs
+      - name: Verify public Account SDK and consumer contracts
+        run: |
+          node --test tests/account-platform/*.test.mjs
+          node scripts/validate-account-consumer.mjs examples/account-consumer
+      - name: Build public Hub fixture without private repository access
+        run: npm run build
+        env:
+          PUBLIC_HUB_ACCOUNT_ENTRY: v1
+          PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+          PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_not_a_real_key
+
   paired:
+    # Private source must never be accessible to pull_request or unreviewed pushes.
+    # The owner runs this only for separately approved cross-repository qualification.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'thiepn' &&
+      github.triggering_actor == 'thiepn'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Require an independently provisioned read-only Account checkout token
+        env:
+          ACCOUNT_READ_TOKEN: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ACCOUNT_READ_TOKEN" ]; then
+            echo "::error::Trusted Account source qualification blocked: private read token not provisioned."
+            exit 1
+          fi
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: thiepn/account
           ref: 28159b0966f86fd5e1b6c4a99011e174f0ef06f0
           path: .cache/h9-account
+          token: ${{ secrets.HUB_ACCOUNT_READ_TOKEN }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
