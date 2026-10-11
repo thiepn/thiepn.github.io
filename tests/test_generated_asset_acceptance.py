@@ -132,6 +132,7 @@ class AcceptanceTests(ReviewFixture):
         with self.assertRaisesRegex(ValueError, "Patch byte count mismatch"):
             self.accept()
         self.make_zip()
+        self.reattest()
         self.artifact["digest"] = "sha256:" + "0" * 64
         with self.assertRaisesRegex(ValueError, "ZIP differs"):
             self.accept()
@@ -161,7 +162,7 @@ class AcceptanceTests(ReviewFixture):
             self.accept()
 
     def test_rejects_wrong_local_commit_and_main_branch(self):
-        with self.assertRaisesRegex(ValueError, "Expected SHA differs"):
+        with self.assertRaisesRegex(ValueError, "Expected SHA is not manifest source"):
             mod.accept(self.zip_path, self.cwd, "0" * 40, RUN_ID, ARTIFACT_ID, read_json=self.api)
         git(self.cwd, "switch", "-q", "-c", "main")
         with self.assertRaisesRegex(ValueError, "dedicated"):
