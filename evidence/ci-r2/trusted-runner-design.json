@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "phase": "THIEPN_HUB_CI_R2",
+  "status": "DESIGN_ONLY_BLOCKED",
+  "activation": "NOT_AUTHORIZED",
+  "prerequisiteR1Head": "ba011df894ec44a583e3d8eb55b90e8a1f1c40e2",
+  "controlPlane": "INDEPENDENT_PROTECTED_PRIVATE_REPOSITORY",
+  "execution": "NONE",
+  "ownerApproval": "NOT_GIVEN",
+  "hubRepository": "thiepn/thiepn.github.io",
+  "accountRepository": "thiepn/account",
+  "candidatePolicy": {
+    "selection": "EXACT_SHA_OWNER_REVIEW_REQUIRED",
+    "runnerCodeFromCandidate": false,
+    "untrustedPullRequestAccess": false,
+    "publicPrTokenAccess": false,
+    "forbiddenEvents": [
+      "pull_request",
+      "pull_request_target",
+      "merge_group",
+      "unreviewed_workflow_dispatch"
+    ],
+    "separateOwnerReview": true
+  },
+  "tokenPolicy": {
+    "kind": "SHORT_LIVED_GITHUB_APP_INSTALLATION",
+    "onlyRepository": "thiepn/account",
+    "permission": "contents:read",
+    "maxLifetimeMinutes": 60,
+    "credentialProvisioned": false,
+    "allowedInPublicPr": false,
+    "allowedInCandidateProcess": false,
+    "revokedBeforeCandidateExecution": true
+  },
+  "executionPolicy": {
+    "privateFetchWorkspace": "TRUSTED_EPHEMERAL_ONLY",
+    "candidateTestEnvironment": "NETWORK_ISOLATED_AFTER_REVIEW",
+    "untrustedPrCandidateExecution": false,
+    "privateSourceToPublicArtifacts": false,
+    "cleanupRequired": true
+  },
+  "evidencePolicy": {
+    "retention": "PRIVATE_ALLOWLIST_ONLY",
+    "exactHubShaRequired": true,
+    "exactAccountShasRequired": true,
+    "perSuiteLogsAndDigestsRequired": true,
+    "tokenOrSourceDisclosureAllowed": false,
+    "reviewerDecisionRequired": true
+  },
+  "suites": [
+    {
+      "id": "account",
+      "workflow": "hub-integration.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-account.config.ts"
+    },
+    {
+      "id": "managed-notes",
+      "workflow": "hub-notes-browser.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-notes.config.ts"
+    },
+    {
+      "id": "managed-tms60",
+      "workflow": "hub-tms60-browser.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-tms60.config.ts"
+    },
+    {
+      "id": "notes-inbox",
+      "workflow": "hub-inbox-browser.yml",
+      "accountSha": "5b426c40e9e174c11c36604c1ef2c18a6aa155d8",
+      "testConfig": "playwright.hub-inbox.config.ts"
+    },
+    {
+      "id": "notes-capture",
+      "workflow": "hub-capture-browser.yml",
+      "accountSha": "676413adfeef68f50e2bae95364fd43afbb6b497",
+      "testConfig": "playwright.hub-capture.config.ts"
+    },
+    {
+      "id": "cross-app",
+      "workflow": "hub-workflows-browser.yml",
+      "accountSha": "9cddcbcdb36e6260be3761ae35b221b1a7b8e271",
+      "testConfig": "playwright.hub-workflows.config.ts"
+    }
+  ]
+}
