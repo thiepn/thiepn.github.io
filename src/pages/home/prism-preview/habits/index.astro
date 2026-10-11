@@ -1,0 +1,94 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getHubProjects } from '../../../../lib/hub';
+import { HABITS_V0, safeHabitLink } from '../../../../lib/prism/habits-v0';
+import '../../../../styles/prism/tokens.css';
+import '../../../../styles/prism/shell.css';
+import '../../../../styles/prism/habits-v0.css';
+
+const entries = await getHubProjects();
+const appLinks = new Map(entries.map(({ project }) => [project.data.slug, project.data.liveUrl ?? '']));
+const defaultLink = (slug: string | null) => slug ? (safeHabitLink(appLinks.get(slug) ?? '') ?? '') : '';
+---
+<BaseLayout
+  title="Daily Habits V0 — THIEPN"
+  description="Private, browser-local daily habits preview in THIEPN Hub."
+  portal
+  prismShell
+  noindex
+  hideFooter
+>
+  <div class="prism-home prism-habits page-shell" data-prism-habits>
+    <header class="prism-habits__heading">
+      <a href="/home/prism-preview/" class="prism-habits__back">← Prism Home</a>
+      <p class="prism-eyebrow">PERSONAL / DAILY · V0 PREVIEW</p>
+      <h1>Today & habits</h1>
+      <p>Manual check-ins, weekly targets, and direct links to your tools. Opening an app does not automatically complete a habit.</p>
+    </header>
+
+    <p class="prism-habits__state" data-habits-status role="status" aria-live="polite">Checking local session…</p>
+    <button type="button" class="prism-habits__device" data-habits-device hidden>Use device-only mode</button>
+
+    <div data-habits-panel hidden>
+      <section class="prism-habits__summary" aria-label="Daily and weekly progress">
+        <div>
+          <span class="prism-eyebrow">TODAY</span>
+          <strong data-habits-today>0 of 7 checked</strong>
+        </div>
+        <div>
+          <span class="prism-eyebrow">THIS WEEK</span>
+          <strong data-habits-week>0 of 37 target sessions</strong>
+        </div>
+      </section>
+
+      <section class="prism-habits__habits" aria-labelledby="habits-list-title">
+        <div class="prism-habits__section-heading">
+          <h2 id="habits-list-title">My habits</h2>
+          <p>Completion is self-reported; rest days are not recorded as failures.</p>
+        </div>
+        <ul class="prism-habits__list">
+          {HABITS_V0.map(habit => (
+            <li class="prism-habits__item" data-habit-id={habit.id} data-default-link={defaultLink(habit.appSlug)}>
+              <div class="prism-habits__main">
+                <label class="prism-habits__check">
+                  <input type="checkbox" data-habit-check disabled aria-label={'Complete ' + habit.label + ' today'} />
+                  <span class="prism-habits__copy">
+                    <strong>{habit.label}</strong>
+                    <small>{habit.detail}</small>
+                  </span>
+                </label>
+                <div class="prism-habits__actions">
+                  <a data-habit-open href={defaultLink(habit.appSlug) || undefined} target="_blank" rel="noopener noreferrer" hidden={!defaultLink(habit.appSlug)}>Open tool ↗</a>
+                  <button type="button" data-habit-edit>Edit</button>
+                </div>
+              </div>
+              <div class="prism-habits__weekline">
+                <progress data-habit-progress max={habit.target} value="0" aria-label={habit.label + ' weekly goal'}></progress>
+                <span data-habit-count>0 / {habit.target} this week</span>
+              </div>
+              <div class="prism-habits__editor" data-habit-editor hidden>
+                <label>Weekly target
+                  <select data-habit-target aria-label={habit.label + ' weekly target'}>
+                    {Array.from({ length: 7 }, (_, i) => i + 1).map(n => <option value={n} selected={n === habit.target}>{n} {n === 1 ? 'day' : 'days'}</option>)}
+                  </select>
+                </label>
+                <label>Quick-launch URL
+                  <input type="text" data-habit-url inputmode="url" autocomplete="off" spellcheck="false" maxlength="500" placeholder="https://example.com or /apps/" aria-label={habit.label + ' quick-launch URL'} />
+                </label>
+                <p class="prism-habits__hint">Only HTTPS links or same-site paths. Leave blank for no link.</p>
+                <p class="prism-habits__error" data-habit-error role="alert" hidden></p>
+                <div class="prism-habits__editor-actions">
+                  <button type="button" data-habit-save>Save</button>
+                  <button type="button" data-habit-cancel>Cancel</button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <p class="prism-habits__footnote">Stored only in this browser and separated by verified Hub account when available. Device mode is shared by anyone using this browser. No cloud backup, app activity verification, reminders, or cross-device sync.</p>
+    </div>
+    <noscript><p>This preview needs JavaScript to record check-ins. The Prism Home launcher remains available without it.</p></noscript>
+  </div>
+</BaseLayout>
+<script>import '../../../../scripts/portal-auth'; import '../../../../scripts/prism-habits-v0';</script>
