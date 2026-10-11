@@ -115,7 +115,7 @@ export async function handleH21Request(
       .bind(owner,revision).first<DocumentRow>();
     return old ? json(remote(old)) : json({error:'revision unavailable'},404);
   }
-  if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json')
+  if (request.headers.get('content-type')?.split(';')[0]?.trim() !== 'application/json')
     return json({error:'expected JSON'},415);
   let payload: unknown;
   try {payload=await readBody(request);} catch {return json({error:'invalid JSON'},400);}

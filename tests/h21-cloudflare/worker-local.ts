@@ -25,7 +25,10 @@ async function verifyLocalJwt(token:string,pub:string|undefined):Promise<string|
     if(jwk.kty!=='EC'||jwk.crv!=='P-256'||jwk.d || jwk.alg && jwk.alg!=='ES256')return null;
     const key=await crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
     const bytes=new TextEncoder().encode(h+'.'+p);
-    if(!await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,decode(s!),bytes))return null;
+    const decodedSignature=decode(s!);
+    const signature=new ArrayBuffer(decodedSignature.byteLength);
+    new Uint8Array(signature).set(decodedSignature);
+    if(!await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,signature,bytes))return null;
     return claims.sub.toLowerCase();
   }catch{return null;}
 }
