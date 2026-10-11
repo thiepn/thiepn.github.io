@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: capture-hub-media
@@ -75,8 +74,7 @@ jobs:
           echo "Failed to push canonical Hub media after 4 attempts."
           exit 1
 
-      - name: Deploy refreshed main
+      - name: Record owner-controlled Pages release requirement
         if: steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref main
+        run: |
+          echo "::notice title=Owner release required::Hub media was committed to main. Wait for exact-main Quality, then the owner must manually authorize the Pages release."
