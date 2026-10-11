@@ -1,0 +1,37 @@
+name: H21 disposable Cloudflare D1 acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/lib/prism/home-h21-cloudflare-worker.ts'
+      - 'tests/h21-cloudflare/**'
+      - '.github/workflows/h21-cloudflare-local.yml'
+      - 'src/lib/prism/home-document.ts'
+      - 'src/lib/prism/home-store.ts'
+      - 'src/lib/prism/block-registry.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  h21-local-d1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_SEND_METRICS: "false"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: H21 actual local D1, synthetic cryptographic Auth acceptance
+        run: node tests/h21-cloudflare/acceptance.mjs
+      - name: Retain local D1 acceptance evidence (never production secrets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h21-local-d1-acceptance
+          path: tests/h21-cloudflare/evidence.local.json
+          if-no-files-found: ignore
+          retention-days: 14
