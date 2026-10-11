@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "kind": "THIEPN_HUB_CI_R3_OWNER_CUSTODY_PREPARATION",
+  "status": "PREPARATION_ONLY_NO_GO",
+  "baseline": {
+    "r2Head": "978e70c6960d2f8dff561bffbe0d49dfef046931",
+    "r1Head": "ba011df894ec44a583e3d8eb55b90e8a1f1c40e2",
+    "habitsV1Head": "dd31fd8d153cb4d9ba06b6e55a5deea0aaeb7b4f",
+    "habitsV0Head": "114ecb845dcd59bfe76be9f3aaa8aa00322e19da",
+    "lastObservedMain": "29537702c4e3698cb780bcc3c479e385d29bd3c8"
+  },
+  "owner": {
+    "controlPlane": "NOT_SELECTED",
+    "branchProtection": "UNVERIFIED",
+    "workflowProtection": "NOT_VERIFIED",
+    "independentReviewer": "NOT_ASSIGNED",
+    "approval": "NOT_GIVEN",
+    "signedCustodyRecord": "NOT_COLLECTED",
+    "candidateSha": null,
+    "approvalNonce": null,
+    "disposition": "NO_GO"
+  },
+  "token": {
+    "githubAppInstalled": false,
+    "tokenIssued": false,
+    "onlyRepository": "thiepn/account",
+    "onlyPermission": "contents:read",
+    "allowedInPublicPR": false,
+    "allowedInCandidateProcess": false,
+    "revocationObserved": "NOT_TESTED"
+  },
+  "execution": {
+    "trustedRunnerExecuted": false,
+    "pairedSuitesStatus": "BLOCKED_NOT_EXECUTED",
+    "originalLogsCollected": 0,
+    "privateArtifactsCollected": 0,
+    "witness": "NOT_GIVEN",
+    "verifiedCleanup": "NOT_TESTED",
+    "privateSourceToPublicArtifacts": false
+  },
+  "sixSuites": [
+    {
+      "workflow": "hub-integration.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-account.config.ts",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "workflow": "hub-notes-browser.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-notes.config.ts",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "workflow": "hub-tms60-browser.yml",
+      "accountSha": "19abe54a605ee7fe121d91e4b5cbef0f0b74763b",
+      "testConfig": "playwright.hub-tms60.config.ts",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "workflow": "hub-inbox-browser.yml",
+      "accountSha": "5b426c40e9e174c11c36604c1ef2c18a6aa155d8",
+      "testConfig": "playwright.hub-inbox.config.ts",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "workflow": "hub-capture-browser.yml",
+      "accountSha": "676413adfeef68f50e2bae95364fd43afbb6b497",
+      "testConfig": "playwright.hub-capture.config.ts",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "workflow": "hub-workflows-browser.yml",
+      "accountSha": "9cddcbcdb36e6260be3761ae35b221b1a7b8e271",
+      "testConfig": "playwright.hub-workflows.config.ts",
+      "status": "NOT_EXECUTED"
+    }
+  ],
+  "humanGates": [
+    {
+      "id": "two-owner-oauth-consent",
+      "status": "OPEN"
+    },
+    {
+      "id": "physical-android-ios",
+      "status": "OPEN"
+    },
+    {
+      "id": "screen-reader-keyboard",
+      "status": "OPEN"
+    },
+    {
+      "id": "device-local-reconsent",
+      "status": "OPEN"
+    },
+    {
+      "id": "security-review",
+      "status": "OPEN"
+    },
+    {
+      "id": "prism-visual-owner",
+      "status": "OPEN"
+    },
+    {
+      "id": "release-owner-authorization",
+      "status": "OPEN"
+    }
+  ],
+  "physicalObservations": [
+    {
+      "id": "android-chrome",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "android-samsung-internet",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "ios-safari",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "android-talkback",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "ios-voiceover",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "physical-keyboard",
+      "status": "NOT_TESTED"
+    }
+  ],
+  "release": {
+    "status": "NO_GO",
+    "mergeAllowed": false,
+    "deployAllowed": false,
+    "migrationAllowed": false,
+    "purgeAllowed": false,
+    "rollbackAllowed": false
+  }
+}

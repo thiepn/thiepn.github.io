@@ -1,0 +1,23 @@
+# THIEPN Hub CI R3 — Owner Custody & Acceptance Preparation
+
+## Exact ancestry and R2 acceptance
+R3 is a source-only draft directly on R2 PR #126, head 978e70c6960d2f8dff561bffbe0d49dfef046931, stacked on R1 #125 ba011df894ec44a583e3d8eb55b90e8a1f1c40e2, Habits V1 #123 dd31fd8d153cb4d9ba06b6e55a5deea0aaeb7b4f and V0 #122 114ecb845dcd59bfe76be9f3aaa8aa00322e19da. Main last independently seen at 29537702c4e3698cb780bcc3c479e385d29bd3c8. None of the above has been merged or deployed.
+
+R2 full Quality 38172872905: 532 passed Vitest, 684 passed Chromium/Firefox/WebKit, Astro check 0 errors. Original archive 11714807876 (44,596,065 bytes; SHA-256 823d5ec7e7700507f1a3ce7f2731edf01ac7e2a5089ee02ab6ef28e8b3d26610), 55/55 ZIP CRC valid, 684 expected, 0 unexpected/skipped/flaky; all 40 PNG images byte-identical to V0, V1 and R1. Notes 38172872917: 43 owner integration and 16 contract pass; ZIP 11714840802 CRC/JUnit valid, SHA-256 aaf2db3a5fcfb150aeb0f9c2fa4c572013801270720ce2de370190919518ae66. Library 38172872918: 63 passed. Five triggered Account-paired workflows blocked before private checkout; sixth cross-app blocked under R1. The six privileged suites have NOT EXECUTED.
+
+## Custody requirements (not yet fulfilled)
+1. Owner verifies a separate private CI control plane, workflow source protections, branch settings and independent review. Branch protection remains UNVERIFIED because API access was denied. No public PR workflow or contributor-controlled code may be privileged.
+2. Before any trusted test, independent reviewer decides on exactly one full 40-character candidate Hub SHA, original six immutable Account pins and unchanged test commands. Record an owner-held signed approval, explicit scope, issue time, expiry, nonce, permitted action and immutable digest. PR approval or edited JSON in this repo does not constitute such a signed decision. Head changes invalidate approval.
+3. Only after separate owner authorization may protected runner code issue a GitHub App installation token scoped exclusively to thiepn/account contents:read, inside a disposable private fetch-only environment. Avoid persistent credentials, shared caches, logs and public artifacts. Never expose token or private source to untrusted PR or candidate scripts. Verify token expiry and revocation before candidate execution.
+4. Test exact reviewed Hub candidate and original six paired suites in private isolated, network-denied workspace, with no token, credential, uncontrolled third-party calls or public artifact upload. Validate original account object SHA pins and full paired browser behavior. Missing resources => NOT TESTED/NO_GO, not guessed success.
+5. An independent custodian must record per-suite original logs, JUnit and Playwright stats, original ZIP SHA-256/CRC, redaction and private data inspection, token revocation and disposable workspace disposal evidence. Unsafe disclosure or missing evidence => FAIL/NO_GO. Any public status requires separate sanitization approval.
+6. Owner separately decides acceptance after reviewing actual evidence; no automation should infer human approval. Even full integration CI cannot waive the seven H15 release gates or authorize merge, deploy, migration, purge, rollback or production changes.
+
+## Immutable preparation contract
+The public evidence/ci-r3/owner-custody-preparation.json has PREPARATION_ONLY_NO_GO, owner NOT_GIVEN, trusted runner NOT_EXECUTED, no credentials installed, no signed proof, six private suites NOT_EXECUTED, seven human gates OPEN and all physical observations NOT_TESTED. The pure validator and negative-path tests reject any public PR edit falsely asserting a real approval, changed pin or release permission. Owner signatures and private attestation evidence must be held outside this repo, not invented in public JSON.
+
+## Original release receipt
+Seven human gates: two-owner-oauth-consent; physical-android-ios; screen-reader-keyboard; device-local-reconsent; security-review; prism-visual-owner; release-owner-authorization. Missing physical categories: android-chrome, android-samsung-internet, ios-safari, android-talkback, ios-voiceover, physical-keyboard. Owner chose to skip physical tests. They remain NOT TESTED, not waived. R2 original H15 precutover NO_GO, real owner approvals 0, deploy/merge/migrate/purge/rollback forbidden.
+
+## Release decision
+NO_GO. No credentials, GitHub App, protected workflows, token permissions, branch rules, repository visibility, release gate, production data, screenshots, Cloudflare, or deployment may change in CI R3. This is an owner-reviewable source document and fail-closed contract, not activation.
