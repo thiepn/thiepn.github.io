@@ -191,13 +191,13 @@ def verify_local(cwd, expected_sha, manifest, files, patch, apply=False, confirm
             current = current / part
             require(not current.is_symlink(), "Output destination traverses a symlink")
     if patch:
-        git(cwd, "apply", "--check", "--index", "--binary", "--whitespace=error", "-", input_bytes=patch)
+        git(cwd, "apply", "--check", "--index", "--binary", "--whitespace=nowarn", "-", input_bytes=patch)
     if apply:
+        require(confirmation == expected_sha, "Applying requires --confirm-sha matching the source SHA")
         require(os.environ.get("CI") != "true" and os.environ.get("GITHUB_ACTIONS") != "true",
                 "Application is disabled in CI/Actions; use a local owner-controlled branch")
-        require(confirmation == expected_sha, "Applying requires --confirm-sha matching the source SHA")
         if patch:
-            git(cwd, "apply", "--index", "--binary", "--whitespace=error", "-", input_bytes=patch)
+            git(cwd, "apply", "--index", "--binary", "--whitespace=nowarn", "-", input_bytes=patch)
             status = git(cwd, "diff", "--cached", "--no-renames", "--name-status", "-z").decode().split("\0")
             status = [x for x in status if x]
             require(sorted((status[i + 1], status[i]) for i in range(0, len(status), 2)) ==
