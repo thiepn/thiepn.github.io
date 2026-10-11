@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: CI R1 private Account fail-closed trust boundary
+        run: node scripts/hub-account-ci-boundary.mjs
       - name: Check out immutable H17 Account authorization source
         uses: actions/checkout@v4
         with:
