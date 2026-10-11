@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 SOURCE = Path(__file__).resolve().parents[1] / "scripts" / "accept-generated-review.py"
@@ -100,7 +101,8 @@ class AcceptanceTests(ReviewFixture):
         self.assertEqual((self.cwd / "public" / "icon-192.png").read_bytes(), b"OLD\x00\xff\xfe")
 
     def test_explicit_sha_confirmation_stages_only_three_generated_paths(self):
-        out = self.accept(apply=True, confirmation=self.base)
+        with mock.patch.dict(os.environ, {"CI": "false", "GITHUB_ACTIONS": "false"}):
+            out = self.accept(apply=True, confirmation=self.base)
         self.assertTrue(out["staged"])
         self.assertEqual((self.cwd / "public" / "icon-192.png").read_bytes(), b"NEW\xff\x00\x81")
         self.assertFalse((self.cwd / "public" / "icon-512.png").exists())
