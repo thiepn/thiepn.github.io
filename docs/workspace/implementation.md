@@ -14,13 +14,13 @@ Existing owner handoffs and feature-gated integrations remain at `/home/connecti
 
 - Typecheck: zero errors/warnings.
 - Unit suite: 279 passing tests.
-- Focused Chromium production scenarios: 65 passing, including offline reload, scope changes, conflicts and recovery.
+- Focused Chromium production scenarios: 66 passing, including offline reload, scope changes, conflicts and recovery.
 - Full Chromium studio suite: 194 passing before the final mobile/rail CSS corrections; targeted final responsive verification is recorded with screenshots.
 - Build, registry/source validation, performance budget, release qualification, release rejection fixtures and served-artifact smoke fixtures passed.
 - Firefox/WebKit and GitHub CI status must be recorded separately; local host startup limits do not establish cross-browser acceptance.
 
 ## Release
 
-This UI branch depends on CI-boundary PR #132. Media PR #133 and Orrery PR #134 are independent. Preserve the owner-only exact-main release workflow. After integrated Quality passes, dispatch Deploy to GitHub Pages on main with its exact qualified SHA, then run served UI/persistence/editing smoke checks. The connected tools cannot dispatch workflows and the local GitHub CLI token is invalid; live release cannot be claimed from this workspace.
+CI-boundary PR #132 is merged; the UI PR now targets main. Media PR #133 and Orrery PR #134 are independent. Preserve the owner-only exact-main release workflow. After integrated Quality passes, dispatch Deploy to GitHub Pages on main with its exact qualified SHA, then run served UI/persistence/editing smoke checks. The connected tools cannot dispatch workflows and the local GitHub CLI token is invalid; live release cannot be claimed from this workspace.
 
 Screenshots in this directory show the runnable implementation with disposable sample records, not the currently served site. See `design-qa.md` at the project root.

@@ -7,6 +7,7 @@ Viewed the approved reference and actual edit-mode screenshot together, then ins
 - P1 fixed: mobile heading was squeezed beside its toolbar; heading and controls now have separate rows.
 - P1 fixed: collapsed rail hid navigation icons with labels; icons remain visible.
 - P1 fixed: secondary text contrast and widget overflow at narrow center widths.
+- P1 fixed: populated dark priority-time contrast and keyboard access to overflowing activity; full axe audits of populated light/dark states now have zero violations.
 - P2: theme transition capture now waits for settled styles; light/dark controls use the same token system.
 
 Public app catalogue remains on Apps. Continue and activity contain actual local records; provider history is not fabricated. Quick capture uses native form controls, charts have text summaries, and native dialogs trap focus. Keyboard and pointer layout editing, reduced motion, light/dark accessibility and responsive reflow are covered by browser scenarios.

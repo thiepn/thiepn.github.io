@@ -1,1219 +1,472 @@
-import { hubIdentity } from './portal-auth';
-import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
-import { icon } from '../lib/workspace/icons';
-import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
-import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
-import { WIDGETS, specification } from '../lib/workspace/registry';
-import { preset, PRESETS } from '../lib/workspace/presets';
-import { place, ordered } from '../lib/workspace/layout';
-import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
-const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-const button = (action: string, label: string, id = '', className = 'ws-button') => `<button type="button" class="${className}" data-action="${action}"${id ? ` data-id="${esc(id)}"` : ''}>${label}</button>`;
-const field = (label: string, name: string, value = '', type = 'text', extra = '') => `<label class="ws-field">${label}<input aria-label="${esc(label)}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/></label>`;
-const select = (label: string, name: string, options: string[][], value: string) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}">${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
-const area = (label: string, name: string, value: string, max = 10000) => `<label class="ws-field">${label}<textarea aria-label="${esc(label)}" name="${name}" maxlength="${max}">${esc(value)}</textarea></label>`;
-const root = document.querySelector<HTMLElement>('[data-workspace]');
-if (root)
-    void setup(root);
-async function setup(root: HTMLElement) {
-    if (location.search || location.hash) history.replaceState(null,'',location.pathname);
-    const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
-    const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
-    const view = root.dataset.view ?? 'home';
-    let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
-    let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
-    let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
-    let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
-    let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
-    let privacyHeld = false;
-    let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
-    let changeVersion = 0;
-    let queue = Promise.resolve();
-    const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
-    const form = $<HTMLFormElement>('[data-workspace-form]');
-    let submitForm: ((data: FormData) => Promise<void> | void) | null = null;
-    let observer: ResizeObserver | null = null;
-    const current = () => state!.workspaces.find(w => w.id === state!.active)!;
-    const pins = () => current().widgets.find(w => w.type === 'app-shortcuts')?.config.appIds as string[] ?? apps.slice(0, 6).map(a => a.id);
-    const today = () => dayKey(state!.preferences.timezone);
-    const dateLabel = (key: string, long = false) => new Date(key + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: long ? 'long' : 'short', day: 'numeric', month: long ? 'long' : 'short', ...(long ? { year: 'numeric' } : {}) });
-    const timeLabel = (at: string) => new Date(at).toLocaleTimeString(undefined, { timeZone: state!.preferences.timezone, hour: '2-digit', minute: '2-digit' });
-    function toast(message: string, undo = false) { clearTimeout(toastTimer); const el = $('[data-workspace-toast]'); el.innerHTML = `<span>${esc(message)}</span>${undo ? button('undo-content', 'Undo', '', '') : ''}`; el.hidden = false; toastTimer = setTimeout(() => { el.hidden = true; }, 8000); }
-    function notice(message: string, actions = '') { const el = $('[data-workspace-notice]'); el.innerHTML = `${esc(message)}${actions}`; el.hidden = !message; }
-    function saved(label?: string) { $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved Â· export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved Â· storage unavailable'); }
-    function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function persist(backup = false) {
-        if (!state || locked)
-            return;
-        dirty = true;
-        saved('Saving on this deviceâ€¦');
-        if (!storageReady || !store) {
-            saved();
-            return;
-        }
-        const own = epoch, snapshot = clone(state), savedVersion = changeVersion;
-        try {
-            await store.save(snapshot, state.revision, backup);
-            if (own !== epoch)
-                return;
-            state.revision = snapshot.revision;
-            dirty = changeVersion !== savedVersion;
-            conflict = false;
-            saved();
-            channel?.postMessage({ key: store.key, revision: state.revision });
-        }
-        catch (err) {
-            if (own !== epoch)
-                return;
-            dirty = true;
-            conflict = err instanceof RevisionConflict;
-            saved();
-            notice(err instanceof RevisionConflict ? err.message : 'Changes are in memory but could not be saved. Export a backup or retry.', button('export', 'Export') + button('retry', 'Retry') + button('reload', 'Reload saved data'));
-        }
-    }
-    function mutate(change: (s: WorkspaceState) => void, message = '', undo = true, backup = false) {
-        const own = epoch;
-        queue = queue.then(async () => {
-            if (own !== epoch || !state || locked)
-                return;
-            const previous = clone(state);
-            change(state);
-            changeVersion++;
-            try {
-                parseState(JSON.stringify(state));
-            }
-            catch (e) {
-                state = previous;
-                throw e;
-            }
-            contentUndo = undo ? previous : null;
-            render();
-            await persist(backup);
-            if (message)
-                toast(dirty ? message.replace(/\bsaved.*$/i, 'updated') + ' Â· not saved. Export or retry.' : message, undo);
-        }).catch(e => toast(e instanceof Error ? e.message : 'Unable to apply this change.'));
-        return queue;
-    }
-    function openForm(title: string, html: string, onSubmit: (data: FormData) => Promise<void> | void, label = 'Save') {
-        const formEpoch = epoch;
-        submitForm = data => { if (epoch !== formEpoch) throw new Error('Your identity changed. Reopen this form.'); return onSubmit(data); };
-        $('[data-dialog-fields]').innerHTML = html;
-        $('[data-dialog-error]').textContent = '';
-        $('[data-dialog-submit]').textContent = label;
-        $('[data-dialog-submit]').hidden = false;
-        $('[data-dialog-submit]').removeAttribute('disabled');
-        $('[data-dialog-fields]').querySelectorAll<HTMLInputElement>('input').forEach(i => i.setCustomValidity(''));
-        $('#ws-dialog-title').textContent = title;
-        if (!dialog.open)
-            dialog.showModal();
-        ($('[data-dialog-fields]').querySelector<HTMLElement>('input:not([type=checkbox]),textarea,select,button') ?? $('[data-dialog-submit]')).focus();
-    }
-    form.addEventListener('submit', event => {
-        event.preventDefault();
-        if (!submitForm)
-            return;
-        const submit = $<HTMLButtonElement>('[data-dialog-submit]');
-        submit.disabled = true;
-        void Promise.resolve().then(() => submitForm!(new FormData(form))).then(() => dialog.close()).catch(e => { $('[data-dialog-error]').textContent = e instanceof Error ? e.message : 'Unable to save.'; }).finally(() => { submit.disabled = false; });
-    });
-    function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
-    function taskRows(tasks: Task[]) { return tasks.map(t => `<div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}"><input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/><button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : ''}${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}${t.time ? `<time>${esc(t.time)}</time>` : ''}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}</div>`).join(''); }
-    function calendarHTML() {
-        const first = month;
-        const offset = (new Date(first + 'T12:00:00Z').getUTCDay() + 6) % 7;
-        const count = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
-        const dates = Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, i) => addDays(first, i - offset));
-        return `<div class="ws-calendar-heading"><strong>${new Date(first + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', year: 'numeric' })}</strong><div>${button('month-prev', icon('caret-left'), '', 'ws-icon-button')}${button('month-next', icon('caret-right'), '', 'ws-icon-button')}</div></div><div class="ws-month">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}${dates.map(d => `<button type="button" data-action="select-date" data-id="${d}" aria-label="${esc(dateLabel(d, true))}" aria-pressed="${d === selected}" class="${d === selected ? 'selected' : ''} ${d === today() ? 'today' : ''} ${d.slice(0, 7) !== first.slice(0, 7) ? 'outside' : ''} ${state!.events.some(e => eventRange(e)[0]! <= d && eventRange(e)[1]! >= d) || state!.tasks.some(t => t.due === d) ? 'has-event' : ''}">${Number(d.slice(8))}</button>`).join('')}</div>`;
-    }
-    function eventRange(e: CalendarEvent) { return e.allDay ? [e.date,e.endDate] : [dayKey(state!.preferences.timezone,new Date(e.start)),dayKey(state!.preferences.timezone,new Date(e.end))]; }
-    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} Â· ${esc(e.zone)}`}</small></div>${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
-    function renderPlanner() {
-        const el = $('[data-planner]');
-        if (!state || (privacyHeld || state.preferences.hidden)) {
-            el.innerHTML = empty('Your planner', state ? 'Personal content is hidden.' : 'Checking your workspaceâ€¦');
-            return;
-        }
-        const tasks = state.tasks.filter(t => t.due === selected || (!t.due && selected === today())).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || a.time.localeCompare(b.time));
-        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${agendaHTML()}<p class="ws-muted">Local calendar Â· ${esc(state.preferences.timezone)}</p></section>`;
-        el.querySelectorAll<HTMLElement>('[data-action=month-prev]').forEach(b => b.setAttribute('aria-label', 'Previous month'));
-        el.querySelectorAll<HTMLElement>('[data-action=month-next]').forEach(b => b.setAttribute('aria-label', 'Next month'));
-        el.querySelectorAll<HTMLElement>('[data-action=new-event]').forEach(b => b.setAttribute('aria-label', 'Add event'));
-    }
-    function selectedTrackers(w: Widget) { const ids = w.config.trackerIds; return Array.isArray(ids) ? state!.trackers.filter(t => ids.includes(t.id)).slice(0,32) : state!.trackers.slice(0,8); }
-    function trackersHTML(w: Widget) {
-        const trackers = selectedTrackers(w);
-        if (!trackers.length)
-            return empty('Make progress visible', 'Create a tracker for reading, focus, exercise or anything you want to measure.', 'new-tracker', 'Create a tracker');
-        const date = today();
-        if (w.view === 'table')
-            return `<table class="ws-tracker-table"><thead><tr><th>Tracker</th><th>Progress / goal</th><th><span class="ws-sr">Actions</span></th></tr></thead><tbody>${trackers.map(t => { const total = trackerTotal(state!, t.id, date); return `<tr><td>${esc(t.title)}<small class="ws-muted"> Â· ${t.cadence === 'daily' ? 'today' : 'this week'}</small></td><td>${formatTrackerValue(t,total)} / ${formatTrackerValue(t,t.goal)} ${t.kind==='duration'&&['min','minutes','minute'].includes(t.unit.toLowerCase())?'':esc(t.unit)}</td><td>${button('log-tracker', '+ Log', t.id, 'ws-text-button')}</td></tr>`; }).join('')}</tbody></table>`;
-        return trackers.map(t => { const total = trackerTotal(state!, t.id, date); return `<div class="ws-tracker-row"><div><strong>${esc(t.title)}</strong><small>${formatTrackerValue(t,total)} / ${formatTrackerValue(t,t.goal)} ${t.kind==='duration'&&['min','minutes','minute'].includes(t.unit.toLowerCase())?'':esc(t.unit)} Â· ${t.cadence === 'daily' ? 'today' : 'this week'}</small>${w.view !== 'compact' ? `<div class="ws-progress" role="meter" aria-label="${esc(t.title)} progress" aria-valuemin="0" aria-valuemax="${t.goal}" aria-valuenow="${Math.min(total, t.goal)}"><span style="width:${Math.min(total / t.goal * 100, 100)}%"></span></div>` : ''}</div>${button('log-tracker', '+ Log', t.id, 'ws-text-button')}</div>`; }).join('');
-    }
-    function historyHTML(w: Widget) {
-        const trackers = selectedTrackers(w);
-        if (!trackers.length)
-            return empty('Your week, at a glance', 'Log a tracker to build a picture of your week.', 'new-tracker', 'Create a tracker');
-        const days = weekDays(today());
-        if (w.view === 'matrix')
-            return `<table class="ws-matrix"><caption class="ws-sr">Tracker logs for the week beginning ${days[0]}</caption><thead><tr><th>Tracker</th>${days.map(d => `<th>${new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short' })}<br/>${Number(d.slice(8))}</th>`).join('')}</tr></thead><tbody>${trackers.map(t => `<tr><td>${esc(t.title)}</td>${days.map(d => { const value = state!.logs.filter(l => l.trackerId === t.id && l.date === d).reduce((n, l) => n + l.value, 0); return `<td class="${value ? 'logged' : ''}">${d > today() ? 'â€”' : value || '0'}</td>`; }).join('')}</tr>`).join('')}</tbody></table>`;
-        const tracker = trackers.find(t => t.id === w.config.selectedTracker) ?? trackers[0]!;
-        const values = days.map(d => state!.logs.filter(l => l.trackerId === tracker.id && l.date === d).reduce((n, l) => n + l.value, 0));
-        const max = Math.max(1, ...values);
-        return `<div class="ws-history-head"><select aria-label="Tracker for chart" data-history-select="${esc(w.id)}">${trackers.map(t => `<option value="${esc(t.id)}" ${t.id === tracker.id ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select><small class="ws-muted">${esc(tracker.unit)} Â· this week</small></div><div class="ws-chart" role="img" aria-label="${esc(tracker.title)}: ${days.map((d, i) => `${dateLabel(d)} ${values[i]} ${tracker.unit}`).join(', ')}">${days.map((d, i) => `<div class="ws-chart-day"><b>${d > today() ? 'â€”' : values[i]}</b><div class="ws-chart-bar"><span style="height:${values[i]! / max * 100}%"></span></div><span>${new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short' })}<br/>${Number(d.slice(8))}</span></div>`).join('')}</div>`;
-    }
-    function widgetBody(w: Widget) {
-        if (w.typeVersion > 1)
-            return empty('Newer widget version', 'This widget is preserved. Update the app to use it.');
-        switch (w.type) {
-            case 'app-shortcuts': {
-                const ids = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
-                const chosen = ids.map(id => apps.find(a => a.id === id)).filter((a): a is AppShortcut => !!a);
-                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widgetâ€™s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
-            }
-            case 'continue': return state!.notes.length ? state!.notes.slice(0, 8).map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Local note Â· ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('') : empty('Pick up where you left off', 'Your captured notes will appear here. App resource connections are available separately.', 'capture', 'Capture a note');
-            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or noteâ€¦" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} Â· local capture</small></form>`;
-            case 'tracker-summary': return trackersHTML(w);
-            case 'tracker-history': return historyHTML(w);
-            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} Â· this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
-            default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
-        }
-    }
-    function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
-    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Your workspace is local to this browser. Back up layouts, tasks, notes, events and tracker history together.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
-    function fullContent() {
-        if (view === 'settings')
-            return settingsHTML();
-        if (view === 'tasks') {
-            const tasks = state!.tasks.filter(t => taskFilter === 'all' || taskFilter === 'completed' ? taskFilter === 'all' || !!t.completedAt : !t.completedAt && (taskFilter === 'upcoming' ? t.due > today() : t.due <= today())).sort((a, b) => a.due.localeCompare(b.due) || a.time.localeCompare(b.time));
-            return `<div class="ws-content-toolbar"><select aria-label="Task filter" data-task-filter>${['today', 'upcoming', 'all', 'completed'].map(v => `<option value="${v}" ${taskFilter === v ? 'selected' : ''}>${v === 'today' ? 'Today and overdue' : v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select>${button('new-task', '+ Add task')}</div><section class="ws-surface">${tasks.length ? taskRows(tasks) : empty('Your next step starts here', 'Create a task, add a due date and check it off when you finish.', 'new-task', 'Add a task')}</section>`;
-        }
-        if (view === 'calendar')
-            return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
-        if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} Â· ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' Â· ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return renderGrid();
-    }
-    function render() {
-        observer?.disconnect();
-        if (!state)
-            return;
-        const focus = document.activeElement as HTMLElement | null;
-        const action = focus?.dataset.action, id = focus?.dataset.id, toggle = focus?.dataset.taskToggle;
-        root.dataset.rail = state.preferences.rail ? 'expanded' : 'collapsed';
-        root.dataset.density = state.preferences.density;
-        const rail = $('[data-action=rail]');
-        rail.setAttribute('aria-expanded', String(state.preferences.rail));
-        rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
-        $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
-        $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : button('capture', '+ Capture');
-        if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
-            $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
-        else
-            $('[data-workspace-content]').innerHTML = fullContent();
-        renderPlanner();
-        root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
-        root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
-        root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
-        if (recoveryDraft && !editing)
-            notice('An interrupted layout edit is available.', button('resume-draft', 'Resume edit') + button('discard-draft', 'Discard edit'));
-        if (!dirty)
-            saved();
-        if (toggle)
-            root.querySelector<HTMLInputElement>(`[data-task-toggle="${CSS.escape(toggle)}"]`)?.focus();
-        else if (action)
-            root.querySelector<HTMLElement>(`[data-action="${CSS.escape(action)}"]${id ? `[data-id="${CSS.escape(id)}"]` : ''}`)?.focus();
-        if (view === 'home') {
-            observer ??= new ResizeObserver(() => {
-                const grid = $('[data-grid]');
-                if (!grid)
-                    return;
-                root.dataset.gridCompact = grid.clientWidth < 580 ? 'true' : 'false';
-            });
-            const grid = root.querySelector('[data-grid]');
-            if (grid)
-                observer.observe(grid);
-        }
-    }
-    function editTask(id = '') {
-        const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
-            const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
-            if (!task.title)
-                throw new Error('Enter a task title.');
-            if (task.time && !task.due)
-                throw new Error('Choose a due date for a timed task.');
-            if (task.time)
-                zonedInstant(task.due, task.time, state!.preferences.timezone);
-            await mutate(s => {
-                const ix = s.tasks.findIndex(x => x.id === task.id);
-                if (ix >= 0)
-                    s.tasks[ix] = task;
-                else
-                    s.tasks.push(task);
-                activity(s, `${t ? 'Updated' : 'Added'} task: ${task.title}`, 'task');
-            }, 'Task saved on this device');
-        });
-    }
-    function editEvent(id = '') {
-        const ev = state!.events.find(e => e.id === id);
-        const zone = state!.preferences.timezone;
-        const localTime = (instant: string) => new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant));
-        openForm(ev ? 'Edit event' : 'Add an event', field('Event', 'title', ev?.title ?? '', 'text', 'required maxlength="240"') + `<label class="ws-choice"><input type="checkbox" name="allDay" ${ev?.allDay ? 'checked' : ''}/> All-day event</label><div class="ws-form-row">${field('Start date', 'date', ev && !ev.allDay ? dayKey(zone,new Date(ev.start)) : ev?.date ?? selected, 'date', 'required')}${field('End date', 'endDate', ev && !ev.allDay ? dayKey(zone,new Date(ev.end)) : ev?.endDate ?? selected, 'date', 'required')}</div><div class="ws-form-row">${field('Start time', 'start', ev && !ev.allDay ? localTime(ev.start) : '09:00', 'time')}${field('End time', 'end', ev && !ev.allDay ? localTime(ev.end) : '10:00', 'time')}</div><p class="ws-muted">Times use ${esc(zone)}. All-day end date is inclusive.</p>${ev ? button('delete-event', 'Delete event', ev.id) : ''}`, async (data) => {
-            const allDay = data.has('allDay'), date = String(data.get('date')), endDate = String(data.get('endDate'));
-            const event: CalendarEvent = { id: ev?.id ?? uid(), title: String(data.get('title')).trim(), date, endDate, allDay, zone, start: allDay ? '' : zonedInstant(date, String(data.get('start')), zone), end: allDay ? '' : zonedInstant(endDate, String(data.get('end')), zone) };
-            if (!event.title || endDate < date || (!allDay && Date.parse(event.end) <= Date.parse(event.start)))
-                throw new Error('Give the event a title and an end after its start.');
-            await mutate(s => {
-                const ix = s.events.findIndex(e => e.id === event.id);
-                if (ix >= 0)
-                    s.events[ix] = event;
-                else
-                    s.events.push(event);
-                activity(s, `${ev ? 'Updated' : 'Added'} event: ${event.title}`, 'event');
-            }, 'Event saved');
-        });
-    }
-    function editNote(id = '') {
-        const note = state!.notes.find(n => n.id === id);
-        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
-            const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
-            if (!next.title)
-                throw new Error('Enter a title.');
-            await mutate(s => {
-                const ix = s.notes.findIndex(n => n.id === next.id);
-                if (ix >= 0)
-                    s.notes[ix] = next;
-                else
-                    s.notes.unshift(next);
-                s.captureDraft = '';
-                activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
-            }, 'Note saved on this device');
-        });
-    }
-    function editTracker(id = '') {
-        const t = state!.trackers.find(t => t.id === id);
-        openForm(t ? 'Edit tracker' : 'Create a tracker', field('Name', 'title', t?.title ?? '', 'text', 'required maxlength="80"') + select('Track', 'kind', [['count', 'Count'], ['duration', 'Duration'], ['checklist', 'Checklist']], t?.kind ?? 'count') + field('Unit', 'unit', t?.unit ?? 'sessions', 'text', 'required maxlength="40"') + field('Goal', 'goal', String(t?.goal ?? 5), 'number', 'required min="0.01" max="100000" step="any"') + select('Period', 'cadence', [['daily', 'Daily'], ['weekly', 'Weekly']], t?.cadence ?? 'weekly') + (t ? button('delete-tracker', 'Delete tracker and its logs', t.id) : ''), async (data) => {
-            const tracker: Tracker = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), kind: data.get('kind') as Tracker['kind'], unit: String(data.get('unit')).trim(), goal: Number(data.get('goal')), cadence: data.get('cadence') as Tracker['cadence'] };
-            if (!tracker.title)
-                throw new Error('Enter a name.');
-            await mutate(s => {
-                const ix = s.trackers.findIndex(x => x.id === tracker.id);
-                if (ix >= 0)
-                    s.trackers[ix] = tracker;
-                else
-                    s.trackers.push(tracker);
-                activity(s, `${t ? 'Updated' : 'Created'} tracker: ${tracker.title}`, 'tracker');
-            }, 'Tracker saved');
-        });
-    }
-    function logTracker(id: string, logId = '') {
-        const log = state!.logs.find(l => l.id === logId);
-        const t = state!.trackers.find(t => t.id === id);
-        if (!t)
-            return;
-        openForm(`${log ? 'Edit' : 'Log'} ${t.title}`, field('Date', 'date', log?.date ?? today(), 'date', `required max="${today()}"`) + field(t.kind === 'duration' ? `Duration (${esc(t.unit)})` : `Amount (${esc(t.unit)})`, 'value', String(log?.value ?? 1), 'number', 'required min="0" max="100000" step="any"') + field('Note (optional)', 'note', log?.note ?? '', 'text', 'maxlength="500"'), async (data) => {
-            const value = Number(data.get('value')), date = String(data.get('date'));
-            if (t.kind === 'checklist' && value !== 0 && value !== 1)
-                throw new Error('Checklist entries are 0 or 1.');
-            await mutate(s => {
-                const record = { id: log?.id ?? uid(), trackerId: id, date, value, note: String(data.get('note')) };
-                const ix = s.logs.findIndex(l => l.id === record.id);
-                if (ix >= 0)
-                    s.logs[ix] = record;
-                else
-                    s.logs.push(record);
-                activity(s, `Logged ${value} ${t.unit}: ${t.title}`, 'tracker');
-            }, 'Tracker log saved');
-        });
-    }
-    function beginEdit() {
-        if (editing)
-            return;
-        editing = { workspaceId: current().id, baseRevision: current().revision, workspace: clone(current()) };
-        layoutUndo = [];
-        layoutRedo = [];
-        render();
-        void saveDraft();
-    }
-    async function saveDraft() {
-        if (!store || !storageReady || !editing)
-            return;
-        const own = epoch;
-        try {
-            await store.draft(clone(editing));
-        }
-        catch {
-            if (own === epoch)
-                notice('Layout changes are only in memory. Export your workspace before leaving.', button('export', 'Export'));
-        }
-    }
-    function changeLayout(change: (w: Workspace) => void) {
-        if (!editing)
-            beginEdit();
-        if (!editing)
-            return;
-        layoutUndo.push(clone(editing.workspace));
-        layoutUndo = layoutUndo.slice(-50);
-        layoutRedo = [];
-        change(editing.workspace);
-        render();
-        void saveDraft();
-    }
-    async function finishEdit() {
-        if (!editing || !state)
-            return;
-        const draft = clone(editing);
-        if (current().id !== draft.workspaceId || current().revision !== draft.baseRevision || conflict) {
-            notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
-            return;
-        }
-        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
-        if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
-            editing = null;
-            recoveryDraft = null;
-            await store?.draft(null);
-            if (!dirty) notice('');
-            render();
-        }
-    }
-    function configureWidget(id: string) {
-        let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
-        if (!w)
-            return;
-        if (!specification(w.type) || w.typeVersion > 1) {
-            openForm('Unavailable widget', '<p>This widget is preserved. You can remove it explicitly without deleting its underlying data.</p>' + button('remove-widget','Remove widget',id),()=>{}); $('[data-dialog-submit]').hidden=true; return;
-        }
-        if (!editing) {
-            beginEdit();
-            w = editing!.workspace.widgets.find(w => w.id === id)!;
-        }
-        const spec = specification(w.type)!;
-        let config = '';
-        if (w.type === 'app-shortcuts') {
-            const selectedIds = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
-            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="App nameâ€¦"/></label><p class="ws-muted">Choose up to 12 useful shortcuts. The full catalogue stays in Apps.</p>${apps.map(a => `<label class="ws-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''}/>${icon(a.icon)} ${esc(a.title)}</label>`).join('')}`;
-        }
-        else if (w.type.startsWith('tracker')) {
-            const ids = w.config.trackerIds;
-            config = `<p class="ws-muted">Select trackers, or leave all unchecked to show all.</p>${state!.trackers.map(t => `<label class="ws-choice"><input type="checkbox" name="trackerIds" value="${esc(t.id)}" ${Array.isArray(ids) && ids.includes(t.id) ? 'checked' : ''}/>${esc(t.title)}</label>`).join('')}`;
-        }
-        const widgetId = w.id;
-        openForm('Configure ' + spec.title, field('Widget title', 'title', typeof w.config.title === 'string' ? w.config.title : spec.title, 'text', 'required maxlength="80"') + select('View', 'view', spec.views.map(v => [v, v[0]!.toUpperCase() + v.slice(1)]), w.view) + `<div class="ws-form-row">${field('Width (columns)', 'width', String(w.desktop.w), 'number', `required min="${spec.minWidth}" max="12"`)}${field('Height (8px steps)', 'height', String(w.desktop.h), 'number', `required min="${spec.minHeight}" max="120"`)}</div><div class="ws-form-row">${field('Column position', 'x', String(w.desktop.x), 'number', 'required min="0" max="8"')}${field('Row position', 'y', String(w.desktop.y), 'number', 'required min="0" max="10000"')}</div>${config}<div class="ws-content-toolbar">${button('move-widget-up', 'Move earlier', widgetId)}${button('move-widget-down', 'Move later', widgetId)}${button('remove-widget', 'Remove widget', widgetId)}</div>`, data => {
-            const ids = data.getAll('appIds').map(String);
-            if (!String(data.get('title')).trim()) throw new Error('Enter a widget title.');
-            if (ids.length > 12)
-                throw new Error('Choose at most 12 app shortcuts.');
-            changeLayout(ws => {
-                const item = ws.widgets.find(x => x.id === widgetId)!;
-                item.view = String(data.get('view'));
-                item.config.title = String(data.get('title')).trim();
-                if (item.type === 'app-shortcuts') item.config.useActions = data.has('useActions');
-                if (item.type === 'app-shortcuts')
-                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id))];
-                if (item.type.startsWith('tracker')) {
-                    const trackers = data.getAll('trackerIds').map(String);
-                    if (trackers.length)
-                        item.config.trackerIds = trackers;
-                    else
-                        delete item.config.trackerIds;
-                }
-                ws.widgets = place(ws.widgets, widgetId, { x: Number(data.get('x')), y: Number(data.get('y')), w: Number(data.get('width')), h: Number(data.get('height')) });
-            });
-        });
-    }
-    function widgetPicker() {
-        if (!editing)
-            beginEdit();
-        openForm('Add a widget', `<div class="ws-widget-library">${Object.entries(WIDGETS).map(([type, spec]) => button('add-type', `${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`, type, 'ws-widget-choice')).join('')}</div>`, () => { });
-        $('[data-dialog-submit]').hidden = true;
-    }
-    function createWorkspace(duplicateId = '') {
-        const original = state!.workspaces.find(w => w.id === duplicateId);
-        if (state!.workspaces.length >= 10) {
-            toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
-            return;
-        }
-        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
-            const title = String(data.get('title')).trim();
-            if (!title)
-                throw new Error('Choose a name.');
-            await mutate(s => {
-                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
-                if (original)
-                    workspace.widgets.forEach(w => w.id = uid());
-                s.workspaces.push(workspace);
-                s.active = workspace.id;
-            }, 'Workspace created');
-        });
-    }
-    function choosePreset() {
-        if (editing) {
-            toast('Finish or cancel your layout edit before applying a preset.');
-            return;
-        }
-        openForm('Choose a starter layout', select('Layout', 'preset', PRESETS.map((p, i) => [String(i), p]), '0') + select('Apply as', 'mode', [['new', 'Create a new workspace'], ['replace', 'Replace this layout (content stays)']], 'new') + '<p class="ws-muted">Tasks, events, notes and trackers are shared. Changing layout does not reset them.</p>', async (data) => {
-            const kind = Number(data.get('preset'));
-            await mutate(s => {
-                const next = preset(PRESETS[kind]!, pins(), kind);
-                if (data.get('mode') === 'new') {
-                    if (s.workspaces.length >= 10)
-                        throw new Error('The 10-workspace limit has been reached.');
-                    s.workspaces.push(next);
-                    s.active = next.id;
-                }
-                else {
-                    const index = s.workspaces.findIndex(w => w.id === s.active);
-                    next.id = s.active;
-                    next.title = s.workspaces[index]!.title;
-                    next.revision = s.workspaces[index]!.revision + 1;
-                    s.workspaces[index] = next;
-                }
-            }, 'Layout applied', true, true);
-        });
-    }
-    function confirmRemoval(title: string, detail: string, remove: (s: WorkspaceState) => void) { openForm(title, `<p>${esc(detail)}</p>`, async () => { await mutate(remove, 'Removed', true); }, 'Delete'); }
-    function exportWorkspace() {
-        if (!state) {
-            if (rawRecovery)
-                download(rawRecovery, 'thiepn-workspace-recovery.json');
-            return;
-        }
-        const data = clone(state);
-        if (editing) {
-            const ix = data.workspaces.findIndex(w => w.id === editing!.workspaceId);
-            if (ix >= 0)
-                data.workspaces[ix] = clone(editing.workspace);
-        }
-        data.legacyBackup = null;
-        download(JSON.stringify(data, null, 2), 'thiepn-workspace-' + today() + '.json');
-        toast('Backup exported. Keep it somewhere safe.');
-    }
-    function importWorkspace() {
-        openForm('Import workspace backup', `<label class="ws-field">Backup file<input type="file" name="file" accept="application/json,.json" required/></label>${select('Import mode', 'mode', [['new', 'Add imported workspaces and content'], ['replace', 'Replace local workspace (backup first)']], 'new')}<p class="ws-muted">The backup is imported into the current local identity. No account tokens or cloud data are imported. Existing records stay when adding workspaces.</p>`, async (data) => {
-            const file = data.get('file');
-            if (!(file instanceof File) || file.size > MAX_EXPORT_BYTES)
-                throw new Error('Choose a JSON backup smaller than 5 MB.');
-            const importEpoch = epoch;
-            const imported = parseState(await file.text());
-            if (epoch !== importEpoch) throw new Error('Your identity changed. Import into the intended workspace again.');
-            const replace = data.get('mode') === 'replace';
-            if (!replace && state!.workspaces.length + imported.workspaces.length > 10)
-                throw new Error('This import would exceed 10 workspaces.');
-            openImportPreview(imported, replace);
-        });
-    }
-    function openImportPreview(imported: WorkspaceState, replace: boolean) {
-        setTimeout(() => openForm('Review import', `<p>${replace ? 'Replace' : 'Add'} ${imported.workspaces.length} workspaces, ${imported.tasks.length} tasks, ${imported.notes.length} notes, ${imported.events.length} events and ${imported.trackers.length} trackers.</p><p class="ws-muted">${replace ? 'A replacement backup will be kept. You can restore it from Settings.' : 'Imported records receive new IDs so existing content is not overwritten.'}</p>`, async () => {
-            await mutate(s => {
-                if (replace) {
-                    const revision = s.revision;
-                    Object.assign(s, clone(imported), { revision });
-                    return;
-                }
-                const copy = clone(imported), ids = new Map<string, string>();
-            copy.trackers.forEach(t => ids.set(t.id,uid()));
-                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
-                    for (const record of list) {
-                        const id = uid();
-                        ids.set(record.id, id);
-                        record.id = id;
-                    }
-                for (const w of copy.workspaces) {
-                    w.widgets.forEach(widget => {
-                        widget.id = uid();
-                        if (Array.isArray(widget.config.trackerIds))
-                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
-                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
-                    });
-                }
-                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
-                s.workspaces.push(...copy.workspaces);
-                s.tasks.push(...copy.tasks);
-                s.notes.push(...copy.notes);
-                s.events.push(...copy.events);
-                s.trackers.push(...copy.trackers);
-                s.logs.push(...copy.logs);
-                s.activity.push(...copy.activity);
-                s.activity = s.activity.slice(0, 500);
-            }, 'Backup imported', true, true);
-        }, replace ? 'Replace local data' : 'Add imported data'), 0);
-    }
-    function renderSearch() {
-        const rows = $('[data-search-results]');
-        if (!state || (privacyHeld || state.preferences.hidden)) {
-            rows.innerHTML = apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)).map(a => `<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`).join('');
-            return;
-        }
-        const found: string[] = [];
-        for (const a of apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)))
-            found.push(`<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`);
-        for (const t of state.tasks.filter(t => (t.title + ' ' + t.notes).toLocaleLowerCase().includes(searchQuery)))
-            found.push(button('search-task', `${icon('check-square')}<div>${esc(t.title)}<small>Local task</small></div>`, t.id, 'ws-search-result'));
-        for (const n of state.notes.filter(n => (n.title + ' ' + n.body).toLocaleLowerCase().includes(searchQuery)))
-            found.push(button('search-note', `${icon('notebook')}<div>${esc(n.title)}<small>Local note</small></div>`, n.id, 'ws-search-result'));
-        rows.innerHTML = found.slice(0, 40).join('') || empty('Nothing found', 'Try an app name, task or phrase from a local note.');
-    }
-    function openSearch() { const search = $<HTMLDialogElement>('[data-search-dialog]'); searchQuery = ''; $('#workspace-search').textContent = ''; $<HTMLInputElement>('#workspace-search').value = ''; renderSearch(); search.showModal(); $('#workspace-search').focus(); }
-    root.addEventListener('click', event => {
-        const target = (event.target as HTMLElement).closest<HTMLElement>('[data-action],[data-workspace-id]');
-        if (!target)
-            return;
-        const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
-        if (action === 'close-dialog') {
-            dialog.close();
-            return;
-        }
-        if (action === 'close-search') {
-            $<HTMLDialogElement>('[data-search-dialog]').close();
-            return;
-        }
-        if (action === 'close-account') {
-            $<HTMLDialogElement>('[data-account-dialog]').close();
-            return;
-        }
-        if (action === 'account') {
-            $<HTMLDialogElement>('[data-account-dialog]').showModal();
-            return;
-        }
-        if (action === 'search') {
-            openSearch();
-            return;
-        }
-        if (action === 'export') {
-            exportWorkspace();
-            return;
-        }
-        if (!state || locked) {
-            toast('Your saved workspace is not available. App links remain usable.');
-            return;
-        }
-        if (target.dataset.workspaceId) {
-            if (editing) {
-                toast('Finish or cancel the layout edit before switching workspaces.');
-                return;
-            }
-            void mutate(s => s.active = target.dataset.workspaceId!, '', false);
-            return;
-        }
-        switch (action) {
-            case 'rail':
-                void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
-                break;
-            case 'new-task':
-                editTask();
-                break;
-            case 'edit-task':
-                editTask(id);
-                break;
-            case 'delete-task': {
-                const t = state.tasks.find(t => t.id === id);
-                if (t)
-                    confirmRemoval('Delete task?', t.title, s => { s.tasks = s.tasks.filter(t => t.id !== id); });
-                break;
-            }
-            case 'new-event':
-                editEvent();
-                break;
-            case 'edit-event':
-                editEvent(id);
-                break;
-            case 'delete-event': {
-                const e = state.events.find(e => e.id === id);
-                if (e)
-                    confirmRemoval('Delete event?', e.title, s => { s.events = s.events.filter(e => e.id !== id); });
-                break;
-            }
-            case 'capture':
-                editNote();
-                break;
-            case 'edit-note':
-                editNote(id);
-                break;
-            case 'delete-note': {
-                const n = state.notes.find(n => n.id === id);
-                if (n)
-                    confirmRemoval('Delete note?', n.title, s => { s.notes = s.notes.filter(n => n.id !== id); });
-                break;
-            }
-            case 'new-tracker':
-                editTracker();
-                break;
-            case 'edit-tracker':
-                editTracker(id);
-                break;
-            case 'delete-tracker': {
-                const t = state.trackers.find(t => t.id === id);
-                if (t)
-                    confirmRemoval('Delete tracker and logs?', `${t.title} and its recorded history will be removed.`, s => { s.trackers = s.trackers.filter(t => t.id !== id); s.logs = s.logs.filter(l => l.trackerId !== id); });
-                break;
-            }
-            case 'log-tracker':
-                logTracker(id);
-                break;
-            case 'edit-log': {
-                const l = state.logs.find(l => l.id === id);
-                if (l)
-                    logTracker(l.trackerId, id);
-                break;
-            }
-            case 'delete-log':
-                void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
-                break;
-            case 'select-date':
-                selected = id;
-                month = id.slice(0, 7) + '-01';
-                render();
-                break;
-            case 'today':
-                selected = today();
-                month = selected.slice(0, 7) + '-01';
-                render();
-                break;
-            case 'month-next':
-            case 'month-prev': {
-                const d = new Date(month + 'T12:00:00Z');
-                d.setUTCMonth(d.getUTCMonth() + (action === 'month-next' ? 1 : -1));
-                month = d.toISOString().slice(0, 10);
-                render();
-                break;
-            }
-            case 'customize':
-                beginEdit();
-                break;
-            case 'done-layout':
-                void finishEdit();
-                break;
-            case 'cancel-layout':
-                editing = null;
-                layoutUndo = [];
-                layoutRedo = [];
-                recoveryDraft = null;
-                void store?.draft(null);
-                notice('');
-                render();
-                break;
-            case 'undo-layout':
-                if (editing && layoutUndo.length) {
-                    layoutRedo.push(clone(editing.workspace));
-                    editing.workspace = layoutUndo.pop()!;
-                    render();
-                    void saveDraft();
-                }
-                break;
-            case 'redo-layout':
-                if (editing && layoutRedo.length) {
-                    layoutUndo.push(clone(editing.workspace));
-                    editing.workspace = layoutRedo.pop()!;
-                    render();
-                    void saveDraft();
-                }
-                break;
-            case 'add-widget':
-                widgetPicker();
-                break;
-            case 'add-type': {
-                const spec = specification(id);
-                if (!spec)
-                    return;
-                if (editing!.workspace.widgets.length >= 32) {
-                    toast('This workspace already has 32 widgets.');
-                    return;
-                }
-                changeLayout(w => { w.widgets.push({ id: uid(), type: id, typeVersion: 1, view: spec.views[0], config: id === 'app-shortcuts' ? { appIds: pins() } : {}, desktop: { x: 0, y: Math.max(0, ...w.widgets.map(x => x.desktop.y + x.desktop.h)), w: spec.width, h: spec.height }, order: w.widgets.length }); });
-                dialog.close();
-                break;
-            }
-            case 'configure-widget':
-                configureWidget(id);
-                break;
-            case 'remove-widget':
-                changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
-                dialog.close();
-                toast('Widget removed; its content is kept.');
-                break;
-            case 'move-widget-up':
-            case 'move-widget-down':
-                changeLayout(w => {
-                    const list = ordered(w.widgets);
-                    const i = list.findIndex(x => x.id === id), j = i + (action === 'move-widget-up' ? -1 : 1);
-                    if (j < 0 || j >= list.length)
-                        return;
-                    [list[i]!.order, list[j]!.order] = [list[j]!.order, list[i]!.order];
-                    const a = clone(list[i]!.desktop), b = clone(list[j]!.desktop);
-                    list[i]!.desktop.x = b.x;
-                    list[i]!.desktop.y = b.y;
-                    list[j]!.desktop.x = a.x;
-                    list[j]!.desktop.y = a.y;
-                    w.widgets = place(w.widgets, id, list[i]!.desktop);
-                });
-                dialog.close();
-                break;
-            case 'switch-workspace':
-                if (editing) { toast('Finish or cancel editing before switching workspaces.'); break; }
-                openForm('Choose workspace', select('Workspace','workspace',state.workspaces.map(w=>[w.id,w.title]),state.active) + button('new-workspace','New workspace'), async data => { await mutate(s=>s.active=String(data.get('workspace')),'',false); });
-                break;
-            case 'presets':
-                choosePreset();
-                break;
-            case 'new-workspace':
-                createWorkspace();
-                break;
-            case 'duplicate-workspace':
-                createWorkspace(id);
-                break;
-            case 'rename-workspace': {
-                const w = state.workspaces.find(w => w.id === id);
-                if (w)
-                    openForm('Rename workspace', field('Name', 'title', w.title, 'text', 'required maxlength="80"'), async (data) => {
-                        const title = String(data.get('title')).trim();
-                        if (!title)
-                            throw new Error('Choose a name.');
-                        await mutate(s => { s.workspaces.find(w => w.id === id)!.title = title; }, 'Workspace renamed');
-                    });
-                break;
-            }
-            case 'delete-workspace':
-                if (state.workspaces.length === 1) {
-                    toast('Keep at least one workspace. You can apply the blank layout instead.');
-                    break;
-                }
-                confirmRemoval('Delete this workspace?', 'Only its layout will be removed. Tasks, notes, events and trackers stay.', s => {
-                    s.workspaces = s.workspaces.filter(w => w.id !== id);
-                    if (s.active === id)
-                        s.active = s.workspaces[0]!.id;
-                });
-                break;
-            case 'undo-content':
-                if (contentUndo) {
-                    const prior = clone(contentUndo);
-                    contentUndo = null;
-                    void mutate(s => { const revision = s.revision; Object.assign(s, prior, { revision }); }, 'Change undone', false);
-                }
-                break;
-            case 'privacy':
-                void mutate(s => { s.preferences.hidden = !(privacyHeld || s.preferences.hidden); privacyHeld = s.preferences.hidden; }, '', false);
-                break;
-            case 'timezone':
-                openForm('Planner timezone', field('IANA timezone', 'zone', state.preferences.timezone, 'text', 'required') + '<p class="ws-muted">For example Europe/Berlin, America/New_York or Asia/Seoul.</p>', async (data) => {
-                    const zone = String(data.get('zone'));
-                    try {
-                        new Intl.DateTimeFormat('en', { timeZone: zone });
-                    }
-                    catch {
-                        throw new Error('Enter a valid IANA timezone.');
-                    }
-                    await mutate(s => s.preferences.timezone = zone, 'Timezone updated');
-                    selected = today();
-                    month = selected.slice(0, 7) + '-01';
-                    render();
-                });
-                break;
-            case 'import':
-                importWorkspace();
-                break;
-            case 'restore':
-                void store?.backup().then(backup => {
-                    if (!backup) {
-                        toast('No replacement backup is available.');
-                        return;
-                    }
-                    confirmRemoval('Restore replacement backup?', 'The current local data will be replaced by your last saved replacement backup.', s => { const revision = s.revision; Object.assign(s, backup, { revision }); });
-                }).catch(() => toast('Backup storage is unavailable.'));
-                break;
-            case 'retry':
-                queue = queue.then(async () => {
-                    if (!store)
-                        return;
-                    if (!storageReady) {
-                        await store.open();
-                        storageReady = true;
-                        const existing = await store.load();
-                        if (existing && existing.revision !== state!.revision) {
-                            conflict = true;
-                            throw new RevisionConflict();
-                        }
-                    }
-                    await persist();
-                    if (!dirty) {
-                        notice('');
-                        render();
-                    }
-                }).catch(e => notice(e instanceof Error ? e.message : 'Could not reopen storage.', button('export', 'Export')));
-                break;
-            case 'reload':
-                if (dirty || editing) {
-                    openForm('Reload saved data?', '<p>Unsaved content in this tab will be replaced. Export it first. Layout edit drafts remain available.</p>' + button('export', 'Export current changes'), () => reloadSaved(), 'Reload saved data');
-                }
-                else
-                    void reloadSaved();
-                break;
-            case 'resume-draft':
-                if (recoveryDraft) {
-                    const draft = clone(recoveryDraft);
-                    void mutate(s => s.active = draft.workspaceId, '', false).then(() => { editing = draft; recoveryDraft = null; notice(''); render(); });
-                }
-                break;
-            case 'discard-draft':
-                recoveryDraft = null;
-                void store?.draft(null);
-                notice('');
-                break;
-            case 'save-draft-as':
-                if (editing && state.workspaces.length < 10) {
-                    const w = clone(editing.workspace);
-                    w.id = uid();
-                    w.title += ' recovered';
-                    w.revision = 0;
-                    w.widgets.forEach(x => x.id = uid());
-                    editing = null;
-                    conflict = false;
-                    void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null));
-                }
-                break;
-            case 'search-task':
-                $<HTMLDialogElement>('[data-search-dialog]').close();
-                editTask(id);
-                break;
-            case 'search-note':
-                $<HTMLDialogElement>('[data-search-dialog]').close();
-                editNote(id);
-                break;
-        }
-    });
-    root.addEventListener('change', event => {
-        const el = event.target as HTMLInputElement;
-        if (!state || locked)
-            return;
-        if (el.dataset.taskToggle) {
-            const id = el.dataset.taskToggle;
-            void mutate(s => {
-                const t = s.tasks.find(t => t.id === id);
-                if (t) {
-                    t.completedAt = el.checked ? stamp() : null;
-                    activity(s, `${t.completedAt ? 'Completed' : 'Reopened'} task: ${t.title}`, 'task');
-                }
-            }, el.checked ? 'Task completed' : 'Task reopened');
-        }
-        if (el.dataset.taskFilter !== undefined) {
-            taskFilter = el.value;
-            render();
-        }
-        if (el.dataset.preference === 'density')
-            void mutate(s => s.preferences.density = el.value as 'compact' | 'comfortable', '', false);
-        if (el.dataset.preference === 'theme') {
-            const theme = el.value;
-            document.documentElement.dataset.themePreference = theme;
-            document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : theme;
-            try {
-                localStorage.setItem('thiepn:index-theme', theme);
-            }
-            catch {
-                toast('Theme changed for this session; browser preference storage is unavailable.');
-            }
-        }
-        if (el.dataset.historySelect) {
-            const id = el.dataset.historySelect, value = el.value;
-            if (editing)
-                changeLayout(w => w.widgets.find(x => x.id === id)!.config.selectedTracker = value);
-            else
-                void mutate(s => { s.workspaces.find(w => w.id === s.active)!.widgets.find(w => w.id === id)!.config.selectedTracker = value; }, '', false);
-        }
-    });
-    root.addEventListener('input', event => {
-        const el = event.target as HTMLInputElement;
-        if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
-        if (el.id === 'workspace-search') {
-            searchQuery = el.value.toLocaleLowerCase().trim();
-            renderSearch();
-        }
-        if (el.hasAttribute('data-capture-draft') && state) {
-            state.captureDraft = el.value;
-            changeVersion++;
-            contentUndo = null;
-            dirty = true;
-            saved('Draft not saved yetâ€¦');
-            clearTimeout(captureTimer);
-            const own = epoch;
-            captureTimer = setTimeout(() => {
-                if (own === epoch)
-                    queue = queue.then(() => persist());
-            }, 500);
-        }
-    });
-    root.addEventListener('submit', event => {
-        const capture = (event.target as HTMLElement).closest<HTMLFormElement>('[data-capture-form]');
-        if (!capture || !state)
-            return;
-        event.preventDefault();
-        clearTimeout(captureTimer);
-        const data = new FormData(capture), body = String(data.get('body')).trim(), kind = data.get('kind');
-        if (!body)
-            return;
-        if (kind === 'task' && body.length > 240) {
-            toast('Task titles can contain up to 240 characters. Capture longer text as a note.');
-            return;
-        }
-        void mutate(s => {
-            if (kind === 'task')
-                s.tasks.push({ id: uid(), title: body, notes: '', due: today(), time: '', priority: 'none', completedAt: null });
-            else
-                s.notes.unshift({ id: uid(), title: body.split('\n')[0]!.slice(0, 80), body, updatedAt: stamp() });
-            s.captureDraft = '';
-            activity(s, `Captured ${kind}: ${body.slice(0, 80)}`, String(kind));
-        }, `${kind === 'task' ? 'Task' : 'Note'} captured`);
-    });
-    root.addEventListener('keydown', event => {
-        const target = event.target as HTMLElement;
-        if (target.matches('[data-drag],[data-resize]') && editing && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-            event.preventDefault();
-            const id = target.dataset.drag ?? target.dataset.resize!;
-            const item = editing.workspace.widgets.find(w => w.id === id)!;
-            const r = clone(item.desktop);
-            if (target.dataset.resize) {
-                if (event.key === 'ArrowLeft')
-                    r.w--;
-                if (event.key === 'ArrowRight')
-                    r.w++;
-                if (event.key === 'ArrowUp')
-                    r.h -= 4;
-                if (event.key === 'ArrowDown')
-                    r.h += 4;
-            }
-            else {
-                if (event.key === 'ArrowLeft')
-                    r.x--;
-                if (event.key === 'ArrowRight')
-                    r.x++;
-                if (event.key === 'ArrowUp')
-                    r.y -= 4;
-                if (event.key === 'ArrowDown')
-                    r.y += 4;
-            }
-            changeLayout(w => w.widgets = place(w.widgets, id, r));
-            root.querySelector<HTMLElement>(`[${target.dataset.drag ? 'data-drag' : 'data-resize'}="${CSS.escape(id)}"]`)?.focus();
-            toast('Widget position updated. Choose Done to save.');
-        }
-        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowDown') {
-            event.preventDefault();
-            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
-            const index = results.indexOf(target);
-            results[(index + 1) % results.length]?.focus();
-        }
-        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowUp') {
-            event.preventDefault();
-            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
-            const index = results.indexOf(target);
-            if (index <= 0)
-                $('#workspace-search').focus();
-            else
-                results[index - 1]?.focus();
-        }
-    });
-    window.addEventListener('keydown', event => {
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !(event.target as HTMLElement).matches('textarea,[contenteditable=true]')) {
-            event.preventDefault();
-            if (!$<HTMLDialogElement>('[data-search-dialog]').open)
-                openSearch();
-        }
-    });
-    root.addEventListener('pointerdown', event => {
-        const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-drag],[data-resize]');
-        if (!handle || !editing || event.button !== 0)
-            return;
-        event.preventDefault();
-        const id = handle.dataset.drag ?? handle.dataset.resize!;
-        const item = editing.workspace.widgets.find(w => w.id === id)!;
-        const initial = clone(item.desktop);
-        const grid = $('[data-grid]'), cell = handle.closest<HTMLElement>('[data-widget-id]')!;
-        const column = (grid.clientWidth + 16) / 12, startX = event.clientX, startY = event.clientY;
-        let rect = clone(initial), moved = false;
-        cell.classList.add('ws-dragging');
-        function move(e: PointerEvent) {
-            moved ||= Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 5;
-            const dx = Math.round((e.clientX - startX) / column), dy = Math.round((e.clientY - startY) / 8);
-            rect = handle!.dataset.resize ? { ...initial, w: Math.max(specification(item.type)?.minWidth ?? 4, Math.min(12 - initial.x, initial.w + dx)), h: Math.max(specification(item.type)?.minHeight ?? 16, Math.min(120, initial.h + dy)) } : { ...initial, x: Math.max(0, Math.min(12 - initial.w, initial.x + dx)), y: Math.max(0, initial.y + dy) };
-            if (root.dataset.gridCompact !== 'true') {
-                cell.style.setProperty('--col', String(rect.x + 1));
-                cell.style.setProperty('--span', String(rect.w));
-                cell.style.setProperty('--row', String(rect.y + 1));
-                cell.style.setProperty('--height', String(rect.h));
-            }
-        }
-        function end(e: PointerEvent) {
-            document.removeEventListener('pointermove', move);
-            document.removeEventListener('pointerup', end);
-            document.removeEventListener('pointercancel', cancel);
-            if (moved) {
-                if (root.dataset.gridCompact === 'true' && !handle!.dataset.resize) {
-                    changeLayout(w => { const list = ordered(w.widgets); const from = list.findIndex(x => x.id === id), to = Math.max(0, Math.min(list.length - 1, from + Math.round((e.clientY - startY) / 180))); const movedItem = list.splice(from, 1)[0]!; list.splice(to, 0, movedItem); list.forEach((x, i) => x.order = i); });
-                }
-                else
-                    changeLayout(w => w.widgets = place(w.widgets, id, rect));
-            }
-            else
-                render();
-        }
-        function cancel() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', end); document.removeEventListener('pointercancel', cancel); render(); }
-        document.addEventListener('pointermove', move);
-        document.addEventListener('pointerup', end);
-        document.addEventListener('pointercancel', cancel);
-    });
-    async function readDraft(source: WorkspaceStore): Promise<EditDraft|null> {
-        const value = await source.draft();
-        if (!value || !state) return null;
-        try {
-            if (!Number.isSafeInteger(value.baseRevision) || value.baseRevision < 0 || !value.workspace || value.workspace.id !== value.workspaceId) return null;
-            const candidate=clone(state), index=candidate.workspaces.findIndex(w=>w.id===value.workspaceId);
-            if(index<0)return null;
-            candidate.workspaces[index]=value.workspace;
-            parseState(JSON.stringify(candidate));
-            return value;
-        } catch { return null; } // Preserve the original draft; committed records are still usable.
-    }
-    async function reloadSaved() {
-        await queue;
-        const latest = await store?.load();
-        if (latest) {
-            privacyHeld ||= latest.preferences.hidden;
-            state = latest;
-            dirty = false;
-            conflict = false;
-            editing = null;
-            recoveryDraft = await readDraft(store!);
-            notice('');
-            render();
-        }
-    }
-    async function loadIdentity(identity: HubIdentity) {
-        const own = ++epoch;
-        clearTimeout(captureTimer);
-        editing = null;
-        recoveryDraft = null;
-        contentUndo = null;
-        store?.close();
-        channel?.close();
-        store = null;
-        channel = null;
-        state = null;
-        dirty = false;
-        locked = false;
-        conflict = false;
-        storageReady = false;
-        rawRecovery = '';
-        dialog.close();
-        $<HTMLDialogElement>('[data-search-dialog]').close();
-        $<HTMLDialogElement>('[data-account-dialog]').close();
-        $('[data-workspace-list]').innerHTML = '';
-        $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identityâ€¦');
-        $('[data-planner]').innerHTML = '';
-        $('[data-toolbar]').innerHTML = '';
-        $('#ws-title').textContent = 'Personal workspace';
-        $('[data-workspace-toast]').hidden = true;
-        saved('Checking identityâ€¦');
-        $('[data-profile-label]').textContent = identity.status === 'signed-in' ? identity.label : 'This device';
-        if (identity.status === 'checking' || identity.status === 'unavailable') {
-            notice('Personal content is hidden until your Hub identity can be confirmed. App links are available in Apps.');
-            return;
-        }
-        const owner = identity.status === 'signed-in' ? identity.id : null;
-        if (owner && !validAccountId(owner))
-            return;
-        let legacy: string | null = null;
-        try {
-            legacy = localStorage.getItem(preferenceKey(owner));
-        }
-        catch { /* Local storage denied: IndexedDB may still be usable. */ }
-        const nextStore = new WorkspaceStore(namespace(owner));
-        store = nextStore;
-        let loaded: WorkspaceState | null = null;
-        try {
-            await nextStore.open();
-            if (own !== epoch) {
-                nextStore.close();
-                return;
-            }
-            storageReady = true;
-            rawRecovery = await nextStore.raw();
-            loaded = await nextStore.load();
-        }
-        catch (e) {
-            if (own !== epoch)
-                return;
-            if (rawRecovery) {
-                locked = true;
-                notice(e instanceof Error ? e.message : 'Saved workspace cannot be opened.', button('export', 'Export recovery file'));
-                saved('Saved record left untouched');
-                return;
-            }
-            storageReady = false;
-            notice('Browser storage is unavailable. Work in this tab and export your data before leaving.', button('export', 'Export'));
-        }
-        if (own !== epoch)
-            return;
-        state = loaded ?? initialState(apps.map(a => a.id), legacy);
-        privacyHeld = state.preferences.hidden;
-        selected = today();
-        month = selected.slice(0, 7) + '-01';
-        if (storageReady) {
-            try {
-                recoveryDraft = await readDraft(nextStore);
-                if (recoveryDraft && !state.workspaces.some(w => w.id === recoveryDraft!.workspaceId))
-                    recoveryDraft = null;
-            }
-            catch {
-                recoveryDraft = null;
-            }
-            if (!loaded)
-                await persist();
-        }
-        if (own !== epoch)
-            return;
-        if (typeof BroadcastChannel !== 'undefined') {
-            channel = new BroadcastChannel('thiepn-adaptive-workspace-updates');
-            channel.onmessage = event => {
-                if (event.data?.key !== nextStore.key || event.data.revision === state?.revision)
-                    return;
-                if (editing || dirty) {
-                    conflict = true;
-                    notice('Another tab changed this workspace. Your local edits are kept.', button('export', 'Export') + button('reload', 'Reload saved data'));
-                }
-                else
-                    void reloadSaved().catch(() => notice('Could not refresh changes from another tab.'));
-            };
-        }
-        render();
-        if (!storageReady)
-            saved();
-        else if (!recoveryDraft)
-            notice('');
-    }
-    window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
-    window.addEventListener('pageshow', event => {
-        if (state && !dirty && !editing)
-            void reloadSaved();
-    });
-    window.addEventListener('beforeunload', event => {
-        if (dirty) {
-            event.preventDefault();
-        }
-    });
-    matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e => {
-        if (document.documentElement.dataset.themePreference === 'system')
-            document.documentElement.dataset.theme = e.matches ? 'dark' : 'light';
-    });
-    let lastDay = selected;
-    setInterval(() => { if (!state)
-        return; const now = today(); if (now !== lastDay) {
-        if (selected === lastDay) {
-            selected = now;
-            month = now.slice(0, 7) + '-01';
-        }
-        lastDay = now;
-        render();
-    } }, 30000);
-    await loadIdentity(hubIdentity);
-    if ('serviceWorker' in navigator && !import.meta.env.DEV) { void navigator.serviceWorker.register('/home/workspace-sw.js',{scope:'/home/'}).catch(()=>{ /* Local records still work; do not claim offline shell availability. */ }); }
+)^²Úâž	bíbšš+µ¶¬{®)jØe‰ºkŠ{[jÇºá¾¸zw(uêZ¶blö­‡ü(®K)iÇ¿†æð¢¹,¥§þÊÜþÇ+Š›lÿ
++’ÊZqèh™ël­æo+^³M6ãM4uç(uä²žÖ±ºè®Wšv)àÍêè²)ÝyÈ¦jX§µè®X­z¶¥±ªÞž‹iz¹¢¶×ºÇšŸJ)­çâÅú+¡ËZ–)íz«±f«ž)à¶»§q«^v‹­¦ëh®("©m¢G§r‹§·_{ßdèµ©hºÚn¶X§zÍHˆ™YH‹ÚÛYKØÛÛ›™XÝ[ÛœËÈ‘^\Ý[™È\ÛÛ›™XÝ[ÛœÏØOÜÙXÝ[Û˜ÈBˆ[˜Ý[Ûˆ[ÛÛ[
 
-}
+HÂˆYˆ
+šY]ÈOOH	ÜÙ][™ÜÉÊBˆ™]\›ˆÙ][™ÜÒS
+
+NÂˆYˆ
+šY]ÈOOH	Ý\ÚÜÉÊHÂˆÛÛœÝ\ÚÜÈHÝ]HK\ÚÜË™š[\ŠOˆ\ÚÑš[\ˆOOH	Ø[	È\ÚÑš[\ˆOOH	ØÛÛ\]Y	ÈÈ\ÚÑš[\ˆOOH	Ø[	ÈH]˜ÛÛ\]Y]ˆ]˜ÛÛ\]Y]	‰ˆ
+\ÚÑš[\ˆOOH	Ý\ÛÛZ[™ÉÈÈ™YHˆÙ^J
+Hˆ™YHHÙ^J
+JJKœÛÜ
+
+KŠHOˆK™YK›ØØ[PÛÛ\\™J‹™YJHK[YK›ØØ[PÛÛ\\™J‹[YJJNÂˆ™]\›ˆ]ˆÛ\ÜÏHÜËXÛÛ[]ÛÛ˜\ˆÙ[XÝ\šXK[X™[H•\ÚÈš[\ˆˆ]K]\ÚËYš[\‰ÖÉÝÙ^IË	Ý\ÛÛZ[™ÉË	Ø[	Ë	ØÛÛ\]Y	×K›X\
+ˆOˆÜ[Ûˆ˜[YOH‰ÝŸHˆ	Ý\ÚÑš[\ˆOOHˆÈ	ÜÙ[XÝY	Èˆ	ÉßO‰ÝˆOOH	ÝÙ^IÈÈ	ÕÙ^H[™Ý™\™YIÈˆ–ÌHKÕ\\Ø\ÙJ
+H
+È‹œÛXÙJJ_OÛÜ[Û˜
+Kš›Ú[Š	ÉÊ_OÜÙ[XÝ‰Ø]ÛŠ	Û™]Ë]\ÚÉË	ÊÈY\ÚÉÊ_OÙ]ÙXÝ[ÛˆÛ\ÜÏHÜË\Ý\™˜XÙH‰Ý\ÚÜË›[™ÝÈ\ÚÔ›ÝÜÊ\ÚÜÊHˆ[\J	Ö[Ý\ˆ™^Ý\Ý\È\™IË	ÐÜ™X]HH\ÚËYHYH]H[™ÚXÚÈ]Ù™ˆÚ[ˆ[ÝHš[š\Ú‰Ë	Û™]Ë]\ÚÉË	ÐYH\ÚÉÊ_OÜÙXÝ[Û˜ÂˆBˆYˆ
+šY]ÈOOH	ØØ[[™\‰ÊBˆ™]\›ˆ]ˆÛ\ÜÏHÜËXÛÛ[]ÛÛ˜\ˆ‰Ø]ÛŠ	ÝÙ^IË	ÕÙ^IÊ_IØ]ÛŠ	Û™]ËY]™[	Ë	ÊÈY]™[	Ê_IØ]ÛŠ	Û™]Ë]\ÚÉË	ÊÈY\ÚÉÊ_OÙ]ÙXÝ[ÛˆÛ\ÜÏHÜË\Ý\™˜XÙH‰ØØ[[™\’S
+
+_OÜÙXÝ[ÛÙXÝ[ÛˆÛ\ÜÏHÜË\Ý\™˜XÙHXY\‰Ù\ØÊ]SX™[
+Ù[XÝYYJJ_OÚÚXY\‰ØYÙ[™RS
+
+_IÝ\ÚÔ›ÝÜÊÝ]HK\ÚÜË™š[\ŠOˆ™YHOOHÙ[XÝY
+J_OÜÙXÝ[Û˜ÂˆYˆ
+šY]ÈOOH	Ý˜XÚÙ\œÉÊBˆ™]\›ˆ]ˆÛ\ÜÏHÜËXÛÛ[]ÛÛ˜\ˆ‰Ø]ÛŠ	Û™]Ë]˜XÚÙ\‰Ë	ÊÈÜ™X]H˜XÚÙ\‰Ê_OÙ]‰ÜÝ]HK˜XÚÙ\œË›X\
+OˆÙXÝ[ÛˆÛ\ÜÏHÜË\Ý\™˜XÙHXY\]‰Ù\ØÊ]J_OÚÛ\ÜÏHÜË[]]Y‰Ý˜XÚÙ\•Ý[
+Ý]HKšYÙ^J
+J_HÈ	Ý™ÛØ[H	Ù\ØÊ[š]
+_H0­È	Ý˜ØY[˜Ù_OÜÙ]]‰Ø]ÛŠ	ÙY]]˜XÚÙ\‰Ë	ÑY]	ËšY
+_IØ]ÛŠ	ÛÙË]˜XÚÙ\‰Ë	ÊÈÙÉËšY
+_OÙ]ÚXY\‰ÜÝ]HK›ÙÜË™š[\ŠOˆ˜XÚÙ\’YOOHšY
+KœÛÜ
+
+KŠHOˆ‹™]K›ØØ[PÛÛ\\™JK™]JJKœÛXÙJÌ
+K›X\
+Oˆ]ˆÛ\ÜÏHÜË\›ÝÈ]‰Û˜[Y_H	Ù\ØÊ[š]
+_OÛX[‰Û™]_IÛ››ÝHÈ	È0­È	È
+È\ØÊ››ÝJHˆ	ÉßOÜÛX[Ù]‰Ø]ÛŠ	ÙY][ÙÉË	ÑY]	ËšY
+_IØ]ÛŠ	Ù[]K[ÙÉË	Ñ[]IËšY
+_OÙ]˜
+Kš›Ú[Š	ÉÊH	ÏÛ\ÜÏHÜË[]]Y“›ÈÙÜÈY]ˆY[Ý\ˆš\œÝ[žKÜ‰ßOÜÙXÝ[Û˜
+Kš›Ú[Š	ÉÊH[\J	Õ˜XÚÈÚ]X]\œÈÈ[ÝIË	Õ\ÙHÛÝ[Ë\˜][ÛœÈÜˆÚXÚÛ\ÝËˆ[Ý\ˆÙÜÈ\™HÚ\™YXÜ›ÜÜÈ]™\žHÛÜšÜÜXÙK‰Ë	Û™]Ë]˜XÚÙ\‰Ë	ÐÜ™X]HH˜XÚÙ\‰Ê_XÂˆ™]\›ˆ™[™\‘ÜšY
+
+NÂˆBˆ[˜Ý[Ûˆ™[™\Š
+HÂˆØœÙ\™\Ë™\ØÛÛ›™XÝ
+
+NÂˆYˆ
+\Ý]JBˆ™]\›ŽÂˆÛÛœÝ›ØÝ\ÈHØÝ[Y[˜XÝ]™Q[[Y[\ÈS[[Y[[ÂˆÛÛœÝXÝ[ÛˆH›ØÝ\ÏË™]\Ù]˜XÝ[Û‹YH›ØÝ\ÏË™]\Ù]šYÙÙÛHH›ØÝ\ÏË™]\Ù]\ÚÕÙÙÛNÂˆ›ÛÝ™]\Ù]œ˜Z[HÝ]Kœ™Y™\™[˜Ù\Ëœ˜Z[È	Ù^[™Y	Èˆ	ØÛÛ\ÙY	ÎÂˆ›ÛÝ™]\Ù]™[œÚ]HHÝ]Kœ™Y™\™[˜Ù\Ë™[œÚ]NÂˆÛÛœÝ˜Z[H	
+	ÖÙ]KXXÝ[Û\˜Z[IÊNÂˆ˜Z[œÙ]]šX]J	Ø\šXKY^[™Y	ËÝš[™ÊÝ]Kœ™Y™\™[˜Ù\Ëœ˜Z[
+JNÂˆ˜Z[œÙ]]šX]J	Ø\šXK[X™[	ËÝ]Kœ™Y™\™[˜Ù\Ëœ˜Z[È	ÐÛÛ\ÙHÚYX˜\‰Èˆ	Ñ^[™ÚYX˜\‰ÊNÂˆ	
+	ÖÙ]K]ÛÜšÜÜXÙKY]WIÊK^ÛÛ[H]SX™[
+Ù^J
+KYJNÂˆ	
+	ÈÝÜË]]IÊK^ÛÛ[H
+š]˜XÞR[Ý]Kœ™Y™\™[˜Ù\ËšY[ŠHÈ	Ô\œÛÛ˜[ÛÜšÜÜXÙIÈˆšY]ÈOOH	ÚÛYIÈÈ
+Y][™ÏËÛÜšÜÜXÙK]HÏÈÝ\œ™[
+
+K]JHˆšY]ÖÌHKÕ\\Ø\ÙJ
+H
+ÈšY]ËœÛXÙJJNÂˆ	
+	ÖÙ]K]ÛÜšÜÜXÙK[\ÝIÊKš[›™\’SHÝ]KÛÜšÜÜXÙ\Ë›X\
+ÈOˆ]Ûˆ\OH˜]Ûˆˆ]K]ÛÜšÜÜXÙKZYH‰Ù\ØÊËšY
+_HˆÛ\ÜÏH‰ÝËšYOOHÝ]HK˜XÝ]™HÈ	ØXÝ]™IÈˆ	ÉßHˆ]OH‰Êš]˜XÞR[Ý]HKœ™Y™\™[˜Ù\ËšY[ŠHÈ	ÕÛÜšÜÜXÙIÈˆ\ØÊË]J_H‰ÚXÛÛŠ	Ù›Û\‹\Ú[\IÊ_OÜ[‰Êš]˜XÞR[Ý]HKœ™Y™\™[˜Ù\ËšY[ŠHÈ	ÕÛÜšÜÜXÙIÈˆ\ØÊË]J_OÜÜ[Ø]Û˜
+Kš›Ú[Š	ÉÊNÂˆ	
+	ÖÙ]K]ÛÛ˜\—IÊKš[›™\’SHšY]ÈOOH	ÚÛYIÈÈ
+Y][™ÈÈÜ[ˆÛ\ÜÏHÜËYY][X™[‘Y][™È^[Ý]ÜÜ[‰Ø]ÛŠ	Ý[™Ë[^[Ý]	Ë	Õ[™ÉÊ_IØ]ÛŠ	Ü™YË[^[Ý]	Ë	Ô™YÉÊ_IØ]ÛŠ	ØY]ÚYÙ]	Ë	ÊÈYÚYÙ]	Ê_IØ]ÛŠ	ØØ[˜Ù[[^[Ý]	Ë	ÐØ[˜Ù[	Ê_IØ]ÛŠ	ÙÛ™K[^[Ý]	Ë	ÑÛ™IË	ÉË	ÝÜË\š[X\žIÊ_Xˆ	Ø]ÛŠ	ÜÝÚ]Ú]ÛÜšÜÜXÙIËXÛÛŠ	Ù›Û\‹\Ú[\IÊH
+È	ÈÛÜšÜÜXÙ\ÉË	ÉË	ÝÜËX]ÛˆÜË]ÛÜšÜÜXÙK\ÝÚ]Ú	ÊH
+È]ÛŠ	Ü™\Ù]ÉË	Ó^[Ý]ÉÊ_IØ]ÛŠ	ØÝ\ÝÛZ^™IËXÛÛŠ	ÜÛY\œËZÜš^›Û[	ÊH
+È	ÈÝ\ÝÛZ^™IÊ_X
+Hˆ]ÛŠ	ØØ\\™IË	ÊÈØ\\™IÊNÂˆYˆ
+
+š]˜XÞR[Ý]Kœ™Y™\™[˜Ù\ËšY[ŠH	‰ˆšY]ÈOOH	ÜÙ][™ÜÉÊBˆ	
+	ÖÙ]K]ÛÜšÜÜXÙKXÛÛ[IÊKš[›™\’SH[\J	Ô\œÛÛ˜[ÛÛ[\ÈY[‰Ë	Ö[Ý\ˆØ]™Y™XÛÜ™È\™HÝ[Ûˆ\È]šXÙK‰Ë	Üš]˜XÞIË	ÔÚÝÈÛÛ[	ÊNÂˆ[ÙBˆ	
+	ÖÙ]K]ÛÜšÜÜXÙKXÛÛ[IÊKš[›™\’SH[ÛÛ[
+
+NÂˆ™[™\”[›™\Š
+NÂˆ›ÛÝœ]Y\žTÙ[XÝÜ[S[[Y[Š	ËÜËZXÛÛ‹X]Û–Ù]KXXÝ[ÛXÛÛ™šYÝ\™K]ÚYÙ]IÊK™›Ü‘XXÚ
+ˆOˆ‹œÙ]]šX]J	Ø\šXK[X™[	Ë	ÐÛÛ™šYÝ\™HÚYÙ]	ÊJNÂˆ›ÛÝœ]Y\žTÙ[XÝÜ[S[[Y[Š	ÖÙ]KXXÝ[ÛY[]K]\Ú×IÊK™›Ü‘XXÚ
+ˆOˆ‹œÙ]]šX]J	Ø\šXK[X™[	Ë	Õ\ÚÈXÝ[ÛœÉÊJNÂˆ›ÛÝœ]Y\žTÙ[XÝÜ[S[[Y[Š	ÖÙ]KXXÝ[ÛYY]Y]™[IÊK™›Ü‘XXÚ
+ˆOˆ‹œÙ]]šX]J	Ø\šXK[X™[	Ë	ÑY]]™[	ÊJNÂˆYˆ
+™XÛÝ™\žQ˜Y	‰ˆYY][™ÊBˆ›ÝXÙJ	Ð[ˆ[\œ\Y^[Ý]Y]\È]˜Z[X›K‰Ë]ÛŠ	Ü™\Ý[YKY˜Y	Ë	Ô™\Ý[YHY]	ÊH
+È]ÛŠ	Ù\ØØ\™Y˜Y	Ë	Ñ\ØØ\™Y]	ÊJNÂˆYˆ
+Y\JBˆØ]™Y
+
+NÂˆYˆ
+ÙÙÛJBˆ›ÛÝœ]Y\žTÙ[XÝÜS[œ][[Y[ŠÙ]K]\ÚË]ÙÙÛOH‰ÐÔÔË™\ØØ\JÙÙÛJ_H—X
+OË™›ØÝ\Ê
+NÂˆ[ÙHYˆ
+XÝ[ÛŠBˆ›ÛÝœ]Y\žTÙ[XÝÜS[[Y[ŠÙ]KXXÝ[ÛH‰ÐÔÔË™\ØØ\JXÝ[ÛŠ_H—IÚYÈÙ]KZYH‰ÐÔÔË™\ØØ\JY
+_H—Xˆ	ÉßX
+OË™›ØÝ\Ê
+NÂˆYˆ
+šY]ÈOOH	ÚÛYIÊHÂˆØœÙ\™\ˆÏÏH™]È™\Ú^™SØœÙ\™\Š
+
+HOˆÂˆÛÛœÝÜšYH	
+	ÖÙ]KYÜšYIÊNÂˆYˆ
+YÜšY
+Bˆ™]\›ŽÂˆ›ÛÝ™]\Ù]™ÜšYÛÛ\XÝHÜšY˜ÛY[ÚYNÈ	ÝYIÈˆ	Ù˜[ÙIÎÂˆJNÂˆÛÛœÝÜšYH›ÛÝœ]Y\žTÙ[XÝÜŠ	ÖÙ]KYÜšYIÊNÂˆYˆ
+ÜšY
+BˆØœÙ\™\‹›ØœÙ\™JÜšY
+NÂˆBˆBˆ[˜Ý[ÛˆY]\ÚÊYH	ÉÊHÂˆÛÛœÝHÝ]HK\ÚÜË™š[™
+OˆšYOOHY
+NÂˆÜ[‘›Ü›JÈ	ÑY]\ÚÉÈˆ	ÐYH\ÚÉËšY[
+	Õ\ÚÉË	Ý]IËË]HÏÈ	ÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŒ‰ÊH
+È\™XJ	Ó›Ý\ÉË	Û›Ý\ÉËË››Ý\ÈÏÈ	ÉËŒ
+H
+È]ˆÛ\ÜÏHÜËY›Ü›K\›ÝÈ‰ÙšY[
+	ÑYH]IË	ÙYIËË™YHÏÈÙ[XÝY	Ù]IÊ_IÙšY[
+	Õ[YH
+Ü[Û˜[
+IË	Ý[YIËË[YHÏÈ	ÉË	Ý[YIÊ_OÙ]˜
+ÈÙ[XÝ
+	Ôš[Üš]IË	Üš[Üš]IËÖÉÛ›Û™IË	Ó›Û™I×KÉÛÝÉË	ÓÝÉ×KÉÛYY][IË	ÓYY][I×KÉÚYÚ	Ë	ÒYÚ	×WKËœš[Üš]HÏÈ	Û›Û™IÊK\Þ[˜È
+]JHOˆÂˆÛÛœÝ\ÚÎˆ\ÚÈHÈYˆËšYÏÈZY
+
+K]NˆÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+K›Ý\ÎˆÝš[™Ê]K™Ù]
+	Û›Ý\ÉÊJKYNˆÝš[™Ê]K™Ù]
+	ÙYIÊJK[YNˆÝš[™Ê]K™Ù]
+	Ý[YIÊJKš[Üš]Nˆ]K™Ù]
+	Üš[Üš]IÊH\È\ÚÖÉÜš[Üš]I×KÛÛ\]Y]ˆË˜ÛÛ\]Y]ÏÈ[NÂˆYˆ
+]\ÚË]JBˆ›ÝÈ™]È\œ›ÜŠ	Ñ[\ˆH\ÚÈ]K‰ÊNÂˆYˆ
+\ÚË[YH	‰ˆ]\ÚË™YJBˆ›ÝÈ™]È\œ›ÜŠ	ÐÚÛÜÙHHYH]H›ÜˆH[YY\ÚË‰ÊNÂˆYˆ
+\ÚË[YJBˆ›Û™Y[œÝ[
+\ÚË™YK\ÚË[YKÝ]HKœ™Y™\™[˜Ù\Ë[Y^›Û™JNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ^HË\ÚÜË™š[™[™^
+OˆšYOOH\ÚËšY
+NÂˆYˆ
+^H
+BˆË\ÚÜÖÚ^HH\ÚÎÂˆ[ÙBˆË\ÚÜËœ\Ú
+\ÚÊNÂˆXÝ]š]JË	ÝÈ	Õ\]Y	Èˆ	ÐYY	ßH\ÚÎˆ	Ý\ÚË]_X	Ý\ÚÉÊNÂˆK	Õ\ÚÈØ]™YÛˆ\È]šXÙIÊNÂˆJNÂˆBˆ[˜Ý[ÛˆY]]™[
+YH	ÉÊHÂˆÛÛœÝ]ˆHÝ]HK™]™[Ë™š[™
+HOˆKšYOOHY
+NÂˆÛÛœÝ›Û™HHÝ]HKœ™Y™\™[˜Ù\Ë[Y^›Û™NÂˆÛÛœÝØØ[[YHH
+[œÝ[ˆÝš[™ÊHOˆ™]È[‘]U[YQ›Ü›X]
+	Ù[‹QÐ‰ËÈ[YV›Û™Nˆ›Û™KÝ\Žˆ	Ì‹YYÚ]	ËZ[]Nˆ	Ì‹YYÚ]	ËÝ\ÞXÛNˆ	ÚŒÉÈJK™›Ü›X]
+™]È]J[œÝ[
+JNÂˆÜ[‘›Ü›J]ˆÈ	ÑY]]™[	Èˆ	ÐY[ˆ]™[	ËšY[
+	Ñ]™[	Ë	Ý]IË]Ë]HÏÈ	ÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŒ‰ÊH
+ÈX™[Û\ÜÏHÜËXÚÚXÙH[œ]\OH˜ÚXÚØ›Þˆ˜[YOH˜[^Hˆ	Ù]Ë˜[^HÈ	ØÚXÚÙY	Èˆ	ÉßKÏˆ[Y^H]™[ÛX™[]ˆÛ\ÜÏHÜËY›Ü›K\›ÝÈ‰ÙšY[
+	ÔÝ\]IË	Ù]IË]ˆ	‰ˆY]‹˜[^HÈ^RÙ^J›Û™K™]È]J]‹œÝ\
+JHˆ]Ë™]HÏÈÙ[XÝY	Ù]IË	Ü™\]Z\™Y	Ê_IÙšY[
+	Ñ[™]IË	Ù[™]IË]ˆ	‰ˆY]‹˜[^HÈ^RÙ^J›Û™K™]È]J]‹™[™
+JHˆ]Ë™[™]HÏÈÙ[XÝY	Ù]IË	Ü™\]Z\™Y	Ê_OÙ]]ˆÛ\ÜÏHÜËY›Ü›K\›ÝÈ‰ÙšY[
+	ÔÝ\[YIË	ÜÝ\	Ë]ˆ	‰ˆY]‹˜[^HÈØØ[[YJ]‹œÝ\
+Hˆ	ÌNŒ	Ë	Ý[YIÊ_IÙšY[
+	Ñ[™[YIË	Ù[™	Ë]ˆ	‰ˆY]‹˜[^HÈØØ[[YJ]‹™[™
+Hˆ	ÌLŒ	Ë	Ý[YIÊ_OÙ]Û\ÜÏHÜË[]]Y•[Y\È\ÙH	Ù\ØÊ›Û™J_Kˆ[Y^H[™]H\È[˜Û\Ú]™KÜ‰Ù]ˆÈ]ÛŠ	Ù[]KY]™[	Ë	Ñ[]H]™[	Ë]‹šY
+Hˆ	ÉßX\Þ[˜È
+]JHOˆÂˆÛÛœÝ[^HH]Kš\Ê	Ø[^IÊK]HHÝš[™Ê]K™Ù]
+	Ù]IÊJK[™]HHÝš[™Ê]K™Ù]
+	Ù[™]IÊJNÂˆÛÛœÝ]™[ˆØ[[™\‘]™[HÈYˆ]ËšYÏÈZY
+
+K]NˆÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+K]K[™]K[^K›Û™KÝ\ˆ[^HÈ	ÉÈˆ›Û™Y[œÝ[
+]KÝš[™Ê]K™Ù]
+	ÜÝ\	ÊJK›Û™JK[™ˆ[^HÈ	ÉÈˆ›Û™Y[œÝ[
+[™]KÝš[™Ê]K™Ù]
+	Ù[™	ÊJK›Û™JHNÂˆYˆ
+Y]™[]H[™]H]H
+X[^H	‰ˆ]Kœ\œÙJ]™[™[™
+HH]Kœ\œÙJ]™[œÝ\
+JJBˆ›ÝÈ™]È\œ›ÜŠ	ÑÚ]™HH]™[H]H[™[ˆ[™Y\ˆ]ÈÝ\‰ÊNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ^HË™]™[Ë™š[™[™^
+HOˆKšYOOH]™[šY
+NÂˆYˆ
+^H
+BˆË™]™[ÖÚ^HH]™[Âˆ[ÙBˆË™]™[Ëœ\Ú
+]™[
+NÂˆXÝ]š]JË	Ù]ˆÈ	Õ\]Y	Èˆ	ÐYY	ßH]™[ˆ	Ù]™[]_X	Ù]™[	ÊNÂˆK	Ñ]™[Ø]™Y	ÊNÂˆJNÂˆBˆ[˜Ý[ÛˆY]›ÝJYH	ÉÊHÂˆÛÛœÝ›ÝHHÝ]HK››Ý\Ë™š[™
+ˆOˆ‹šYOOHY
+NÂˆÜ[‘›Ü›J›ÝHÈ	ÑY]ØØ[›ÝIÈˆ	ÐØ\\™HH›ÝIËšY[
+	Õ]IË	Ý]IË›ÝOË]HÏÈ	ÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŒ‰ÊH
+È\™XJ	Ó›ÝIË	Ø›ÙIË›ÝOË˜›ÙHÏÈÝ]HK˜Ø\\™Q˜Y
+H
+È
+›ÝHÈ]ÛŠ	Ù[]K[›ÝIË	Ñ[]H›ÝIË›ÝKšY
+Hˆ	ÉÊK\Þ[˜È
+]JHOˆÂˆÛÛœÝ™^ˆ›ÝHHÈYˆ›ÝOËšYÏÈZY
+
+K]NˆÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+K›ÙNˆÝš[™Ê]K™Ù]
+	Ø›ÙIÊJK\]Y]ˆÝ[\
+
+HNÂˆYˆ
+[™^]JBˆ›ÝÈ™]È\œ›ÜŠ	Ñ[\ˆH]K‰ÊNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ^HË››Ý\Ë™š[™[™^
+ˆOˆ‹šYOOH™^šY
+NÂˆYˆ
+^H
+BˆË››Ý\ÖÚ^HH™^Âˆ[ÙBˆË››Ý\Ë[œÚY
+™^
+NÂˆË˜Ø\\™Q˜YH	ÉÎÂˆXÝ]š]JË	Û›ÝHÈ	Õ\]Y	Èˆ	ÐØ\\™Y	ßH›ÝNˆ	Û™^]_X	Û›ÝIÊNÂˆK	Ó›ÝHØ]™YÛˆ\È]šXÙIÊNÂˆJNÂˆBˆ[˜Ý[ÛˆY]˜XÚÙ\ŠYH	ÉÊHÂˆÛÛœÝHÝ]HK˜XÚÙ\œË™š[™
+OˆšYOOHY
+NÂˆÜ[‘›Ü›JÈ	ÑY]˜XÚÙ\‰Èˆ	ÐÜ™X]HH˜XÚÙ\‰ËšY[
+	Ó˜[YIË	Ý]IËË]HÏÈ	ÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŽ‰ÊH
+ÈÙ[XÝ
+	Õ˜XÚÉË	ÚÚ[™	ËÖÉØÛÝ[	Ë	ÐÛÝ[	×KÉÙ\˜][Û‰Ë	Ñ\˜][Û‰×KÉØÚXÚÛ\Ý	Ë	ÐÚXÚÛ\Ý	×WKËšÚ[™ÏÈ	ØÛÝ[	ÊH
+ÈšY[
+	Õ[š]	Ë	Ý[š]	ËË[š]ÏÈ	ÜÙ\ÜÚ[ÛœÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝH‰ÊH
+ÈšY[
+	ÑÛØ[	Ë	ÙÛØ[	ËÝš[™ÊË™ÛØ[ÏÈJK	Û[X™\‰Ë	Ü™\]Z\™YZ[HŒŒHˆX^HŒLˆÝ\H˜[žH‰ÊH
+ÈÙ[XÝ
+	Ô\š[Ù	Ë	ØØY[˜ÙIËÖÉÙZ[IË	ÑZ[I×KÉÝÙYZÛIË	ÕÙYZÛI×WKË˜ØY[˜ÙHÏÈ	ÝÙYZÛIÊH
+È
+È]ÛŠ	Ù[]K]˜XÚÙ\‰Ë	Ñ[]H˜XÚÙ\ˆ[™]ÈÙÜÉËšY
+Hˆ	ÉÊK\Þ[˜È
+]JHOˆÂˆÛÛœÝ˜XÚÙ\Žˆ˜XÚÙ\ˆHÈYˆËšYÏÈZY
+
+K]NˆÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+KÚ[™ˆ]K™Ù]
+	ÚÚ[™	ÊH\È˜XÚÙ\–ÉÚÚ[™	×K[š]ˆÝš[™Ê]K™Ù]
+	Ý[š]	ÊJKš[J
+KÛØ[ˆ[X™\Š]K™Ù]
+	ÙÛØ[	ÊJKØY[˜ÙNˆ]K™Ù]
+	ØØY[˜ÙIÊH\È˜XÚÙ\–ÉØØY[˜ÙI×HNÂˆYˆ
+]˜XÚÙ\‹]JBˆ›ÝÈ™]È\œ›ÜŠ	Ñ[\ˆH˜[YK‰ÊNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ^HË˜XÚÙ\œË™š[™[™^
+OˆšYOOH˜XÚÙ\‹šY
+NÂˆYˆ
+^H
+BˆË˜XÚÙ\œÖÚ^HH˜XÚÙ\ŽÂˆ[ÙBˆË˜XÚÙ\œËœ\Ú
+˜XÚÙ\ŠNÂˆXÝ]š]JË	ÝÈ	Õ\]Y	Èˆ	ÐÜ™X]Y	ßH˜XÚÙ\Žˆ	Ý˜XÚÙ\‹]_X	Ý˜XÚÙ\‰ÊNÂˆK	Õ˜XÚÙ\ˆØ]™Y	ÊNÂˆJNÂˆBˆ[˜Ý[ÛˆÙÕ˜XÚÙ\ŠYˆÝš[™ËÙÒYH	ÉÊHÂˆÛÛœÝÙÈHÝ]HK›ÙÜË™š[™
+OˆšYOOHÙÒY
+NÂˆÛÛœÝHÝ]HK˜XÚÙ\œË™š[™
+OˆšYOOHY
+NÂˆYˆ
+]
+Bˆ™]\›ŽÂˆÜ[‘›Ü›J	ÛÙÈÈ	ÑY]	Èˆ	ÓÙÉßH	Ý]_XšY[
+	Ñ]IË	Ù]IËÙÏË™]HÏÈÙ^J
+K	Ù]IË™\]Z\™YX^H‰ÝÙ^J
+_H˜
+H
+ÈšY[
+šÚ[™OOH	Ù\˜][Û‰ÈÈ\˜][Ûˆ
+	Ù\ØÊ[š]
+_JXˆ[[Ý[
+	Ù\ØÊ[š]
+_JX	Ý˜[YIËÝš[™ÊÙÏË˜[YHÏÈJK	Û[X™\‰Ë	Ü™\]Z\™YZ[HŒˆX^HŒLˆÝ\H˜[žH‰ÊH
+ÈšY[
+	Ó›ÝH
+Ü[Û˜[
+IË	Û›ÝIËÙÏË››ÝHÏÈ	ÉË	Ý^	Ë	ÛX^[™ÝHL‰ÊK\Þ[˜È
+]JHOˆÂˆÛÛœÝ˜[YHH[X™\Š]K™Ù]
+	Ý˜[YIÊJK]HHÝš[™Ê]K™Ù]
+	Ù]IÊJNÂˆYˆ
+šÚ[™OOH	ØÚXÚÛ\Ý	È	‰ˆ˜[YHOOH	‰ˆ˜[YHOOHJBˆ›ÝÈ™]È\œ›ÜŠ	ÐÚXÚÛ\Ý[šY\È\™HÜˆK‰ÊNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ™XÛÜ™HÈYˆÙÏËšYÏÈZY
+
+K˜XÚÙ\’YˆY]K˜[YK›ÝNˆÝš[™Ê]K™Ù]
+	Û›ÝIÊJHNÂˆÛÛœÝ^HË›ÙÜË™š[™[™^
+OˆšYOOH™XÛÜ™šY
+NÂˆYˆ
+^H
+BˆË›ÙÜÖÚ^HH™XÛÜ™Âˆ[ÙBˆË›ÙÜËœ\Ú
+™XÛÜ™
+NÂˆXÝ]š]JËÙÙÙY	Ý˜[Y_H	Ý[š]Nˆ	Ý]_X	Ý˜XÚÙ\‰ÊNÂˆK	Õ˜XÚÙ\ˆÙÈØ]™Y	ÊNÂˆJNÂˆBˆ[˜Ý[Ûˆ™YÚ[‘Y]
+
+HÂˆYˆ
+Y][™ÊBˆ™]\›ŽÂˆY][™ÈHÈÛÜšÜÜXÙRYˆÝ\œ™[
+
+KšY˜\ÙT™]š\Ú[ÛŽˆÝ\œ™[
+
+Kœ™]š\Ú[Û‹ÛÜšÜÜXÙNˆÛÛ™JÝ\œ™[
+
+JHNÂˆ^[Ý][™ÈH×NÂˆ^[Ý]™YÈH×NÂˆ™[™\Š
+NÂˆ›ÚYØ]™Q˜Y
+
+NÂˆBˆ\Þ[˜È[˜Ý[ÛˆØ]™Q˜Y
+
+HÂˆYˆ
+\ÝÜ™H\ÝÜ˜YÙT™XYHYY][™ÊBˆ™]\›ŽÂˆÛÛœÝÝÛˆH\ØÚÂˆžHÂˆ]ØZ]ÝÜ™K™˜Y
+ÛÛ™JY][™ÊJNÂˆBˆØ]ÚÂˆYˆ
+ÝÛˆOOH\ØÚ
+Bˆ›ÝXÙJ	Ó^[Ý]Ú[™Ù\È\™HÛ›H[ˆY[[ÜžKˆ^Ü[Ý\ˆÛÜšÜÜXÙH™Y›Ü™HX]š[™Ë‰Ë]ÛŠ	Ù^Ü	Ë	Ñ^Ü	ÊJNÂˆBˆBˆ[˜Ý[ÛˆÚ[™ÙS^[Ý]
+Ú[™ÙNˆ
+ÎˆÛÜšÜÜXÙJHOˆ›ÚY
+HÂˆYˆ
+YY][™ÊBˆ™YÚ[‘Y]
+
+NÂˆYˆ
+YY][™ÊBˆ™]\›ŽÂˆ^[Ý][™Ëœ\Ú
+ÛÛ™JY][™ËÛÜšÜÜXÙJJNÂˆ^[Ý][™ÈH^[Ý][™ËœÛXÙJML
+NÂˆ^[Ý]™YÈH×NÂˆÚ[™ÙJY][™ËÛÜšÜÜXÙJNÂˆ™[™\Š
+NÂˆ›ÚYØ]™Q˜Y
+
+NÂˆBˆ\Þ[˜È[˜Ý[Ûˆš[š\ÚY]
+
+HÂˆYˆ
+YY][™È\Ý]JBˆ™]\›ŽÂˆÛÛœÝ˜YHÛÛ™JY][™ÊNÂˆYˆ
+Ý\œ™[
+
+KšYOOH˜YÛÜšÜÜXÙRYÝ\œ™[
+
+Kœ™]š\Ú[ÛˆOOH˜Y˜˜\ÙT™]š\Ú[ÛˆÛÛ™›XÝ
+HÂˆ›ÝXÙJ	ÕHØ]™Y^[Ý]Ú[™ÙYˆ[Ý\ˆY]˜Y\ÈÙ\ˆ™[ØYØ]™Y]K[ˆ™\Ý[YH]ÜˆØ]™H]\È[›Ý\ˆÛÜšÜÜXÙK‰Ë]ÛŠ	ÜØ]™KY˜YX\ÉË	ÔØ]™H\È™]ÈÛÜšÜÜXÙIÊH
+È]ÛŠ	Ü™[ØY	Ë	Ô™[ØYØ]™Y]IÊJNÂˆ™]\›ŽÂˆBˆ]ØZ]]]]JÈOˆÈÛÛœÝ[™^HËÛÜšÜÜXÙ\Ë™š[™[™^
+ÈOˆËšYOOH˜YÛÜšÜÜXÙRY
+NÈ˜YÛÜšÜÜXÙKœ™]š\Ú[ÛŠÊÎÈ˜YÛÜšÜÜXÙK\]Y]HÝ[\
+
+NÈËÛÜšÜÜXÙ\ÖÚ[™^HH˜YÛÜšÜÜXÙNÈK	Ó^[Ý]Ø]™Y	Ë˜[ÙJNÂˆYˆ
+Ý\œ™[
+
+Kœ™]š\Ú[ÛˆOOH˜Y˜˜\ÙT™]š\Ú[Ûˆ
+ÈH	‰ˆ
+Y\H\ÝÜ˜YÙT™XYJJHÂˆY][™ÈH[Âˆ™XÛÝ™\žQ˜YH[Âˆ]ØZ]ÝÜ™OË™˜Y
+[
+NÂˆYˆ
+Y\JH›ÝXÙJ	ÉÊNÂˆ™[™\Š
+NÂˆBˆBˆ[˜Ý[ÛˆÛÛ™šYÝ\™UÚYÙ]
+YˆÝš[™ÊHÂˆ]ÈH
+Y][™ÏËÛÜšÜÜXÙHÏÈÝ\œ™[
+
+JKÚYÙ]Ë™š[™
+ÈOˆËšYOOHY
+NÂˆYˆ
+]ÊBˆ™]\›ŽÂˆYˆ
+\ÜXÚYšXØ][ÛŠË\JHË\U™\œÚ[ÛˆˆJHÂˆÜ[‘›Ü›J	Õ[˜]˜Z[X›HÚYÙ]	Ë	Ï•\ÈÚYÙ]\È™\Ù\™Yˆ[ÝHØ[ˆ™[[Ý™H]^XÚ]HÚ]Ý][][™È]È[™\›Z[™È]KÜ‰È
+È]ÛŠ	Ü™[[Ý™K]ÚYÙ]	Ë	Ô™[[Ý™HÚYÙ]	ËY
+K
+
+OOžßJNÈ	
+	ÖÙ]KYX[ÙË\ÝX›Z]IÊKšY[]YNÈ™]\›ŽÂˆBˆYˆ
+YY][™ÊHÂˆ™YÚ[‘Y]
+
+NÂˆÈHY][™ÈKÛÜšÜÜXÙKÚYÙ]Ë™š[™
+ÈOˆËšYOOHY
+HNÂˆBˆÛÛœÝÜXÈHÜXÚYšXØ][ÛŠË\JHNÂˆ]ÛÛ™šYÈH	ÉÎÂˆYˆ
+Ë\HOOH	Ø\\ÚÜÝ]ÉÊHÂˆÛÛœÝÙ[XÝYYÈH\œ˜^Kš\Ð\œ˜^JË˜ÛÛ™šYË˜\YÊHÈË˜ÛÛ™šYË˜\YÈˆ[œÊ
+NÂˆÛÛ™šYÈHX™[Û\ÜÏHÜËXÚÚXÙH[œ]\OH˜ÚXÚØ›Þˆ˜[YOH\ÙPXÝ[ÛœÈˆ	ÝË˜ÛÛ™šYË\ÙPXÝ[ÛœÈOOH˜[ÙHÈ	ØÚXÚÙY	Èˆ	ÉßKÏˆ\ÙH\™XÝ\XÝ[ÛœÈÚ[ˆ]˜Z[X›OÛX™[X™[Û\ÜÏHÜËYšY[‘š[™[ˆ\È[[œ]\OHœÙX\˜Úˆ]K\[‹\ÙX\˜ÚXÙZÛ\H\˜[Yx )ˆ‹ÏÛX™[Û\ÜÏHÜË[]]YÚÛÜÙH\ÈLˆ\ÙY[ÚÜÝ]ËˆH[Ø][ÙÝYHÝ^\È[ˆ\ËÜ‰Ø\Ë›X\
+HOˆX™[Û\ÜÏHÜËXÚÚXÙHˆ]KX\XÚÚXÙOH‰Ù\ØÊK]KÓØØ[SÝÙ\Ø\ÙJ
+J_H[œ]\OH˜ÚXÚØ›Þˆ˜[YOH˜\YÈˆ˜[YOH‰Ù\ØÊKšY
+_Hˆ	ÜÙ[XÝYYËš[˜ÛY\ÊKšY
+HÈ	ØÚXÚÙY	Èˆ	ÉßKÏ‰ÚXÛÛŠKšXÛÛŠ_H	Ù\ØÊK]J_OÛX™[˜
+Kš›Ú[Š	ÉÊ_XÂˆBˆ[ÙHYˆ
+Ë\KœÝ\ÕÚ]
+	Ý˜XÚÙ\‰ÊJHÂˆÛÛœÝYÈHË˜ÛÛ™šYË˜XÚÙ\’YÎÂˆÛÛ™šYÈHÛ\ÜÏHÜË[]]Y”Ù[XÝ˜XÚÙ\œËÜˆX]™H[[˜ÚXÚÙYÈÚÝÈ[Ü‰ÜÝ]HK˜XÚÙ\œË›X\
+OˆX™[Û\ÜÏHÜËXÚÚXÙH[œ]\OH˜ÚXÚØ›Þˆ˜[YOH˜XÚÙ\’YÈˆ˜[YOH‰Ù\ØÊšY
+_Hˆ	Ð\œ˜^Kš\Ð\œ˜^JYÊH	‰ˆYËš[˜ÛY\ÊšY
+HÈ	ØÚXÚÙY	Èˆ	ÉßKÏ‰Ù\ØÊ]J_OÛX™[˜
+Kš›Ú[Š	ÉÊ_XÂˆBˆÛÛœÝÚYÙ]YHËšYÂˆÜ[‘›Ü›J	ÐÛÛ™šYÝ\™H	È
+ÈÜXË]KšY[
+	ÕÚYÙ]]IË	Ý]IË\[ÙˆË˜ÛÛ™šYË]HOOH	ÜÝš[™ÉÈÈË˜ÛÛ™šYË]HˆÜXË]K	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŽ‰ÊH
+ÈÙ[XÝ
+	ÕšY]ÉË	ÝšY]ÉËÜXËšY]ÜË›X\
+ˆOˆÝ‹–ÌHKÕ\\Ø\ÙJ
+H
+È‹œÛXÙJJWJKËšY]ÊH
+È]ˆÛ\ÜÏHÜËY›Ü›K\›ÝÈ‰ÙšY[
+	ÕÚY
+ÛÛ[[œÊIË	ÝÚY	ËÝš[™ÊË™\ÚÝÜÊK	Û[X™\‰Ë™\]Z\™YZ[H‰ÜÜXË›Z[•ÚYHˆX^HŒLˆ˜
+_IÙšY[
+	ÒZYÚ
+Ý\ÊIË	ÚZYÚ	ËÝš[™ÊË™\ÚÝÜš
+K	Û[X™\‰Ë™\]Z\™YZ[H‰ÜÜXË›Z[’ZYÚHˆX^HŒLŒ˜
+_OÙ]]ˆÛ\ÜÏHÜËY›Ü›K\›ÝÈ‰ÙšY[
+	ÐÛÛ[[ˆÜÚ][Û‰Ë	Þ	ËÝš[™ÊË™\ÚÝÜž
+K	Û[X™\‰Ë	Ü™\]Z\™YZ[HŒˆX^HŽ‰Ê_IÙšY[
+	Ô›ÝÈÜÚ][Û‰Ë	ÞIËÝš[™ÊË™\ÚÝÜžJK	Û[X™\‰Ë	Ü™\]Z\™YZ[HŒˆX^HŒL‰Ê_OÙ]‰ØÛÛ™šYßO]ˆÛ\ÜÏHÜËXÛÛ[]ÛÛ˜\ˆ‰Ø]ÛŠ	Û[Ý™K]ÚYÙ]]\	Ë	Ó[Ý™HX\›Y\‰ËÚYÙ]Y
+_IØ]ÛŠ	Û[Ý™K]ÚYÙ]YÝÛ‰Ë	Ó[Ý™H]\‰ËÚYÙ]Y
+_IØ]ÛŠ	Ü™[[Ý™K]ÚYÙ]	Ë	Ô™[[Ý™HÚYÙ]	ËÚYÙ]Y
+_OÙ]˜]HOˆÂˆÛÛœÝYÈH]K™Ù][
+	Ø\YÉÊK›X\
+Ýš[™ÊNÂˆYˆ
+TÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+JH›ÝÈ™]È\œ›ÜŠ	Ñ[\ˆHÚYÙ]]K‰ÊNÂˆYˆ
+YË›[™ÝˆLŠBˆ›ÝÈ™]È\œ›ÜŠ	ÐÚÛÜÙH][ÜÝLˆ\ÚÜÝ]Ë‰ÊNÂˆÚ[™ÙS^[Ý]
+ÜÈOˆÂˆÛÛœÝ][HHÜËÚYÙ]Ë™š[™
+OˆšYOOHÚYÙ]Y
+HNÂˆ][KšY]ÈHÝš[™Ê]K™Ù]
+	ÝšY]ÉÊJNÂˆ][K˜ÛÛ™šYË]HHÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+NÂˆYˆ
+][K\HOOH	Ø\\ÚÜÝ]ÉÊH][K˜ÛÛ™šYË\ÙPXÝ[ÛœÈH]Kš\Ê	Ý\ÙPXÝ[ÛœÉÊNÂˆYˆ
+][K\HOOH	Ø\\ÚÜÝ]ÉÊBˆ][K˜ÛÛ™šYË˜\YÈHË‹‹Š\œ˜^Kš\Ð\œ˜^J][K˜ÛÛ™šYË˜\YÊHÈ][K˜ÛÛ™šYË˜\YË™š[\ŠYOˆYËš[˜ÛY\ÊÝš[™ÊY
+JJHˆ×JK‹‹šYË™š[\ŠYOˆP\œ˜^Kš\Ð\œ˜^J][K˜ÛÛ™šYË˜\YÊHZ][K˜ÛÛ™šYË˜\YËš[˜ÛY\ÊY
+JWNÂˆYˆ
+][K\KœÝ\ÕÚ]
+	Ý˜XÚÙ\‰ÊJHÂˆÛÛœÝ˜XÚÙ\œÈH]K™Ù][
+	Ý˜XÚÙ\’YÉÊK›X\
+Ýš[™ÊNÂˆYˆ
+˜XÚÙ\œË›[™Ý
+Bˆ][K˜ÛÛ™šYË˜XÚÙ\’YÈH˜XÚÙ\œÎÂˆ[ÙBˆ[]H][K˜ÛÛ™šYË˜XÚÙ\’YÎÂˆBˆÜËÚYÙ]ÈHXÙJÜËÚYÙ]ËÚYÙ]YÈˆ[X™\Š]K™Ù]
+	Þ	ÊJKNˆ[X™\Š]K™Ù]
+	ÞIÊJKÎˆ[X™\Š]K™Ù]
+	ÝÚY	ÊJKˆ[X™\Š]K™Ù]
+	ÚZYÚ	ÊJHJNÂˆJNÂˆJNÂˆBˆ[˜Ý[ÛˆÚYÙ]XÚÙ\Š
+HÂˆYˆ
+YY][™ÊBˆ™YÚ[‘Y]
+
+NÂˆÜ[‘›Ü›J	ÐYHÚYÙ]	Ë]ˆÛ\ÜÏHÜË]ÚYÙ][Xœ˜\žH‰ÓØš™XÝ™[šY\ÊÒQÑUÊK›X\
+
+Ý\KÜX×JHOˆ]ÛŠ	ØY]\IË	ÚXÛÛŠÜXËšXÛÛŠ_O]Ý›Û™Ï‰ÜÜXË]_OÜÝ›Û™ÏÛX[‰ÜÜXË™\ØÜš\[ÛŸOÜÛX[Ù]˜\K	ÝÜË]ÚYÙ]XÚÚXÙIÊJKš›Ú[Š	ÉÊ_OÙ]˜
+
+HOˆÈJNÂˆ	
+	ÖÙ]KYX[ÙË\ÝX›Z]IÊKšY[ˆHYNÂˆBˆ[˜Ý[ÛˆÜ™X]UÛÜšÜÜXÙJ\XØ]RYH	ÉÊHÂˆÛÛœÝÜšYÚ[˜[HÝ]HKÛÜšÜÜXÙ\Ë™š[™
+ÈOˆËšYOOH\XØ]RY
+NÂˆYˆ
+Ý]HKÛÜšÜÜXÙ\Ë›[™ÝHL
+HÂˆØ\Ý
+	Ö[ÝHØ[ˆØ]™H\ÈLÛÜšÜÜXÙ\Ëˆ™[˜[YHÜˆ™[[Ý™H[ˆ[\ÙY^[Ý]š\œÝ‰ÊNÂˆ™]\›ŽÂˆBˆÜ[‘›Ü›JÜšYÚ[˜[È	Ñ\XØ]HÛÜšÜÜXÙIÈˆ	Ó™]ÈÛÜšÜÜXÙIËšY[
+	Ó˜[YIË	Ý]IËÜšYÚ[˜[ÈÜšYÚ[˜[]H
+È	ÈÛÜIÈˆ	ÉË	Ý^	Ë	Ü™\]Z\™YX^[™ÝHŽ‰ÊH
+È
+ÜšYÚ[˜[È	ÉÈˆÙ[XÝ
+	ÔÝ\œ›ÛIË	Ü™\Ù]	Ë‘TÑUË›X\
+
+JHOˆÔÝš[™ÊJKJK	Ì	ÊJK\Þ[˜È
+]JHOˆÂˆÛÛœÝ]HHÝš[™Ê]K™Ù]
+	Ý]IÊJKš[J
+NÂˆYˆ
+]]JBˆ›ÝÈ™]È\œ›ÜŠ	ÐÚÛÜÙHH˜[YK‰ÊNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝÛÜšÜÜXÙHHÜšYÚ[˜[ÈÈ‹‹˜ÛÛ™JÜšYÚ[˜[
+KYˆZY
+
+K]K™]š\Ú[ÛŽˆ\]Y]ˆÝ[\
+
+HHˆ™\Ù]
+]K[œÊ
+K[X™\Š]K™Ù]
+	Ü™\Ù]	ÊJJNÂˆYˆ
+ÜšYÚ[˜[
+BˆÛÜšÜÜXÙKÚYÙ]Ë™›Ü‘XXÚ
+ÈOˆËšYHZY
+
+JNÂˆËÛÜšÜÜXÙ\Ëœ\Ú
+ÛÜšÜÜXÙJNÂˆË˜XÝ]™HHÛÜšÜÜXÙKšYÂˆK	ÕÛÜšÜÜXÙHÜ™X]Y	ÊNÂˆJNÂˆBˆ[˜Ý[ÛˆÚÛÜÙT™\Ù]
+
+HÂˆYˆ
+Y][™ÊHÂˆØ\Ý
+	Ñš[š\ÚÜˆØ[˜Ù[[Ý\ˆ^[Ý]Y]™Y›Ü™H\Z[™ÈH™\Ù]‰ÊNÂˆ™]\›ŽÂˆBˆÜ[‘›Ü›J	ÐÚÛÜÙHHÝ\\ˆ^[Ý]	ËÙ[XÝ
+	Ó^[Ý]	Ë	Ü™\Ù]	Ë‘TÑUË›X\
+
+JHOˆÔÝš[™ÊJKJK	Ì	ÊH
+ÈÙ[XÝ
+	Ð\H\ÉË	Û[ÙIËÖÉÛ™]ÉË	ÐÜ™X]HH™]ÈÛÜšÜÜXÙI×KÉÜ™\XÙIË	Ô™\XÙH\È^[Ý]
+ÛÛ[Ý^\ÊI×WK	Û™]ÉÊH
+È	ÏÛ\ÜÏHÜË[]]Y•\ÚÜË]™[Ë›Ý\È[™˜XÚÙ\œÈ\™HÚ\™YˆÚ[™Ú[™È^[Ý]Ù\È›Ý™\Ù][KÜ‰Ë\Þ[˜È
+]JHOˆÂˆÛÛœÝÚ[™H[X™\Š]K™Ù]
+	Ü™\Ù]	ÊJNÂˆ]ØZ]]]]JÈOˆÂˆÛÛœÝ™^H™\Ù]
+‘TÑUÖÚÚ[™HK[œÊ
+KÚ[™
+NÂˆYˆ
+]K™Ù]
+	Û[ÙIÊHOOH	Û™]ÉÊHÂˆYˆ
+ËÛÜšÜÜXÙ\Ë›[™ÝHL
+Bˆ›ÝÈ™]È\œ›ÜŠ	ÕHL]ÛÜšÜÜXÙH[Z]\È™Y[ˆ™XXÚY‰ÊNÂˆËÛÜšÜÜXÙ\Ëœ\Ú
+™^
+NÂˆË˜XÝ]™HH™^šYÂˆBˆ[ÙHÂˆÛÛœÝ[™^HËÛÜšÜÜXÙ\Ë™š[™[™^
+ÈOˆËšYOOHË˜XÝ]™JNÂˆ™^šYHË˜XÝ]™NÂˆ™^]HHËÛÜšÜÜXÙ\ÖÚ[™^HK]NÂˆ™^œ™]š\Ú[ÛˆHËÛÜšÜÜXÙ\ÖÚ[™^HKœ™]š\Ú[Ûˆ
+ÈNÂˆËÛÜšÜÜXÙ\ÖÚ[™^HH™^ÂˆBˆK	Ó^[Ý]\YY	ËYKYJNÂˆJNÂˆBˆ[˜Ý[ÛˆÛÛ™š\›T™[[Ý˜[
+]NˆÝš[™Ë]Z[ˆÝš[™Ë™[[Ý™Nˆ
+ÎˆÛÜšÜÜXÙTÝ]JHOˆ›ÚY
+HÈÜ[‘›Ü›J]K‰Ù\ØÊ]Z[
+_OÜ˜\Þ[˜È
+
+HOˆÈ]ØZ]]]]J™[[Ý™K	Ô™[[Ý™Y	ËYJNÈK	Ñ[]IÊNÈBˆ[˜Ý[Ûˆ^ÜÛÜšÜÜXÙJ
+HÂˆYˆ
+\Ý]JHÂˆYˆ
+˜]Ô™XÛÝ™\žJBˆÝÛ›ØY
+˜]Ô™XÛÝ™\žK	ÝY\‹]ÛÜšÜÜXÙK\™XÛÝ™\žKšœÛÛ‰ÊNÂˆ™]\›ŽÂˆBˆÛÛœÝ]HHÛÛ™JÝ]JNÂˆYˆ
+Y][™ÊHÂˆÛÛœÝ^H]KÛÜšÜÜXÙ\Ë™š[™[™^
+ÈOˆËšYOOHY][™ÈKÛÜšÜÜXÙRY
+NÂˆYˆ
+^H
+Bˆ]KÛÜšÜÜXÙ\ÖÚ^HHÛÛ™JY][™ËÛÜšÜÜXÙJNÂˆBˆ]K›YØXÞP˜XÚÝ\H[ÂˆÝÛ›ØY
+”ÓÓ‹œÝš[™ÚYžJ]K[ŠK	ÝY\‹]ÛÜšÜÜXÙKIÈ
+ÈÙ^J
+H
+È	ËšœÛÛ‰ÊNÂˆØ\Ý
+	Ð˜XÚÝ\^ÜYˆÙY\]ÛÛY]Ú\™HØY™K‰ÊNÂˆBˆ[˜Ý[Ûˆ[\ÜÛÜšÜÜXÙJ
+HÂˆÜ[‘›Ü›J	Ò[\ÜÛÜšÜÜXÙH˜XÚÝ\	ËX™[Û\ÜÏHÜËYšY[˜XÚÝ\š[O[œ]\OH™š[Hˆ˜[YOH™š[HˆXØÙ\H˜\XØ][Û‹ÚœÛÛ‹šœÛÛˆˆ™\]Z\™YÏÛX™[‰ÜÙ[XÝ
+	Ò[\Ü[ÙIË	Û[ÙIËÖÉÛ™]ÉË	ÐY[\ÜYÛÜšÜÜXÙ\Èwï}­¢G§²ÚîÆ­yÔ°‘•Í­Ñ½Àèìàè€À°äè5…Ñ ¹µ…à À°€¸¸¹Ü¹Ý¥‘•ÑÌ¹µ…À¡à€ôøà¹‘•Í­Ñ½À¹ä€¬à¹‘•Í­Ñ½À¹ ¤¤°ÜèÍÁ•Œ¹Ý¥‘Ñ ° èÍÁ•Œ¹¡•¥¡Ðô°½É‘•ÈèÜ¹Ý¥‘•ÑÌ¹±•¹Ñ ô¤ìô¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€½¹™¥ÕÉ”µÝ¥‘•Ðœè(€€€€€€€€€€€€€€€½¹™¥ÕÉ•]¥‘•Ð¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•µ½Ù”µÝ¥‘•Ðœè(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÜ¹Ý¥‘•ÑÌ¹™¥±Ñ•È¡à€ôøà¹¥€„ôô¥¤¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€Ñ½…ÍÐ ]¥‘•ÐÉ•µ½Ù•ì¥ÑÌ½¹Ñ•¹Ð¥Ì­•ÁÐ¸œ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€µ½Ù”µÝ¥‘•ÐµÕÀœè(€€€€€€€€€€€…Í”€µ½Ù”µÝ¥‘•Ðµ‘½Ý¸œè(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ±¥ÍÐ€ô½É‘•É•¡Ü¹Ý¥‘•ÑÌ¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ¤€ô±¥ÍÐ¹™¥¹‘%¹‘•à¡à€ôøà¹¥€ôôô¥¤°¨€ô¤€¬€¡…Ñ¥½¸€ôôô€µ½Ù”µÝ¥‘•ÐµÕÀœ€ü€´Ä€è€Ä¤ì(€€€€€€€€€€€€€€€€€€€¥˜€¡¨€ð€Àñð¨€øô±¥ÍÐ¹±•¹Ñ ¤(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€m±¥ÍÑm¥t„¹½É‘•È°±¥ÍÑm©t„¹½É‘•Ét€ôm±¥ÍÑm©t„¹½É‘•È°±¥ÍÑm¥t„¹½É‘•Étì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ„€ô±½¹”¡±¥ÍÑm¥t„¹‘•Í­Ñ½À¤°ˆ€ô±½¹”¡±¥ÍÑm©t„¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm¥t„¹‘•Í­Ñ½À¹à€ôˆ¹àì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm¥t„¹‘•Í­Ñ½À¹ä€ôˆ¹äì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm©t„¹‘•Í­Ñ½À¹à€ô„¹àì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm©t„¹‘•Í­Ñ½À¹ä€ô„¹äì(€€€€€€€€€€€€€€€€€€€Ü¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°±¥ÍÑm¥t„¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÍÝ¥Ñ µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ¤ìÑ½…ÍÐ ¥¹¥Í ½È…¹•°•‘¥Ñ¥¹œ‰•™½É”ÍÝ¥Ñ¡¥¹œÝ½É­ÍÁ…•Ì¸œ¤ì‰É•…¬ìô(€€€€€€€€€€€€€€€½Á•¹½É´ ¡½½Í”Ý½É­ÍÁ…”œ°Í•±•Ð ]½É­ÍÁ…”œ°Ý½É­ÍÁ…”œ±ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹µ…À¡ÜôùmÜ¹¥±Ü¹Ñ¥Ñ±•t¤±ÍÑ…Ñ”¹…Ñ¥Ù”¤€¬‰ÕÑÑ½¸ ¹•ÜµÝ½É­ÍÁ…”œ°9•ÜÝ½É­ÍÁ…”œ¤°…Íå¹Œ‘…Ñ„€ôøì…Ý…¥ÐµÕÑ…Ñ”¡ÌôùÌ¹…Ñ¥Ù”õMÑÉ¥¹œ¡‘…Ñ„¹•Ð Ý½É­ÍÁ…”œ¤¤°œœ±™…±Í”¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÁÉ•Í•ÑÌœè(€€€€€€€€€€€€€€€¡½½Í•AÉ•Í•Ð ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€¹•ÜµÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€É•…Ñ•]½É­ÍÁ…” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘ÕÁ±¥…Ñ”µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€É•…Ñ•]½É­ÍÁ…”¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•¹…µ”µÝ½É­ÍÁ…”œèì(€€€€€€€€€€€€€€€½¹ÍÐÜ€ôÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ü¤(€€€€€€€€€€€€€€€€€€€½Á•¹½É´ I•¹…µ”Ý½É­ÍÁ…”œ°™¥•± 9…µ”œ°€Ñ¥Ñ±”œ°Ü¹Ñ¥Ñ±”°€Ñ•áÐœ°€É•ÅÕ¥É•µ…á±•¹Ñ ôˆàÀˆœ¤°…Íå¹Œ€¡‘…Ñ„¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍÐÑ¥Ñ±”€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð Ñ¥Ñ±”œ¤¤¹ÑÉ¥´ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€ …Ñ¥Ñ±”¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È ¡½½Í”„¹…µ”¸œ¤ì(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐµÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„¹Ñ¥Ñ±”€ôÑ¥Ñ±”ìô°€]½É­ÍÁ…”É•¹…µ•œ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€‘•±•Ñ”µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€¥˜€¡ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €ôôô€Ä¤ì(€€€€€€€€€€€€€€€€€€€Ñ½…ÍÐ -••À…Ð±•…ÍÐ½¹”Ý½É­ÍÁ…”¸e½Ô…¸…ÁÁ±äÑ¡”‰±…¹¬±…å½ÕÐ¥¹ÍÑ•…¸œ¤ì(€€€€€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”Ñ¡¥ÌÝ½É­ÍÁ…”üœ°€=¹±ä¥ÑÌ±…å½ÕÐÝ¥±°‰”É•µ½Ù•¸Q…Í­Ì°¹½Ñ•Ì°•Ù•¹ÑÌ…¹ÑÉ…­•ÉÌÍÑ…ä¸œ°Ì€ôøì(€€€€€€€€€€€€€€€€€€€Ì¹Ý½É­ÍÁ…•Ì€ôÌ¹Ý½É­ÍÁ…•Ì¹™¥±Ñ•È¡Ü€ôøÜ¹¥€„ôô¥¤ì(€€€€€€€€€€€€€€€€€€€¥˜€¡Ì¹…Ñ¥Ù”€ôôô¥¤(€€€€€€€€€€€€€€€€€€€€€€€Ì¹…Ñ¥Ù”€ôÌ¹Ý½É­ÍÁ…•ÍlÁt„¹¥ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Õ¹‘¼µ½¹Ñ•¹Ðœè(€€€€€€€€€€€€€€€¥˜€¡½¹Ñ•¹ÑU¹‘¼¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐÁÉ¥½È€ô±½¹”¡½¹Ñ•¹ÑU¹‘¼¤ì(€€€€€€€€€€€€€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì½¹ÍÐÉ•Ù¥Í¥½¸€ôÌ¹É•Ù¥Í¥½¸ì=‰©•Ð¹…ÍÍ¥¸¡Ì°ÁÉ¥½È°ìÉ•Ù¥Í¥½¸ô¤ìô°€¡…¹”Õ¹‘½¹”œ°™…±Í”¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÁÉ¥Ù…äœè(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøìÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸€ô€„¡ÁÉ¥Ù…å!•±ñðÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸¤ìÁÉ¥Ù…å!•±€ôÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ìô°€œœ°™…±Í”¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Ñ¥µ•é½¹”œè(€€€€€€€€€€€€€€€½Á•¹½É´ A±…¹¹•ÈÑ¥µ•é½¹”œ°™¥•± %9Ñ¥µ•é½¹”œ°€é½¹”œ°ÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹Ñ¥µ•é½¹”°€Ñ•áÐœ°€É•ÅÕ¥É•œ¤€¬€œñÀ±…ÍÌô‰ÝÌµµÕÑ•ˆù½È•á…µÁ±”ÕÉ½Á”½	•É±¥¸°µ•É¥„½9•Ý}e½É¬½ÈÍ¥„½M•½Õ°¸ð½Àøœ°…Íå¹Œ€¡‘…Ñ„¤€ôøì(€€€€€€€€€€€€€€€€€€€½¹ÍÐé½¹”€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð é½¹”œ¤¤ì(€€€€€€€€€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€€€€€€€€€¹•Ü%¹Ñ°¹…Ñ•Q¥µ•½Éµ…Ð •¸œ°ìÑ¥µ•i½¹”èé½¹”ô¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È ¹Ñ•È„Ù…±¥%9Ñ¥µ•é½¹”¸œ¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ý…¥ÐµÕÑ…Ñ”¡Ì€ôøÌ¹ÁÉ•™•É•¹•Ì¹Ñ¥µ•é½¹”€ôé½¹”°€Q¥µ•é½¹”ÕÁ‘…Ñ•œ¤ì(€€€€€€€€€€€€€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€€€€€€€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€¥µÁ½ÉÐœè(€€€€€€€€€€€€€€€¥µÁ½ÉÑ]½É­ÍÁ…” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÍÑ½É”œè(€€€€€€€€€€€€€€€Ù½¥ÍÑ½É”ü¹‰…­ÕÀ ¤¹Ñ¡•¸¡‰…­ÕÀ€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€ …‰…­ÕÀ¤ì(€€€€€€€€€€€€€€€€€€€€€€€Ñ½…ÍÐ 9¼É•Á±…•µ•¹Ð‰…­ÕÀ¥Ì…Ù…¥±…‰±”¸œ¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° I•ÍÑ½É”É•Á±…•µ•¹Ð‰…­ÕÀüœ°€Q¡”ÕÉÉ•¹Ð±½…°‘…Ñ„Ý¥±°‰”É•Á±…•‰äå½ÕÈ±…ÍÐÍ…Ù•É•Á±…•µ•¹Ð‰…­ÕÀ¸œ°Ì€ôøì½¹ÍÐÉ•Ù¥Í¥½¸€ôÌ¹É•Ù¥Í¥½¸ì=‰©•Ð¹…ÍÍ¥¸¡Ì°‰…­ÕÀ°ìÉ•Ù¥Í¥½¸ô¤ìô¤ì(€€€€€€€€€€€€€€€ô¤¹…Ñ   ¤€ôøÑ½…ÍÐ 	…­ÕÀÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸œ¤¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÑÉäœè(€€€€€€€€€€€€€€€ÅÕ•Õ”€ôÅÕ•Õ”¹Ñ¡•¸¡…Íå¹Œ€ ¤€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€ …ÍÑ½É”¤(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€¥˜€ …ÍÑ½É…•I•…‘ä¤ì(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÍÑ½É”¹½Á•¸ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍÐ•á¥ÍÑ¥¹œ€ô…Ý…¥ÐÍÑ½É”¹±½… ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•á¥ÍÑ¥¹œ€˜˜•á¥ÍÑ¥¹œ¹É•Ù¥Í¥½¸€„ôôÍÑ…Ñ”„¹É•Ù¥Í¥½¸¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜI•Ù¥Í¥½¹½¹™±¥Ð ¤ì(€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÁ•ÉÍ¥ÍÐ ¤ì(€€€€€€€€€€€€€€€€€€€¥˜€ …‘¥ÉÑä¤ì(€€€€€€€€€€€€€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô¤¹…Ñ ¡”€ôø¹½Ñ¥”¡”¥¹ÍÑ…¹•½˜ÉÉ½È€ü”¹µ•ÍÍ…”€è€½Õ±¹½ÐÉ•½Á•¸ÍÑ½É…”¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤¤¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•±½…œè(€€€€€€€€€€€€€€€¥˜€¡‘¥ÉÑäñð•‘¥Ñ¥¹œ¤ì(€€€€€€€€€€€€€€€€€€€½Á•¹½É´ I•±½…Í…Ù•‘…Ñ„üœ°€œñÀùU¹Í…Ù•½¹Ñ•¹Ð¥¸Ñ¡¥ÌÑ…ˆÝ¥±°‰”É•Á±…•¸áÁ½ÉÐ¥Ð™¥ÉÍÐ¸1…å½ÕÐ•‘¥Ð‘É…™ÑÌÉ•µ…¥¸…Ù…¥±…‰±”¸ð½Àøœ€¬‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐÕÉÉ•¹Ð¡…¹•Ìœ¤°€ ¤€ôøÉ•±½…‘M…Ù• ¤°€I•±½…Í…Ù•‘…Ñ„œ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÍÕµ”µ‘É…™Ðœè(€€€€€€€€€€€€€€€¥˜€¡É•½Ù•ÉåÉ…™Ð¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ‘É…™Ð€ô±½¹”¡É•½Ù•ÉåÉ…™Ð¤ì(€€€€€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹…Ñ¥Ù”€ô‘É…™Ð¹Ý½É­ÍÁ…•%°€œœ°™…±Í”¤¹Ñ¡•¸  ¤€ôøì•‘¥Ñ¥¹œ€ô‘É…™ÐìÉ•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì¹½Ñ¥” œœ¤ìÉ•¹‘•È ¤ìô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘¥Í…Éµ‘É…™Ðœè(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€€€€€Ù½¥ÍÑ½É”ü¹‘É…™Ð¡¹Õ±°¤ì(€€€€€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í…Ù”µ‘É…™Ðµ…Ìœè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ€˜˜ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €ð€ÄÀ¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐÜ€ô±½¹”¡•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¤ì(€€€€€€€€€€€€€€€€€€€Ü¹¥€ôÕ¥ ¤ì(€€€€€€€€€€€€€€€€€€€Ü¹Ñ¥Ñ±”€¬ô€œÉ•½Ù•É•œì(€€€€€€€€€€€€€€€€€€€Ü¹É•Ù¥Í¥½¸€ô€Àì(€€€€€€€€€€€€€€€€€€€Ü¹Ý¥‘•ÑÌ¹™½É… ¡à€ôøà¹¥€ôÕ¥ ¤¤ì(€€€€€€€€€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤¹Ñ¡•¸  ¤€ôøµÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹ÁÕÍ ¡Ü¤ìÌ¹…Ñ¥Ù”€ôÜ¹¥ìô°€I•½Ù•É••‘¥ÐÍ…Ù•…Ì…¹½Ñ¡•ÈÝ½É­ÍÁ…”œ¤¤¹Ñ¡•¸  ¤€ôøÍÑ½É”ü¹‘É…™Ð¡¹Õ±°¤¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í•…É µÑ…Í¬œè(€€€€€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€€€€€•‘¥ÑQ…Í¬¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í•…É µ¹½Ñ”œè(€€€€€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€€€€€•‘¥Ñ9½Ñ”¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ•°€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51%¹ÁÕÑ±•µ•¹Ðì(€€€€€€€¥˜€ …ÍÑ…Ñ”ñð±½­•¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹Ñ…Í­Q½±”¤ì(€€€€€€€€€€€½¹ÍÐ¥€ô•°¹‘…Ñ…Í•Ð¹Ñ…Í­Q½±”ì(€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì(€€€€€€€€€€€€€€€½¹ÍÐÐ€ôÌ¹Ñ…Í­Ì¹™¥¹¡Ð€ôøÐ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ð¤ì(€€€€€€€€€€€€€€€€€€€Ð¹½µÁ±•Ñ•‘Ð€ô•°¹¡•­•€üÍÑ…µÀ ¤€è¹Õ±°ì(€€€€€€€€€€€€€€€€€€€…Ñ¥Ù¥Ñä¡Ì°€‘íÐ¹½µÁ±•Ñ•‘Ð€ü€½µÁ±•Ñ•œ€è€I•½Á•¹•ôÑ…Í¬è€‘íÐ¹Ñ¥Ñ±•õ€°€Ñ…Í¬œ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô°•°¹¡•­•€ü€Q…Í¬½µÁ±•Ñ•œ€è€Q…Í¬É•½Á•¹•œ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹Ñ…Í­¥±Ñ•È€„ôôÕ¹‘•™¥¹•¤ì(€€€€€€€€€€€Ñ…Í­¥±Ñ•È€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹ÁÉ•™•É•¹”€ôôô€‘•¹Í¥Ñäœ¤(€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹ÁÉ•™•É•¹•Ì¹‘•¹Í¥Ñä€ô•°¹Ù…±Õ”…Ì€½µÁ…Ðœð€½µ™½ÉÑ…‰±”œ°€œœ°™…±Í”¤ì(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹ÁÉ•™•É•¹”€ôôô€Ñ¡•µ”œ¤ì(€€€€€€€€€€€½¹ÍÐÑ¡•µ”€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ•AÉ•™•É•¹”€ôÑ¡•µ”ì(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ”€ôÑ¡•µ”€ôôô€ÍåÍÑ•´œ€ü€¡µ…Ñ¡5•‘¥„ œ¡ÁÉ•™•ÉÌµ½±½ÈµÍ¡•µ”é‘…É¬¤œ¤¹µ…Ñ¡•Ì€ü€‘…É¬œ€è€±¥¡Ðœ¤€èÑ¡•µ”ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€±½…±MÑ½É…”¹Í•Ñ%Ñ•´ Ñ¡¥•Á¸é¥¹‘•àµÑ¡•µ”œ°Ñ¡•µ”¤ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€Ñ½…ÍÐ Q¡•µ”¡…¹•™½ÈÑ¡¥ÌÍ•ÍÍ¥½¸ì‰É½ÝÍ•ÈÁÉ•™•É•¹”ÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸œ¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹¡¥ÍÑ½ÉåM•±•Ð¤ì(€€€€€€€€€€€½¹ÍÐ¥€ô•°¹‘…Ñ…Í•Ð¹¡¥ÍÑ½ÉåM•±•Ð°Ù…±Õ”€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ¤(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ¹™¥¹¡à€ôøà¹¥€ôôô¥¤„¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ôÙ…±Õ”¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôôÌ¹…Ñ¥Ù”¤„¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ôÙ…±Õ”ìô°€œœ°™…±Í”¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¥¹ÁÕÐœ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ•°€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51%¹ÁÕÑ±•µ•¹Ðì(€€€€€€€¥˜€¡•°¹¡…ÍÑÑÉ¥‰ÕÑ” ‘…Ñ„µÁ¥¸µÍ•…É œ¤¤ì½¹ÍÐÅÕ•Éä€ô•°¹Ù…±Õ”¹Ñ½1½…±•1½Ý•É…Í” ¤ìÉ½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø m‘…Ñ„µ…ÁÀµ¡½¥•tœ¤¹™½É… ¡É½Ü€ôøÉ½Ü¹¡¥‘‘•¸€ô€…É½Ü¹‘…Ñ…Í•Ð¹…ÁÁ¡½¥”„¹¥¹±Õ‘•Ì¡ÅÕ•Éä¤¤ìô(€€€€€€€¥˜€¡•°¹¥€ôôô€Ý½É­ÍÁ…”µÍ•…É œ¤ì(€€€€€€€€€€€Í•…É¡EÕ•Éä€ô•°¹Ù…±Õ”¹Ñ½1½…±•1½Ý•É…Í” ¤¹ÑÉ¥´ ¤ì(€€€€€€€€€€€É•¹‘•ÉM•…É  ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹¡…ÍÑÑÉ¥‰ÕÑ” ‘…Ñ„µ…ÁÑÕÉ”µ‘É…™Ðœ¤€˜˜ÍÑ…Ñ”¤ì(€€€€€€€€€€€ÍÑ…Ñ”¹…ÁÑÕÉ•É…™Ð€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€¡…¹•Y•ÉÍ¥½¸¬¬ì(€€€€€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€€€€€‘¥ÉÑä€ôÑÉÕ”ì(€€€€€€€€€€€Í…Ù• É…™Ð¹½ÐÍ…Ù•å•ÓŠ˜œ¤ì(€€€€€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€€€€€½¹ÍÐ½Ý¸€ô•Á½ ì(€€€€€€€€€€€…ÁÑÕÉ•Q¥µ•È€ôÍ•ÑQ¥µ•½ÕÐ  ¤€ôøì(€€€€€€€€€€€€€€€¥˜€¡½Ý¸€ôôô•Á½ ¤(€€€€€€€€€€€€€€€€€€€ÅÕ•Õ”€ôÅÕ•Õ”¹Ñ¡•¸  ¤€ôøÁ•ÉÍ¥ÍÐ ¤¤ì(€€€€€€€€€€€ô°€ÔÀÀ¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ÍÕ‰µ¥Ðœ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ…ÁÑÕÉ”€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51½Éµ±•µ•¹Ðø m‘…Ñ„µ…ÁÑÕÉ”µ™½Éµtœ¤ì(€€€€€€€¥˜€ ……ÁÑÕÉ”ñð€…ÍÑ…Ñ”¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€½¹ÍÐ‘…Ñ„€ô¹•Ü½Éµ…Ñ„¡…ÁÑÕÉ”¤°‰½‘ä€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð ‰½‘äœ¤¤¹ÑÉ¥´ ¤°­¥¹€ô‘…Ñ„¹•Ð ­¥¹œ¤ì(€€€€€€€¥˜€ …‰½‘ä¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡­¥¹€ôôô€Ñ…Í¬œ€˜˜‰½‘ä¹±•¹Ñ €ø€ÈÐÀ¤ì(€€€€€€€€€€€Ñ½…ÍÐ Q…Í¬Ñ¥Ñ±•Ì…¸½¹Ñ…¥¸ÕÀÑ¼€ÈÐÀ¡…É…Ñ•ÉÌ¸…ÁÑÕÉ”±½¹•ÈÑ•áÐ…Ì„¹½Ñ”¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì(€€€€€€€€€€€¥˜€¡­¥¹€ôôô€Ñ…Í¬œ¤(€€€€€€€€€€€€€€€Ì¹Ñ…Í­Ì¹ÁÕÍ ¡ì¥èÕ¥ ¤°Ñ¥Ñ±”è‰½‘ä°¹½Ñ•Ìè€œœ°‘Õ”èÑ½‘…ä ¤°Ñ¥µ”è€œœ°ÁÉ¥½É¥Ñäè€¹½¹”œ°½µÁ±•Ñ•‘Ðè¹Õ±°ô¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€Ì¹¹½Ñ•Ì¹Õ¹Í¡¥™Ð¡ì¥èÕ¥ ¤°Ñ¥Ñ±”è‰½‘ä¹ÍÁ±¥Ð q¸œ¥lÁt„¹Í±¥” À°€àÀ¤°‰½‘ä°ÕÁ‘…Ñ•‘ÐèÍÑ…µÀ ¤ô¤ì(€€€€€€€€€€€Ì¹…ÁÑÕÉ•É…™Ð€ô€œœì(€€€€€€€€€€€…Ñ¥Ù¥Ñä¡Ì°…ÁÑÕÉ•€‘í­¥¹‘ôè€‘í‰½‘ä¹Í±¥” À°€àÀ¥õ€°MÑÉ¥¹œ¡­¥¹¤¤ì(€€€€€€€ô°€‘í­¥¹€ôôô€Ñ…Í¬œ€ü€Q…Í¬œ€è€9½Ñ”ô…ÁÑÕÉ•‘€¤ì(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•å‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐÑ…É•Ð€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ðì(€€€€€€€¥˜€¡Ñ…É•Ð¹µ…Ñ¡•Ì m‘…Ñ„µ‘É…t±m‘…Ñ„µÉ•Í¥é•tœ¤€˜˜•‘¥Ñ¥¹œ€˜˜lÉÉ½Ý1•™Ðœ°€ÉÉ½ÝI¥¡Ðœ°€ÉÉ½ÝUÀœ°€ÉÉ½Ý½Ý¸t¹¥¹±Õ‘•Ì¡•Ù•¹Ð¹­•ä¤¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐ¥€ôÑ…É•Ð¹‘…Ñ…Í•Ð¹‘É…œ€üüÑ…É•Ð¹‘…Ñ…Í•Ð¹É•Í¥é”„ì(€€€€€€€€€€€½¹ÍÐ¥Ñ•´€ô•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„ì(€€€€€€€€€€€½¹ÍÐÈ€ô±½¹”¡¥Ñ•´¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€¥˜€¡Ñ…É•Ð¹‘…Ñ…Í•Ð¹É•Í¥é”¤ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý1•™Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹Ü´´ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝI¥¡Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹Ü¬¬ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤(€€€€€€€€€€€€€€€€€€€È¹ €´ô€Ðì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤(€€€€€€€€€€€€€€€€€€€È¹ €¬ô€Ðì(€€€€€€€€€€€ô(€€€€€€€€€€€•±Í”ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý1•™Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à´´ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝI¥¡Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à¬¬ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤(€€€€€€€€€€€€€€€€€€€È¹ä€´ô€Ðì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤(€€€€€€€€€€€€€€€€€€€È¹ä€¬ô€Ðì(€€€€€€€€€€€ô(€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°È¤¤ì(€€€€€€€€€€€É½½Ð¹ÅÕ•ÉåM•±•Ñ½Èñ!Q51±•µ•¹Ðø¡l‘íÑ…É•Ð¹‘…Ñ…Í•Ð¹‘É…œ€ü€‘…Ñ„µ‘É…œœ€è€‘…Ñ„µÉ•Í¥é”ôôˆ‘íML¹•Í…Á”¡¥¥ô‰u€¤ü¹™½ÕÌ ¤ì(€€€€€€€€€€€Ñ½…ÍÐ ]¥‘•ÐÁ½Í¥Ñ¥½¸ÕÁ‘…Ñ•¸¡½½Í”½¹”Ñ¼Í…Ù”¸œ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€É•ÍÕ±ÑÍl¡¥¹‘•à€¬€Ä¤€”É•ÍÕ±ÑÌ¹±•¹Ñ¡tü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€¥˜€¡¥¹‘•à€ðô€À¤(€€€€€€€€€€€€€€€€ œÝ½É­ÍÁ…”µÍ•…É œ¤¹™½ÕÌ ¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•ÍÕ±ÑÍm¥¹‘•à€´€Åtü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•å‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€ ¡•Ù•¹Ð¹ÑÉ±-•äñð•Ù•¹Ð¹µ•Ñ…-•ä¤€˜˜•Ù•¹Ð¹­•ä¹Ñ½1½Ý•É…Í” ¤€ôôô€¬œ€˜˜€„¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹µ…Ñ¡•Ì Ñ•áÑ…É•„±m½¹Ñ•¹Ñ•‘¥Ñ…‰±”õÑÉÕ•tœ¤¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€¥˜€ „ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸¤(€€€€€€€€€€€€€€€½Á•¹M•…É  ¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ¡…¹‘±”€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µ‘É…t±m‘…Ñ„µÉ•Í¥é•tœ¤ì(€€€€€€€¥˜€ …¡…¹‘±”ñð€…•‘¥Ñ¥¹œñð•Ù•¹Ð¹‰ÕÑÑ½¸€„ôô€À¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€½¹ÍÐ¥€ô¡…¹‘±”¹‘…Ñ…Í•Ð¹‘É…œ€üü¡…¹‘±”¹‘…Ñ…Í•Ð¹É•Í¥é”„ì(€€€€€€€½¹ÍÐ¥Ñ•´€ô•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„ì(€€€€€€€½¹ÍÐ¥¹¥Ñ¥…°€ô±½¹”¡¥Ñ•´¹‘•Í­Ñ½À¤ì(€€€€€€€½¹ÍÐÉ¥€ô€ m‘…Ñ„µÉ¥‘tœ¤°•±°€ô¡…¹‘±”¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µÝ¥‘•Ðµ¥‘tœ¤„ì(€€€€€€€½¹ÍÐ½±Õµ¸€ô€¡É¥¹±¥•¹Ñ]¥‘Ñ €¬€ÄØ¤€¼€ÄÈ°ÍÑ…ÉÑ`€ô•Ù•¹Ð¹±¥•¹Ñ`°ÍÑ…ÉÑd€ô•Ù•¹Ð¹±¥•¹Ñdì(€€€€€€€±•ÐÉ•Ð€ô±½¹”¡¥¹¥Ñ¥…°¤°µ½Ù•€ô™…±Í”ì(€€€€€€€•±°¹±…ÍÍ1¥ÍÐ¹…‘ ÝÌµ‘É…¥¹œœ¤ì(€€€€€€€™Õ¹Ñ¥½¸µ½Ù”¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€µ½Ù•ñðô5…Ñ ¹…‰Ì¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¬5…Ñ ¹…‰Ì¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€ø€Ôì(€€€€€€€€€€€½¹ÍÐ‘à€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¼½±Õµ¸¤°‘ä€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€à¤ì(€€€€€€€€€€€É•Ð€ô¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”€üì€¸¸¹¥¹¥Ñ¥…°°Üè5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹]¥‘Ñ €üü€Ð°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹à°¥¹¥Ñ¥…°¹Ü€¬‘à¤¤° è5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹!•¥¡Ð€üü€ÄØ°5…Ñ ¹µ¥¸ ÄÈÀ°¥¹¥Ñ¥…°¹ €¬‘ä¤¤ô€èì€¸¸¹¥¹¥Ñ¥…°°àè5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹Ü°¥¹¥Ñ¥…°¹à€¬‘à¤¤°äè5…Ñ ¹µ…à À°¥¹¥Ñ¥…°¹ä€¬‘ä¤ôì(€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€„ôô€ÑÉÕ”œ¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ½°œ°MÑÉ¥¹œ¡É•Ð¹à€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÍÁ…¸œ°MÑÉ¥¹œ¡É•Ð¹Ü¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÉ½Üœ°MÑÉ¥¹œ¡É•Ð¹ä€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ¡•¥¡Ðœ°MÑÉ¥¹œ¡É•Ð¹ ¤¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸•¹¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€€€€€€€€€¥˜€¡µ½Ù•¤ì(€€€€€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€ôôô€ÑÉÕ”œ€˜˜€…¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”¤ì(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøì½¹ÍÐ±¥ÍÐ€ô½É‘•É•¡Ü¹Ý¥‘•ÑÌ¤ì½¹ÍÐ™É½´€ô±¥ÍÐ¹™¥¹‘%¹‘•à¡à€ôøà¹¥€ôôô¥¤°Ñ¼€ô5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸¡±¥ÍÐ¹±•¹Ñ €´€Ä°™É½´€¬5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€ÄàÀ¤¤¤ì½¹ÍÐµ½Ù•‘%Ñ•´€ô±¥ÍÐ¹ÍÁ±¥”¡™É½´°€Ä¥lÁt„ì±¥ÍÐ¹ÍÁ±¥”¡Ñ¼°€À°µ½Ù•‘%Ñ•´¤ì±¥ÍÐ¹™½É…  ¡à°¤¤€ôøà¹½É‘•È€ô¤¤ìô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°É•Ð¤¤ì(€€€€€€€€€€€ô(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸…¹•° ¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ìÉ•¹‘•È ¤ìô(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€ô¤ì(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•…‘É…™Ð¡Í½ÕÉ”è]½É­ÍÁ…•MÑ½É”¤èAÉ½µ¥Í”ñ‘¥ÑÉ…™Ññ¹Õ±°øì(€€€€€€€½¹ÍÐÙ…±Õ”€ô…Ý…¥ÐÍ½ÕÉ”¹‘É…™Ð ¤ì(€€€€€€€¥˜€ …Ù…±Õ”ñð€…ÍÑ…Ñ”¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€¥˜€ …9Õµ‰•È¹¥ÍM…™•%¹Ñ••È¡Ù…±Õ”¹‰…Í•I•Ù¥Í¥½¸¤ñðÙ…±Õ”¹‰…Í•I•Ù¥Í¥½¸€ð€Àñð€…Ù…±Õ”¹Ý½É­ÍÁ…”ñðÙ…±Õ”¹Ý½É­ÍÁ…”¹¥€„ôôÙ…±Õ”¹Ý½É­ÍÁ…•%¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€½¹ÍÐ…¹‘¥‘…Ñ”õ±½¹”¡ÍÑ…Ñ”¤°¥¹‘•àõ…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ì¹™¥¹‘%¹‘•à¡ÜôùÜ¹¥ôôõÙ…±Õ”¹Ý½É­ÍÁ…•%¤ì(€€€€€€€€€€€¥˜¡¥¹‘•àðÀ¥É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ím¥¹‘•átõÙ…±Õ”¹Ý½É­ÍÁ…”ì(€€€€€€€€€€€Á…ÉÍ•MÑ…Ñ”¡)M=8¹ÍÑÉ¥¹¥™ä¡…¹‘¥‘…Ñ”¤¤ì(€€€€€€€€€€€É•ÑÕÉ¸Ù…±Õ”ì(€€€€€€€ô…Ñ ìÉ•ÑÕÉ¸¹Õ±°ìô€¼¼AÉ•Í•ÉÙ”Ñ¡”½É¥¥¹…°‘É…™Ðì½µµ¥ÑÑ•É•½É‘Ì…É”ÍÑ¥±°ÕÍ…‰±”¸(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•±½…‘M…Ù• ¤ì(€€€€€€€…Ý…¥ÐÅÕ•Õ”ì(€€€€€€€½¹ÍÐ±…Ñ•ÍÐ€ô…Ý…¥ÐÍÑ½É”ü¹±½… ¤ì(€€€€€€€¥˜€¡±…Ñ•ÍÐ¤ì(€€€€€€€€€€€ÁÉ¥Ù…å!•±ñðô±…Ñ•ÍÐ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€€€€€ÍÑ…Ñ”€ô±…Ñ•ÍÐì(€€€€€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡ÍÑ½É”„¤ì(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸±½…‘%‘•¹Ñ¥Ñä¡¥‘•¹Ñ¥Ñäè!Õ‰%‘•¹Ñ¥Ñä¤ì(€€€€€€€½¹ÍÐ½Ý¸€ô€¬­•Á½ ì(€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€ÍÑ½É”ü¹±½Í” ¤ì(€€€€€€€¡…¹¹•°ü¹±½Í” ¤ì(€€€€€€€ÍÑ½É”€ô¹Õ±°ì(€€€€€€€¡…¹¹•°€ô¹Õ±°ì(€€€€€€€ÍÑ…Ñ”€ô¹Õ±°ì(€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€±½­•€ô™…±Í”ì(€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€É…ÝI•½Ù•Éä€ô€œœì(€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µ…½Õ¹Ðµ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ±¥ÍÑtœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ½¹Ñ•¹Ñtœ¤¹¥¹¹•É!Q50€ô•µÁÑä e½ÕÈÝ½É­ÍÁ…”œ°€¡•­¥¹œ±½…°¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁ±…¹¹•Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÑ½½±‰…Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ œÝÌµÑ¥Ñ±”œ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô€A•ÉÍ½¹…°Ý½É­ÍÁ…”œì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µÑ½…ÍÑtœ¤¹¡¥‘‘•¸€ôÑÉÕ”ì(€€€€€€€Í…Ù• ¡•­¥¹œ¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁÉ½™¥±”µ±…‰•±tœ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹±…‰•°€è€Q¡¥Ì‘•Ù¥”œì(€€€€€€€¥˜€¡¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€¡•­¥¹œœñð¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Õ¹…Ù…¥±…‰±”œ¤ì(€€€€€€€€€€€¹½Ñ¥” A•ÉÍ½¹…°½¹Ñ•¹Ð¥Ì¡¥‘‘•¸Õ¹Ñ¥°å½ÕÈ!Õˆ¥‘•¹Ñ¥Ñä…¸‰”½¹™¥Éµ•¸ÁÀ±¥¹­Ì…É”…Ù…¥±…‰±”¥¸ÁÁÌ¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€½¹ÍÐ½Ý¹•È€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹¥€è¹Õ±°ì(€€€€€€€¥˜€¡½Ý¹•È€˜˜€…Ù…±¥‘½Õ¹Ñ%¡½Ý¹•È¤¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€±•Ð±•…äèÍÑÉ¥¹œð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€±•…ä€ô±½…±MÑ½É…”¹•Ñ%Ñ•´¡ÁÉ•™•É•¹•-•ä¡½Ý¹•È¤¤ì(€€€€€€€ô(€€€€€€€…Ñ ì€¼¨1½…°ÍÑ½É…”‘•¹¥•è%¹‘•á•‘µ…äÍÑ¥±°‰”ÕÍ…‰±”¸€¨¼ô(€€€€€€€½¹ÍÐ¹•áÑMÑ½É”€ô¹•Ü]½É­ÍÁ…•MÑ½É”¡¹…µ•ÍÁ…”¡½Ý¹•È¤¤ì(€€€€€€€ÍÑ½É”€ô¹•áÑMÑ½É”ì(€€€€€€€±•Ð±½…‘•è]½É­ÍÁ…•MÑ…Ñ”ð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€…Ý…¥Ð¹•áÑMÑ½É”¹½Á•¸ ¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤ì(€€€€€€€€€€€€€€€¹•áÑMÑ½É”¹±½Í” ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ôÑÉÕ”ì(€€€€€€€€€€€É…ÝI•½Ù•Éä€ô…Ý…¥Ð¹•áÑMÑ½É”¹É…Ü ¤ì(€€€€€€€€€€€±½…‘•€ô…Ý…¥Ð¹•áÑMÑ½É”¹±½… ¤ì(€€€€€€€ô(€€€€€€€…Ñ €¡”¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€¥˜€¡É…ÝI•½Ù•Éä¤ì(€€€€€€€€€€€€€€€±½­•€ôÑÉÕ”ì(€€€€€€€€€€€€€€€¹½Ñ¥”¡”¥¹ÍÑ…¹•½˜ÉÉ½È€ü”¹µ•ÍÍ…”€è€M…Ù•Ý½É­ÍÁ…”…¹¹½Ð‰”½Á•¹•¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐÉ•½Ù•Éä™¥±”œ¤¤ì(€€€€€€€€€€€€€€€Í…Ù• M…Ù•É•½É±•™ÐÕ¹Ñ½Õ¡•œ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€€€€€¹½Ñ¥” 	É½ÝÍ•ÈÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸]½É¬¥¸Ñ¡¥ÌÑ…ˆ…¹•áÁ½ÉÐå½ÕÈ‘…Ñ„‰•™½É”±•…Ù¥¹œ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ÍÑ…Ñ”€ô±½…‘•€üü¥¹¥Ñ¥…±MÑ…Ñ”¡…ÁÁÌ¹µ…À¡„€ôø„¹¥¤°±•…ä¤ì(€€€€€€€ÁÉ¥Ù…å!•±€ôÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€¥˜€¡ÍÑ½É…•I•…‘ä¤ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡¹•áÑMÑ½É”¤ì(€€€€€€€€€€€€€€€¥˜€¡É•½Ù•ÉåÉ…™Ð€˜˜€…ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹Í½µ”¡Ü€ôøÜ¹¥€ôôôÉ•½Ù•ÉåÉ…™Ð„¹Ý½É­ÍÁ…•%¤¤(€€€€€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€¥˜€ …±½…‘•¤(€€€€€€€€€€€€€€€…Ý…¥ÐÁ•ÉÍ¥ÍÐ ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡ÑåÁ•½˜	É½…‘…ÍÑ¡…¹¹•°€„ôô€Õ¹‘•™¥¹•œ¤ì(€€€€€€€€€€€¡…¹¹•°€ô¹•Ü	É½…‘…ÍÑ¡…¹¹•° Ñ¡¥•Á¸µ…‘…ÁÑ¥Ù”µÝ½É­ÍÁ…”µÕÁ‘…Ñ•Ìœ¤ì(€€€€€€€€€€€¡…¹¹•°¹½¹µ•ÍÍ…”€ô•Ù•¹Ð€ôøì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹‘…Ñ„ü¹­•ä€„ôô¹•áÑMÑ½É”¹­•äñð•Ù•¹Ð¹‘…Ñ„¹É•Ù¥Í¥½¸€ôôôÍÑ…Ñ”ü¹É•Ù¥Í¥½¸¤(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œñð‘¥ÉÑä¤ì(€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€¹½Ñ¥” ¹½Ñ¡•ÈÑ…ˆ¡…¹•Ñ¡¥ÌÝ½É­ÍÁ…”¸e½ÕÈ±½…°•‘¥ÑÌ…É”­•ÁÐ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤€¬‰ÕÑÑ½¸ É•±½…œ°€I•±½…Í…Ù•‘…Ñ„œ¤¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤¹…Ñ   ¤€ôø¹½Ñ¥” ½Õ±¹½ÐÉ•™É•Í ¡…¹•Ì™É½´…¹½Ñ¡•ÈÑ…ˆ¸œ¤¤ì(€€€€€€€€€€€ôì(€€€€€€€ô(€€€€€€€É•¹‘•È ¤ì(€€€€€€€¥˜€ …ÍÑ½É…•I•…‘ä¤(€€€€€€€€€€€Í…Ù• ¤ì(€€€€€€€•±Í”¥˜€ …É•½Ù•ÉåÉ…™Ð¤(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€ô(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡Õˆé¥‘•¹Ñ¥Ñäœ°•Ù•¹Ð€ôøÙ½¥±½…‘%‘•¹Ñ¥Ñä ¡•Ù•¹Ð…ÌÕÍÑ½µÙ•¹Ðñ!Õ‰%‘•¹Ñ¥Ñäø¤¹‘•Ñ…¥°¤¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á…•Í¡½Üœ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡ÍÑ…Ñ”€˜˜€…‘¥ÉÑä€˜˜€…•‘¥Ñ¥¹œ¤(€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤ì(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ‰•™½É•Õ¹±½…œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡‘¥ÉÑä¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€ô(€€€ô¤ì(€€€µ…Ñ¡5•‘¥„ œ¡ÁÉ•™•ÉÌµ½±½ÈµÍ¡•µ”é‘…É¬¤œ¤¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ°”€ôøì(€€€€€€€¥˜€¡‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ•AÉ•™•É•¹”€ôôô€ÍåÍÑ•´œ¤(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ”€ô”¹µ…Ñ¡•Ì€ü€‘…É¬œ€è€±¥¡Ðœì(€€€ô¤ì(€€€±•Ð±…ÍÑ…ä€ôÍ•±•Ñ•ì(€€€Í•Ñ%¹Ñ•ÉÙ…°  ¤€ôøì¥˜€ …ÍÑ…Ñ”¤(€€€€€€€É•ÑÕÉ¸ì½¹ÍÐ¹½Ü€ôÑ½‘…ä ¤ì¥˜€¡¹½Ü€„ôô±…ÍÑ…ä¤ì(€€€€€€€¥˜€¡Í•±•Ñ•€ôôô±…ÍÑ…ä¤ì(€€€€€€€€€€€Í•±•Ñ•€ô¹½Üì(€€€€€€€€€€€µ½¹Ñ €ô¹½Ü¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€ô(€€€€€€€±…ÍÑ…ä€ô¹½Üì(€€€€€€€É•¹‘•È ¤ì(€€€ôô°€ÌÀÀÀÀ¤ì(€€€…Ý…¥Ð±½…‘%‘•¹Ñ¥Ñä¡¡Õ‰%‘•¹Ñ¥Ñä¤ì(€€€¥˜€ Í•ÉÙ¥•]½É­•Èœ¥¸¹…Ù¥…Ñ½È€˜˜€…¥µÁ½ÉÐ¹µ•Ñ„¹•¹Ø¹X¤ìÙ½¥¹…Ù¥…Ñ½È¹Í•ÉÙ¥•]½É­•È¹É•¥ÍÑ•È œ½¡½µ”½Ý½É­ÍÁ…”µÍÜ¹©Ìœ±íÍ½Á”èœ½¡½µ”¼ô¤¹…Ñ   ¤ôùì€¼¨1½…°É•½É‘ÌÍÑ¥±°Ý½É¬ì‘¼¹½Ð±…¥´½™™±¥¹”Í¡•±°…Ù…¥±…‰¥±¥Ñä¸€¨¼ô¤ìô()ô)¹½¹Ñ•¹Ðt°lÉ•Á±…”œ°€I•Á±…”±½…°Ý½É­ÍÁ…”€¡‰…­ÕÀ™¥ÉÍÐ¤ut°€¹•Üœ¥ôñÀ±…ÍÌô‰ÝÌµµÕÑ•ˆùQ¡”‰…­ÕÀ¥Ì¥µÁ½ÉÑ•¥¹Ñ¼Ñ¡”ÕÉÉ•¹Ð±½…°¥‘•¹Ñ¥Ñä¸9¼…½Õ¹ÐÑ½­•¹Ì½È±½Õ‘…Ñ„…É”¥µÁ½ÉÑ•¸á¥ÍÑ¥¹œÉ•½É‘ÌÍÑ…äÝ¡•¸…‘‘¥¹œÝ½É­ÍÁ…•Ì¸ð½Àù€°…Íå¹Œ€¡‘…Ñ„¤€ôøì(€€€€€€€€€€€½¹ÍÐ™¥±”€ô‘…Ñ„¹•Ð ™¥±”œ¤ì(€€€€€€€€€€€¥˜€ „¡™¥±”¥¹ÍÑ…¹•½˜¥±”¤ñð™¥±”¹Í¥é”€ø5a}aA=IQ}	eQL¤(€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È ¡½½Í”„)M=8‰…­ÕÀÍµ…±±•ÈÑ¡…¸€Ô5¸œ¤ì(€€€€€€€€€€€½¹ÍÐ¥µÁ½ÉÑÁ½ €ô•Á½ ì(€€€€€€€€€€€½¹ÍÐ¥µÁ½ÉÑ•€ôÁ…ÉÍ•MÑ…Ñ”¡…Ý…¥Ð™¥±”¹Ñ•áÐ ¤¤ì(€€€€€€€€€€€¥˜€¡•Á½ €„ôô¥µÁ½ÉÑÁ½ ¤Ñ¡É½Ü¹•ÜÉÉ½È e½ÕÈ¥‘•¹Ñ¥Ñä¡…¹•¸%µÁ½ÉÐ¥¹Ñ¼Ñ¡”¥¹Ñ•¹‘•Ý½É­ÍÁ…”……¥¸¸œ¤ì(€€€€€€€€€€€½¹ÍÐÉ•Á±…”€ô‘…Ñ„¹•Ð µ½‘”œ¤€ôôô€É•Á±…”œì(€€€€€€€€€€€¥˜€ …É•Á±…”€˜˜ÍÑ…Ñ”„¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €¬¥µÁ½ÉÑ•¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €ø€ÄÀ¤(€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È Q¡¥Ì¥µÁ½ÉÐÝ½Õ±•á••€ÄÀÝ½É­ÍÁ…•Ì¸œ¤ì(€€€€€€€€€€€½Á•¹%µÁ½ÉÑAÉ•Ù¥•Ü¡¥µÁ½ÉÑ•°É•Á±…”¤ì(€€€€€€€ô¤ì(€€€ô(€€€™Õ¹Ñ¥½¸½Á•¹%µÁ½ÉÑAÉ•Ù¥•Ü¡¥µÁ½ÉÑ•è]½É­ÍÁ…•MÑ…Ñ”°É•Á±…”è‰½½±•…¸¤ì(€€€€€€€Í•ÑQ¥µ•½ÕÐ  ¤€ôø½Á•¹½É´ I•Ù¥•Ü¥µÁ½ÉÐœ°€ñÀø‘íÉ•Á±…”€ü€I•Á±…”œ€è€‘ô€‘í¥µÁ½ÉÑ•¹Ý½É­ÍÁ…•Ì¹±•¹Ñ¡ôÝ½É­ÍÁ…•Ì°€‘í¥µÁ½ÉÑ•¹Ñ…Í­Ì¹±•¹Ñ¡ôÑ…Í­Ì°€‘í¥µÁ½ÉÑ•¹¹½Ñ•Ì¹±•¹Ñ¡ô¹½Ñ•Ì°€‘í¥µÁ½ÉÑ•¹•Ù•¹ÑÌ¹±•¹Ñ¡ô•Ù•¹ÑÌ…¹€‘í¥µÁ½ÉÑ•¹ÑÉ…­•ÉÌ¹±•¹Ñ¡ôÑÉ…­•ÉÌ¸ð½ÀøñÀ±…ÍÌô‰ÝÌµµÕÑ•ˆø‘íÉ•Á±…”€ü€É•Á±…•µ•¹Ð‰…­ÕÀÝ¥±°‰”­•ÁÐ¸e½Ô…¸É•ÍÑ½É”¥Ð™É½´M•ÑÑ¥¹Ì¸œ€è€%µÁ½ÉÑ•É•½É‘ÌÉ••¥Ù”¹•Ü%ÌÍ¼•á¥ÍÑ¥¹œ½¹Ñ•¹Ð¥Ì¹½Ð½Ù•ÉÝÉ¥ÑÑ•¸¸ôð½Àù€°…Íå¹Œ€ ¤€ôøì(€€€€€€€€€€€…Ý…¥ÐµÕÑ…Ñ”¡Ì€ôøì(€€€€€€€€€€€€€€€¥˜€¡É•Á±…”¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐÉ•Ù¥Í¥½¸€ôÌ¹É•Ù¥Í¥½¸ì(€€€€€€€€€€€€€€€€€€€=‰©•Ð¹…ÍÍ¥¸¡Ì°±½¹”¡¥µÁ½ÉÑ•¤°ìÉ•Ù¥Í¥½¸ô¤ì(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€½¹ÍÐ½Áä€ô±½¹”¡¥µÁ½ÉÑ•¤°¥‘Ì€ô¹•Ü5…ÀñÍÑÉ¥¹œ°ÍÑÉ¥¹œø ¤ì(€€€€€€€€€€€½Áä¹ÑÉ…­•ÉÌ¹™½É… ¡Ð€ôø¥‘Ì¹Í•Ð¡Ð¹¥±Õ¥ ¤¤¤ì(€€€€€€€€€€€€€€€™½È€¡½¹ÍÐ±¥ÍÐ½˜m½Áä¹Ý½É­ÍÁ…•Ì°½Áä¹Ñ…Í­Ì°½Áä¹¹½Ñ•Ì°½Áä¹•Ù•¹ÑÌ°½Áä¹ÑÉ…­•ÉÌ°½Áä¹±½Ì°½Áä¹…Ñ¥Ù¥Ñåt¤(€€€€€€€€€€€€€€€€€€€™½È€¡½¹ÍÐÉ•½É½˜±¥ÍÐ¤ì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍÐ¥€ôÕ¥ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥‘Ì¹Í•Ð¡É•½É¹¥°¥¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•½É¹¥€ô¥ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€™½È€¡½¹ÍÐÜ½˜½Áä¹Ý½É­ÍÁ…•Ì¤ì(€€€€€€€€€€€€€€€€€€€Ü¹Ý¥‘•ÑÌ¹™½É… ¡Ý¥‘•Ð€ôøì(€€€€€€€€€€€€€€€€€€€€€€€Ý¥‘•Ð¹¥€ôÕ¥ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡ÉÉ…ä¹¥ÍÉÉ…ä¡Ý¥‘•Ð¹½¹™¥œ¹ÑÉ…­•É%‘Ì¤¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ý¥‘•Ð¹½¹™¥œ¹ÑÉ…­•É%‘Ì€ôÝ¥‘•Ð¹½¹™¥œ¹ÑÉ…­•É%‘Ì¹µ…À¡¥€ôø¥‘Ì¹•Ð¡MÑÉ¥¹œ¡¥¤¤€üü¥¤ì(€€€€€€€€€€€€€€€¥˜€¡ÑåÁ•½˜Ý¥‘•Ð¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ôôô€ÍÑÉ¥¹œœ¤Ý¥‘•Ð¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ô¥‘Ì¹•Ð¡Ý¥‘•Ð¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È¤€üüÝ¥‘•Ð¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•Èì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€½Áä¹±½Ì¹™½É… ¡°€ôø°¹ÑÉ…­•É%€ô¥‘Ì¹•Ð¡°¹ÑÉ…­•É%¤„¤ì(€€€€€€€€€€€€€€€Ì¹Ý½É­ÍÁ…•Ì¹ÁÕÍ  ¸¸¹½Áä¹Ý½É­ÍÁ…•Ì¤ì(€€€€€€€€€€€€€€€Ì¹Ñ…Í­Ì¹ÁÕÍ  ¸¸¹½Áä¹Ñ…Í­Ì¤ì(€€€€€€€€€€€€€€€Ì¹¹½Ñ•Ì¹ÁÕÍ  ¸¸¹½Áä¹¹½Ñ•Ì¤ì(€€€€€€€€€€€€€€€Ì¹•Ù•¹ÑÌ¹ÁÕÍ  ¸¸¹½Áä¹•Ù•¹ÑÌ¤ì(€€€€€€€€€€€€€€€Ì¹ÑÉ…­•ÉÌ¹ÁÕÍ  ¸¸¹½Áä¹ÑÉ…­•ÉÌ¤ì(€€€€€€€€€€€€€€€Ì¹±½Ì¹ÁÕÍ  ¸¸¹½Áä¹±½Ì¤ì(€€€€€€€€€€€€€€€Ì¹…Ñ¥Ù¥Ñä¹ÁÕÍ  ¸¸¹½Áä¹…Ñ¥Ù¥Ñä¤ì(€€€€€€€€€€€€€€€Ì¹…Ñ¥Ù¥Ñä€ôÌ¹…Ñ¥Ù¥Ñä¹Í±¥” À°€ÔÀÀ¤ì(€€€€€€€€€€€ô°€	…­ÕÀ¥µÁ½ÉÑ•œ°ÑÉÕ”°ÑÉÕ”¤ì(€€€€€€€ô°É•Á±…”€ü€I•Á±…”±½…°‘…Ñ„œ€è€‘¥µÁ½ÉÑ•‘…Ñ„œ¤°€À¤ì(€€€ô(€€€™Õ¹Ñ¥½¸É•¹‘•ÉM•…É  ¤ì(€€€€€€€½¹ÍÐÉ½ÝÌ€ô€ m‘…Ñ„µÍ•…É µÉ•ÍÕ±ÑÍtœ¤ì(€€€€€€€¥˜€ …ÍÑ…Ñ”ñð€¡ÁÉ¥Ù…å!•±ñðÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸¤¤ì(€€€€€€€€€€€É½ÝÌ¹¥¹¹•É!Q50€ô…ÁÁÌ¹™¥±Ñ•È¡„€ôø„¹Ñ¥Ñ±”¹Ñ½1½…±•1½Ý•É…Í” ¤¹¥¹±Õ‘•Ì¡Í•…É¡EÕ•Éä¤¤¹µ…À¡„€ôø€ñ„±…ÍÌô‰ÝÌµÍ•…É µÉ•ÍÕ±Ðˆ¡É•˜ôˆ‘í•ÍŒ¡„¹ÕÉ°¥ôˆø‘í¥½¸¡„¹¥½¸¥ôñ‘¥Øø‘í•ÍŒ¡„¹Ñ¥Ñ±”¥ôñÍµ…±°ùÁÀð½Íµ…±°øð½‘¥Øøð½„ù€¤¹©½¥¸ œœ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€½¹ÍÐ™½Õ¹èÍÑÉ¥¹mt€ômtì(€€€€€€€™½È€¡½¹ÍÐ„½˜…ÁÁÌ¹™¥±Ñ•È¡„€ôø„¹Ñ¥Ñ±”¹Ñ½1½…±•1½Ý•É…Í” ¤¹¥¹±Õ‘•Ì¡Í•…É¡EÕ•Éä¤¤¤(€€€€€€€€€€€™½Õ¹¹ÁÕÍ ¡€ñ„±…ÍÌô‰ÝÌµÍ•…É µÉ•ÍÕ±Ðˆ¡É•˜ôˆ‘í•ÍŒ¡„¹ÕÉ°¥ôˆø‘í¥½¸¡„¹¥½¸¥ôñ‘¥Øø‘í•ÍŒ¡„¹Ñ¥Ñ±”¥ôñÍµ…±°ùÁÀð½Íµ…±°øð½‘¥Øøð½„ù€¤ì(€€€€€€€™½È€¡½¹ÍÐÐ½˜ÍÑ…Ñ”¹Ñ…Í­Ì¹™¥±Ñ•È¡Ð€ôø€¡Ð¹Ñ¥Ñ±”€¬€œ€œ€¬Ð¹¹½Ñ•Ì¤¹Ñ½1½…±•1½Ý•É…Í” ¤¹¥¹±Õ‘•Ì¡Í•…É¡EÕ•Éä¤¤¤(€€€€€€€€€€€™½Õ¹¹ÁÕÍ ¡‰ÕÑÑ½¸ Í•…É µÑ…Í¬œ°€‘í¥½¸ ¡•¬µÍÅÕ…É”œ¥ôñ‘¥Øø‘í•ÍŒ¡Ð¹Ñ¥Ñ±”¥ôñÍµ…±°ù1½…°Ñ…Í¬ð½Íµ…±°øð½‘¥Øù€°Ð¹¥°€ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€™½È€¡½¹ÍÐ¸½˜ÍÑ…Ñ”¹¹½Ñ•Ì¹™¥±Ñ•È¡¸€ôø€¡¸¹Ñ¥Ñ±”€¬€œ€œ€¬¸¹‰½‘ä¤¹Ñ½1½…±•1½Ý•É…Í” ¤¹¥¹±Õ‘•Ì¡Í•…É¡EÕ•Éä¤¤¤(€€€€€€€€€€€™½Õ¹¹ÁÕÍ ¡‰ÕÑÑ½¸ Í•…É µ¹½Ñ”œ°€‘í¥½¸ ¹½Ñ•‰½½¬œ¥ôñ‘¥Øø‘í•ÍŒ¡¸¹Ñ¥Ñ±”¥ôñÍµ…±°ù1½…°¹½Ñ”ð½Íµ…±°øð½‘¥Øù€°¸¹¥°€ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€É½ÝÌ¹¥¹¹•É!Q50€ô™½Õ¹¹Í±¥” À°€ÐÀ¤¹©½¥¸ œœ¤ñð•µÁÑä 9½Ñ¡¥¹œ™½Õ¹œ°€QÉä…¸…ÁÀ¹…µ”°Ñ…Í¬½ÈÁ¡É…Í”™É½´„±½…°¹½Ñ”¸œ¤ì(€€€ô(€€€™Õ¹Ñ¥½¸½Á•¹M•…É  ¤ì½¹ÍÐÍ•…É €ô€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤ìÍ•…É¡EÕ•Éä€ô€œœì€ œÝ½É­ÍÁ…”µÍ•…É œ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô€œœì€ñ!Q51%¹ÁÕÑ±•µ•¹Ðø œÝ½É­ÍÁ…”µÍ•…É œ¤¹Ù…±Õ”€ô€œœìÉ•¹‘•ÉM•…É  ¤ìÍ•…É ¹Í¡½Ý5½‘…° ¤ì€ œÝ½É­ÍÁ…”µÍ•…É œ¤¹™½ÕÌ ¤ìô(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ±¥¬œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐÑ…É•Ð€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µ…Ñ¥½¹t±m‘…Ñ„µÝ½É­ÍÁ…”µ¥‘tœ¤ì(€€€€€€€¥˜€ …Ñ…É•Ð¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€½¹ÍÐ…Ñ¥½¸€ôÑ…É•Ð¹‘…Ñ…Í•Ð¹…Ñ¥½¸€üü€œœ°¥€ôÑ…É•Ð¹‘…Ñ…Í•Ð¹¥€üü€œœì(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€±½Í”µ‘¥…±½œœ¤ì(€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€±½Í”µÍ•…É œ¤ì(€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€±½Í”µ…½Õ¹Ðœ¤ì(€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µ…½Õ¹Ðµ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€…½Õ¹Ðœ¤ì(€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µ…½Õ¹Ðµ‘¥…±½tœ¤¹Í¡½Ý5½‘…° ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€Í•…É œ¤ì(€€€€€€€€€€€½Á•¹M•…É  ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡…Ñ¥½¸€ôôô€•áÁ½ÉÐœ¤ì(€€€€€€€€€€€•áÁ½ÉÑ]½É­ÍÁ…” ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€ …ÍÑ…Ñ”ñð±½­•¤ì(€€€€€€€€€€€Ñ½…ÍÐ e½ÕÈÍ…Ù•Ý½É­ÍÁ…”¥Ì¹½Ð…Ù…¥±…‰±”¸ÁÀ±¥¹­ÌÉ•µ…¥¸ÕÍ…‰±”¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€¥˜€¡Ñ…É•Ð¹‘…Ñ…Í•Ð¹Ý½É­ÍÁ…•%¤ì(€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ¤ì(€€€€€€€€€€€€€€€Ñ½…ÍÐ ¥¹¥Í ½È…¹•°Ñ¡”±…å½ÕÐ•‘¥Ð‰•™½É”ÍÝ¥Ñ¡¥¹œÝ½É­ÍÁ…•Ì¸œ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹…Ñ¥Ù”€ôÑ…É•Ð¹‘…Ñ…Í•Ð¹Ý½É­ÍÁ…•%„°€œœ°™…±Í”¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€ÍÝ¥Ñ €¡…Ñ¥½¸¤ì(€€€€€€€€€€€…Í”€É…¥°œè(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹ÁÉ•™•É•¹•Ì¹É…¥°€ô€…Ì¹ÁÉ•™•É•¹•Ì¹É…¥°°€œœ°™…±Í”¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€¹•ÜµÑ…Í¬œè(€€€€€€€€€€€€€€€•‘¥ÑQ…Í¬ ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€•‘¥ÐµÑ…Í¬œè(€€€€€€€€€€€€€€€•‘¥ÑQ…Í¬¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘•±•Ñ”µÑ…Í¬œèì(€€€€€€€€€€€€€€€½¹ÍÐÐ€ôÍÑ…Ñ”¹Ñ…Í­Ì¹™¥¹¡Ð€ôøÐ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ð¤(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”Ñ…Í¬üœ°Ð¹Ñ¥Ñ±”°Ì€ôøìÌ¹Ñ…Í­Ì€ôÌ¹Ñ…Í­Ì¹™¥±Ñ•È¡Ð€ôøÐ¹¥€„ôô¥¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€¹•Üµ•Ù•¹Ðœè(€€€€€€€€€€€€€€€•‘¥ÑÙ•¹Ð ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€•‘¥Ðµ•Ù•¹Ðœè(€€€€€€€€€€€€€€€•‘¥ÑÙ•¹Ð¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘•±•Ñ”µ•Ù•¹Ðœèì(€€€€€€€€€€€€€€€½¹ÍÐ”€ôÍÑ…Ñ”¹•Ù•¹ÑÌ¹™¥¹¡”€ôø”¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡”¤(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”•Ù•¹Ðüœ°”¹Ñ¥Ñ±”°Ì€ôøìÌ¹•Ù•¹ÑÌ€ôÌ¹•Ù•¹ÑÌ¹™¥±Ñ•È¡”€ôø”¹¥€„ôô¥¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€…ÁÑÕÉ”œè(€€€€€€€€€€€€€€€•‘¥Ñ9½Ñ” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€•‘¥Ðµ¹½Ñ”œè(€€€€€€€€€€€€€€€•‘¥Ñ9½Ñ”¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘•±•Ñ”µ¹½Ñ”œèì(€€€€€€€€€€€€€€€½¹ÍÐ¸€ôÍÑ…Ñ”¹¹½Ñ•Ì¹™¥¹¡¸€ôø¸¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡¸¤(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”¹½Ñ”üœ°¸¹Ñ¥Ñ±”°Ì€ôøìÌ¹¹½Ñ•Ì€ôÌ¹¹½Ñ•Ì¹™¥±Ñ•È¡¸€ôø¸¹¥€„ôô¥¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€¹•ÜµÑÉ…­•Èœè(€€€€€€€€€€€€€€€•‘¥ÑQÉ…­•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€•‘¥ÐµÑÉ…­•Èœè(€€€€€€€€€€€€€€€•‘¥ÑQÉ…­•È¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘•±•Ñ”µÑÉ…­•Èœèì(€€€€€€€€€€€€€€€½¹ÍÐÐ€ôÍÑ…Ñ”¹ÑÉ…­•ÉÌ¹™¥¹¡Ð€ôøÐ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ð¤(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”ÑÉ…­•È…¹±½Ìüœ°€‘íÐ¹Ñ¥Ñ±•ô…¹¥ÑÌÉ•½É‘•¡¥ÍÑ½ÉäÝ¥±°‰”É•µ½Ù•¹€°Ì€ôøìÌ¹ÑÉ…­•ÉÌ€ôÌ¹ÑÉ…­•ÉÌ¹™¥±Ñ•È¡Ð€ôøÐ¹¥€„ôô¥¤ìÌ¹±½Ì€ôÌ¹±½Ì¹™¥±Ñ•È¡°€ôø°¹ÑÉ…­•É%€„ôô¥¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€±½œµÑÉ…­•Èœè(€€€€€€€€€€€€€€€±½QÉ…­•È¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€•‘¥Ðµ±½œœèì(€€€€€€€€€€€€€€€½¹ÍÐ°€ôÍÑ…Ñ”¹±½Ì¹™¥¹¡°€ôø°¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡°¤(€€€€€€€€€€€€€€€€€€€±½QÉ…­•È¡°¹ÑÉ…­•É%°¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€‘•±•Ñ”µ±½œœè(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹±½Ì€ôÌ¹±½Ì¹™¥±Ñ•È¡°€ôø°¹¥€„ôô¥¤°€1½œÉ•µ½Ù•œ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í•±•Ðµ‘…Ñ”œè(€€€€€€€€€€€€€€€Í•±•Ñ•€ô¥ì(€€€€€€€€€€€€€€€µ½¹Ñ €ô¥¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Ñ½‘…äœè(€€€€€€€€€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€€€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€µ½¹Ñ µ¹•áÐœè(€€€€€€€€€€€…Í”€µ½¹Ñ µÁÉ•Øœèì(€€€€€€€€€€€€€€€½¹ÍÐ€ô¹•Ü…Ñ”¡µ½¹Ñ €¬€PÄÈèÀÀèÀÁhœ¤ì(€€€€€€€€€€€€€€€¹Í•ÑUQ5½¹Ñ ¡¹•ÑUQ5½¹Ñ  ¤€¬€¡…Ñ¥½¸€ôôô€µ½¹Ñ µ¹•áÐœ€ü€Ä€è€´Ä¤¤ì(€€€€€€€€€€€€€€€µ½¹Ñ €ô¹Ñ½%M=MÑÉ¥¹œ ¤¹Í±¥” À°€ÄÀ¤ì(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€ÕÍÑ½µ¥é”œè(€€€€€€€€€€€€€€€‰•¥¹‘¥Ð ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘½¹”µ±…å½ÕÐœè(€€€€€€€€€€€€€€€Ù½¥™¥¹¥Í¡‘¥Ð ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€…¹•°µ±…å½ÕÐœè(€€€€€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€€€€€±…å½ÕÑU¹‘¼€ômtì(€€€€€€€€€€€€€€€±…å½ÕÑI•‘¼€ômtì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€€€€€Ù½¥ÍÑ½É”ü¹‘É…™Ð¡¹Õ±°¤ì(€€€€€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Õ¹‘¼µ±…å½ÕÐœè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ€˜˜±…å½ÕÑU¹‘¼¹±•¹Ñ ¤ì(€€€€€€€€€€€€€€€€€€€±…å½ÕÑI•‘¼¹ÁÕÍ ¡±½¹”¡•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¤¤ì(€€€€€€€€€€€€€€€€€€€•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”€ô±…å½ÕÑU¹‘¼¹Á½À ¤„ì(€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€€€€€Ù½¥Í…Ù•É…™Ð ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•‘¼µ±…å½ÕÐœè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ€˜˜±…å½ÕÑI•‘¼¹±•¹Ñ ¤ì(€€€€€€€€€€€€€€€€€€€±…å½ÕÑU¹‘¼¹ÁÕÍ ¡±½¹”¡•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¤¤ì(€€€€€€€€€€€€€€€€€€€•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”€ô±…å½ÕÑI•‘¼¹Á½À ¤„ì(€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€€€€€Ù½¥Í…Ù•É…™Ð ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€…‘µÝ¥‘•Ðœè(€€€€€€€€€€€€€€€Ý¥‘•ÑA¥­•È ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€…‘µÑåÁ”œèì(€€€€€€€€€€€€€€€½¹ÍÐÍÁ•Œ€ôÍÁ•¥™¥…Ñ¥½¸¡¥¤ì(€€€€€€€€€€€€€€€¥˜€ …ÍÁ•Œ¤(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ„¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹±•¹Ñ €øô€ÌÈ¤ì(€€€€€€€€€€€€€€€€€€€Ñ½…ÍÐ Q¡¥ÌÝ½É­ÍÁ…”…±É•…‘ä¡…Ì€ÌÈÝ¥‘•ÑÌ¸œ¤ì(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøìÜ¹Ý¥‘•ÑÌ¹ÁÕÍ ¡ì¥èÕ¥ ¤°ÑåÁ”è¥°ÑåÁ•Y•ÉÍ¥½¸è€Ä°Ù¥•ÜèÍÁ•Œ¹Ù¥•ÝÍlÁt°½¹™¥œè¥€ôôô€…ÁÀµÍ¡½ÉÑÕÑÌœ€üì…ÁÁ%‘ÌèÁ¥¹Ì ¤ô€èíô°‘•Í­Ñ½Àèìàè€À°äè5…Ñ ¹µ…à À°€¸¸¹Ü¹Ý¥‘•ÑÌ¹µ…À¡à€ôøà¹‘•Í­Ñ½À¹ä€¬à¹‘•Í­Ñ½À¹ ¤¤°ÜèÍÁ•Œ¹Ý¥‘Ñ ° èÍÁ•Œ¹¡•¥¡Ðô°½É‘•ÈèÜ¹Ý¥‘•ÑÌ¹±•¹Ñ ô¤ìô¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€½¹™¥ÕÉ”µÝ¥‘•Ðœè(€€€€€€€€€€€€€€€½¹™¥ÕÉ•]¥‘•Ð¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•µ½Ù”µÝ¥‘•Ðœè(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÜ¹Ý¥‘•ÑÌ¹™¥±Ñ•È¡à€ôøà¹¥€„ôô¥¤¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€Ñ½…ÍÐ ]¥‘•ÐÉ•µ½Ù•ì¥ÑÌ½¹Ñ•¹Ð¥Ì­•ÁÐ¸œ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€µ½Ù”µÝ¥‘•ÐµÕÀœè(€€€€€€€€€€€…Í”€µ½Ù”µÝ¥‘•Ðµ‘½Ý¸œè(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ±¥ÍÐ€ô½É‘•É•¡Ü¹Ý¥‘•ÑÌ¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ¤€ô±¥ÍÐ¹™¥¹‘%¹‘•à¡à€ôøà¹¥€ôôô¥¤°¨€ô¤€¬€¡…Ñ¥½¸€ôôô€µ½Ù”µÝ¥‘•ÐµÕÀœ€ü€´Ä€è€Ä¤ì(€€€€€€€€€€€€€€€€€€€¥˜€¡¨€ð€Àñð¨€øô±¥ÍÐ¹±•¹Ñ ¤(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€m±¥ÍÑm¥t„¹½É‘•È°±¥ÍÑm©t„¹½É‘•Ét€ôm±¥ÍÑm©t„¹½É‘•È°±¥ÍÑm¥t„¹½É‘•Étì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ„€ô±½¹”¡±¥ÍÑm¥t„¹‘•Í­Ñ½À¤°ˆ€ô±½¹”¡±¥ÍÑm©t„¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm¥t„¹‘•Í­Ñ½À¹à€ôˆ¹àì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm¥t„¹‘•Í­Ñ½À¹ä€ôˆ¹äì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm©t„¹‘•Í­Ñ½À¹à€ô„¹àì(€€€€€€€€€€€€€€€€€€€±¥ÍÑm©t„¹‘•Í­Ñ½À¹ä€ô„¹äì(€€€€€€€€€€€€€€€€€€€Ü¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°±¥ÍÑm¥t„¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÍÝ¥Ñ µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ¤ìÑ½…ÍÐ ¥¹¥Í ½È…¹•°•‘¥Ñ¥¹œ‰•™½É”ÍÝ¥Ñ¡¥¹œÝ½É­ÍÁ…•Ì¸œ¤ì‰É•…¬ìô(€€€€€€€€€€€€€€€½Á•¹½É´ ¡½½Í”Ý½É­ÍÁ…”œ°Í•±•Ð ]½É­ÍÁ…”œ°Ý½É­ÍÁ…”œ±ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹µ…À¡ÜôùmÜ¹¥±Ü¹Ñ¥Ñ±•t¤±ÍÑ…Ñ”¹…Ñ¥Ù”¤€¬‰ÕÑÑ½¸ ¹•ÜµÝ½É­ÍÁ…”œ°9•ÜÝ½É­ÍÁ…”œ¤°…Íå¹Œ‘…Ñ„€ôøì…Ý…¥ÐµÕÑ…Ñ”¡ÌôùÌ¹…Ñ¥Ù”õMÑÉ¥¹œ¡‘…Ñ„¹•Ð Ý½É­ÍÁ…”œ¤¤°œœ±™…±Í”¤ìô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÁÉ•Í•ÑÌœè(€€€€€€€€€€€€€€€¡½½Í•AÉ•Í•Ð ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€¹•ÜµÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€É•…Ñ•]½É­ÍÁ…” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘ÕÁ±¥…Ñ”µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€É•…Ñ•]½É­ÍÁ…”¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•¹…µ”µÝ½É­ÍÁ…”œèì(€€€€€€€€€€€€€€€½¹ÍÐÜ€ôÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ü¤(€€€€€€€€€€€€€€€€€€€½Á•¹½É´ I•¹…µ”Ý½É­ÍÁ…”œ°™¥•± 9…µ”œ°€Ñ¥Ñ±”œ°Ü¹Ñ¥Ñ±”°€Ñ•áÐœ°€É•ÅÕ¥É•µ…á±•¹Ñ ôˆàÀˆœ¤°…Íå¹Œ€¡‘…Ñ„¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍÐÑ¥Ñ±”€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð Ñ¥Ñ±”œ¤¤¹ÑÉ¥´ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€ …Ñ¥Ñ±”¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È ¡½½Í”„¹…µ”¸œ¤ì(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐµÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„¹Ñ¥Ñ±”€ôÑ¥Ñ±”ìô°€]½É­ÍÁ…”É•¹…µ•œ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Í”€‘•±•Ñ”µÝ½É­ÍÁ…”œè(€€€€€€€€€€€€€€€¥˜€¡ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €ôôô€Ä¤ì(€€€€€€€€€€€€€€€€€€€Ñ½…ÍÐ -••À…Ð±•…ÍÐ½¹”Ý½É­ÍÁ…”¸e½Ô…¸…ÁÁ±äÑ¡”‰±…¹¬±…å½ÕÐ¥¹ÍÑ•…¸œ¤ì(€€€€€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° •±•Ñ”Ñ¡¥ÌÝ½É­ÍÁ…”üœ°€=¹±ä¥ÑÌ±…å½ÕÐÝ¥±°‰”É•µ½Ù•¸Q…Í­Ì°¹½Ñ•Ì°•Ù•¹ÑÌ…¹ÑÉ…­•ÉÌÍÑ…ä¸œ°Ì€ôøì(€€€€€€€€€€€€€€€€€€€Ì¹Ý½É­ÍÁ…•Ì€ôÌ¹Ý½É­ÍÁ…•Ì¹™¥±Ñ•È¡Ü€ôøÜ¹¥€„ôô¥¤ì(€€€€€€€€€€€€€€€€€€€¥˜€¡Ì¹…Ñ¥Ù”€ôôô¥¤(€€€€€€€€€€€€€€€€€€€€€€€Ì¹…Ñ¥Ù”€ôÌ¹Ý½É­ÍÁ…•ÍlÁt„¹¥ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Õ¹‘¼µ½¹Ñ•¹Ðœè(€€€€€€€€€€€€€€€¥˜€¡½¹Ñ•¹ÑU¹‘¼¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐÁÉ¥½È€ô±½¹”¡½¹Ñ•¹ÑU¹‘¼¤ì(€€€€€€€€€€€€€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì½¹ÍÐÉ•Ù¥Í¥½¸€ôÌ¹É•Ù¥Í¥½¸ì=‰©•Ð¹…ÍÍ¥¸¡Ì°ÁÉ¥½È°ìÉ•Ù¥Í¥½¸ô¤ìô°€¡…¹”Õ¹‘½¹”œ°™…±Í”¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€ÁÉ¥Ù…äœè(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøìÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸€ô€„¡ÁÉ¥Ù…å!•±ñðÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸¤ìÁÉ¥Ù…å!•±€ôÌ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ìô°€œœ°™…±Í”¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Ñ¥µ•é½¹”œè(€€€€€€€€€€€€€€€½Á•¹½É´ A±…¹¹•ÈÑ¥µ•é½¹”œ°™¥•± %9Ñ¥µ•é½¹”œ°€é½¹”œ°ÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹Ñ¥µ•é½¹”°€Ñ•áÐœ°€É•ÅÕ¥É•œ¤€¬€œñÀ±…ÍÌô‰ÝÌµµÕÑ•ˆù½È•á…µÁ±”ÕÉ½Á”½	•É±¥¸°µ•É¥„½9•Ý}e½É¬½ÈÍ¥„½M•½Õ°¸ð½Àøœ°…Íå¹Œ€¡‘…Ñ„¤€ôøì(€€€€€€€€€€€€€€€€€€€½¹ÍÐé½¹”€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð é½¹”œ¤¤ì(€€€€€€€€€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€€€€€€€€€¹•Ü%¹Ñ°¹…Ñ•Q¥µ•½Éµ…Ð •¸œ°ìÑ¥µ•i½¹”èé½¹”ô¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È ¹Ñ•È„Ù…±¥%9Ñ¥µ•é½¹”¸œ¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ý…¥ÐµÕÑ…Ñ”¡Ì€ôøÌ¹ÁÉ•™•É•¹•Ì¹Ñ¥µ•é½¹”€ôé½¹”°€Q¥µ•é½¹”ÕÁ‘…Ñ•œ¤ì(€€€€€€€€€€€€€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€€€€€€€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€¥µÁ½ÉÐœè(€€€€€€€€€€€€€€€¥µÁ½ÉÑ]½É­ÍÁ…” ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÍÑ½É”œè(€€€€€€€€€€€€€€€Ù½¥ÍÑ½É”ü¹‰…­ÕÀ ¤¹Ñ¡•¸¡‰…­ÕÀ€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€ …‰…­ÕÀ¤ì(€€€€€€€€€€€€€€€€€€€€€€€Ñ½…ÍÐ 9¼É•Á±…•µ•¹Ð‰…­ÕÀ¥Ì…Ù…¥±…‰±”¸œ¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€½¹™¥ÉµI•µ½Ù…° I•ÍÑ½É”É•Á±…•µ•¹Ð‰…­ÕÀüœ°€Q¡”ÕÉÉ•¹Ð±½…°‘…Ñ„Ý¥±°‰”É•Á±…•‰äå½ÕÈ±…ÍÐÍ…Ù•É•Á±…•µ•¹Ð‰…­ÕÀ¸œ°Ì€ôøì½¹ÍÐÉ•Ù¥Í¥½¸€ôÌ¹É•Ù¥Í¥½¸ì=‰©•Ð¹…ÍÍ¥¸¡Ì°‰…­ÕÀ°ìÉ•Ù¥Í¥½¸ô¤ìô¤ì(€€€€€€€€€€€€€€€ô¤¹…Ñ   ¤€ôøÑ½…ÍÐ 	…­ÕÀÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸œ¤¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÑÉäœè(€€€€€€€€€€€€€€€ÅÕ•Õ”€ôÅÕ•Õ”¹Ñ¡•¸¡…Íå¹Œ€ ¤€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€ …ÍÑ½É”¤(€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€¥˜€ …ÍÑ½É…•I•…‘ä¤ì(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÍÑ½É”¹½Á•¸ ¤ì(€€€€€€€€€€€€€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍÐ•á¥ÍÑ¥¹œ€ô…Ý…¥ÐÍÑ½É”¹±½… ¤ì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•á¥ÍÑ¥¹œ€˜˜•á¥ÍÑ¥¹œ¹É•Ù¥Í¥½¸€„ôôÍÑ…Ñ”„¹É•Ù¥Í¥½¸¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ñ¡É½Ü¹•ÜI•Ù¥Í¥½¹½¹™±¥Ð ¤ì(€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÁ•ÉÍ¥ÍÐ ¤ì(€€€€€€€€€€€€€€€€€€€¥˜€ …‘¥ÉÑä¤ì(€€€€€€€€€€€€€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô¤¹…Ñ ¡”€ôø¹½Ñ¥”¡”¥¹ÍÑ…¹•½˜ÉÉ½È€ü”¹µ•ÍÍ…”€è€½Õ±¹½ÐÉ•½Á•¸ÍÑ½É…”¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤¤¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•±½…œè(€€€€€€€€€€€€€€€¥˜€¡‘¥ÉÑäñð•‘¥Ñ¥¹œ¤ì(€€€€€€€€€€€€€€€€€€€½Á•¹½É´ I•±½…Í…Ù•‘…Ñ„üœ°€œñÀùU¹Í…Ù•½¹Ñ•¹Ð¥¸Ñ¡¥ÌÑ…ˆÝ¥±°‰”É•Á±…•¸áÁ½ÉÐ¥Ð™¥ÉÍÐ¸1…å½ÕÐ•‘¥Ð‘É…™ÑÌÉ•µ…¥¸…Ù…¥±…‰±”¸ð½Àøœ€¬‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐÕÉÉ•¹Ð¡…¹•Ìœ¤°€ ¤€ôøÉ•±½…‘M…Ù• ¤°€I•±½…Í…Ù•‘…Ñ„œ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€É•ÍÕµ”µ‘É…™Ðœè(€€€€€€€€€€€€€€€¥˜€¡É•½Ù•ÉåÉ…™Ð¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐ‘É…™Ð€ô±½¹”¡É•½Ù•ÉåÉ…™Ð¤ì(€€€€€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹…Ñ¥Ù”€ô‘É…™Ð¹Ý½É­ÍÁ…•%°€œœ°™…±Í”¤¹Ñ¡•¸  ¤€ôøì•‘¥Ñ¥¹œ€ô‘É…™ÐìÉ•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì¹½Ñ¥” œœ¤ìÉ•¹‘•È ¤ìô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€‘¥Í…Éµ‘É…™Ðœè(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€€€€€Ù½¥ÍÑ½É”ü¹‘É…™Ð¡¹Õ±°¤ì(€€€€€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í…Ù”µ‘É…™Ðµ…Ìœè(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ€˜˜ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹±•¹Ñ €ð€ÄÀ¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍÐÜ€ô±½¹”¡•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¤ì(€€€€€€€€€€€€€€€€€€€Ü¹¥€ôÕ¥ ¤ì(€€€€€€€€€€€€€€€€€€€Ü¹Ñ¥Ñ±”€¬ô€œÉ•½Ù•É•œì(€€€€€€€€€€€€€€€€€€€Ü¹É•Ù¥Í¥½¸€ô€Àì(€€€€€€€€€€€€€€€€€€€Ü¹Ý¥‘•ÑÌ¹™½É… ¡à€ôøà¹¥€ôÕ¥ ¤¤ì(€€€€€€€€€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤¹Ñ¡•¸  ¤€ôøµÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹ÁÕÍ ¡Ü¤ìÌ¹…Ñ¥Ù”€ôÜ¹¥ìô°€I•½Ù•É••‘¥ÐÍ…Ù•…Ì…¹½Ñ¡•ÈÝ½É­ÍÁ…”œ¤¤¹Ñ¡•¸  ¤€ôøÍÑ½É”ü¹‘É…™Ð¡¹Õ±°¤¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í•…É µÑ…Í¬œè(€€€€€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€€€€€•‘¥ÑQ…Í¬¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€…Í”€Í•…É µ¹½Ñ”œè(€€€€€€€€€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€€€€€€€€•‘¥Ñ9½Ñ”¡¥¤ì(€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ•°€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51%¹ÁÕÑ±•µ•¹Ðì(€€€€€€€¥˜€ …ÍÑ…Ñ”ñð±½­•¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹Ñ…Í­Q½±”¤ì(€€€€€€€€€€€½¹ÍÐ¥€ô•°¹‘…Ñ…Í•Ð¹Ñ…Í­Q½±”ì(€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì(€€€€€€€€€€€€€€€½¹ÍÐÐ€ôÌ¹Ñ…Í­Ì¹™¥¹¡Ð€ôøÐ¹¥€ôôô¥¤ì(€€€€€€€€€€€€€€€¥˜€¡Ð¤ì(€€€€€€€€€€€€€€€€€€€Ð¹½µÁ±•Ñ•‘Ð€ô•°¹¡•­•€üÍÑ…µÀ ¤€è¹Õ±°ì(€€€€€€€€€€€€€€€€€€€…Ñ¥Ù¥Ñä¡Ì°€‘íÐ¹½µÁ±•Ñ•‘Ð€ü€½µÁ±•Ñ•œ€è€I•½Á•¹•ôÑ…Í¬è€‘íÐ¹Ñ¥Ñ±•õ€°€Ñ…Í¬œ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô°•°¹¡•­•€ü€Q…Í¬½µÁ±•Ñ•œ€è€Q…Í¬É•½Á•¹•œ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹Ñ…Í­¥±Ñ•È€„ôôÕ¹‘•™¥¹•¤ì(€€€€€€€€€€€Ñ…Í­¥±Ñ•È€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹ÁÉ•™•É•¹”€ôôô€‘•¹Í¥Ñäœ¤(€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøÌ¹ÁÉ•™•É•¹•Ì¹‘•¹Í¥Ñä€ô•°¹Ù…±Õ”…Ì€½µÁ…Ðœð€½µ™½ÉÑ…‰±”œ°€œœ°™…±Í”¤ì(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹ÁÉ•™•É•¹”€ôôô€Ñ¡•µ”œ¤ì(€€€€€€€€€€€½¹ÍÐÑ¡•µ”€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ•AÉ•™•É•¹”€ôÑ¡•µ”ì(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ”€ôÑ¡•µ”€ôôô€ÍåÍÑ•´œ€ü€¡µ…Ñ¡5•‘¥„ œ¡ÁÉ•™•ÉÌµ½±½ÈµÍ¡•µ”é‘…É¬¤œ¤¹µ…Ñ¡•Ì€ü€‘…É¬œ€è€±¥¡Ðœ¤€èÑ¡•µ”ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€±½…±MÑ½É…”¹Í•Ñ%Ñ•´ Ñ¡¥•Á¸é¥¹‘•àµÑ¡•µ”œ°Ñ¡•µ”¤ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€Ñ½…ÍÐ Q¡•µ”¡…¹•™½ÈÑ¡¥ÌÍ•ÍÍ¥½¸ì‰É½ÝÍ•ÈÁÉ•™•É•¹”ÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸œ¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€¥˜€¡•°¹‘…Ñ…Í•Ð¹¡¥ÍÑ½ÉåM•±•Ð¤ì(€€€€€€€€€€€½¹ÍÐ¥€ô•°¹‘…Ñ…Í•Ð¹¡¥ÍÑ½ÉåM•±•Ð°Ù…±Õ”€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œ¤(€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ¹™¥¹¡à€ôøà¹¥€ôôô¥¤„¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ôÙ…±Õ”¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøìÌ¹Ý½É­ÍÁ…•Ì¹™¥¹¡Ü€ôøÜ¹¥€ôôôÌ¹…Ñ¥Ù”¤„¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„¹½¹™¥œ¹Í•±•Ñ•‘QÉ…­•È€ôÙ…±Õ”ìô°€œœ°™…±Í”¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¥¹ÁÕÐœ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ•°€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51%¹ÁÕÑ±•µ•¹Ðì(€€€€€€€¥˜€¡•°¹¡…ÍÑÑÉ¥‰ÕÑ” ‘…Ñ„µÁ¥¸µÍ•…É œ¤¤ì½¹ÍÐÅÕ•Éä€ô•°¹Ù…±Õ”¹Ñ½1½…±•1½Ý•É…Í” ¤ìÉ½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø m‘…Ñ„µ…ÁÀµ¡½¥•tœ¤¹™½É… ¡É½Ü€ôøÉ½Ü¹¡¥‘‘•¸€ô€…É½Ü¹‘…Ñ…Í•Ð¹…ÁÁ¡½¥”„¹¥¹±Õ‘•Ì¡ÅÕ•Éä¤¤ìô(€€€€€€€¥˜€¡•°¹¥€ôôô€Ý½É­ÍÁ…”µÍ•…É œ¤ì(€€€€€€€€€€€Í•…É¡EÕ•Éä€ô•°¹Ù…±Õ”¹Ñ½1½…±•1½Ý•É…Í” ¤¹ÑÉ¥´ ¤ì(€€€€€€€€€€€É•¹‘•ÉM•…É  ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡•°¹¡…ÍÑÑÉ¥‰ÕÑ” ‘…Ñ„µ…ÁÑÕÉ”µ‘É…™Ðœ¤€˜˜ÍÑ…Ñ”¤ì(€€€€€€€€€€€ÍÑ…Ñ”¹…ÁÑÕÉ•É…™Ð€ô•°¹Ù…±Õ”ì(€€€€€€€€€€€¡…¹•Y•ÉÍ¥½¸¬¬ì(€€€€€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€€€€€‘¥ÉÑä€ôÑÉÕ”ì(€€€€€€€€€€€Í…Ù• É…™Ð¹½ÐÍ…Ù•å•ÓŠ˜œ¤ì(€€€€€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€€€€€½¹ÍÐ½Ý¸€ô•Á½ ì(€€€€€€€€€€€…ÁÑÕÉ•Q¥µ•È€ôÍ•ÑQ¥µ•½ÕÐ  ¤€ôøì(€€€€€€€€€€€€€€€¥˜€¡½Ý¸€ôôô•Á½ ¤(€€€€€€€€€€€€€€€€€€€ÅÕ•Õ”€ôÅÕ•Õ”¹Ñ¡•¸  ¤€ôøÁ•ÉÍ¥ÍÐ ¤¤ì(€€€€€€€€€€€ô°€ÔÀÀ¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ÍÕ‰µ¥Ðœ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ…ÁÑÕÉ”€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51½Éµ±•µ•¹Ðø m‘…Ñ„µ…ÁÑÕÉ”µ™½Éµtœ¤ì(€€€€€€€¥˜€ ……ÁÑÕÉ”ñð€…ÍÑ…Ñ”¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€½¹ÍÐ‘…Ñ„€ô¹•Ü½Éµ…Ñ„¡…ÁÑÕÉ”¤°‰½‘ä€ôMÑÉ¥¹œ¡‘…Ñ„¹•Ð ‰½‘äœ¤¤¹ÑÉ¥´ ¤°­¥¹€ô‘…Ñ„¹•Ð ­¥¹œ¤ì(€€€€€€€¥˜€ …‰½‘ä¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡­¥¹€ôôô€Ñ…Í¬œ€˜˜‰½‘ä¹±•¹Ñ €ø€ÈÐÀ¤ì(€€€€€€€€€€€Ñ½…ÍÐ Q…Í¬Ñ¥Ñ±•Ì…¸½¹Ñ…¥¸ÕÀÑ¼€ÈÐÀ¡…É…Ñ•ÉÌ¸…ÁÑÕÉ”±½¹•ÈÑ•áÐ…Ì„¹½Ñ”¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€Ù½¥µÕÑ…Ñ”¡Ì€ôøì(€€€€€€€€€€€¥˜€¡­¥¹€ôôô€Ñ…Í¬œ¤(€€€€€€€€€€€€€€€Ì¹Ñ…Í­Ì¹ÁÕÍ ¡ì¥èÕ¥ ¤°Ñ¥Ñ±”è‰½‘ä°¹½Ñ•Ìè€œœ°‘Õ”èÑ½‘…ä ¤°Ñ¥µ”è€œœ°ÁÉ¥½É¥Ñäè€¹½¹”œ°½µÁ±•Ñ•‘Ðè¹Õ±°ô¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€Ì¹¹½Ñ•Ì¹Õ¹Í¡¥™Ð¡ì¥èÕ¥ ¤°Ñ¥Ñ±”è‰½‘ä¹ÍÁ±¥Ð q¸œ¥lÁt„¹Í±¥” À°€àÀ¤°‰½‘ä°ÕÁ‘…Ñ•‘ÐèÍÑ…µÀ ¤ô¤ì(€€€€€€€€€€€Ì¹…ÁÑÕÉ•É…™Ð€ô€œœì(€€€€€€€€€€€…Ñ¥Ù¥Ñä¡Ì°…ÁÑÕÉ•€‘í­¥¹‘ôè€‘í‰½‘ä¹Í±¥” À°€àÀ¥õ€°MÑÉ¥¹œ¡­¥¹¤¤ì(€€€€€€€ô°€‘í­¥¹€ôôô€Ñ…Í¬œ€ü€Q…Í¬œ€è€9½Ñ”ô…ÁÑÕÉ•‘€¤ì(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•å‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐÑ…É•Ð€ô•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ðì(€€€€€€€¥˜€¡Ñ…É•Ð¹µ…Ñ¡•Ì m‘…Ñ„µ‘É…t±m‘…Ñ„µÉ•Í¥é•tœ¤€˜˜•‘¥Ñ¥¹œ€˜˜lÉÉ½Ý1•™Ðœ°€ÉÉ½ÝI¥¡Ðœ°€ÉÉ½ÝUÀœ°€ÉÉ½Ý½Ý¸t¹¥¹±Õ‘•Ì¡•Ù•¹Ð¹­•ä¤¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐ¥€ôÑ…É•Ð¹‘…Ñ…Í•Ð¹‘É…œ€üüÑ…É•Ð¹‘…Ñ…Í•Ð¹É•Í¥é”„ì(€€€€€€€€€€€½¹ÍÐ¥Ñ•´€ô•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„ì(€€€€€€€€€€€½¹ÍÐÈ€ô±½¹”¡¥Ñ•´¹‘•Í­Ñ½À¤ì(€€€€€€€€€€€¥˜€¡Ñ…É•Ð¹‘…Ñ…Í•Ð¹É•Í¥é”¤ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý1•™Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹Ü´´ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝI¥¡Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹Ü¬¬ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤(€€€€€€€€€€€€€€€€€€€È¹ €´ô€Ðì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤(€€€€€€€€€€€€€€€€€€€È¹ €¬ô€Ðì(€€€€€€€€€€€ô(€€€€€€€€€€€•±Í”ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý1•™Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à´´ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝI¥¡Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à¬¬ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤(€€€€€€€€€€€€€€€€€€€È¹ä€´ô€Ðì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤(€€€€€€€€€€€€€€€€€€€È¹ä€¬ô€Ðì(€€€€€€€€€€€ô(€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°È¤¤ì(€€€€€€€€€€€É½½Ð¹ÅÕ•ÉåM•±•Ñ½Èñ!Q51±•µ•¹Ðø¡l‘íÑ…É•Ð¹‘…Ñ…Í•Ð¹‘É…œ€ü€‘…Ñ„µ‘É…œœ€è€‘…Ñ„µÉ•Í¥é”ôôˆ‘íML¹•Í…Á”¡¥¥ô‰u€¤ü¹™½ÕÌ ¤ì(€€€€€€€€€€€Ñ½…ÍÐ ]¥‘•ÐÁ½Í¥Ñ¥½¸ÕÁ‘…Ñ•¸¡½½Í”½¹”Ñ¼Í…Ù”¸œ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€É•ÍÕ±ÑÍl¡¥¹‘•à€¬€Ä¤€”É•ÍÕ±ÑÌ¹±•¹Ñ¡tü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€¥˜€¡¥¹‘•à€ðô€À¤(€€€€€€€€€€€€€€€€ œÝ½É­ÍÁ…”µÍ•…É œ¤¹™½ÕÌ ¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•ÍÕ±ÑÍm¥¹‘•à€´€Åtü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•å‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€ ¡•Ù•¹Ð¹ÑÉ±-•äñð•Ù•¹Ð¹µ•Ñ…-•ä¤€˜˜•Ù•¹Ð¹­•ä¹Ñ½1½Ý•É…Í” ¤€ôôô€¬œ€˜˜€„¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹µ…Ñ¡•Ì Ñ•áÑ…É•„±m½¹Ñ•¹Ñ•‘¥Ñ…‰±”õÑÉÕ•tœ¤¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€¥˜€ „ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸¤(€€€€€€€€€€€€€€€½Á•¹M•…É  ¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ¡…¹‘±”€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µ‘É…t±m‘…Ñ„µÉ•Í¥é•tœ¤ì(€€€€€€€¥˜€ …¡…¹‘±”ñð€…•‘¥Ñ¥¹œñð•Ù•¹Ð¹‰ÕÑÑ½¸€„ôô€À¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€½¹ÍÐ¥€ô¡…¹‘±”¹‘…Ñ…Í•Ð¹‘É…œ€üü¡…¹‘±”¹‘…Ñ…Í•Ð¹É•Í¥é”„ì(€€€€€€€½¹ÍÐ¥Ñ•´€ô•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„ì(€€€€€€€½¹ÍÐ¥¹¥Ñ¥…°€ô±½¹”¡¥Ñ•´¹‘•Í­Ñ½À¤ì(€€€€€€€½¹ÍÐÉ¥€ô€ m‘…Ñ„µÉ¥‘tœ¤°•±°€ô¡…¹‘±”¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µÝ¥‘•Ðµ¥‘tœ¤„ì(€€€€€€€½¹ÍÐ½±Õµ¸€ô€¡É¥¹±¥•¹Ñ]¥‘Ñ €¬€ÄØ¤€¼€ÄÈ°ÍÑ…ÉÑ`€ô•Ù•¹Ð¹±¥•¹Ñ`°ÍÑ…ÉÑd€ô•Ù•¹Ð¹±¥•¹Ñdì(€€€€€€€±•ÐÉ•Ð€ô±½¹”¡¥¹¥Ñ¥…°¤°µ½Ù•€ô™…±Í”ì(€€€€€€€•±°¹±…ÍÍ1¥ÍÐ¹…‘ ÝÌµ‘É…¥¹œœ¤ì(€€€€€€€™Õ¹Ñ¥½¸µ½Ù”¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€µ½Ù•ñðô5…Ñ ¹…‰Ì¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¬5…Ñ ¹…‰Ì¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€ø€Ôì(€€€€€€€€€€€½¹ÍÐ‘à€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¼½±Õµ¸¤°‘ä€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€à¤ì(€€€€€€€€€€€É•Ð€ô¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”€üì€¸¸¹¥¹¥Ñ¥…°°Üè5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹]¥‘Ñ €üü€Ð°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹à°¥¹¥Ñ¥…°¹Ü€¬‘à¤¤° è5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹!•¥¡Ð€üü€ÄØ°5…Ñ ¹µ¥¸ ÄÈÀ°¥¹¥Ñ¥…°¹ €¬‘ä¤¤ô€èì€¸¸¹¥¹¥Ñ¥…°°àè5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹Ü°¥¹¥Ñ¥…°¹à€¬‘à¤¤°äè5…Ñ ¹µ…à À°¥¹¥Ñ¥…°¹ä€¬‘ä¤ôì(€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€„ôô€ÑÉÕ”œ¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ½°œ°MÑÉ¥¹œ¡É•Ð¹à€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÍÁ…¸œ°MÑÉ¥¹œ¡É•Ð¹Ü¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÉ½Üœ°MÑÉ¥¹œ¡É•Ð¹ä€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ¡•¥¡Ðœ°MÑÉ¥¹œ¡É•Ð¹ ¤¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸•¹¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€€€€€€€€€¥˜€¡µ½Ù•¤ì(€€€€€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€ôôô€ÑÉÕ”œ€˜˜€…¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”¤ì(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøì½¹ÍÐ±¥ÍÐ€ô½É‘•É•¡Ü¹Ý¥‘•ÑÌ¤ì½¹ÍÐ™É½´€ô±¥ÍÐ¹™¥¹‘%¹‘•à¡à€ôøà¹¥€ôôô¥¤°Ñ¼€ô5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸¡±¥ÍÐ¹±•¹Ñ €´€Ä°™É½´€¬5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€ÄàÀ¤¤¤ì½¹ÍÐµ½Ù•‘%Ñ•´€ô±¥ÍÐ¹ÍÁ±¥”¡™É½´°€Ä¥lÁt„ì±¥ÍÐ¹ÍÁ±¥”¡Ñ¼°€À°µ½Ù•‘%Ñ•´¤ì±¥ÍÐ¹™½É…  ¡à°¤¤€ôøà¹½É‘•È€ô¤¤ìô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°É•Ð¤¤ì(€€€€€€€€€€€ô(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸…¹•° ¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ìÉ•¹‘•È ¤ìô(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€ô¤ì(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•…‘É…™Ð¡Í½ÕÉ”è]½É­ÍÁ…•MÑ½É”¤èAÉ½µ¥Í”ñ‘¥ÑÉ…™Ññ¹Õ±°øì(€€€€€€€½¹ÍÐÙ…±Õ”€ô…Ý…¥ÐÍ½ÕÉ”¹‘É…™Ð ¤ì(€€€€€€€¥˜€ …Ù…±Õ”ñð€…ÍÑ…Ñ”¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€¥˜€ …9Õµ‰•È¹¥ÍM…™•%¹Ñ••È¡Ù…±Õ”¹‰…Í•I•Ù¥Í¥½¸¤ñðÙ…±Õ”¹‰…Í•I•Ù¥Í¥½¸€ð€Àñð€…Ù…±Õ”¹Ý½É­ÍÁ…”ñðÙ…±Õ”¹Ý½É­ÍÁ…”¹¥€„ôôÙ…±Õ”¹Ý½É­ÍÁ…•%¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€½¹ÍÐ…¹‘¥‘…Ñ”õ±½¹”¡ÍÑ…Ñ”¤°¥¹‘•àõ…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ì¹™¥¹‘%¹‘•à¡ÜôùÜ¹¥ôôõÙ…±Õ”¹Ý½É­ÍÁ…•%¤ì(€€€€€€€€€€€¥˜¡¥¹‘•àðÀ¥É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ím¥¹‘•átõÙ…±Õ”¹Ý½É­ÍÁ…”ì(€€€€€€€€€€€Á…ÉÍ•MÑ…Ñ”¡)M=8¹ÍÑÉ¥¹¥™ä¡…¹‘¥‘…Ñ”¤¤ì(€€€€€€€€€€€É•ÑÕÉ¸Ù…±Õ”ì(€€€€€€€ô…Ñ ìÉ•ÑÕÉ¸¹Õ±°ìô€¼¼AÉ•Í•ÉÙ”Ñ¡”½É¥¥¹…°‘É…™Ðì½µµ¥ÑÑ•É•½É‘Ì…É”ÍÑ¥±°ÕÍ…‰±”¸(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•±½…‘M…Ù• ¤ì(€€€€€€€…Ý…¥ÐÅÕ•Õ”ì(€€€€€€€½¹ÍÐ±…Ñ•ÍÐ€ô…Ý…¥ÐÍÑ½É”ü¹±½… ¤ì(€€€€€€€¥˜€¡±…Ñ•ÍÐ¤ì(€€€€€€€€€€€ÁÉ¥Ù…å!•±ñðô±…Ñ•ÍÐ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€€€€€ÍÑ…Ñ”€ô±…Ñ•ÍÐì(€€€€€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡ÍÑ½É”„¤ì(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸±½…‘%‘•¹Ñ¥Ñä¡¥‘•¹Ñ¥Ñäè!Õ‰%‘•¹Ñ¥Ñä¤ì(€€€€€€€½¹ÍÐ½Ý¸€ô€¬­•Á½ ì(€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€ÍÑ½É”ü¹±½Í” ¤ì(€€€€€€€¡…¹¹•°ü¹±½Í” ¤ì(€€€€€€€ÍÑ½É”€ô¹Õ±°ì(€€€€€€€¡…¹¹•°€ô¹Õ±°ì(€€€€€€€ÍÑ…Ñ”€ô¹Õ±°ì(€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€±½­•€ô™…±Í”ì(€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€É…ÝI•½Ù•Éä€ô€œœì(€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µ…½Õ¹Ðµ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ±¥ÍÑtœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ½¹Ñ•¹Ñtœ¤¹¥¹¹•É!Q50€ô•µÁÑä e½ÕÈÝ½É­ÍÁ…”œ°€¡•­¥¹œ±½…°¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁ±…¹¹•Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÑ½½±‰…Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ œÝÌµÑ¥Ñ±”œ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô€A•ÉÍ½¹…°Ý½É­ÍÁ…”œì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µÑ½…ÍÑtœ¤¹¡¥‘‘•¸€ôÑÉÕ”ì(€€€€€€€Í…Ù• ¡•­¥¹œ¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁÉ½™¥±”µ±…‰•±tœ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹±…‰•°€è€Q¡¥Ì‘•Ù¥”œì(€€€€€€€¥˜€¡¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€¡•­¥¹œœñð¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Õ¹…Ù…¥±…‰±”œ¤ì(€€€€€€€€€€€¹½Ñ¥” A•ÉÍ½¹…°½¹Ñ•¹Ð¥Ì¡¥‘‘•¸Õ¹Ñ¥°å½ÕÈ!Õˆ¥‘•¹Ñ¥Ñä…¸‰”½¹™¥Éµ•¸ÁÀ±¥¹­Ì…É”…Ù…¥±…‰±”¥¸ÁÁÌ¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€½¹ÍÐ½Ý¹•È€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹¥€è¹Õ±°ì(€€€€€€€¥˜€¡½Ý¹•È€˜˜€…Ù…±¥‘½Õ¹Ñ%¡½Ý¹•È¤¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€±•Ð±•…äèÍÑÉ¥¹œð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€±•…ä€ô±½…±MÑ½É…”¹•Ñ%Ñ•´¡ÁÉ•™•É•¹•-•ä¡½Ý¹•È¤¤ì(€€€€€€€ô(€€€€€€€…Ñ ì€¼¨1½…°ÍÑ½É…”‘•¹¥•è%¹‘•á•‘µ…äÍÑ¥±°‰”ÕÍ…‰±”¸€¨¼ô(€€€€€€€½¹ÍÐ¹•áÑMÑ½É”€ô¹•Ü]½É­ÍÁ…•MÑ½É”¡¹…µ•ÍÁ…”¡½Ý¹•È¤¤ì(€€€€€€€ÍÑ½É”€ô¹•áÑMÑ½É”ì(€€€€€€€±•Ð±½…‘•è]½É­ÍÁ…•MÑ…Ñ”ð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€…Ý…¥Ð¹•áÑMÑ½É”¹½Á•¸ ¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤ì(€€€€€€€€€€€€€€€¹•áÑMÑ½É”¹±½Í” ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ôÑÉÕ”ì(€€€€€€€€€€€É…ÝI•½Ù•Éä€ô…Ý…¥Ð¹•áÑMÑ½É”¹É…Ü ¤ì(€€€€€€€€€€€±½…‘•€ô…Ý…¥Ð¹•áÑMÑ½É”¹±½… ¤ì(€€€€€€€ô(€€€€€€€…Ñ €¡”¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€¥˜€¡É…ÝI•½Ù•Éä¤ì(€€€€€€€€€€€€€€€±½­•€ôÑÉÕ”ì(€€€€€€€€€€€€€€€¹½Ñ¥”¡”¥¹ÍÑ…¹•½˜ÉÉ½È€ü”¹µ•ÍÍ…”€è€M…Ù•Ý½É­ÍÁ…”…¹¹½Ð‰”½Á•¹•¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐÉ•½Ù•Éä™¥±”œ¤¤ì(€€€€€€€€€€€€€€€Í…Ù• M…Ù•É•½É±•™ÐÕ¹Ñ½Õ¡•œ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€€€€€¹½Ñ¥” 	É½ÝÍ•ÈÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸]½É¬¥¸Ñ¡¥ÌÑ…ˆ…¹•áÁ½ÉÐå½ÕÈ‘…Ñ„‰•™½É”±•…Ù¥¹œ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ÍÑ…Ñ”€ô±½…‘•€üü¥¹¥Ñ¥…±MÑ…Ñ”¡…ÁÁÌ¹µ…À¡„€ôø„¹¥¤°±•…ä¤ì(€€€€€€€ÁÉ¥Ù…å!•±€ôÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€¥˜€¡ÍÑ½É…•I•…‘ä¤ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡¹•áÑMÑ½É”¤ì(€€€€€€€€€€€€€€€¥˜€¡É•½Ù•ÉåÉ…™Ð€˜˜€…ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹Í½µ”¡Ü€ôøÜ¹¥€ôôôÉ•½Ù•ÉåÉ…™Ð„¹Ý½É­ÍÁ…•%¤¤(€€€€€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€¥˜€ …±½…‘•¤(€€€€€€€€€€€€€€€…Ý…¥ÐÁ•ÉÍ¥ÍÐ ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡ÑåÁ•½˜	É½…‘…ÍÑ¡…¹¹•°€„ôô€Õ¹‘•™¥¹•œ¤ì(€€€€€€€€€€€¡…¹¹•°€ô¹•Ü	É½…‘…ÍÑ¡…¹¹•° Ñ¡¥•Á¸µ…‘…ÁÑ¥Ù”µÝ½É­ÍÁ…”µÕÁ‘…Ñ•Ìœ¤ì(€€€€€€€€€€€¡…¹¹•°¹½¹µ•ÍÍ…”€ô•Ù•¹Ð€ôøì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹‘…Ñ„ü¹­•ä€„ôô¹•áÑMÑ½É”¹­•äñð•Ù•¹Ð¹‘…Ñ„¹É•Ù¥Í¥½¸€ôôôÍÑ…Ñ”ü¹É•Ù¥Í¥½¸¤(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œñð‘¥ÉÑä¤ì(€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€¹½Ñ¥” ¹½Ñ¡•ÈÑ…ˆ¡…¹•Ñ¡¥ÌÝ½É­ÍÁ…”¸e½ÕÈ±½…°•‘¥ÑÌ…É”­•ÁÐ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤€¬‰ÕÑÑ½¸ É•±½…œ°€I•±½…Í…Ù•‘…Ñ„œ¤¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤¹…Ñ   ¤€ôø¹½Ñ¥” ½Õ±¹½ÐÉ•™É•Í ¡…¹•Ì™É½´…¹½Ñ¡•ÈÑ…ˆ¸œ¤¤ì(€€€€€€€€€€€ôì(€€€€€€€ô(€€€€€€€É•¹‘•È ¤ì(€€€€€€€¥˜€ …ÍÑ½É…•I•…‘ä¤(€€€€€€€€€€€Í…Ù• ¤ì(€€€€€€€•±Í”¥˜€ …É•½Ù•ÉåÉ…™Ð¤(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€ô(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡Õˆé¥‘•¹Ñ¥Ñäœ°•Ù•¹Ð€ôøÙ½¥±½…‘%‘•¹Ñ¥Ñä ¡•Ù•¹Ð…ÌÕÍÑ½µÙ•¹Ðñ!Õ‰%‘•¹Ñ¥Ñäø¤¹‘•Ñ…¥°¤¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á…•Í¡½Üœ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡ÍÑ…Ñ”€˜˜€…‘¥ÉÑä€˜˜€…•‘¥Ñ¥¹œ¤(€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤ì(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ‰•™½É•Õ¹±½…œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡‘¥ÉÑä¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€ô(€€€ô¤ì(€€€µ…Ñ¡5•‘¥„ œ¡ÁÉ•™•ÉÌµ½±½ÈµÍ¡•µ”é‘…É¬¤œ¤¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ°”€ôøì(€€€€€€€¥˜€¡‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ•AÉ•™•É•¹”€ôôô€ÍåÍÑ•´œ¤(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ”€ô”¹µ…Ñ¡•Ì€ü€‘…É¬œ€è€±¥¡Ðœì(€€€ô¤ì(€€€±•Ð±…ÍÑ…ä€ôÍ•±•Ñ•ì(€€€Í•Ñ%¹Ñ•ÉÙ…°  ¤€ôøì¥˜€ …ÍÑ…Ñ”¤(€€€€€€€É•ÑÕÉ¸ì½¹ÍÐ¹½Ü€ôÑ½‘…ä ¤ì¥˜€¡¹½Ü€„ôô±…ÍÑ…ä¤ì(€€€€€€€¥˜€¡Í•±•Ñ•€ôôô±…ÍÑ…ä¤ì(€€€€€€€€€€€Í•±•Ñ•€ô¹½Üì(€€€€€€€€€€€µ½¹Ñ €ô¹½Ü¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€ô(€€€€€€€±…ÍÑ…ä€ô¹½Üì(€€€€€€€É•¹‘•È ¤ì(€€€ôô°€ÌÀÀÀÀ¤ì(€€€…Ý…¥Ð±½…‘%‘•¹Ñ¥Ñä¡¡Õ‰%‘•¹Ñ¥Ñä¤ì(€€€¥˜€ Í•ÉÙ¥•]½É­•Èœ¥¸¹…Ù¥…Ñ½È€˜˜€…¥µÁ½ÉÐ¹µ•Ñ„¹•¹Ø¹X¤ìÙ½¥¹…Ù¥…Ñ½È¹Í•ÉÙ¥•]½É­•È¹É•¥ÍÑ•È œ½¡½µ”½Ý½É­ÍÁ…”µÍÜ¹©Ìœ±íÍ½Á”èœ½¡½µ”¼ô¤¹…Ñ   ¤ôùì€¼¨1½…°É•½É‘ÌÍÑ¥±°Ý½É¬ì‘¼¹½Ð±…¥´½™™±¥¹”Í¡•±°…Ù…¥±…‰¥±¥Ñä¸€¨¼ô¤ìô()ô(€€€€€€€€•±Í”ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý1•™Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à´´ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝI¥¡Ðœ¤(€€€€€€€€€€€€€€€€€€€È¹à¬¬ì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤(€€€€€€€€€€€€€€€€€€€È¹ä€´ô€Ðì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤(€€€€€€€€€€€€€€€€€€€È¹ä€¬ô€Ðì(€€€€€€€€€€€ô(€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°È¤¤ì(€€€€€€€€€€€É½½Ð¹ÅÕ•ÉåM•±•Ñ½Èñ!Q51±•µ•¹Ðø¡l‘íÑ…É•Ð¹‘…Ñ…Í•Ð¹‘É…œ€ü€‘…Ñ„µ‘É…œœ€è€‘…Ñ„µÉ•Í¥é”ôôˆ‘íML¹•Í…Á”¡¥¥ô‰u€¤ü¹™½ÕÌ ¤ì(€€€€€€€€€€€Ñ½…ÍÐ ]¥‘•ÐÁ½Í¥Ñ¥½¸ÕÁ‘…Ñ•¸¡½½Í”½¹”Ñ¼Í…Ù”¸œ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½Ý½Ý¸œ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€É•ÍÕ±ÑÍl¡¥¹‘•à€¬€Ä¤€”É•ÍÕ±ÑÌ¹±•¹Ñ¡tü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€€€€€¥˜€ ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸€˜˜•Ù•¹Ð¹­•ä€ôôô€ÉÉ½ÝUÀœ¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÉ•ÍÕ±ÑÌ€ôÉÉ…ä¹™É½´¡É½½Ð¹ÅÕ•ÉåM•±•Ñ½É±°ñ!Q51±•µ•¹Ðø œ¹ÝÌµÍ•…É µÉ•ÍÕ±Ðœ¤¤ì(€€€€€€€€€€€½¹ÍÐ¥¹‘•à€ôÉ•ÍÕ±ÑÌ¹¥¹‘•á=˜¡Ñ…É•Ð¤ì(€€€€€€€€€€€¥˜€¡¥¹‘•à€ðô€À¤(€€€€€€€€€€€€€€€€ œÝ½É­ÍÁ…”µÍ•…É œ¤¹™½ÕÌ ¤ì(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•ÍÕ±ÑÍm¥¹‘•à€´€Åtü¹™½ÕÌ ¤ì(€€€€€€€ô(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•å‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€ ¡•Ù•¹Ð¹ÑÉ±-•äñð•Ù•¹Ð¹µ•Ñ…-•ä¤€˜˜•Ù•¹Ð¹­•ä¹Ñ½1½Ý•É…Í” ¤€ôôô€¬œ€˜˜€„¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹µ…Ñ¡•Ì Ñ•áÑ…É•„±m½¹Ñ•¹Ñ•‘¥Ñ…‰±”õÑÉÕ•tœ¤¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€¥˜€ „ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹½Á•¸¤(€€€€€€€€€€€€€€€½Á•¹M•…É  ¤ì(€€€€€€€ô(€€€ô¤ì(€€€É½½Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É‘½Ý¸œ°•Ù•¹Ð€ôøì(€€€€€€€½¹ÍÐ¡…¹‘±”€ô€¡•Ù•¹Ð¹Ñ…É•Ð…Ì!Q51±•µ•¹Ð¤¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µ‘É…t±m‘…Ñ„µÉ•Í¥é•tœ¤ì(€€€€€€€¥˜€ …¡…¹‘±”ñð€…•‘¥Ñ¥¹œñð•Ù•¹Ð¹‰ÕÑÑ½¸€„ôô€À¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€½¹ÍÐ¥€ô¡…¹‘±”¹‘…Ñ…Í•Ð¹‘É…œ€üü¡…¹‘±”¹‘…Ñ…Í•Ð¹É•Í¥é”„ì(€€€€€€€½¹ÍÐ¥Ñ•´€ô•‘¥Ñ¥¹œ¹Ý½É­ÍÁ…”¹Ý¥‘•ÑÌ¹™¥¹¡Ü€ôøÜ¹¥€ôôô¥¤„ì(€€€€€€€½¹ÍÐ¥¹¥Ñ¥…°€ô±½¹”¡¥Ñ•´¹‘•Í­Ñ½À¤ì(€€€€€€€½¹ÍÐÉ¥€ô€ m‘…Ñ„µÉ¥‘tœ¤°•±°€ô¡…¹‘±”¹±½Í•ÍÐñ!Q51±•µ•¹Ðø m‘…Ñ„µÝ¥‘•Ðµ¥‘tœ¤„ì(€€€€€€€½¹ÍÐ½±Õµ¸€ô€¡É¥¹±¥•¹Ñ]¥‘Ñ €¬€ÄØ¤€¼€ÄÈ°ÍÑ…ÉÑ`€ô•Ù•¹Ð¹±¥•¹Ñ`°ÍÑ…ÉÑd€ô•Ù•¹Ð¹±¥•¹Ñdì(€€€€€€€±•ÐÉ•Ð€ô±½¹”¡¥¹¥Ñ¥…°¤°µ½Ù•€ô™…±Í”ì(€€€€€€€•±°¹±…ÍÍ1¥ÍÐ¹…‘ ÝÌµ‘É…¥¹œœ¤ì(€€€€€€€™Õ¹Ñ¥½¸µ½Ù”¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€µ½Ù•ñðô5…Ñ ¹…‰Ì¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¬5…Ñ ¹…‰Ì¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€ø€Ôì(€€€€€€€€€€€½¹ÍÐ‘à€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñ`€´ÍÑ…ÉÑ`¤€¼½±Õµ¸¤°‘ä€ô5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€à¤ì(€€€€€€€€€€€É•Ð€ô¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”€üì€¸¸¹¥¹¥Ñ¥…°°Üè5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹]¥‘Ñ €üü€Ð°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹à°¥¹¥Ñ¥…°¹Ü€¬‘à¤¤° è5…Ñ ¹µ…à¡ÍÁ•¥™¥…Ñ¥½¸¡¥Ñ•´¹ÑåÁ”¤ü¹µ¥¹!•¥¡Ð€üü€ÄØ°5…Ñ ¹µ¥¸ ÄÈÀ°¥¹¥Ñ¥…°¹ €¬‘ä¤¤ô€èì€¸¸¹¥¹¥Ñ¥…°°àè5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸ ÄÈ€´¥¹¥Ñ¥…°¹Ü°¥¹¥Ñ¥…°¹à€¬‘à¤¤°äè5…Ñ ¹µ…à À°¥¹¥Ñ¥…°¹ä€¬‘ä¤ôì(€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€„ôô€ÑÉÕ”œ¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ½°œ°MÑÉ¥¹œ¡É•Ð¹à€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÍÁ…¸œ°MÑÉ¥¹œ¡É•Ð¹Ü¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µÉ½Üœ°MÑÉ¥¹œ¡É•Ð¹ä€¬€Ä¤¤ì(€€€€€€€€€€€€€€€•±°¹ÍÑå±”¹Í•ÑAÉ½Á•ÉÑä œ´µ¡•¥¡Ðœ°MÑÉ¥¹œ¡É•Ð¹ ¤¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸•¹¡”èA½¥¹Ñ•ÉÙ•¹Ð¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€€€€€‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€€€€€€€€€¥˜€¡µ½Ù•¤ì(€€€€€€€€€€€€€€€¥˜€¡É½½Ð¹‘…Ñ…Í•Ð¹É¥‘½µÁ…Ð€ôôô€ÑÉÕ”œ€˜˜€…¡…¹‘±”„¹‘…Ñ…Í•Ð¹É•Í¥é”¤ì(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøì½¹ÍÐ±¥ÍÐ€ô½É‘•É•¡Ü¹Ý¥‘•ÑÌ¤ì½¹ÍÐ™É½´€ô±¥ÍÐ¹™¥¹‘%¹‘•à¡à€ôøà¹¥€ôôô¥¤°Ñ¼€ô5…Ñ ¹µ…à À°5…Ñ ¹µ¥¸¡±¥ÍÐ¹±•¹Ñ €´€Ä°™É½´€¬5…Ñ ¹É½Õ¹ ¡”¹±¥•¹Ñd€´ÍÑ…ÉÑd¤€¼€ÄàÀ¤¤¤ì½¹ÍÐµ½Ù•‘%Ñ•´€ô±¥ÍÐ¹ÍÁ±¥”¡™É½´°€Ä¥lÁt„ì±¥ÍÐ¹ÍÁ±¥”¡Ñ¼°€À°µ½Ù•‘%Ñ•´¤ì±¥ÍÐ¹™½É…  ¡à°¤¤€ôøà¹½É‘•È€ô¤¤ìô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€¡…¹•1…å½ÕÐ¡Ü€ôøÜ¹Ý¥‘•ÑÌ€ôÁ±…”¡Ü¹Ý¥‘•ÑÌ°¥°É•Ð¤¤ì(€€€€€€€€€€€ô(€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€€€€€™Õ¹Ñ¥½¸…¹•° ¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì‘½Õµ•¹Ð¹É•µ½Ù•Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ìÉ•¹‘•È ¤ìô(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•Éµ½Ù”œ°µ½Ù”¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•ÉÕÀœ°•¹¤ì(€€€€€€€‘½Õµ•¹Ð¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á½¥¹Ñ•É…¹•°œ°…¹•°¤ì(€€€ô¤ì(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•…‘É…™Ð¡Í½ÕÉ”è]½É­ÍÁ…•MÑ½É”¤èAÉ½µ¥Í”ñ‘¥ÑÉ…™Ññ¹Õ±°øì(€€€€€€€½¹ÍÐÙ…±Õ”€ô…Ý…¥ÐÍ½ÕÉ”¹‘É…™Ð ¤ì(€€€€€€€¥˜€ …Ù…±Õ”ñð€…ÍÑ…Ñ”¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€¥˜€ …9Õµ‰•È¹¥ÍM…™•%¹Ñ••È¡Ù…±Õ”¹‰…Í•I•Ù¥Í¥½¸¤ñðÙ…±Õ”¹‰…Í•I•Ù¥Í¥½¸€ð€Àñð€…Ù…±Õ”¹Ý½É­ÍÁ…”ñðÙ…±Õ”¹Ý½É­ÍÁ…”¹¥€„ôôÙ…±Õ”¹Ý½É­ÍÁ…•%¤É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€½¹ÍÐ…¹‘¥‘…Ñ”õ±½¹”¡ÍÑ…Ñ”¤°¥¹‘•àõ…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ì¹™¥¹‘%¹‘•à¡ÜôùÜ¹¥ôôõÙ…±Õ”¹Ý½É­ÍÁ…•%¤ì(€€€€€€€€€€€¥˜¡¥¹‘•àðÀ¥É•ÑÕÉ¸¹Õ±°ì(€€€€€€€€€€€…¹‘¥‘…Ñ”¹Ý½É­ÍÁ…•Ím¥¹‘•átõÙ…±Õ”¹Ý½É­ÍÁ…”ì(€€€€€€€€€€€Á…ÉÍ•MÑ…Ñ”¡)M=8¹ÍÑÉ¥¹¥™ä¡…¹‘¥‘…Ñ”¤¤ì(€€€€€€€€€€€É•ÑÕÉ¸Ù…±Õ”ì(€€€€€€€ô…Ñ ìÉ•ÑÕÉ¸¹Õ±°ìô€¼¼AÉ•Í•ÉÙ”Ñ¡”½É¥¥¹…°‘É…™Ðì½µµ¥ÑÑ•É•½É‘Ì…É”ÍÑ¥±°ÕÍ…‰±”¸(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸É•±½…‘M…Ù• ¤ì(€€€€€€€…Ý…¥ÐÅÕ•Õ”ì(€€€€€€€½¹ÍÐ±…Ñ•ÍÐ€ô…Ý…¥ÐÍÑ½É”ü¹±½… ¤ì(€€€€€€€¥˜€¡±…Ñ•ÍÐ¤ì(€€€€€€€€€€€ÁÉ¥Ù…å!•±ñðô±…Ñ•ÍÐ¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€€€€€ÍÑ…Ñ”€ô±…Ñ•ÍÐì(€€€€€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡ÍÑ½É”„¤ì(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€€€€€€€€€É•¹‘•È ¤ì(€€€€€€€ô(€€€ô(€€€…Íå¹Œ™Õ¹Ñ¥½¸±½…‘%‘•¹Ñ¥Ñä¡¥‘•¹Ñ¥Ñäè!Õ‰%‘•¹Ñ¥Ñä¤ì(€€€€€€€½¹ÍÐ½Ý¸€ô€¬­•Á½ ì(€€€€€€€±•…ÉQ¥µ•½ÕÐ¡…ÁÑÕÉ•Q¥µ•È¤ì(€€€€€€€•‘¥Ñ¥¹œ€ô¹Õ±°ì(€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€½¹Ñ•¹ÑU¹‘¼€ô¹Õ±°ì(€€€€€€€ÍÑ½É”ü¹±½Í” ¤ì(€€€€€€€¡…¹¹•°ü¹±½Í” ¤ì(€€€€€€€ÍÑ½É”€ô¹Õ±°ì(€€€€€€€¡…¹¹•°€ô¹Õ±°ì(€€€€€€€ÍÑ…Ñ”€ô¹Õ±°ì(€€€€€€€‘¥ÉÑä€ô™…±Í”ì(€€€€€€€±½­•€ô™…±Í”ì(€€€€€€€½¹™±¥Ð€ô™…±Í”ì(€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€É…ÝI•½Ù•Éä€ô€œœì(€€€€€€€‘¥…±½œ¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µÍ•…É µ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ñ!Q51¥…±½±•µ•¹Ðø m‘…Ñ„µ…½Õ¹Ðµ‘¥…±½tœ¤¹±½Í” ¤ì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ±¥ÍÑtœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µ½¹Ñ•¹Ñtœ¤¹¥¹¹•É!Q50€ô•µÁÑä e½ÕÈÝ½É­ÍÁ…”œ°€¡•­¥¹œ±½…°¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁ±…¹¹•Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ m‘…Ñ„µÑ½½±‰…Étœ¤¹¥¹¹•É!Q50€ô€œœì(€€€€€€€€ œÝÌµÑ¥Ñ±”œ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô€A•ÉÍ½¹…°Ý½É­ÍÁ…”œì(€€€€€€€€ m‘…Ñ„µÝ½É­ÍÁ…”µÑ½…ÍÑtœ¤¹¡¥‘‘•¸€ôÑÉÕ”ì(€€€€€€€Í…Ù• ¡•­¥¹œ¥‘•¹Ñ¥ÑçŠ˜œ¤ì(€€€€€€€€ m‘…Ñ„µÁÉ½™¥±”µ±…‰•±tœ¤¹Ñ•áÑ½¹Ñ•¹Ð€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹±…‰•°€è€Q¡¥Ì‘•Ù¥”œì(€€€€€€€¥˜€¡¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€¡•­¥¹œœñð¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Õ¹…Ù…¥±…‰±”œ¤ì(€€€€€€€€€€€¹½Ñ¥” A•ÉÍ½¹…°½¹Ñ•¹Ð¥Ì¡¥‘‘•¸Õ¹Ñ¥°å½ÕÈ!Õˆ¥‘•¹Ñ¥Ñä…¸‰”½¹™¥Éµ•¸ÁÀ±¥¹­Ì…É”…Ù…¥±…‰±”¥¸ÁÁÌ¸œ¤ì(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ô(€€€€€€€½¹ÍÐ½Ý¹•È€ô¥‘•¹Ñ¥Ñä¹ÍÑ…ÑÕÌ€ôôô€Í¥¹•µ¥¸œ€ü¥‘•¹Ñ¥Ñä¹¥€è¹Õ±°ì(€€€€€€€¥˜€¡½Ý¹•È€˜˜€…Ù…±¥‘½Õ¹Ñ%¡½Ý¹•È¤¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€±•Ð±•…äèÍÑÉ¥¹œð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€±•…ä€ô±½…±MÑ½É…”¹•Ñ%Ñ•´¡ÁÉ•™•É•¹•-•ä¡½Ý¹•È¤¤ì(€€€€€€€ô(€€€€€€€…Ñ ì€¼¨1½…°ÍÑ½É…”‘•¹¥•è%¹‘•á•‘µ…äÍÑ¥±°‰”ÕÍ…‰±”¸€¨¼ô(€€€€€€€½¹ÍÐ¹•áÑMÑ½É”€ô¹•Ü]½É­ÍÁ…•MÑ½É”¡¹…µ•ÍÁ…”¡½Ý¹•È¤¤ì(€€€€€€€ÍÑ½É”€ô¹•áÑMÑ½É”ì(€€€€€€€±•Ð±½…‘•è]½É­ÍÁ…•MÑ…Ñ”ð¹Õ±°€ô¹Õ±°ì(€€€€€€€ÑÉäì(€€€€€€€€€€€…Ý…¥Ð¹•áÑMÑ½É”¹½Á•¸ ¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤ì(€€€€€€€€€€€€€€€¹•áÑMÑ½É”¹±½Í” ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ôÑÉÕ”ì(€€€€€€€€€€€É…ÝI•½Ù•Éä€ô…Ý…¥Ð¹•áÑMÑ½É”¹É…Ü ¤ì(€€€€€€€€€€€±½…‘•€ô…Ý…¥Ð¹•áÑMÑ½É”¹±½… ¤ì(€€€€€€€ô(€€€€€€€…Ñ €¡”¤ì(€€€€€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€¥˜€¡É…ÝI•½Ù•Éä¤ì(€€€€€€€€€€€€€€€±½­•€ôÑÉÕ”ì(€€€€€€€€€€€€€€€¹½Ñ¥”¡”¥¹ÍÑ…¹•½˜ÉÉ½È€ü”¹µ•ÍÍ…”€è€M…Ù•Ý½É­ÍÁ…”…¹¹½Ð‰”½Á•¹•¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐÉ•½Ù•Éä™¥±”œ¤¤ì(€€€€€€€€€€€€€€€Í…Ù• M…Ù•É•½É±•™ÐÕ¹Ñ½Õ¡•œ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô(€€€€€€€€€€€ÍÑ½É…•I•…‘ä€ô™…±Í”ì(€€€€€€€€€€€¹½Ñ¥” 	É½ÝÍ•ÈÍÑ½É…”¥ÌÕ¹…Ù…¥±…‰±”¸]½É¬¥¸Ñ¡¥ÌÑ…ˆ…¹•áÁ½ÉÐå½ÕÈ‘…Ñ„‰•™½É”±•…Ù¥¹œ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€ÍÑ…Ñ”€ô±½…‘•€üü¥¹¥Ñ¥…±MÑ…Ñ”¡…ÁÁÌ¹µ…À¡„€ôø„¹¥¤°±•…ä¤ì(€€€€€€€ÁÉ¥Ù…å!•±€ôÍÑ…Ñ”¹ÁÉ•™•É•¹•Ì¹¡¥‘‘•¸ì(€€€€€€€Í•±•Ñ•€ôÑ½‘…ä ¤ì(€€€€€€€µ½¹Ñ €ôÍ•±•Ñ•¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€¥˜€¡ÍÑ½É…•I•…‘ä¤ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô…Ý…¥ÐÉ•…‘É…™Ð¡¹•áÑMÑ½É”¤ì(€€€€€€€€€€€€€€€¥˜€¡É•½Ù•ÉåÉ…™Ð€˜˜€…ÍÑ…Ñ”¹Ý½É­ÍÁ…•Ì¹Í½µ”¡Ü€ôøÜ¹¥€ôôôÉ•½Ù•ÉåÉ…™Ð„¹Ý½É­ÍÁ…•%¤¤(€€€€€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€…Ñ ì(€€€€€€€€€€€€€€€É•½Ù•ÉåÉ…™Ð€ô¹Õ±°ì(€€€€€€€€€€€ô(€€€€€€€€€€€¥˜€ …±½…‘•¤(€€€€€€€€€€€€€€€…Ý…¥ÐÁ•ÉÍ¥ÍÐ ¤ì(€€€€€€€ô(€€€€€€€¥˜€¡½Ý¸€„ôô•Á½ ¤(€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€¥˜€¡ÑåÁ•½˜	É½…‘…ÍÑ¡…¹¹•°€„ôô€Õ¹‘•™¥¹•œ¤ì(€€€€€€€€€€€¡…¹¹•°€ô¹•Ü	É½…‘…ÍÑ¡…¹¹•° Ñ¡¥•Á¸µ…‘…ÁÑ¥Ù”µÝ½É­ÍÁ…”µÕÁ‘…Ñ•Ìœ¤ì(€€€€€€€€€€€¡…¹¹•°¹½¹µ•ÍÍ…”€ô•Ù•¹Ð€ôøì(€€€€€€€€€€€€€€€¥˜€¡•Ù•¹Ð¹‘…Ñ„ü¹­•ä€„ôô¹•áÑMÑ½É”¹­•äñð•Ù•¹Ð¹‘…Ñ„¹É•Ù¥Í¥½¸€ôôôÍÑ…Ñ”ü¹É•Ù¥Í¥½¸¤(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€¥˜€¡•‘¥Ñ¥¹œñð‘¥ÉÑä¤ì(€€€€€€€€€€€€€€€€€€€½¹™±¥Ð€ôÑÉÕ”ì(€€€€€€€€€€€€€€€€€€€¹½Ñ¥” ¹½Ñ¡•ÈÑ…ˆ¡…¹•Ñ¡¥ÌÝ½É­ÍÁ…”¸e½ÕÈ±½…°•‘¥ÑÌ…É”­•ÁÐ¸œ°‰ÕÑÑ½¸ •áÁ½ÉÐœ°€áÁ½ÉÐœ¤€¬‰ÕÑÑ½¸ É•±½…œ°€I•±½…Í…Ù•‘…Ñ„œ¤¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€•±Í”(€€€€€€€€€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤¹…Ñ   ¤€ôø¹½Ñ¥” ½Õ±¹½ÐÉ•™É•Í ¡…¹•Ì™É½´…¹½Ñ¡•ÈÑ…ˆ¸œ¤¤ì(€€€€€€€€€€€ôì(€€€€€€€ô(€€€€€€€É•¹‘•È ¤ì(€€€€€€€¥˜€ …ÍÑ½É…•I•…‘ä¤(€€€€€€€€€€€Í…Ù• ¤ì(€€€€€€€•±Í”¥˜€ …É•½Ù•ÉåÉ…™Ð¤(€€€€€€€€€€€¹½Ñ¥” œœ¤ì(€€€ô(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡Õˆé¥‘•¹Ñ¥Ñäœ°•Ù•¹Ð€ôøÙ½¥±½…‘%‘•¹Ñ¥Ñä ¡•Ù•¹Ð…ÌÕÍÑ½µÙ•¹Ðñ!Õ‰%‘•¹Ñ¥Ñäø¤¹‘•Ñ…¥°¤¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È Á…•Í¡½Üœ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡ÍÑ…Ñ”€˜˜€…‘¥ÉÑä€˜˜€…•‘¥Ñ¥¹œ¤(€€€€€€€€€€€Ù½¥É•±½…‘M…Ù• ¤ì(€€€ô¤ì(€€€Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ‰•™½É•Õ¹±½…œ°•Ù•¹Ð€ôøì(€€€€€€€¥˜€¡‘¥ÉÑä¤ì(€€€€€€€€€€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€ô(€€€ô¤ì(€€€µ…Ñ¡5•‘¥„ œ¡ÁÉ•™•ÉÌµ½±½ÈµÍ¡•µ”é‘…É¬¤œ¤¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ°”€ôøì(€€€€€€€¥˜€¡‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ•AÉ•™•É•¹”€ôôô€ÍåÍÑ•´œ¤(€€€€€€€€€€€‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹‘…Ñ…Í•Ð¹Ñ¡•µ”€ô”¹µ…Ñ¡•Ì€ü€‘…É¬œ€è€±¥¡Ðœì(€€€ô¤ì(€€€±•Ð±…ÍÑ…ä€ôÍ•±•Ñ•ì(€€€Í•Ñ%¹Ñ•ÉÙ…°  ¤€ôøì¥˜€ …ÍÑ…Ñ”¤(€€€€€€€É•ÑÕÉ¸ì½¹ÍÐ¹½Ü€ôÑ½‘…ä ¤ì¥˜€¡¹½Ü€„ôô±…ÍÑ…ä¤ì(€€€€€€€¥˜€¡Í•±•Ñ•€ôôô±…ÍÑ…ä¤ì(€€€€€€€€€€€Í•±•Ñ•€ô¹½Üì(€€€€€€€€€€€µ½¹Ñ €ô¹½Ü¹Í±¥” À°€Ü¤€¬€œ´ÀÄœì(€€€€€€€ô(€€€€€€€±…ÍÑ…ä€ô¹½Üì(€€€€€€€É•¹‘•È ¤ì(€€€ôô°€ÌÀÀÀÀ¤ì(€€€…Ý…¥Ð±½…‘%‘•¹Ñ¥Ñä¡¡Õ‰%‘•¹Ñ¥Ñä¤ì(€€€¥˜€ Í•ÉÙ¥•]½É­•Èœ¥¸¹…Ù¥…Ñ½È€˜˜€…¥µÁ½ÉÐ¹µ•Ñ„¹•¹Ø¹X¤ìÙ½¥¹…Ù¥…Ñ½È¹Í•ÉÙ¥•]½É­•È¹É•¥ÍÑ•È œ½¡½µ”½Ý½É­ÍÁ…”µÍÜ¹©Ìœ±íÍ½Á”èœ½¡½µ”¼ô¤¹…Ñ   ¤ôùì€¼¨1½…°É•½É‘ÌÍÑ¥±°Ý½É¬ì‘¼¹½Ð±…¥´½™™±¥¹”Í¡•±°…Ù…¥±…‰¥±¥Ñä¸€¨¼ô¤ìô()ô
