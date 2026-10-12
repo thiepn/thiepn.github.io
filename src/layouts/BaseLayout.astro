@@ -15,8 +15,8 @@ import '@fontsource/ibm-plex-mono/latin-500.css';
 import '../styles/studio.css';
 import '../styles/showcase.css';
 import '../styles/portal.css';
-interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; ogImageAlt?: string; noindex?: boolean; portal?: boolean; }
-const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage, ogImageAlt, noindex = false, portal = false } = Astro.props;
+interface Props { title?: string; description?: string; hideHeader?: boolean; hideFooter?: boolean; ogImage?: string; ogImageAlt?: string; noindex?: boolean; portal?: boolean; workspace?: boolean; }
+const { title = SITE.title, description = SITE.description, hideHeader = false, hideFooter = false, ogImage, ogImageAlt, noindex = false, portal = false, workspace = false } = Astro.props;
 
 const pathname = Astro.url.pathname;
 const canonicalUrl = new URL(pathname, SITE.url).href;
@@ -67,7 +67,7 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
 }));
 ---
 <!doctype html>
-<html lang="en" data-portal={portal ? 'true' : undefined}>
+<html lang="en" data-portal={portal ? 'true' : undefined} data-workspace-page={workspace ? 'true' : undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -116,11 +116,11 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    {!hideHeader && <SiteHeader portal={portal} />}
+    {!hideHeader && !workspace && <SiteHeader portal={portal} />}
     <main id="main-content" tabindex="-1"><slot /></main>
-    {!hideFooter && <SiteFooter  />}
-    {portal && <PortalNavigation />}
-    <CatalogueSearch portal={portal} />
+    {!hideFooter && !workspace && <SiteFooter  />}
+    {portal && !workspace && <PortalNavigation />}
+    {!workspace && <CatalogueSearch portal={portal} />}
     <script>import '../scripts/catalogue-search-bootstrap';</script>
     <PrivacyAnalytics noindex={noindex || pathname === '/search/'} />
   </body>

@@ -1,96 +1,18 @@
-import { readFileSync } from 'node:fs';
-const hubCount = JSON.parse(readFileSync(new URL('../../src/data/hub.json', import.meta.url), 'utf8')).expectedCount;
 import { test, expect } from '@playwright/test';
-const visibleModules = (page: any) => page.locator('[data-home-module]:visible').evaluateAll((nodes: HTMLElement[]) => nodes.map(node => node.dataset.homeModule));
-test('H4 module choices, Focus and independent resets persist without importing external data', async ({ page }) => {
-  const requests: string[] = []; page.on('request', request => requests.push(request.url()));
-  await page.goto('/home/');
-  expect(await visibleModules(page)).toEqual(['today', 'continue', 'capture', 'faith', 'study', 'routines']);
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.locator('[data-module-choice][value="routines"]').uncheck();
-  await page.locator('[data-module-choice][value="weather"]').check();
-  await page.locator('[data-home-focus]').selectOption('faith');
-  await page.locator('[data-home-timezone]').selectOption('Europe/Berlin');
-  await page.getByRole('button', { name: 'Reset pins & spacing' }).click();
-  await expect(page.locator('[data-module-choice][value="weather"]')).toBeChecked();
-  await page.keyboard.press('Escape');
-  await page.getByRole('radio', { name: 'Focus', exact: true }).check();
-  expect(await visibleModules(page)).toEqual(['today', 'continue', 'capture', 'faith']);
-  await page.reload();
-  expect(await visibleModules(page)).toEqual(['today', 'continue', 'capture', 'faith']);
-  await expect(page.locator('[data-day-zone]')).toHaveText('Europe/Berlin');
-  await page.getByRole('radio', { name: 'Today', exact: true }).check();
-  expect(await visibleModules(page)).toEqual(['today', 'continue', 'capture', 'faith', 'study', 'weather']);
-  await expect(page.getByRole('link', { name: /^Open DWD weather/ })).toHaveAttribute('href', 'https://www.dwd.de/');
-  expect(requests.some(url => /dwd\.de|calendar\.google|rest\/v1|hub\/summary/.test(url))).toBe(false);
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.locator('[data-pin-choice][value="canvas"]').check();
-  await page.getByRole('button', { name: 'Reset daily modules' }).click();
-  await expect(page.locator('[data-pin-choice][value="canvas"]')).toBeChecked();
-  await page.keyboard.press('Escape');
-  expect(await visibleModules(page)).toEqual(['today', 'continue', 'capture', 'faith', 'study', 'routines']);
+test('legacy privacy is migrated, persists and is explicitly reversible',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes'],density:'compact',home:{modules:['capture'],mode:'today',focus:'study',timezone:'Europe/Berlin',hidden:true}})));
+ await page.goto('/home/');await expect(page.getByRole('heading',{name:'Personal content is hidden'})).toBeVisible();await expect(page.locator('[data-widget-id]')).toHaveCount(0);await page.getByRole('button',{name:'Show content',exact:true}).click();await expect(page.locator('[data-widget-id]')).toHaveCount(6);await page.reload();await expect(page.locator('[data-widget-id]')).toHaveCount(6);
 });
-test('H4 Hide Home survives reload, remains keyboard reversible and leaves every public app reachable', async ({ page }) => {
-  await page.goto('/home/');
-  const hide = page.getByRole('button', { name: 'Hide Home', exact: true }); await hide.focus(); await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'Show Home', exact: true })).toBeFocused();
-  await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hubCount);
-  await page.reload(); await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.getByRole('button', { name: 'Reset daily modules' }).click(); await page.keyboard.press('Escape');
-  await expect(page.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Show Home', exact: true }).click();
-  await expect(page.locator('[data-personal-pins]')).toBeVisible(); expect(await visibleModules(page)).toHaveLength(6);
+test('a privacy shield held in one tab is not remotely revealed by another tab',async({page,context})=>{
+ await page.goto('/home/settings/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');const other=await context.newPage();await other.goto('/home/');await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.getByRole('button',{name:'Hide content',exact:true}).click();await expect(other.getByRole('heading',{name:'Personal content is hidden'})).toBeVisible();await page.getByRole('button',{name:'Show content',exact:true}).click();await expect(other.getByRole('heading',{name:'Personal content is hidden'})).toBeVisible();await other.getByRole('button',{name:'Show content',exact:true}).click();await expect(other.locator('[data-widget-id]')).toHaveCount(6);
 });
-test('H4 zero modules remains deliberate, and blocked storage keeps the view for this visit', async ({ page }) => {
-  await page.addInitScript(() => { Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'QuotaExceededError'); }; });
-  await page.goto('/home/'); await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  while (await page.locator('[data-module-choice]:checked').count()) await page.locator('[data-module-choice]:checked').first().uncheck();
-  await expect(page.locator('[data-customize-status]')).toContainText('this visit'); await page.keyboard.press('Escape');
-  await expect(page.locator('[data-home-modules-empty]')).toBeVisible(); expect(await visibleModules(page)).toEqual([]);
-  await page.getByRole('radio', { name: 'Focus', exact: true }).check(); expect(await visibleModules(page)).toEqual([]);
-  await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hubCount);
+test('civil date advances at midnight without network polling',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-01T21:59:30Z')});await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes'],density:'compact',home:{modules:[],mode:'today',focus:'study',timezone:'Europe/Berlin',hidden:false}})));await page.goto('/home/');await expect(page.locator('[data-workspace-date]')).toContainText('October 1');await page.clock.fastForward(61000);await expect(page.locator('[data-workspace-date]')).toContainText('October 2');
 });
-test('H4 civil date updates at midnight and on return without network polling', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-01T21:59:30Z') });
-  await page.goto('/home/'); await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.locator('[data-home-timezone]').selectOption('Europe/Berlin'); await page.keyboard.press('Escape');
-  await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-01');
-  await page.clock.fastForward(61000); await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-02');
-  await page.clock.setSystemTime(new Date('2026-10-03T10:00:00Z')); await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
-  await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-03');
+test('fresh Home has no invented activity or private provider requests',async({page})=>{
+ const requests:string[]=[];page.on('request',r=>requests.push(r.url()));await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(page.locator('[data-widget-type=recent-activity]')).toContainText('Tasks, captures and tracker logs');expect(requests.filter(x=>/supabase|rest\/v1|hub\/summary/.test(x))).toEqual([]);
 });
-test('H4 tabs share view changes but remote Show Home never reveals a held privacy shield', async ({ page, context }) => {
-  await page.goto('/home/'); const other = await context.newPage(); await other.goto('http://127.0.0.1:4321/home/');
-  await page.getByRole('radio', { name: 'Focus', exact: true }).check();
-  await expect(other.getByRole('radio', { name: 'Focus', exact: true })).toBeChecked();
-  await page.getByRole('button', { name: 'Hide Home', exact: true }).click();
-  await expect(other.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Show Home', exact: true }).click();
-  await expect(page.locator('[data-daily-board]')).toBeVisible();
-  await expect(other.locator('[data-home-personal]:visible')).toHaveCount(0);
-  await other.getByRole('button', { name: 'Show Home', exact: true }).click();
-  await expect(other.locator('[data-daily-board]')).toBeVisible(); await other.close();
-});
-test('H4 no-JavaScript and offline app handoffs retain owner semantics', async ({ browser, page }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false }); const nojs = await context.newPage();
-  await nojs.goto('http://127.0.0.1:4321/home/');
-  expect(await visibleModules(nojs)).toHaveLength(6); await expect(nojs.locator('[data-home-mode-controls]')).toBeHidden();
-  await expect(nojs.getByRole('link', { name: /^Capture a thought/ })).toHaveAttribute('href', 'https://thiepn.dev/notes/?capture=text');
-  await context.close(); await page.goto('/home/'); await page.context().setOffline(true);
-  await page.getByRole('radio', { name: 'Focus', exact: true }).check();
-  await expect(page.getByRole('link', { name: /^Continue in Library/ })).toHaveAttribute('href', 'https://thiepn.dev/library/saved/');
-  await expect(page.locator('[data-daily-board]')).not.toContainText(/saved successfully|cloud synced|due reviews|completed today/i);
-});
-for (const [width, theme, zoom] of [[320, 'light', false], [1440, 'dark', false], [320, 'dark', true]] as const) test(`H4 board accessibility ${width} ${theme} text200=${zoom}`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 }); await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' }); await page.goto('/home/');
-  if (zoom) await page.addStyleTag({ content: 'html { font-size:200%!important; }' });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-  await page.addScriptTag({ path: process.env.AXE_PATH || '/tmp/audit-tools/node_modules/axe-core/axe.min.js' });
-  const audit = () => page.evaluate(async () => (await (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) })));
-  expect(await audit()).toEqual([]);
-  await page.screenshot({ path: `.cache/h4-home-${width}-${theme}-${zoom}.png`, fullPage: false });
-  await page.getByRole('button', { name: 'Customize', exact: true }).click(); expect(await audit()).toEqual([]);
-  await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Hide Home', exact: true }).click(); expect(await audit()).toEqual([]);
+for(const width of [320,390,768,1024,1440,1920])for(const theme of ['light','dark'] as const)test(`adaptive Home reflow and accessibility ${width} ${theme}`,async({page})=>{
+ await page.setViewportSize({width,height:1024});await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);await page.addScriptTag({path:process.env.AXE_PATH||'/tmp/audit-tools/node_modules/axe-core/axe.min.js'});const audit=()=>page.evaluate(async()=>(await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map((v:any)=>({id:v.id,nodes:v.nodes.map((n:any)=>n.target)})));expect(await audit()).toEqual([]);await page.getByRole('button',{name:'Customize',exact:true}).click();expect(await audit()).toEqual([]);await page.getByRole('button',{name:'Cancel',exact:true}).click();
 });

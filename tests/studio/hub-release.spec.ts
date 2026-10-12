@@ -11,7 +11,8 @@ test('H8 built public profile stays gated despite a stale local identity', async
   await expect(page.locator('[data-auth-status]')).toHaveText('Hub sign-in is not enabled yet.');
   await expect(page.locator('[data-auth-login]')).toBeHidden();
   await expect(page.locator('[data-auth-logout]')).toBeHidden();
-  await expect(page.locator('[data-hub-item]')).toHaveCount(status.appCount);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await page.locator('[data-action=account]').first().click();
   await expect(page.getByRole('link', { name: 'Open Account', exact: true })).toHaveAttribute('href', 'https://account.thiepn.dev/');
   await page.goto('/inbox/'); await expect(page.getByText('Inbox is not connected yet', { exact: true })).toBeVisible();
   await expect(page.locator('[data-inbox-items]')).toBeEmpty();

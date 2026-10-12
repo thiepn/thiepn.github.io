@@ -1,0 +1,1219 @@
+import { hubIdentity } from './portal-auth';
+import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
+import { icon } from '../lib/workspace/icons';
+import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
+import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
+import { WIDGETS, specification } from '../lib/workspace/registry';
+import { preset, PRESETS } from '../lib/workspace/presets';
+import { place, ordered } from '../lib/workspace/layout';
+import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const button = (action: string, label: string, id = '', className = 'ws-button') => `<button type="button" class="${className}" data-action="${action}"${id ? ` data-id="${esc(id)}"` : ''}>${label}</button>`;
+const field = (label: string, name: string, value = '', type = 'text', extra = '') => `<label class="ws-field">${label}<input aria-label="${esc(label)}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/></label>`;
+const select = (label: string, name: string, options: string[][], value: string) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}">${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
+const area = (label: string, name: string, value: string, max = 10000) => `<label class="ws-field">${label}<textarea aria-label="${esc(label)}" name="${name}" maxlength="${max}">${esc(value)}</textarea></label>`;
+const root = document.querySelector<HTMLElement>('[data-workspace]');
+if (root)
+    void setup(root);
+async function setup(root: HTMLElement) {
+    if (location.search || location.hash) history.replaceState(null,'',location.pathname);
+    const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
+    const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
+    const view = root.dataset.view ?? 'home';
+    let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
+    let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
+    let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
+    let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
+    let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
+    let privacyHeld = false;
+    let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
+    let changeVersion = 0;
+    let queue = Promise.resolve();
+    const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
+    const form = $<HTMLFormElement>('[data-workspace-form]');
+    let submitForm: ((data: FormData) => Promise<void> | void) | null = null;
+    let observer: ResizeObserver | null = null;
+    const current = () => state!.workspaces.find(w => w.id === state!.active)!;
+    const pins = () => current().widgets.find(w => w.type === 'app-shortcuts')?.config.appIds as string[] ?? apps.slice(0, 6).map(a => a.id);
+    const today = () => dayKey(state!.preferences.timezone);
+    const dateLabel = (key: string, long = false) => new Date(key + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: long ? 'long' : 'short', day: 'numeric', month: long ? 'long' : 'short', ...(long ? { year: 'numeric' } : {}) });
+    const timeLabel = (at: string) => new Date(at).toLocaleTimeString(undefined, { timeZone: state!.preferences.timezone, hour: '2-digit', minute: '2-digit' });
+    function toast(message: string, undo = false) { clearTimeout(toastTimer); const el = $('[data-workspace-toast]'); el.innerHTML = `<span>${esc(message)}</span>${undo ? button('undo-content', 'Undo', '', '') : ''}`; el.hidden = false; toastTimer = setTimeout(() => { el.hidden = true; }, 8000); }
+    function notice(message: string, actions = '') { const el = $('[data-workspace-notice]'); el.innerHTML = `${esc(message)}${actions}`; el.hidden = !message; }
+    function saved(label?: string) { $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable'); }
+    function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    async function persist(backup = false) {
+        if (!state || locked)
+            return;
+        dirty = true;
+        saved('Saving on this device…');
+        if (!storageReady || !store) {
+            saved();
+            return;
+        }
+        const own = epoch, snapshot = clone(state), savedVersion = changeVersion;
+        try {
+            await store.save(snapshot, state.revision, backup);
+            if (own !== epoch)
+                return;
+            state.revision = snapshot.revision;
+            dirty = changeVersion !== savedVersion;
+            conflict = false;
+            saved();
+            channel?.postMessage({ key: store.key, revision: state.revision });
+        }
+        catch (err) {
+            if (own !== epoch)
+                return;
+            dirty = true;
+            conflict = err instanceof RevisionConflict;
+            saved();
+            notice(err instanceof RevisionConflict ? err.message : 'Changes are in memory but could not be saved. Export a backup or retry.', button('export', 'Export') + button('retry', 'Retry') + button('reload', 'Reload saved data'));
+        }
+    }
+    function mutate(change: (s: WorkspaceState) => void, message = '', undo = true, backup = false) {
+        const own = epoch;
+        queue = queue.then(async () => {
+            if (own !== epoch || !state || locked)
+                return;
+            const previous = clone(state);
+            change(state);
+            changeVersion++;
+            try {
+                parseState(JSON.stringify(state));
+            }
+            catch (e) {
+                state = previous;
+                throw e;
+            }
+            contentUndo = undo ? previous : null;
+            render();
+            await persist(backup);
+            if (message)
+                toast(dirty ? message.replace(/\bsaved.*$/i, 'updated') + ' · not saved. Export or retry.' : message, undo);
+        }).catch(e => toast(e instanceof Error ? e.message : 'Unable to apply this change.'));
+        return queue;
+    }
+    function openForm(title: string, html: string, onSubmit: (data: FormData) => Promise<void> | void, label = 'Save') {
+        const formEpoch = epoch;
+        submitForm = data => { if (epoch !== formEpoch) throw new Error('Your identity changed. Reopen this form.'); return onSubmit(data); };
+        $('[data-dialog-fields]').innerHTML = html;
+        $('[data-dialog-error]').textContent = '';
+        $('[data-dialog-submit]').textContent = label;
+        $('[data-dialog-submit]').hidden = false;
+        $('[data-dialog-submit]').removeAttribute('disabled');
+        $('[data-dialog-fields]').querySelectorAll<HTMLInputElement>('input').forEach(i => i.setCustomValidity(''));
+        $('#ws-dialog-title').textContent = title;
+        if (!dialog.open)
+            dialog.showModal();
+        ($('[data-dialog-fields]').querySelector<HTMLElement>('input:not([type=checkbox]),textarea,select,button') ?? $('[data-dialog-submit]')).focus();
+    }
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        if (!submitForm)
+            return;
+        const submit = $<HTMLButtonElement>('[data-dialog-submit]');
+        submit.disabled = true;
+        void Promise.resolve().then(() => submitForm!(new FormData(form))).then(() => dialog.close()).catch(e => { $('[data-dialog-error]').textContent = e instanceof Error ? e.message : 'Unable to save.'; }).finally(() => { submit.disabled = false; });
+    });
+    function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
+    function taskRows(tasks: Task[]) { return tasks.map(t => `<div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}"><input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/><button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : ''}${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}${t.time ? `<time>${esc(t.time)}</time>` : ''}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}</div>`).join(''); }
+    function calendarHTML() {
+        const first = month;
+        const offset = (new Date(first + 'T12:00:00Z').getUTCDay() + 6) % 7;
+        const count = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+        const dates = Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, i) => addDays(first, i - offset));
+        return `<div class="ws-calendar-heading"><strong>${new Date(first + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', year: 'numeric' })}</strong><div>${button('month-prev', icon('caret-left'), '', 'ws-icon-button')}${button('month-next', icon('caret-right'), '', 'ws-icon-button')}</div></div><div class="ws-month">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}${dates.map(d => `<button type="button" data-action="select-date" data-id="${d}" aria-label="${esc(dateLabel(d, true))}" aria-pressed="${d === selected}" class="${d === selected ? 'selected' : ''} ${d === today() ? 'today' : ''} ${d.slice(0, 7) !== first.slice(0, 7) ? 'outside' : ''} ${state!.events.some(e => eventRange(e)[0]! <= d && eventRange(e)[1]! >= d) || state!.tasks.some(t => t.due === d) ? 'has-event' : ''}">${Number(d.slice(8))}</button>`).join('')}</div>`;
+    }
+    function eventRange(e: CalendarEvent) { return e.allDay ? [e.date,e.endDate] : [dayKey(state!.preferences.timezone,new Date(e.start)),dayKey(state!.preferences.timezone,new Date(e.end))]; }
+    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
+    function renderPlanner() {
+        const el = $('[data-planner]');
+        if (!state || (privacyHeld || state.preferences.hidden)) {
+            el.innerHTML = empty('Your planner', state ? 'Personal content is hidden.' : 'Checking your workspace…');
+            return;
+        }
+        const tasks = state.tasks.filter(t => t.due === selected || (!t.due && selected === today())).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || a.time.localeCompare(b.time));
+        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)}</p></section>`;
+        el.querySelectorAll<HTMLElement>('[data-action=month-prev]').forEach(b => b.setAttribute('aria-label', 'Previous month'));
+        el.querySelectorAll<HTMLElement>('[data-action=month-next]').forEach(b => b.setAttribute('aria-label', 'Next month'));
+        el.querySelectorAll<HTMLElement>('[data-action=new-event]').forEach(b => b.setAttribute('aria-label', 'Add event'));
+    }
+    function selectedTrackers(w: Widget) { const ids = w.config.trackerIds; return Array.isArray(ids) ? state!.trackers.filter(t => ids.includes(t.id)).slice(0,32) : state!.trackers.slice(0,8); }
+    function trackersHTML(w: Widget) {
+        const trackers = selectedTrackers(w);
+        if (!trackers.length)
+            return empty('Make progress visible', 'Create a tracker for reading, focus, exercise or anything you want to measure.', 'new-tracker', 'Create a tracker');
+        const date = today();
+        if (w.view === 'table')
+            return `<table class="ws-tracker-table"><thead><tr><th>Tracker</th><th>Progress / goal</th><th><span class="ws-sr">Actions</span></th></tr></thead><tbody>${trackers.map(t => { const total = trackerTotal(state!, t.id, date); return `<tr><td>${esc(t.title)}<small class="ws-muted"> · ${t.cadence === 'daily' ? 'today' : 'this week'}</small></td><td>${formatTrackerValue(t,total)} / ${formatTrackerValue(t,t.goal)} ${t.kind==='duration'&&['min','minutes','minute'].includes(t.unit.toLowerCase())?'':esc(t.unit)}</td><td>${button('log-tracker', '+ Log', t.id, 'ws-text-button')}</td></tr>`; }).join('')}</tbody></table>`;
+        return trackers.map(t => { const total = trackerTotal(state!, t.id, date); return `<div class="ws-tracker-row"><div><strong>${esc(t.title)}</strong><small>${formatTrackerValue(t,total)} / ${formatTrackerValue(t,t.goal)} ${t.kind==='duration'&&['min','minutes','minute'].includes(t.unit.toLowerCase())?'':esc(t.unit)} · ${t.cadence === 'daily' ? 'today' : 'this week'}</small>${w.view !== 'compact' ? `<div class="ws-progress" role="meter" aria-label="${esc(t.title)} progress" aria-valuemin="0" aria-valuemax="${t.goal}" aria-valuenow="${Math.min(total, t.goal)}"><span style="width:${Math.min(total / t.goal * 100, 100)}%"></span></div>` : ''}</div>${button('log-tracker', '+ Log', t.id, 'ws-text-button')}</div>`; }).join('');
+    }
+    function historyHTML(w: Widget) {
+        const trackers = selectedTrackers(w);
+        if (!trackers.length)
+            return empty('Your week, at a glance', 'Log a tracker to build a picture of your week.', 'new-tracker', 'Create a tracker');
+        const days = weekDays(today());
+        if (w.view === 'matrix')
+            return `<table class="ws-matrix"><caption class="ws-sr">Tracker logs for the week beginning ${days[0]}</caption><thead><tr><th>Tracker</th>${days.map(d => `<th>${new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short' })}<br/>${Number(d.slice(8))}</th>`).join('')}</tr></thead><tbody>${trackers.map(t => `<tr><td>${esc(t.title)}</td>${days.map(d => { const value = state!.logs.filter(l => l.trackerId === t.id && l.date === d).reduce((n, l) => n + l.value, 0); return `<td class="${value ? 'logged' : ''}">${d > today() ? '—' : value || '0'}</td>`; }).join('')}</tr>`).join('')}</tbody></table>`;
+        const tracker = trackers.find(t => t.id === w.config.selectedTracker) ?? trackers[0]!;
+        const values = days.map(d => state!.logs.filter(l => l.trackerId === tracker.id && l.date === d).reduce((n, l) => n + l.value, 0));
+        const max = Math.max(1, ...values);
+        return `<div class="ws-history-head"><select aria-label="Tracker for chart" data-history-select="${esc(w.id)}">${trackers.map(t => `<option value="${esc(t.id)}" ${t.id === tracker.id ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select><small class="ws-muted">${esc(tracker.unit)} · this week</small></div><div class="ws-chart" role="img" aria-label="${esc(tracker.title)}: ${days.map((d, i) => `${dateLabel(d)} ${values[i]} ${tracker.unit}`).join(', ')}">${days.map((d, i) => `<div class="ws-chart-day"><b>${d > today() ? '—' : values[i]}</b><div class="ws-chart-bar"><span style="height:${values[i]! / max * 100}%"></span></div><span>${new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short' })}<br/>${Number(d.slice(8))}</span></div>`).join('')}</div>`;
+    }
+    function widgetBody(w: Widget) {
+        if (w.typeVersion > 1)
+            return empty('Newer widget version', 'This widget is preserved. Update the app to use it.');
+        switch (w.type) {
+            case 'app-shortcuts': {
+                const ids = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
+                const chosen = ids.map(id => apps.find(a => a.id === id)).filter((a): a is AppShortcut => !!a);
+                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
+            }
+            case 'continue': return state!.notes.length ? state!.notes.slice(0, 8).map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('') : empty('Pick up where you left off', 'Your captured notes will appear here. App resource connections are available separately.', 'capture', 'Capture a note');
+            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · local capture</small></form>`;
+            case 'tracker-summary': return trackersHTML(w);
+            case 'tracker-history': return historyHTML(w);
+            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
+            default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
+        }
+    }
+    function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
+    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Your workspace is local to this browser. Back up layouts, tasks, notes, events and tracker history together.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function fullContent() {
+        if (view === 'settings')
+            return settingsHTML();
+        if (view === 'tasks') {
+            const tasks = state!.tasks.filter(t => taskFilter === 'all' || taskFilter === 'completed' ? taskFilter === 'all' || !!t.completedAt : !t.completedAt && (taskFilter === 'upcoming' ? t.due > today() : t.due <= today())).sort((a, b) => a.due.localeCompare(b.due) || a.time.localeCompare(b.time));
+            return `<div class="ws-content-toolbar"><select aria-label="Task filter" data-task-filter>${['today', 'upcoming', 'all', 'completed'].map(v => `<option value="${v}" ${taskFilter === v ? 'selected' : ''}>${v === 'today' ? 'Today and overdue' : v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select>${button('new-task', '+ Add task')}</div><section class="ws-surface">${tasks.length ? taskRows(tasks) : empty('Your next step starts here', 'Create a task, add a due date and check it off when you finish.', 'new-task', 'Add a task')}</section>`;
+        }
+        if (view === 'calendar')
+            return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
+        if (view === 'trackers')
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
+        return renderGrid();
+    }
+    function render() {
+        observer?.disconnect();
+        if (!state)
+            return;
+        const focus = document.activeElement as HTMLElement | null;
+        const action = focus?.dataset.action, id = focus?.dataset.id, toggle = focus?.dataset.taskToggle;
+        root.dataset.rail = state.preferences.rail ? 'expanded' : 'collapsed';
+        root.dataset.density = state.preferences.density;
+        const rail = $('[data-action=rail]');
+        rail.setAttribute('aria-expanded', String(state.preferences.rail));
+        rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
+        $('[data-workspace-date]').textContent = dateLabel(today(), true);
+        $('#ws-title').textContent = (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : button('capture', '+ Capture');
+        if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
+            $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
+        else
+            $('[data-workspace-content]').innerHTML = fullContent();
+        renderPlanner();
+        root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
+        root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
+        root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
+        if (recoveryDraft && !editing)
+            notice('An interrupted layout edit is available.', button('resume-draft', 'Resume edit') + button('discard-draft', 'Discard edit'));
+        if (!dirty)
+            saved();
+        if (toggle)
+            root.querySelector<HTMLInputElement>(`[data-task-toggle="${CSS.escape(toggle)}"]`)?.focus();
+        else if (action)
+            root.querySelector<HTMLElement>(`[data-action="${CSS.escape(action)}"]${id ? `[data-id="${CSS.escape(id)}"]` : ''}`)?.focus();
+        if (view === 'home') {
+            observer ??= new ResizeObserver(() => {
+                const grid = $('[data-grid]');
+                if (!grid)
+                    return;
+                root.dataset.gridCompact = grid.clientWidth < 580 ? 'true' : 'false';
+            });
+            const grid = root.querySelector('[data-grid]');
+            if (grid)
+                observer.observe(grid);
+        }
+    }
+    function editTask(id = '') {
+        const t = state!.tasks.find(x => x.id === id);
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+            const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
+            if (!task.title)
+                throw new Error('Enter a task title.');
+            if (task.time && !task.due)
+                throw new Error('Choose a due date for a timed task.');
+            if (task.time)
+                zonedInstant(task.due, task.time, state!.preferences.timezone);
+            await mutate(s => {
+                const ix = s.tasks.findIndex(x => x.id === task.id);
+                if (ix >= 0)
+                    s.tasks[ix] = task;
+                else
+                    s.tasks.push(task);
+                activity(s, `${t ? 'Updated' : 'Added'} task: ${task.title}`, 'task');
+            }, 'Task saved on this device');
+        });
+    }
+    function editEvent(id = '') {
+        const ev = state!.events.find(e => e.id === id);
+        const zone = state!.preferences.timezone;
+        const localTime = (instant: string) => new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant));
+        openForm(ev ? 'Edit event' : 'Add an event', field('Event', 'title', ev?.title ?? '', 'text', 'required maxlength="240"') + `<label class="ws-choice"><input type="checkbox" name="allDay" ${ev?.allDay ? 'checked' : ''}/> All-day event</label><div class="ws-form-row">${field('Start date', 'date', ev && !ev.allDay ? dayKey(zone,new Date(ev.start)) : ev?.date ?? selected, 'date', 'required')}${field('End date', 'endDate', ev && !ev.allDay ? dayKey(zone,new Date(ev.end)) : ev?.endDate ?? selected, 'date', 'required')}</div><div class="ws-form-row">${field('Start time', 'start', ev && !ev.allDay ? localTime(ev.start) : '09:00', 'time')}${field('End time', 'end', ev && !ev.allDay ? localTime(ev.end) : '10:00', 'time')}</div><p class="ws-muted">Times use ${esc(zone)}. All-day end date is inclusive.</p>${ev ? button('delete-event', 'Delete event', ev.id) : ''}`, async (data) => {
+            const allDay = data.has('allDay'), date = String(data.get('date')), endDate = String(data.get('endDate'));
+            const event: CalendarEvent = { id: ev?.id ?? uid(), title: String(data.get('title')).trim(), date, endDate, allDay, zone, start: allDay ? '' : zonedInstant(date, String(data.get('start')), zone), end: allDay ? '' : zonedInstant(endDate, String(data.get('end')), zone) };
+            if (!event.title || endDate < date || (!allDay && Date.parse(event.end) <= Date.parse(event.start)))
+                throw new Error('Give the event a title and an end after its start.');
+            await mutate(s => {
+                const ix = s.events.findIndex(e => e.id === event.id);
+                if (ix >= 0)
+                    s.events[ix] = event;
+                else
+                    s.events.push(event);
+                activity(s, `${ev ? 'Updated' : 'Added'} event: ${event.title}`, 'event');
+            }, 'Event saved');
+        });
+    }
+    function editNote(id = '') {
+        const note = state!.notes.find(n => n.id === id);
+        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
+            const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
+            if (!next.title)
+                throw new Error('Enter a title.');
+            await mutate(s => {
+                const ix = s.notes.findIndex(n => n.id === next.id);
+                if (ix >= 0)
+                    s.notes[ix] = next;
+                else
+                    s.notes.unshift(next);
+                s.captureDraft = '';
+                activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
+            }, 'Note saved on this device');
+        });
+    }
+    function editTracker(id = '') {
+        const t = state!.trackers.find(t => t.id === id);
+        openForm(t ? 'Edit tracker' : 'Create a tracker', field('Name', 'title', t?.title ?? '', 'text', 'required maxlength="80"') + select('Track', 'kind', [['count', 'Count'], ['duration', 'Duration'], ['checklist', 'Checklist']], t?.kind ?? 'count') + field('Unit', 'unit', t?.unit ?? 'sessions', 'text', 'required maxlength="40"') + field('Goal', 'goal', String(t?.goal ?? 5), 'number', 'required min="0.01" max="100000" step="any"') + select('Period', 'cadence', [['daily', 'Daily'], ['weekly', 'Weekly']], t?.cadence ?? 'weekly') + (t ? button('delete-tracker', 'Delete tracker and its logs', t.id) : ''), async (data) => {
+            const tracker: Tracker = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), kind: data.get('kind') as Tracker['kind'], unit: String(data.get('unit')).trim(), goal: Number(data.get('goal')), cadence: data.get('cadence') as Tracker['cadence'] };
+            if (!tracker.title)
+                throw new Error('Enter a name.');
+            await mutate(s => {
+                const ix = s.trackers.findIndex(x => x.id === tracker.id);
+                if (ix >= 0)
+                    s.trackers[ix] = tracker;
+                else
+                    s.trackers.push(tracker);
+                activity(s, `${t ? 'Updated' : 'Created'} tracker: ${tracker.title}`, 'tracker');
+            }, 'Tracker saved');
+        });
+    }
+    function logTracker(id: string, logId = '') {
+        const log = state!.logs.find(l => l.id === logId);
+        const t = state!.trackers.find(t => t.id === id);
+        if (!t)
+            return;
+        openForm(`${log ? 'Edit' : 'Log'} ${t.title}`, field('Date', 'date', log?.date ?? today(), 'date', `required max="${today()}"`) + field(t.kind === 'duration' ? `Duration (${esc(t.unit)})` : `Amount (${esc(t.unit)})`, 'value', String(log?.value ?? 1), 'number', 'required min="0" max="100000" step="any"') + field('Note (optional)', 'note', log?.note ?? '', 'text', 'maxlength="500"'), async (data) => {
+            const value = Number(data.get('value')), date = String(data.get('date'));
+            if (t.kind === 'checklist' && value !== 0 && value !== 1)
+                throw new Error('Checklist entries are 0 or 1.');
+            await mutate(s => {
+                const record = { id: log?.id ?? uid(), trackerId: id, date, value, note: String(data.get('note')) };
+                const ix = s.logs.findIndex(l => l.id === record.id);
+                if (ix >= 0)
+                    s.logs[ix] = record;
+                else
+                    s.logs.push(record);
+                activity(s, `Logged ${value} ${t.unit}: ${t.title}`, 'tracker');
+            }, 'Tracker log saved');
+        });
+    }
+    function beginEdit() {
+        if (editing)
+            return;
+        editing = { workspaceId: current().id, baseRevision: current().revision, workspace: clone(current()) };
+        layoutUndo = [];
+        layoutRedo = [];
+        render();
+        void saveDraft();
+    }
+    async function saveDraft() {
+        if (!store || !storageReady || !editing)
+            return;
+        const own = epoch;
+        try {
+            await store.draft(clone(editing));
+        }
+        catch {
+            if (own === epoch)
+                notice('Layout changes are only in memory. Export your workspace before leaving.', button('export', 'Export'));
+        }
+    }
+    function changeLayout(change: (w: Workspace) => void) {
+        if (!editing)
+            beginEdit();
+        if (!editing)
+            return;
+        layoutUndo.push(clone(editing.workspace));
+        layoutUndo = layoutUndo.slice(-50);
+        layoutRedo = [];
+        change(editing.workspace);
+        render();
+        void saveDraft();
+    }
+    async function finishEdit() {
+        if (!editing || !state)
+            return;
+        const draft = clone(editing);
+        if (current().id !== draft.workspaceId || current().revision !== draft.baseRevision || conflict) {
+            notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
+            return;
+        }
+        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
+        if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
+            editing = null;
+            recoveryDraft = null;
+            await store?.draft(null);
+            if (!dirty) notice('');
+            render();
+        }
+    }
+    function configureWidget(id: string) {
+        let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
+        if (!w)
+            return;
+        if (!specification(w.type) || w.typeVersion > 1) {
+            openForm('Unavailable widget', '<p>This widget is preserved. You can remove it explicitly without deleting its underlying data.</p>' + button('remove-widget','Remove widget',id),()=>{}); $('[data-dialog-submit]').hidden=true; return;
+        }
+        if (!editing) {
+            beginEdit();
+            w = editing!.workspace.widgets.find(w => w.id === id)!;
+        }
+        const spec = specification(w.type)!;
+        let config = '';
+        if (w.type === 'app-shortcuts') {
+            const selectedIds = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
+            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="App name…"/></label><p class="ws-muted">Choose up to 12 useful shortcuts. The full catalogue stays in Apps.</p>${apps.map(a => `<label class="ws-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''}/>${icon(a.icon)} ${esc(a.title)}</label>`).join('')}`;
+        }
+        else if (w.type.startsWith('tracker')) {
+            const ids = w.config.trackerIds;
+            config = `<p class="ws-muted">Select trackers, or leave all unchecked to show all.</p>${state!.trackers.map(t => `<label class="ws-choice"><input type="checkbox" name="trackerIds" value="${esc(t.id)}" ${Array.isArray(ids) && ids.includes(t.id) ? 'checked' : ''}/>${esc(t.title)}</label>`).join('')}`;
+        }
+        const widgetId = w.id;
+        openForm('Configure ' + spec.title, field('Widget title', 'title', typeof w.config.title === 'string' ? w.config.title : spec.title, 'text', 'required maxlength="80"') + select('View', 'view', spec.views.map(v => [v, v[0]!.toUpperCase() + v.slice(1)]), w.view) + `<div class="ws-form-row">${field('Width (columns)', 'width', String(w.desktop.w), 'number', `required min="${spec.minWidth}" max="12"`)}${field('Height (8px steps)', 'height', String(w.desktop.h), 'number', `required min="${spec.minHeight}" max="120"`)}</div><div class="ws-form-row">${field('Column position', 'x', String(w.desktop.x), 'number', 'required min="0" max="8"')}${field('Row position', 'y', String(w.desktop.y), 'number', 'required min="0" max="10000"')}</div>${config}<div class="ws-content-toolbar">${button('move-widget-up', 'Move earlier', widgetId)}${button('move-widget-down', 'Move later', widgetId)}${button('remove-widget', 'Remove widget', widgetId)}</div>`, data => {
+            const ids = data.getAll('appIds').map(String);
+            if (!String(data.get('title')).trim()) throw new Error('Enter a widget title.');
+            if (ids.length > 12)
+                throw new Error('Choose at most 12 app shortcuts.');
+            changeLayout(ws => {
+                const item = ws.widgets.find(x => x.id === widgetId)!;
+                item.view = String(data.get('view'));
+                item.config.title = String(data.get('title')).trim();
+                if (item.type === 'app-shortcuts') item.config.useActions = data.has('useActions');
+                if (item.type === 'app-shortcuts')
+                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id))];
+                if (item.type.startsWith('tracker')) {
+                    const trackers = data.getAll('trackerIds').map(String);
+                    if (trackers.length)
+                        item.config.trackerIds = trackers;
+                    else
+                        delete item.config.trackerIds;
+                }
+                ws.widgets = place(ws.widgets, widgetId, { x: Number(data.get('x')), y: Number(data.get('y')), w: Number(data.get('width')), h: Number(data.get('height')) });
+            });
+        });
+    }
+    function widgetPicker() {
+        if (!editing)
+            beginEdit();
+        openForm('Add a widget', `<div class="ws-widget-library">${Object.entries(WIDGETS).map(([type, spec]) => button('add-type', `${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`, type, 'ws-widget-choice')).join('')}</div>`, () => { });
+        $('[data-dialog-submit]').hidden = true;
+    }
+    function createWorkspace(duplicateId = '') {
+        const original = state!.workspaces.find(w => w.id === duplicateId);
+        if (state!.workspaces.length >= 10) {
+            toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
+            return;
+        }
+        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
+            const title = String(data.get('title')).trim();
+            if (!title)
+                throw new Error('Choose a name.');
+            await mutate(s => {
+                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
+                if (original)
+                    workspace.widgets.forEach(w => w.id = uid());
+                s.workspaces.push(workspace);
+                s.active = workspace.id;
+            }, 'Workspace created');
+        });
+    }
+    function choosePreset() {
+        if (editing) {
+            toast('Finish or cancel your layout edit before applying a preset.');
+            return;
+        }
+        openForm('Choose a starter layout', select('Layout', 'preset', PRESETS.map((p, i) => [String(i), p]), '0') + select('Apply as', 'mode', [['new', 'Create a new workspace'], ['replace', 'Replace this layout (content stays)']], 'new') + '<p class="ws-muted">Tasks, events, notes and trackers are shared. Changing layout does not reset them.</p>', async (data) => {
+            const kind = Number(data.get('preset'));
+            await mutate(s => {
+                const next = preset(PRESETS[kind]!, pins(), kind);
+                if (data.get('mode') === 'new') {
+                    if (s.workspaces.length >= 10)
+                        throw new Error('The 10-workspace limit has been reached.');
+                    s.workspaces.push(next);
+                    s.active = next.id;
+                }
+                else {
+                    const index = s.workspaces.findIndex(w => w.id === s.active);
+                    next.id = s.active;
+                    next.title = s.workspaces[index]!.title;
+                    next.revision = s.workspaces[index]!.revision + 1;
+                    s.workspaces[index] = next;
+                }
+            }, 'Layout applied', true, true);
+        });
+    }
+    function confirmRemoval(title: string, detail: string, remove: (s: WorkspaceState) => void) { openForm(title, `<p>${esc(detail)}</p>`, async () => { await mutate(remove, 'Removed', true); }, 'Delete'); }
+    function exportWorkspace() {
+        if (!state) {
+            if (rawRecovery)
+                download(rawRecovery, 'thiepn-workspace-recovery.json');
+            return;
+        }
+        const data = clone(state);
+        if (editing) {
+            const ix = data.workspaces.findIndex(w => w.id === editing!.workspaceId);
+            if (ix >= 0)
+                data.workspaces[ix] = clone(editing.workspace);
+        }
+        data.legacyBackup = null;
+        download(JSON.stringify(data, null, 2), 'thiepn-workspace-' + today() + '.json');
+        toast('Backup exported. Keep it somewhere safe.');
+    }
+    function importWorkspace() {
+        openForm('Import workspace backup', `<label class="ws-field">Backup file<input type="file" name="file" accept="application/json,.json" required/></label>${select('Import mode', 'mode', [['new', 'Add imported workspaces and content'], ['replace', 'Replace local workspace (backup first)']], 'new')}<p class="ws-muted">The backup is imported into the current local identity. No account tokens or cloud data are imported. Existing records stay when adding workspaces.</p>`, async (data) => {
+            const file = data.get('file');
+            if (!(file instanceof File) || file.size > MAX_EXPORT_BYTES)
+                throw new Error('Choose a JSON backup smaller than 5 MB.');
+            const importEpoch = epoch;
+            const imported = parseState(await file.text());
+            if (epoch !== importEpoch) throw new Error('Your identity changed. Import into the intended workspace again.');
+            const replace = data.get('mode') === 'replace';
+            if (!replace && state!.workspaces.length + imported.workspaces.length > 10)
+                throw new Error('This import would exceed 10 workspaces.');
+            openImportPreview(imported, replace);
+        });
+    }
+    function openImportPreview(imported: WorkspaceState, replace: boolean) {
+        setTimeout(() => openForm('Review import', `<p>${replace ? 'Replace' : 'Add'} ${imported.workspaces.length} workspaces, ${imported.tasks.length} tasks, ${imported.notes.length} notes, ${imported.events.length} events and ${imported.trackers.length} trackers.</p><p class="ws-muted">${replace ? 'A replacement backup will be kept. You can restore it from Settings.' : 'Imported records receive new IDs so existing content is not overwritten.'}</p>`, async () => {
+            await mutate(s => {
+                if (replace) {
+                    const revision = s.revision;
+                    Object.assign(s, clone(imported), { revision });
+                    return;
+                }
+                const copy = clone(imported), ids = new Map<string, string>();
+            copy.trackers.forEach(t => ids.set(t.id,uid()));
+                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
+                    for (const record of list) {
+                        const id = uid();
+                        ids.set(record.id, id);
+                        record.id = id;
+                    }
+                for (const w of copy.workspaces) {
+                    w.widgets.forEach(widget => {
+                        widget.id = uid();
+                        if (Array.isArray(widget.config.trackerIds))
+                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
+                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
+                    });
+                }
+                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
+                s.workspaces.push(...copy.workspaces);
+                s.tasks.push(...copy.tasks);
+                s.notes.push(...copy.notes);
+                s.events.push(...copy.events);
+                s.trackers.push(...copy.trackers);
+                s.logs.push(...copy.logs);
+                s.activity.push(...copy.activity);
+                s.activity = s.activity.slice(0, 500);
+            }, 'Backup imported', true, true);
+        }, replace ? 'Replace local data' : 'Add imported data'), 0);
+    }
+    function renderSearch() {
+        const rows = $('[data-search-results]');
+        if (!state || (privacyHeld || state.preferences.hidden)) {
+            rows.innerHTML = apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)).map(a => `<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`).join('');
+            return;
+        }
+        const found: string[] = [];
+        for (const a of apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)))
+            found.push(`<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`);
+        for (const t of state.tasks.filter(t => (t.title + ' ' + t.notes).toLocaleLowerCase().includes(searchQuery)))
+            found.push(button('search-task', `${icon('check-square')}<div>${esc(t.title)}<small>Local task</small></div>`, t.id, 'ws-search-result'));
+        for (const n of state.notes.filter(n => (n.title + ' ' + n.body).toLocaleLowerCase().includes(searchQuery)))
+            found.push(button('search-note', `${icon('notebook')}<div>${esc(n.title)}<small>Local note</small></div>`, n.id, 'ws-search-result'));
+        rows.innerHTML = found.slice(0, 40).join('') || empty('Nothing found', 'Try an app name, task or phrase from a local note.');
+    }
+    function openSearch() { const search = $<HTMLDialogElement>('[data-search-dialog]'); searchQuery = ''; $('#workspace-search').textContent = ''; $<HTMLInputElement>('#workspace-search').value = ''; renderSearch(); search.showModal(); $('#workspace-search').focus(); }
+    root.addEventListener('click', event => {
+        const target = (event.target as HTMLElement).closest<HTMLElement>('[data-action],[data-workspace-id]');
+        if (!target)
+            return;
+        const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
+        if (action === 'close-dialog') {
+            dialog.close();
+            return;
+        }
+        if (action === 'close-search') {
+            $<HTMLDialogElement>('[data-search-dialog]').close();
+            return;
+        }
+        if (action === 'close-account') {
+            $<HTMLDialogElement>('[data-account-dialog]').close();
+            return;
+        }
+        if (action === 'account') {
+            $<HTMLDialogElement>('[data-account-dialog]').showModal();
+            return;
+        }
+        if (action === 'search') {
+            openSearch();
+            return;
+        }
+        if (action === 'export') {
+            exportWorkspace();
+            return;
+        }
+        if (!state || locked) {
+            toast('Your saved workspace is not available. App links remain usable.');
+            return;
+        }
+        if (target.dataset.workspaceId) {
+            if (editing) {
+                toast('Finish or cancel the layout edit before switching workspaces.');
+                return;
+            }
+            void mutate(s => s.active = target.dataset.workspaceId!, '', false);
+            return;
+        }
+        switch (action) {
+            case 'rail':
+                void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
+                break;
+            case 'new-task':
+                editTask();
+                break;
+            case 'edit-task':
+                editTask(id);
+                break;
+            case 'delete-task': {
+                const t = state.tasks.find(t => t.id === id);
+                if (t)
+                    confirmRemoval('Delete task?', t.title, s => { s.tasks = s.tasks.filter(t => t.id !== id); });
+                break;
+            }
+            case 'new-event':
+                editEvent();
+                break;
+            case 'edit-event':
+                editEvent(id);
+                break;
+            case 'delete-event': {
+                const e = state.events.find(e => e.id === id);
+                if (e)
+                    confirmRemoval('Delete event?', e.title, s => { s.events = s.events.filter(e => e.id !== id); });
+                break;
+            }
+            case 'capture':
+                editNote();
+                break;
+            case 'edit-note':
+                editNote(id);
+                break;
+            case 'delete-note': {
+                const n = state.notes.find(n => n.id === id);
+                if (n)
+                    confirmRemoval('Delete note?', n.title, s => { s.notes = s.notes.filter(n => n.id !== id); });
+                break;
+            }
+            case 'new-tracker':
+                editTracker();
+                break;
+            case 'edit-tracker':
+                editTracker(id);
+                break;
+            case 'delete-tracker': {
+                const t = state.trackers.find(t => t.id === id);
+                if (t)
+                    confirmRemoval('Delete tracker and logs?', `${t.title} and its recorded history will be removed.`, s => { s.trackers = s.trackers.filter(t => t.id !== id); s.logs = s.logs.filter(l => l.trackerId !== id); });
+                break;
+            }
+            case 'log-tracker':
+                logTracker(id);
+                break;
+            case 'edit-log': {
+                const l = state.logs.find(l => l.id === id);
+                if (l)
+                    logTracker(l.trackerId, id);
+                break;
+            }
+            case 'delete-log':
+                void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
+                break;
+            case 'select-date':
+                selected = id;
+                month = id.slice(0, 7) + '-01';
+                render();
+                break;
+            case 'today':
+                selected = today();
+                month = selected.slice(0, 7) + '-01';
+                render();
+                break;
+            case 'month-next':
+            case 'month-prev': {
+                const d = new Date(month + 'T12:00:00Z');
+                d.setUTCMonth(d.getUTCMonth() + (action === 'month-next' ? 1 : -1));
+                month = d.toISOString().slice(0, 10);
+                render();
+                break;
+            }
+            case 'customize':
+                beginEdit();
+                break;
+            case 'done-layout':
+                void finishEdit();
+                break;
+            case 'cancel-layout':
+                editing = null;
+                layoutUndo = [];
+                layoutRedo = [];
+                recoveryDraft = null;
+                void store?.draft(null);
+                notice('');
+                render();
+                break;
+            case 'undo-layout':
+                if (editing && layoutUndo.length) {
+                    layoutRedo.push(clone(editing.workspace));
+                    editing.workspace = layoutUndo.pop()!;
+                    render();
+                    void saveDraft();
+                }
+                break;
+            case 'redo-layout':
+                if (editing && layoutRedo.length) {
+                    layoutUndo.push(clone(editing.workspace));
+                    editing.workspace = layoutRedo.pop()!;
+                    render();
+                    void saveDraft();
+                }
+                break;
+            case 'add-widget':
+                widgetPicker();
+                break;
+            case 'add-type': {
+                const spec = specification(id);
+                if (!spec)
+                    return;
+                if (editing!.workspace.widgets.length >= 32) {
+                    toast('This workspace already has 32 widgets.');
+                    return;
+                }
+                changeLayout(w => { w.widgets.push({ id: uid(), type: id, typeVersion: 1, view: spec.views[0], config: id === 'app-shortcuts' ? { appIds: pins() } : {}, desktop: { x: 0, y: Math.max(0, ...w.widgets.map(x => x.desktop.y + x.desktop.h)), w: spec.width, h: spec.height }, order: w.widgets.length }); });
+                dialog.close();
+                break;
+            }
+            case 'configure-widget':
+                configureWidget(id);
+                break;
+            case 'remove-widget':
+                changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
+                dialog.close();
+                toast('Widget removed; its content is kept.');
+                break;
+            case 'move-widget-up':
+            case 'move-widget-down':
+                changeLayout(w => {
+                    const list = ordered(w.widgets);
+                    const i = list.findIndex(x => x.id === id), j = i + (action === 'move-widget-up' ? -1 : 1);
+                    if (j < 0 || j >= list.length)
+                        return;
+                    [list[i]!.order, list[j]!.order] = [list[j]!.order, list[i]!.order];
+                    const a = clone(list[i]!.desktop), b = clone(list[j]!.desktop);
+                    list[i]!.desktop.x = b.x;
+                    list[i]!.desktop.y = b.y;
+                    list[j]!.desktop.x = a.x;
+                    list[j]!.desktop.y = a.y;
+                    w.widgets = place(w.widgets, id, list[i]!.desktop);
+                });
+                dialog.close();
+                break;
+            case 'switch-workspace':
+                if (editing) { toast('Finish or cancel editing before switching workspaces.'); break; }
+                openForm('Choose workspace', select('Workspace','workspace',state.workspaces.map(w=>[w.id,w.title]),state.active) + button('new-workspace','New workspace'), async data => { await mutate(s=>s.active=String(data.get('workspace')),'',false); });
+                break;
+            case 'presets':
+                choosePreset();
+                break;
+            case 'new-workspace':
+                createWorkspace();
+                break;
+            case 'duplicate-workspace':
+                createWorkspace(id);
+                break;
+            case 'rename-workspace': {
+                const w = state.workspaces.find(w => w.id === id);
+                if (w)
+                    openForm('Rename workspace', field('Name', 'title', w.title, 'text', 'required maxlength="80"'), async (data) => {
+                        const title = String(data.get('title')).trim();
+                        if (!title)
+                            throw new Error('Choose a name.');
+                        await mutate(s => { s.workspaces.find(w => w.id === id)!.title = title; }, 'Workspace renamed');
+                    });
+                break;
+            }
+            case 'delete-workspace':
+                if (state.workspaces.length === 1) {
+                    toast('Keep at least one workspace. You can apply the blank layout instead.');
+                    break;
+                }
+                confirmRemoval('Delete this workspace?', 'Only its layout will be removed. Tasks, notes, events and trackers stay.', s => {
+                    s.workspaces = s.workspaces.filter(w => w.id !== id);
+                    if (s.active === id)
+                        s.active = s.workspaces[0]!.id;
+                });
+                break;
+            case 'undo-content':
+                if (contentUndo) {
+                    const prior = clone(contentUndo);
+                    contentUndo = null;
+                    void mutate(s => { const revision = s.revision; Object.assign(s, prior, { revision }); }, 'Change undone', false);
+                }
+                break;
+            case 'privacy':
+                void mutate(s => { s.preferences.hidden = !(privacyHeld || s.preferences.hidden); privacyHeld = s.preferences.hidden; }, '', false);
+                break;
+            case 'timezone':
+                openForm('Planner timezone', field('IANA timezone', 'zone', state.preferences.timezone, 'text', 'required') + '<p class="ws-muted">For example Europe/Berlin, America/New_York or Asia/Seoul.</p>', async (data) => {
+                    const zone = String(data.get('zone'));
+                    try {
+                        new Intl.DateTimeFormat('en', { timeZone: zone });
+                    }
+                    catch {
+                        throw new Error('Enter a valid IANA timezone.');
+                    }
+                    await mutate(s => s.preferences.timezone = zone, 'Timezone updated');
+                    selected = today();
+                    month = selected.slice(0, 7) + '-01';
+                    render();
+                });
+                break;
+            case 'import':
+                importWorkspace();
+                break;
+            case 'restore':
+                void store?.backup().then(backup => {
+                    if (!backup) {
+                        toast('No replacement backup is available.');
+                        return;
+                    }
+                    confirmRemoval('Restore replacement backup?', 'The current local data will be replaced by your last saved replacement backup.', s => { const revision = s.revision; Object.assign(s, backup, { revision }); });
+                }).catch(() => toast('Backup storage is unavailable.'));
+                break;
+            case 'retry':
+                queue = queue.then(async () => {
+                    if (!store)
+                        return;
+                    if (!storageReady) {
+                        await store.open();
+                        storageReady = true;
+                        const existing = await store.load();
+                        if (existing && existing.revision !== state!.revision) {
+                            conflict = true;
+                            throw new RevisionConflict();
+                        }
+                    }
+                    await persist();
+                    if (!dirty) {
+                        notice('');
+                        render();
+                    }
+                }).catch(e => notice(e instanceof Error ? e.message : 'Could not reopen storage.', button('export', 'Export')));
+                break;
+            case 'reload':
+                if (dirty || editing) {
+                    openForm('Reload saved data?', '<p>Unsaved content in this tab will be replaced. Export it first. Layout edit drafts remain available.</p>' + button('export', 'Export current changes'), () => reloadSaved(), 'Reload saved data');
+                }
+                else
+                    void reloadSaved();
+                break;
+            case 'resume-draft':
+                if (recoveryDraft) {
+                    const draft = clone(recoveryDraft);
+                    void mutate(s => s.active = draft.workspaceId, '', false).then(() => { editing = draft; recoveryDraft = null; notice(''); render(); });
+                }
+                break;
+            case 'discard-draft':
+                recoveryDraft = null;
+                void store?.draft(null);
+                notice('');
+                break;
+            case 'save-draft-as':
+                if (editing && state.workspaces.length < 10) {
+                    const w = clone(editing.workspace);
+                    w.id = uid();
+                    w.title += ' recovered';
+                    w.revision = 0;
+                    w.widgets.forEach(x => x.id = uid());
+                    editing = null;
+                    conflict = false;
+                    void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null));
+                }
+                break;
+            case 'search-task':
+                $<HTMLDialogElement>('[data-search-dialog]').close();
+                editTask(id);
+                break;
+            case 'search-note':
+                $<HTMLDialogElement>('[data-search-dialog]').close();
+                editNote(id);
+                break;
+        }
+    });
+    root.addEventListener('change', event => {
+        const el = event.target as HTMLInputElement;
+        if (!state || locked)
+            return;
+        if (el.dataset.taskToggle) {
+            const id = el.dataset.taskToggle;
+            void mutate(s => {
+                const t = s.tasks.find(t => t.id === id);
+                if (t) {
+                    t.completedAt = el.checked ? stamp() : null;
+                    activity(s, `${t.completedAt ? 'Completed' : 'Reopened'} task: ${t.title}`, 'task');
+                }
+            }, el.checked ? 'Task completed' : 'Task reopened');
+        }
+        if (el.dataset.taskFilter !== undefined) {
+            taskFilter = el.value;
+            render();
+        }
+        if (el.dataset.preference === 'density')
+            void mutate(s => s.preferences.density = el.value as 'compact' | 'comfortable', '', false);
+        if (el.dataset.preference === 'theme') {
+            const theme = el.value;
+            document.documentElement.dataset.themePreference = theme;
+            document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : theme;
+            try {
+                localStorage.setItem('thiepn:index-theme', theme);
+            }
+            catch {
+                toast('Theme changed for this session; browser preference storage is unavailable.');
+            }
+        }
+        if (el.dataset.historySelect) {
+            const id = el.dataset.historySelect, value = el.value;
+            if (editing)
+                changeLayout(w => w.widgets.find(x => x.id === id)!.config.selectedTracker = value);
+            else
+                void mutate(s => { s.workspaces.find(w => w.id === s.active)!.widgets.find(w => w.id === id)!.config.selectedTracker = value; }, '', false);
+        }
+    });
+    root.addEventListener('input', event => {
+        const el = event.target as HTMLInputElement;
+        if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
+        if (el.id === 'workspace-search') {
+            searchQuery = el.value.toLocaleLowerCase().trim();
+            renderSearch();
+        }
+        if (el.hasAttribute('data-capture-draft') && state) {
+            state.captureDraft = el.value;
+            changeVersion++;
+            contentUndo = null;
+            dirty = true;
+            saved('Draft not saved yet…');
+            clearTimeout(captureTimer);
+            const own = epoch;
+            captureTimer = setTimeout(() => {
+                if (own === epoch)
+                    queue = queue.then(() => persist());
+            }, 500);
+        }
+    });
+    root.addEventListener('submit', event => {
+        const capture = (event.target as HTMLElement).closest<HTMLFormElement>('[data-capture-form]');
+        if (!capture || !state)
+            return;
+        event.preventDefault();
+        clearTimeout(captureTimer);
+        const data = new FormData(capture), body = String(data.get('body')).trim(), kind = data.get('kind');
+        if (!body)
+            return;
+        if (kind === 'task' && body.length > 240) {
+            toast('Task titles can contain up to 240 characters. Capture longer text as a note.');
+            return;
+        }
+        void mutate(s => {
+            if (kind === 'task')
+                s.tasks.push({ id: uid(), title: body, notes: '', due: today(), time: '', priority: 'none', completedAt: null });
+            else
+                s.notes.unshift({ id: uid(), title: body.split('\n')[0]!.slice(0, 80), body, updatedAt: stamp() });
+            s.captureDraft = '';
+            activity(s, `Captured ${kind}: ${body.slice(0, 80)}`, String(kind));
+        }, `${kind === 'task' ? 'Task' : 'Note'} captured`);
+    });
+    root.addEventListener('keydown', event => {
+        const target = event.target as HTMLElement;
+        if (target.matches('[data-drag],[data-resize]') && editing && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+            event.preventDefault();
+            const id = target.dataset.drag ?? target.dataset.resize!;
+            const item = editing.workspace.widgets.find(w => w.id === id)!;
+            const r = clone(item.desktop);
+            if (target.dataset.resize) {
+                if (event.key === 'ArrowLeft')
+                    r.w--;
+                if (event.key === 'ArrowRight')
+                    r.w++;
+                if (event.key === 'ArrowUp')
+                    r.h -= 4;
+                if (event.key === 'ArrowDown')
+                    r.h += 4;
+            }
+            else {
+                if (event.key === 'ArrowLeft')
+                    r.x--;
+                if (event.key === 'ArrowRight')
+                    r.x++;
+                if (event.key === 'ArrowUp')
+                    r.y -= 4;
+                if (event.key === 'ArrowDown')
+                    r.y += 4;
+            }
+            changeLayout(w => w.widgets = place(w.widgets, id, r));
+            root.querySelector<HTMLElement>(`[${target.dataset.drag ? 'data-drag' : 'data-resize'}="${CSS.escape(id)}"]`)?.focus();
+            toast('Widget position updated. Choose Done to save.');
+        }
+        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowDown') {
+            event.preventDefault();
+            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
+            const index = results.indexOf(target);
+            results[(index + 1) % results.length]?.focus();
+        }
+        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowUp') {
+            event.preventDefault();
+            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
+            const index = results.indexOf(target);
+            if (index <= 0)
+                $('#workspace-search').focus();
+            else
+                results[index - 1]?.focus();
+        }
+    });
+    window.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !(event.target as HTMLElement).matches('textarea,[contenteditable=true]')) {
+            event.preventDefault();
+            if (!$<HTMLDialogElement>('[data-search-dialog]').open)
+                openSearch();
+        }
+    });
+    root.addEventListener('pointerdown', event => {
+        const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-drag],[data-resize]');
+        if (!handle || !editing || event.button !== 0)
+            return;
+        event.preventDefault();
+        const id = handle.dataset.drag ?? handle.dataset.resize!;
+        const item = editing.workspace.widgets.find(w => w.id === id)!;
+        const initial = clone(item.desktop);
+        const grid = $('[data-grid]'), cell = handle.closest<HTMLElement>('[data-widget-id]')!;
+        const column = (grid.clientWidth + 16) / 12, startX = event.clientX, startY = event.clientY;
+        let rect = clone(initial), moved = false;
+        cell.classList.add('ws-dragging');
+        function move(e: PointerEvent) {
+            moved ||= Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 5;
+            const dx = Math.round((e.clientX - startX) / column), dy = Math.round((e.clientY - startY) / 8);
+            rect = handle!.dataset.resize ? { ...initial, w: Math.max(specification(item.type)?.minWidth ?? 4, Math.min(12 - initial.x, initial.w + dx)), h: Math.max(specification(item.type)?.minHeight ?? 16, Math.min(120, initial.h + dy)) } : { ...initial, x: Math.max(0, Math.min(12 - initial.w, initial.x + dx)), y: Math.max(0, initial.y + dy) };
+            if (root.dataset.gridCompact !== 'true') {
+                cell.style.setProperty('--col', String(rect.x + 1));
+                cell.style.setProperty('--span', String(rect.w));
+                cell.style.setProperty('--row', String(rect.y + 1));
+                cell.style.setProperty('--height', String(rect.h));
+            }
+        }
+        function end(e: PointerEvent) {
+            document.removeEventListener('pointermove', move);
+            document.removeEventListener('pointerup', end);
+            document.removeEventListener('pointercancel', cancel);
+            if (moved) {
+                if (root.dataset.gridCompact === 'true' && !handle!.dataset.resize) {
+                    changeLayout(w => { const list = ordered(w.widgets); const from = list.findIndex(x => x.id === id), to = Math.max(0, Math.min(list.length - 1, from + Math.round((e.clientY - startY) / 180))); const movedItem = list.splice(from, 1)[0]!; list.splice(to, 0, movedItem); list.forEach((x, i) => x.order = i); });
+                }
+                else
+                    changeLayout(w => w.widgets = place(w.widgets, id, rect));
+            }
+            else
+                render();
+        }
+        function cancel() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', end); document.removeEventListener('pointercancel', cancel); render(); }
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', end);
+        document.addEventListener('pointercancel', cancel);
+    });
+    async function readDraft(source: WorkspaceStore): Promise<EditDraft|null> {
+        const value = await source.draft();
+        if (!value || !state) return null;
+        try {
+            if (!Number.isSafeInteger(value.baseRevision) || value.baseRevision < 0 || !value.workspace || value.workspace.id !== value.workspaceId) return null;
+            const candidate=clone(state), index=candidate.workspaces.findIndex(w=>w.id===value.workspaceId);
+            if(index<0)return null;
+            candidate.workspaces[index]=value.workspace;
+            parseState(JSON.stringify(candidate));
+            return value;
+        } catch { return null; } // Preserve the original draft; committed records are still usable.
+    }
+    async function reloadSaved() {
+        await queue;
+        const latest = await store?.load();
+        if (latest) {
+            privacyHeld ||= latest.preferences.hidden;
+            state = latest;
+            dirty = false;
+            conflict = false;
+            editing = null;
+            recoveryDraft = await readDraft(store!);
+            notice('');
+            render();
+        }
+    }
+    async function loadIdentity(identity: HubIdentity) {
+        const own = ++epoch;
+        clearTimeout(captureTimer);
+        editing = null;
+        recoveryDraft = null;
+        contentUndo = null;
+        store?.close();
+        channel?.close();
+        store = null;
+        channel = null;
+        state = null;
+        dirty = false;
+        locked = false;
+        conflict = false;
+        storageReady = false;
+        rawRecovery = '';
+        dialog.close();
+        $<HTMLDialogElement>('[data-search-dialog]').close();
+        $<HTMLDialogElement>('[data-account-dialog]').close();
+        $('[data-workspace-list]').innerHTML = '';
+        $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
+        $('[data-planner]').innerHTML = '';
+        $('[data-toolbar]').innerHTML = '';
+        $('#ws-title').textContent = 'Personal workspace';
+        $('[data-workspace-toast]').hidden = true;
+        saved('Checking identity…');
+        $('[data-profile-label]').textContent = identity.status === 'signed-in' ? identity.label : 'This device';
+        if (identity.status === 'checking' || identity.status === 'unavailable') {
+            notice('Personal content is hidden until your Hub identity can be confirmed. App links are available in Apps.');
+            return;
+        }
+        const owner = identity.status === 'signed-in' ? identity.id : null;
+        if (owner && !validAccountId(owner))
+            return;
+        let legacy: string | null = null;
+        try {
+            legacy = localStorage.getItem(preferenceKey(owner));
+        }
+        catch { /* Local storage denied: IndexedDB may still be usable. */ }
+        const nextStore = new WorkspaceStore(namespace(owner));
+        store = nextStore;
+        let loaded: WorkspaceState | null = null;
+        try {
+            await nextStore.open();
+            if (own !== epoch) {
+                nextStore.close();
+                return;
+            }
+            storageReady = true;
+            rawRecovery = await nextStore.raw();
+            loaded = await nextStore.load();
+        }
+        catch (e) {
+            if (own !== epoch)
+                return;
+            if (rawRecovery) {
+                locked = true;
+                notice(e instanceof Error ? e.message : 'Saved workspace cannot be opened.', button('export', 'Export recovery file'));
+                saved('Saved record left untouched');
+                return;
+            }
+            storageReady = false;
+            notice('Browser storage is unavailable. Work in this tab and export your data before leaving.', button('export', 'Export'));
+        }
+        if (own !== epoch)
+            return;
+        state = loaded ?? initialState(apps.map(a => a.id), legacy);
+        privacyHeld = state.preferences.hidden;
+        selected = today();
+        month = selected.slice(0, 7) + '-01';
+        if (storageReady) {
+            try {
+                recoveryDraft = await readDraft(nextStore);
+                if (recoveryDraft && !state.workspaces.some(w => w.id === recoveryDraft!.workspaceId))
+                    recoveryDraft = null;
+            }
+            catch {
+                recoveryDraft = null;
+            }
+            if (!loaded)
+                await persist();
+        }
+        if (own !== epoch)
+            return;
+        if (typeof BroadcastChannel !== 'undefined') {
+            channel = new BroadcastChannel('thiepn-adaptive-workspace-updates');
+            channel.onmessage = event => {
+                if (event.data?.key !== nextStore.key || event.data.revision === state?.revision)
+                    return;
+                if (editing || dirty) {
+                    conflict = true;
+                    notice('Another tab changed this workspace. Your local edits are kept.', button('export', 'Export') + button('reload', 'Reload saved data'));
+                }
+                else
+                    void reloadSaved().catch(() => notice('Could not refresh changes from another tab.'));
+            };
+        }
+        render();
+        if (!storageReady)
+            saved();
+        else if (!recoveryDraft)
+            notice('');
+    }
+    window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
+    window.addEventListener('pageshow', event => {
+        if (state && !dirty && !editing)
+            void reloadSaved();
+    });
+    window.addEventListener('beforeunload', event => {
+        if (dirty) {
+            event.preventDefault();
+        }
+    });
+    matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e => {
+        if (document.documentElement.dataset.themePreference === 'system')
+            document.documentElement.dataset.theme = e.matches ? 'dark' : 'light';
+    });
+    let lastDay = selected;
+    setInterval(() => { if (!state)
+        return; const now = today(); if (now !== lastDay) {
+        if (selected === lastDay) {
+            selected = now;
+            month = now.slice(0, 7) + '-01';
+        }
+        lastDay = now;
+        render();
+    } }, 30000);
+    await loadIdentity(hubIdentity);
+    if ('serviceWorker' in navigator && !import.meta.env.DEV) { void navigator.serviceWorker.register('/home/workspace-sw.js',{scope:'/home/'}).catch(()=>{ /* Local records still work; do not claim offline shell availability. */ }); }
+
+}

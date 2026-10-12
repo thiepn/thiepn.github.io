@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import { DEFAULT_HUB_PINS, HUB_PREFERENCES_KEY } from '../../src/lib/hub-preferences';
 const hub = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
 
 for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', 'dark'] as const) {
@@ -13,63 +12,39 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-      await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
-      await expect(page.locator('.site-brand')).toHaveText('THIEPN');
-      if (width < 640) await expect(page.getByRole('navigation', { name: 'Portal navigation' })).toBeVisible();
+      if (route === '/home/') {
+        await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+        if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
+      } else {
+        await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
+        await expect(page.locator('.site-brand')).toHaveText('THIEPN');
+        if (width < 640) await expect(page.getByRole('navigation', { name: 'Portal navigation' })).toBeVisible();
+      }
     }
     expect(errors).toEqual([]);
   });
 }
 
-test('Home starter pins, keyboard reorder, persistence and local storage isolation', async ({ page }) => {
-  await page.addInitScript(() => { localStorage.setItem('notes:sentinel', 'keep'); });
-  await page.goto('/home/');
-  expect(await page.locator('[data-pin-list] [data-pin-slug]').evaluateAll(nodes => nodes.map(n => (n as HTMLElement).dataset.pinSlug))).toEqual(DEFAULT_HUB_PINS);
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.getByRole('button', { name: 'Move Notes down', exact: true }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('[data-pin-list] [data-pin-slug]').first()).toHaveAttribute('data-pin-slug', 'thiepn-library');
-  await expect(page.getByRole('button', { name: 'Move Notes down', exact: true })).toBeFocused();
-  await page.locator('[data-pin-choice][value="canvas"]').check();
-  await page.getByRole('radio', { name: 'Comfortable' }).check();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Customize', exact: true })).toBeFocused();
-  await page.reload();
-  await expect(page.locator('[data-portal-home]')).toHaveAttribute('data-density', 'comfortable');
-  await expect(page.locator('[data-pin-list] [data-pin-slug="canvas"]')).toHaveCount(1);
-  expect(await page.evaluate(() => localStorage.getItem('notes:sentinel'))).toBe('keep');
-  await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
-  expect(await page.locator('[data-hub-slug]').evaluateAll(nodes => nodes.map(n => (n as HTMLElement).dataset.hubSlug))).toEqual(hub.projects.map((p: any) => p.slug));
+test('legacy pins migrate once, customization persists and the Apps catalogue stays separate', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
+  await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
+  await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
+  await page.getByLabel('Widget title').fill('My tools');await page.locator('input[name=appIds][value=tiny-tools]').check();
+  await page.locator('[data-dialog-submit]').click();await page.getByRole('button',{name:'Done',exact:true}).click();
+  await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(3);
+  expect(await page.evaluate(()=>localStorage.getItem('notes:sentinel'))).toBe('keep');
+  expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
+  await page.goto('/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
-
-test('Invalid stored preferences recover; zero pins remain intentionally empty', async ({ page }) => {
-  await page.goto('/home/');
-  await page.evaluate(key => localStorage.setItem(key, '{invalid'), HUB_PREFERENCES_KEY);
-  await page.reload();
-  await expect(page.locator('[data-pin-list] a')).toHaveCount(8);
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  while (await page.locator('[data-pin-choice]:checked').count()) await page.locator('[data-pin-choice]:checked').first().uncheck();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(page.locator('[data-pin-empty]')).toBeVisible();
-  expect(JSON.parse(await page.evaluate(key => localStorage.getItem(key)!, HUB_PREFERENCES_KEY)).pins).toEqual([]);
-  await page.reload();
-  await expect(page.locator('[data-pin-empty]')).toBeVisible();
-});
-
-test('Blocked storage still supports session customization and theme', async ({ page }) => {
-  await page.addInitScript(() => {
-    Storage.prototype.getItem = () => { throw new DOMException('Blocked', 'SecurityError'); };
-    Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'QuotaExceededError'); };
-    Storage.prototype.removeItem = () => { throw new DOMException('Blocked', 'SecurityError'); };
-  });
-  await page.goto('/home/');
-  await page.getByRole('button', { name: 'Customize', exact: true }).click();
-  await page.locator('[data-pin-choice][value="canvas"]').check();
-  await expect(page.locator('[data-customize-status]')).toContainText('this visit');
-  await page.locator('[data-portal-customize] [data-theme-option="dark"]').click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(page.locator('[data-pin-list] [data-pin-slug="canvas"]')).toHaveCount(1);
+test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
+ while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
+ await page.locator('[data-dialog-submit]').click();await page.getByRole('button',{name:'Done',exact:true}).click();
+ await page.reload();await expect(page.locator('[data-launch]')).toHaveCount(0);await expect(page.getByRole('heading',{name:'Your most useful apps'})).toBeVisible();
 });
 
 test('Public task search is direct, reloadable, curated and network independent', async ({ page, request }) => {
@@ -99,7 +74,7 @@ test('Alias, Home privacy, and no-JavaScript launchers', async ({ browser, reque
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/');
-  await page.goto('http://127.0.0.1:4321/home/'); await expect(page.locator('[data-pin-list] a')).toHaveCount(8); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+  await page.goto('http://127.0.0.1:4321/home/'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(hub.expectedCount);
   await context.close();
 });
