@@ -1,4 +1,5 @@
 import registry from '../data/hub-providers.json';
+import { createMetadataReadBudget } from './hub-metadata-budget';
 import { validateProviderEnvelope } from './providers/contract';
 import type { Operation, ProviderContext, ProviderManifest } from './providers/types';
 const protocol = 'thiepn-library-hub-v1';
@@ -17,6 +18,7 @@ export class HubLibrarySession {
   private frame: HTMLIFrameElement | null = null;
   private channel = crypto.randomUUID();
   private consent: LibraryConsent | null = null;
+  private budget = createMetadataReadBudget();
   private pending = new Map<string, { resolve: (value: Record<string, unknown>) => void; reject: () => void }>();
   constructor(private invalidate: () => void) { window.addEventListener('message', this.receive); }
   private receive = (event: MessageEvent) => {
@@ -29,6 +31,7 @@ export class HubLibrarySession {
   };
   clear() {
     this.consent = null;
+    this.budget.reset();
     this.channel = crypto.randomUUID();
     for (const entry of this.pending.values()) entry.reject();
     this.pending.clear(); this.frame?.remove(); this.frame = null;
@@ -67,6 +70,7 @@ export class HubLibrarySession {
   async read(operation: Operation, signal: AbortSignal, query = '') {
     const consent = this.consent;
     if (!consent?.permissions.includes(operation)) throw new Error('Missing permission');
+    if (!this.budget.take()) throw new Error('Metadata refresh limit reached; reconnect later');
     const context: ProviderContext = { scope: 'device', deviceId: consent.deviceId, consentRevision: consent.revision };
     const result = await this.request({ kind: 'read', operation, context, query }, signal);
     if (consent !== this.consent || result.kind !== 'result' || Object.keys(result).sort().join(',') !== 'channel,envelope,kind,protocol,requestId') throw new Error('Invalid result');
