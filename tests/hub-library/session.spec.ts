@@ -31,7 +31,7 @@ async function fixture(page: Page) {
     if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: mime(file) });
     return route.fulfill({ status: 404, body: 'Fictional fixture: unavailable' });
   });
-  await page.goto(HUB+'/home/');
+  await page.goto(HUB+'/home/connections/');
   await expect(page.locator('[data-private-library]')).toBeVisible();
   return { calls, hold: () => { hold = true; }, release: () => { hold = false; release(); } };
 }
