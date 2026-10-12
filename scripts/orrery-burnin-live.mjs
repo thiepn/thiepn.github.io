@@ -2,8 +2,9 @@ import fs from 'node:fs';
 
 const BASE=process.env.ORRERY_URL||'https://thiepn.dev/orrery/';
 const PRECISION=process.env.ORRERY_PRECISION_URL||'https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision';
-const EXPECTED_VERSION=process.env.ORRERY_EXPECTED_VERSION||'2.0.1';
-const EXPECTED_CACHE='orrery-v2.0.1-prod1';
+const RELEASE_VERSION=JSON.parse(fs.readFileSync(new URL('../public/orrery/version.json',import.meta.url),'utf8')).version;
+const EXPECTED_VERSION=process.env.ORRERY_EXPECTED_VERSION||RELEASE_VERSION;
+const EXPECTED_CACHE_PREFIX=`orrery-v${EXPECTED_VERSION}-`;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const report={startedAt:new Date().toISOString(),version:EXPECTED_VERSION,checks:[],timingsMs:{}};
 
@@ -28,7 +29,8 @@ async function get(name,url,opts={},tries=3){
 async function main(){
   const page=await get('production-html',BASE,{},4);
   assert(/<title>The Orrery<\/title>/i.test(page.text),'production title missing');
-  assert(page.text.includes(`APP_VERSION='${EXPECTED_VERSION}'`),'production APP_VERSION mismatch');
+  const pageVersion=page.text.match(/\bAPP_VERSION\s*=\s*(['"])([^'"]+)\1/)?.[2];
+  assert(pageVersion===EXPECTED_VERSION,`production APP_VERSION mismatch: expected ${EXPECTED_VERSION}, got ${pageVersion??'missing'}`);
   assert(!/v2\.0\.0-alpha|v2\.0\.0-rc/i.test(page.text),'stale prerelease identity is still visible');
 
   const manifest=JSON.parse((await get('manifest',new URL('manifest.webmanifest',BASE))).text);
@@ -36,11 +38,11 @@ async function main(){
   assert(manifest.start_url==='.'||manifest.start_url==='./','manifest start_url mismatch');
 
   const version=JSON.parse((await get('version-json',new URL('version.json',BASE))).text);
-  assert(version.version===EXPECTED_VERSION,'version.json mismatch');
+  assert(version.version===EXPECTED_VERSION,`version.json mismatch: expected ${EXPECTED_VERSION}, got ${version.version??'missing'}`);
   assert(version.release_channel==='stable','release channel is not stable');
 
   const sw=(await get('service-worker',new URL('sw.js',BASE))).text;
-  assert(sw.includes(EXPECTED_CACHE),'service-worker cache mismatch');
+  assert(sw.includes(EXPECTED_CACHE_PREFIX),`service-worker cache mismatch: expected prefix ${EXPECTED_CACHE_PREFIX}`);
 
   const health=await get('precision-health',PRECISION+'/health',{headers:{Origin:'https://thiepn.dev'}},4);
   const healthJson=JSON.parse(health.text);

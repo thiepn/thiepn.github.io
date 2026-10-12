@@ -36,7 +36,6 @@ jobs:
         env:
           ORRERY_URL: https://thiepn.dev/orrery/
           ORRERY_PRECISION_URL: https://bskfihouwdogrunnglbg.supabase.co/functions/v1/orrery-precision
-          ORRERY_EXPECTED_VERSION: 2.0.1
         run: node scripts/orrery-burnin-live.mjs
 
       - name: Run live browser and offline-PWA burn-in
