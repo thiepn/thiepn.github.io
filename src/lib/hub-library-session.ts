@@ -31,7 +31,7 @@ export class HubLibrarySession {
   };
   clear() {
     this.consent = null;
-    this.budget.reset();
+    // Keep the per-tab read budget across reconnect/revocation attempts.
     this.channel = crypto.randomUUID();
     for (const entry of this.pending.values()) entry.reject();
     this.pending.clear(); this.frame?.remove(); this.frame = null;
