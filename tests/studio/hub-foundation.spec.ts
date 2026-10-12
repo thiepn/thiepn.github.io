@@ -118,12 +118,16 @@ for (const route of ['/home/', '/search/']) for (const theme of ['light', 'dark'
 }
 
 test('H1 rendered review captures and local shell timings', async ({ page }, testInfo) => {
+  // Freeze time only for review captures: historical H1 snapshots show 2026-10-11.
+  // Do not alter the application's real civil-date rollover behavior.
+  await page.clock.install({ time: new Date('2026-10-11T12:00:00.000Z') });
   const timings: unknown[] = [];
   for (const [width, theme] of [[1440, 'light'], [390, 'dark']] as const) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
     for (const [route, name] of [['/home/', 'home'], ['/search/?q=French+vocabulary', 'search']] as const) {
       await page.goto(route); await page.evaluate(() => document.fonts.ready);
+      if (route === '/home/') await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-11');
       const body = await page.screenshot(); await testInfo.attach(`${name}-${width}-${theme}`, {body, contentType:'image/png'});
       const dir='test-results/h1-review'; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(`${dir}/${name}-${width}-${theme}.png`,body);
       timings.push(await page.evaluate(({ route, width, theme }) => ({route,width,theme,domContentLoadedMs:(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).domContentLoadedEventEnd, paints:performance.getEntriesByType('paint').map(p=>({name:p.name,timeMs:p.startTime}))}), {route,width,theme}));
