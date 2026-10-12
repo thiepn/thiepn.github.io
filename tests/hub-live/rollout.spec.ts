@@ -11,7 +11,7 @@ test('served profile, local customization, Search and manual workflow handoffs',
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/home/');
-  await expect(page.locator('[data-auth-login]')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.locator('[data-hub-item]')).toHaveCount(27);
   const original = await page.locator('[data-pin-list] a').count();
   await page.getByRole('button', { name: 'Customize', exact: true }).click();

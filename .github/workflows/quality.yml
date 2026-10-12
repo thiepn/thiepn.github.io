@@ -11,6 +11,11 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_HUB_ACCOUNT_ENTRY: v1
+      PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+      PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
+      PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "pilotId": "H23-library-reading-v1",
+  "pilotId": "P4-library-ecosystem-v1",
   "enabled": true,
-  "scope": "device",
-  "operations": ["summary", "continue"],
+  "scope": "device-account",
+  "operations": [
+    "summary",
+    "continue"
+  ],
   "desktopOnly": false,
-  "cloudAccess": false,
+  "cloudAccess": true,
   "writes": false
 }

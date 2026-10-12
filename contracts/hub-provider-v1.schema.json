@@ -45,6 +45,7 @@
       "enum": [
         "cloud-snapshot",
         "device-local",
+        "account-synced",
         "translation-cloud-snapshot"
       ]
     },
@@ -153,7 +154,10 @@
       "then": {
         "properties": {
           "coverage": {
-            "const": "device-local"
+            "enum": [
+              "device-local",
+              "account-synced"
+            ]
           },
           "context": {
             "$ref": "#/$defs/deviceContext"

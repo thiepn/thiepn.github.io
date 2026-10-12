@@ -28,7 +28,10 @@ export function providerContextAllowed(value: unknown, manifest: ProviderManifes
 }
 export function validateProviderHeader(value: Record<string, unknown>, manifest: ProviderManifest, request: { providerId: string; operation: string; requestId: string; context: ProviderContext }, now: number): void {
   if (value.schemaVersion !== 1) throw new ProviderContractError('version');
-  if (!keys(value,['schemaVersion','providerId','operation','requestId','context','status','privacy','coverage','observedAt','expiresAt','sourceUpdatedAt','data']) || value.providerId !== manifest.id || value.providerId !== request.providerId || value.operation !== request.operation || value.requestId !== request.requestId || !token(value.requestId) || value.privacy !== 'private' || value.coverage !== manifest.coverage || !['ready','empty','unconnected','unsupported','offline','stale','error'].includes(String(value.status))) throw new ProviderContractError('schema');
+  const coverageAllowed = manifest.id === 'library'
+    ? value.coverage === 'device-local' || value.coverage === 'account-synced'
+    : value.coverage === manifest.coverage;
+  if (!keys(value,['schemaVersion','providerId','operation','requestId','context','status','privacy','coverage','observedAt','expiresAt','sourceUpdatedAt','data']) || value.providerId !== manifest.id || value.providerId !== request.providerId || value.operation !== request.operation || value.requestId !== request.requestId || !token(value.requestId) || value.privacy !== 'private' || !coverageAllowed || !['ready','empty','unconnected','unsupported','offline','stale','error'].includes(String(value.status))) throw new ProviderContractError('schema');
   if (!providerContextAllowed(value.context,manifest) || !validProviderContext(request.context) || contextKey(value.context) !== contextKey(request.context)) throw new ProviderContractError('scope');
   if (!validProviderTimestamp(value.observedAt) || !validProviderTimestamp(value.expiresAt) || (value.sourceUpdatedAt !== null && !validProviderTimestamp(value.sourceUpdatedAt))) throw new ProviderContractError('freshness');
   const observed = Date.parse(value.observedAt), expires = Date.parse(value.expiresAt);
