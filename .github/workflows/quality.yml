@@ -20,6 +20,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Owner-approved release gate regression tests (no publishing)
         run: node --test tests/hub-owner-release-gate.test.mjs
+      - name: Account CI boundary regressions
+        run: node --test tests/hub-account-ci-boundaries.test.mjs
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
       - name: Platform P9 Folio projection
