@@ -16,6 +16,7 @@ const root = document.querySelector<HTMLElement>('[data-workspace]');
 if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
+    const openReading = location.hash === '#reading';
     if (location.search || location.hash) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
@@ -31,6 +32,16 @@ async function setup(root: HTMLElement) {
     let queue = Promise.resolve();
     const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
     const form = $<HTMLFormElement>('[data-workspace-form]');
+    const account = $<HTMLDialogElement>('[data-account-dialog]');
+    let readingOpened = false;
+    function syncReadingPanels() {
+        if (account.open) readingOpened = true;
+        const hidden = !state || privacyHeld || state.preferences.hidden || (!account.open && readingOpened);
+        root.querySelectorAll<HTMLElement>('[data-reading-shell]').forEach(shell => { shell.hidden = hidden; shell.querySelectorAll<HTMLElement>('[data-home-personal]').forEach(panel => panel.hidden = hidden); });
+        const control = root.querySelector<HTMLElement>('[data-connection-privacy]');
+        if (control) control.textContent = privacyHeld || state?.preferences.hidden ? 'Show personal content' : 'Hide personal content';
+    }
+    account.addEventListener('close', syncReadingPanels);
     let submitForm: ((data: FormData) => Promise<void> | void) | null = null;
     let observer: ResizeObserver | null = null;
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
@@ -228,6 +239,7 @@ async function setup(root: HTMLElement) {
         else
             $('[data-workspace-content]').innerHTML = fullContent();
         renderPlanner();
+        syncReadingPanels();
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
         root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
         root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
@@ -589,7 +601,8 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'account') {
-            $<HTMLDialogElement>('[data-account-dialog]').showModal();
+            account.showModal();
+            syncReadingPanels();
             return;
         }
         if (action === 'search') {
@@ -1229,6 +1242,7 @@ async function setup(root: HTMLElement) {
         render();
     } }, 30000);
     await loadIdentity(hubIdentity);
+    if (openReading && view === 'home') { account.showModal(); syncReadingPanels(); }
     if ('serviceWorker' in navigator && !import.meta.env.DEV) { void navigator.serviceWorker.register('/home/workspace-sw.js',{scope:'/home/'}).catch(()=>{ /* Local records still work; do not claim offline shell availability. */ }); }
 
 }

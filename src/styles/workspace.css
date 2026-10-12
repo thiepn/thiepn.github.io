@@ -123,3 +123,11 @@
 .ws-page-heading>div:first-child{min-width:0;flex:1;}
 @media (max-width:767px){.ws-page-heading>div:first-child{flex:1 1 100%;}.ws-page-heading .ws-toolbar{width:100%;flex-wrap:wrap;}}
 [data-theme=dark] .ws-task.high time{color:#ffc087;}
+.ws-account-tools{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0;}
+.ws [data-reading-shell] .portal-daily{border-top:1px solid var(--ws-line);padding:18px 0;margin-top:16px;}
+.ws [data-reading-shell] p,.ws [data-reading-shell] ol{margin:10px 0;}
+.ws [data-reading-shell] .portal-muted{color:var(--ws-muted);font-size:13px;}
+.ws [data-reading-shell] .portal-button{display:inline-flex;align-items:center;min-height:44px;padding:7px 12px;border:1px solid var(--ws-line);border-radius:7px;background:var(--ws-surface);margin:4px 6px 4px 0;}
+.ws [data-reading-shell] input{background:var(--ws-surface);border:1px solid var(--ws-line);padding:7px;}
+.ws [data-reading-shell] fieldset{border:1px solid var(--ws-line);padding:12px;margin:12px 0;}
+@media(max-width:767px){.ws-topbar-actions>.ws-icon-button:last-child{display:inline-flex;}}

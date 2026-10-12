@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PortalAccount from '../hub/PortalAccount.astro';
+import PrivateLibrary from '../hub/PrivateLibrary.astro';
+import ReadingPilot from '../hub/ReadingPilot.astro';
 import { getHubProjects } from '../../lib/hub';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
@@ -40,8 +42,8 @@ const navigation=[['home','Home','/home/','house'],['apps','Apps','/','squares-f
     <div class="ws-toast" data-workspace-toast role="status" hidden></div>
     <dialog class="ws-dialog" data-workspace-dialog aria-labelledby="ws-dialog-title"><form data-workspace-form><header><h2 id="ws-dialog-title"></h2><button type="button" class="ws-button" data-action="close-dialog" aria-label="Close dialog">Close</button></header><div data-dialog-fields></div><p class="ws-error" data-dialog-error role="alert"></p><footer><button type="button" class="ws-button" data-action="close-dialog">Cancel</button><button type="submit" class="ws-primary" data-dialog-submit>Save</button></footer></form></dialog>
     <dialog class="ws-dialog ws-search-dialog" data-search-dialog aria-labelledby="ws-search-title"><header><h2 id="ws-search-title">Search your workspace</h2><button type="button" class="ws-button" data-action="close-search">Close</button></header><label class="ws-sr" for="workspace-search">Search apps, tasks and notes</label><input id="workspace-search" type="search" placeholder="Search apps, tasks and notes…" autocomplete="off"/><div data-search-results></div></dialog>
-    <dialog class="ws-dialog" data-account-dialog aria-label="THIEPN Account"><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/><p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a></dialog>
+    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/>{view==='home' ? <><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a></dialog>
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';</script>

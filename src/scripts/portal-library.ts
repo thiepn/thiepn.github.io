@@ -4,6 +4,7 @@ import { HubLibrarySession, libraryContinueUrl } from '../lib/hub-library-sessio
 import type { Operation } from '../lib/providers/types';
 const root = document.querySelector<HTMLElement>('[data-private-library]');
 if (root) {
+  const hostDialog = root.closest<HTMLDialogElement>('dialog');
   const pilot = root.dataset.libraryPilot === 'v1';
   const pilotRoot = root.closest<HTMLElement>('[data-reading-pilot]');
   const join = pilotRoot?.querySelector<HTMLButtonElement>('[data-reading-pilot-join]');
@@ -12,7 +13,7 @@ if (root) {
   let pending: symbol | undefined;
   let joined = false, pilotTimer: ReturnType<typeof setInterval> | undefined;
   const eligible = !pilot || READING_PILOT_MOBILE_ENABLED || desktopReadingPilot(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
-  const available = () => !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
+  const available = () => (!hostDialog || hostDialog.open) && !root!.hidden && !document.hidden && (!pilot || (joined && eligible && !pilotRoot?.hidden));
   function endPilot(message = 'Pilot ended. This tab’s reading snapshot was cleared. To return, try the reading pilot and connect this browser again.') {
     if (!pilot) return; joined = false; clearInterval(pilotTimer); pilotTimer = undefined; root!.hidden = true;
     join!.hidden = false; end!.hidden = true; pilotStatus!.textContent = message; clear();
@@ -54,7 +55,7 @@ if (root) {
     erase('Checking Library progress…'); const epoch = generation; controller = new AbortController();
     try {
       const envelope = await session.read(operation, controller.signal, query);
-      if (epoch !== generation || root!.hidden || document.hidden) return;
+      if (epoch !== generation || !available()) return;
       if (!['ready','empty'].includes(envelope.status) || !envelope.data) throw new Error('Unavailable');
       if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for (const item of envelope.data.items) {
@@ -84,7 +85,7 @@ if (root) {
     clear('Checking your Library sharing choices…', true); const epoch = generation; controller = new AbortController(); connect.disabled = true;
     try {
       const consent = await session.connect(controller.signal);
-      if (epoch !== generation || root!.hidden || document.hidden) return;
+      if (epoch !== generation || !available()) return;
       permissions = new Set(consent.permissions.filter(p => !pilot || p === 'summary' || p === 'continue')); controls();
       const initial = permissions.has('summary') ? 'summary' : permissions.has('continue') ? 'continue' : null;
       if (initial) { radios.forEach(r => { r.checked = r.value === initial; }); await load(initial); }
@@ -102,15 +103,16 @@ if (root) {
   window.addEventListener('pageshow', event => { if (event.persisted) { clear(); if (pilot) endPilot(); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { clear(); if (pilot) endPilot('Reading cleared when you left Home. Welcome back: try the reading pilot, then connect this browser for fresh progress.'); } controls(); });
   new MutationObserver(() => { if (root!.hidden) clear(); controls(); }).observe(root, { attributes: true, attributeFilter: ['hidden'] });
+  if (hostDialog) new MutationObserver(() => { if (!hostDialog.open) { clear(); if (pilot) endPilot(); } controls(); }).observe(hostDialog, { attributes:true, attributeFilter:['open'] });
   if (pilot) {
     join!.disabled = !eligible;
     if (!eligible) pilotStatus!.textContent = 'This pilot currently supports desktop browsers. Mobile reading remains available in Library.';
     join!.addEventListener('click', () => void (async () => {
-      if (!eligible || pilotRoot?.hidden || document.hidden) return;
+      if (!eligible || pilotRoot?.hidden || document.hidden || (hostDialog && !hostDialog.open)) return;
       join!.disabled = true; const joinEpoch = generation;
       try {
         if (!await checkReadingPilot(AbortSignal.timeout(2000))) throw new Error('Paused');
-        if (joinEpoch !== generation || pilotRoot?.hidden || document.hidden) return;
+        if (joinEpoch !== generation || pilotRoot?.hidden || document.hidden || (hostDialog && !hostDialog.open)) return;
         joined = true; root!.hidden = false; join!.hidden = true; end!.hidden = false;
         pilotStatus!.textContent = 'Joined for this tab. Choose sharing in Library, then connect this browser.';
         pilotTimer = setInterval(() => { void verifyPilot(); }, 30000); controls();

@@ -53,8 +53,7 @@ if (status.profile === 'device-reading-pilot') {
   assert.equal(pilot.enabled, true); assert.equal(pilot.scope, 'device');
   assert.equal(pilot.cloudAccess, false); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, false);
   assert.deepEqual(pilot.operations, ['summary','continue']);
-  const connections = (await read('home/connections/index.html')).toString();
-  assert(connections.includes('data-reading-pilot') && connections.includes('data-library-pilot="v1"'));
+  assert(home.includes('data-reading-pilot') && home.includes('data-library-pilot="v1"') && home.includes('data-library-host-route="/home/"'));
   assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(home), 'Managed integration leaked into device pilot');
   files.add('reading-pilot.json');
 }

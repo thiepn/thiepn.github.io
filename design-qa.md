@@ -13,6 +13,8 @@ Viewed the approved reference and actual edit-mode screenshot together, then ins
 
 Public app catalogue remains on Apps. Continue and activity contain actual local records; provider history is not fabricated. Quick capture uses native form controls, charts have text summaries, and native dialogs trap focus. Keyboard and pointer layout editing, reduced motion, light/dark accessibility and responsive reflow are covered by browser scenarios.
 
+Reading integration: the existing device-only reading flow remains at its owner-approved Home host, in the connection dialog. Desktop/Android owner scenarios verify consent, privacy, lifecycle cleanup and touch controls.
+
 Known limits: desktop content can scroll; mobile uses dedicated Tasks/Calendar routes instead of retaining the right column. No cloud browser, physical-device or production-deployment acceptance is claimed. WebKit requires missing host libraries locally and remains a CI qualification requirement.
 
 final result: passed

@@ -8,7 +8,7 @@ Local persistence uses an identity-scoped IndexedDB snapshot with atomic optimis
 
 Export/import includes bounded schema validation and a count/mode preview. Unsupported future versions stay untouched. Storage failures retain in-memory content with an Unsaved indicator. Multi-tab conflicts preserve changes and require recovery rather than silently overwriting. Privacy can be held per tab. The offline worker caches public workspace shells/static assets only; auth, connections, query requests and provider APIs are excluded.
 
-Existing owner handoffs and feature-gated integrations remain at `/home/connections/`; existing Apps, search and launch routes remain compatible. Release policy checks the embedded app registry and every new private workspace route.
+Existing owner handoffs and feature-gated cloud integrations remain at `/home/connections/`. Device Library reading stays inside the Home account/connection dialog because the immutable owner bridge trusts `/home/` specifically. Closing or masking this dialog clears its RAM-only snapshot and frame; reopening requires fresh opt-in. Existing Apps, search and launch routes remain compatible. Release policy checks the embedded app registry and every new private workspace route.
 
 ## Validation
 
@@ -17,6 +17,8 @@ Existing owner handoffs and feature-gated integrations remain at `/home/connecti
 - Focused Chromium production scenarios: 66 passing, including offline reload, scope changes, conflicts and recovery.
 - Full Chromium studio suite: 195 passing. The final focus-return and preset-sizing changes additionally pass targeted checks; populated light/dark axe checks report zero violations.
 - Build, registry/source validation, performance budget, release qualification, release rejection fixtures and served-artifact smoke fixtures passed.
+- Pinned Library owner: 18 local Chromium scenarios passed; pinned reading-pilot owner: 19 local Chromium/Android scenarios passed, including dialog close and 44px reading controls.
+- Public Quality on the prior UI candidate: 583 browser scenarios passed across all three engines; the integrated reading-host candidate is being requalified.
 - Firefox/WebKit and GitHub CI status must be recorded separately; local host startup limits do not establish cross-browser acceptance. The local Firefox workspace scenarios passed, with its populated accessibility and midnight checks verified separately; an existing Byte external-image failure remains in that broader local run.
 
 ## Release
