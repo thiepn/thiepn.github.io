@@ -15,9 +15,9 @@ Existing owner handoffs and feature-gated integrations remain at `/home/connecti
 - Typecheck: zero errors/warnings.
 - Unit suite: 279 passing tests.
 - Focused Chromium production scenarios: 66 passing, including offline reload, scope changes, conflicts and recovery.
-- Full Chromium studio suite: 194 passing before the final mobile/rail CSS corrections; targeted final responsive verification is recorded with screenshots.
+- Full Chromium studio suite: 195 passing. The final focus-return and preset-sizing changes additionally pass targeted checks; populated light/dark axe checks report zero violations.
 - Build, registry/source validation, performance budget, release qualification, release rejection fixtures and served-artifact smoke fixtures passed.
-- Firefox/WebKit and GitHub CI status must be recorded separately; local host startup limits do not establish cross-browser acceptance.
+- Firefox/WebKit and GitHub CI status must be recorded separately; local host startup limits do not establish cross-browser acceptance. The local Firefox workspace scenarios passed, with its populated accessibility and midnight checks verified separately; an existing Byte external-image failure remains in that broader local run.
 
 ## Release
 

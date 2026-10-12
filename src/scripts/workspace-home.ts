@@ -33,6 +33,17 @@ async function setup(root: HTMLElement) {
     const form = $<HTMLFormElement>('[data-workspace-form]');
     let submitForm: ((data: FormData) => Promise<void> | void) | null = null;
     let observer: ResizeObserver | null = null;
+    let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
+    dialog.addEventListener('close', () => {
+        const target = formReturn;
+        if (!target || dialog.open || target.epoch !== epoch || !state) return;
+        const scope = target.widget ? root.querySelector<HTMLElement>(`[data-widget-id="${CSS.escape(target.widget)}"]`) : root;
+        const replacement = target.action ? scope?.querySelector<HTMLElement>(`[data-action="${CSS.escape(target.action)}"]${target.id ? `[data-id="${CSS.escape(target.id)}"]` : ''}`) : null;
+        const next = target.element.isConnected ? target.element : replacement ?? $('#ws-title');
+        if (next.id === 'ws-title') next.tabIndex = -1;
+        next.focus();
+        formReturn = null;
+    });
     const current = () => state!.workspaces.find(w => w.id === state!.active)!;
     const pins = () => current().widgets.find(w => w.type === 'app-shortcuts')?.config.appIds as string[] ?? apps.slice(0, 6).map(a => a.id);
     const today = () => dayKey(state!.preferences.timezone);
@@ -95,6 +106,10 @@ async function setup(root: HTMLElement) {
         return queue;
     }
     function openForm(title: string, html: string, onSubmit: (data: FormData) => Promise<void> | void, label = 'Save') {
+        if (!dialog.open && document.activeElement instanceof HTMLElement) {
+            const element = document.activeElement;
+            formReturn = { element, action: element.dataset.action ?? '', id: element.dataset.id ?? '', widget: element.closest<HTMLElement>('[data-widget-id]')?.dataset.widgetId ?? '', epoch };
+        }
         const formEpoch = epoch;
         submitForm = data => { if (epoch !== formEpoch) throw new Error('Your identity changed. Reopen this form.'); return onSubmit(data); };
         $('[data-dialog-fields]').innerHTML = html;
