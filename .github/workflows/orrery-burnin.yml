@@ -39,6 +39,7 @@ jobs:
         run: node scripts/orrery-burnin-live.mjs
 
       - name: Run live browser and offline-PWA burn-in
+        if: always() && !cancelled()
         env:
           ORRERY_URL: https://thiepn.dev/orrery/
         run: npx playwright test --config=playwright.orrery-production.config.ts
