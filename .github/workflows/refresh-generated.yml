@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/prepare-generated-review.mjs'
       - '.github/workflows/refresh-generated.yml'
       - 'src/content/**'
       - 'src/data/**'
@@ -13,7 +14,7 @@ on:
       - 'scripts/lib/catalogue-files.mjs'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: refresh-generated-catalogue
@@ -21,13 +22,14 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.actor != 'github-actions[bot]'
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -46,16 +48,14 @@ jobs:
           node scripts/rasterize-og.mjs
           npm run catalogue:refresh
 
-      - name: Commit refreshed generated artifacts
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/generated public/og
-          if git diff --cached --quiet; then
-            echo "Generated catalogue artifacts are already current."
-            exit 0
-          fi
-          git commit -m "Refresh generated catalogue artifacts"
-          git pull --rebase origin main
-          git push origin HEAD:main
+      - name: Package generated changes as an owner-reviewable binary patch
+        run: node scripts/prepare-generated-review.mjs refresh-generated
+
+      - name: Retain complete generated change patch and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-refresh-generated
+          path: .cache/generated-review/refresh-generated/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
