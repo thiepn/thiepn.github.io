@@ -1,0 +1,123 @@
+---
+import BrandMark from '../brand/BrandMark.astro';
+import PrismAccount from './PrismAccount.astro';
+
+const path = Astro.url.pathname;
+const active = (target: string) => {
+  if (target === '/home/') return path.startsWith('/home/');
+  if (target === '/#apps') return false;
+  return path.startsWith(target);
+};
+
+const items = [
+  {
+    label: 'Home',
+    href: '/home/',
+    current: active('/home/'),
+    icon: '<path d="m3 11 9-8 9 8M5 9v11h14V9" />',
+  },
+  {
+    label: 'Apps',
+    href: '/#apps',
+    current: false,
+    icon: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  },
+  {
+    label: 'Search',
+    href: '/search/',
+    current: active('/search/'),
+    icon: '<circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/>',
+  },
+  {
+    label: 'Inbox',
+    href: '/inbox/',
+    current: active('/inbox/'),
+    icon: '<path d="M4 4h16v16H4zM4 14h4l2 3h4l2-3h4"/>',
+  },
+];
+---
+
+<div class="prism-shell" data-prism-shell-ui>
+  <aside class="prism-rail" aria-label="THIEPN navigation">
+    <a class="prism-rail__brand" href="/" aria-label="THIEPN apps">
+      <BrandMark size={26} />
+    </a>
+    <nav class="prism-rail__nav" aria-label="Workspace navigation">
+      {items.map((item) => (
+        <a
+          class="prism-rail__item"
+          href={item.href}
+          aria-label={item.label}
+          aria-current={item.current ? 'page' : undefined}
+          data-prism-nav={item.label.toLowerCase()}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" set:html={item.icon}></svg>
+          <span class="prism-rail__tooltip">{item.label}</span>
+        </a>
+      ))}
+    </nav>
+    <button class="prism-rail__account" type="button" data-prism-account-open aria-label="Open THIEPN Account">
+      <span aria-hidden="true">T</span>
+    </button>
+  </aside>
+
+  <header class="prism-topbar">
+    <a class="prism-topbar__wordmark" href="/home/" aria-label="THIEPN Home">
+      <BrandMark size={22} />
+      <span>THIEPN</span>
+    </a>
+
+    <a class="prism-omnibar" href="/search/" data-prism-search data-catalogue-search-open>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="10" cy="10" r="6.5"/>
+        <path d="m15 15 5 5"/>
+      </svg>
+      <span>Search THIEPN</span>
+      <kbd>Ctrl K</kbd>
+    </a>
+
+    <div class="prism-topbar__actions">
+      <button class="prism-topbar__customize" type="button" data-prism-customize-open disabled>Customize</button>
+      <button class="prism-topbar__account" type="button" data-prism-account-open>
+        <span class="prism-topbar__avatar" aria-hidden="true">T</span>
+        <span class="prism-topbar__account-label">Account</span>
+      </button>
+    </div>
+  </header>
+
+  <header class="prism-mobile-header">
+    <a class="prism-mobile-header__brand" href="/home/" aria-label="THIEPN Home">
+      <BrandMark size={22} />
+      <span>THIEPN</span>
+    </a>
+    <div class="prism-mobile-header__actions">
+      <a href="/search/" aria-label="Search THIEPN" data-catalogue-search-open>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="10" cy="10" r="6.5"/>
+          <path d="m15 15 5 5"/>
+        </svg>
+      </a>
+      <button type="button" data-prism-account-open aria-label="Open THIEPN Account">
+        <span class="prism-mobile-header__avatar" aria-hidden="true">T</span>
+      </button>
+    </div>
+  </header>
+
+  <PrismAccount returnTo={path}
+    enableNotes={import.meta.env.PUBLIC_HUB_NOTES_PRIVATE === 'staged-v1'}
+    enableTms60={import.meta.env.PUBLIC_HUB_TMS60_PRIVATE === 'staged-v1'} />
+
+  <nav class="prism-mobile-nav" aria-label="THIEPN navigation">
+    {items.map((item) => (
+      <a
+        href={item.href}
+        aria-current={item.current ? 'page' : undefined}
+        data-prism-nav={item.label.toLowerCase()}
+        data-catalogue-search-open={item.label === 'Search' ? '' : undefined}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" set:html={item.icon}></svg>
+        <span>{item.label}</span>
+      </a>
+    ))}
+  </nav>
+</div>

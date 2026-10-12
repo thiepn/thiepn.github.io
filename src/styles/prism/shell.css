@@ -1,0 +1,626 @@
+/* Prism shell is opt-in and never changes legacy portal chrome. */
+html[data-prism-shell='true'] {
+  --prism-shell-rail: 56px;
+  --prism-shell-topbar: 52px;
+}
+
+html[data-prism-shell='true'] body {
+  background: var(--canvas);
+}
+
+html[data-prism-shell='true'] #main-content {
+  min-height: 100dvh;
+  padding-top: var(--prism-shell-topbar);
+  padding-left: var(--prism-shell-rail);
+}
+
+.prism-rail {
+  position: fixed;
+  z-index: 40;
+  inset: 0 auto 0 0;
+  display: flex;
+  width: var(--prism-shell-rail);
+  align-items: center;
+  flex-direction: column;
+  padding: 8px 6px;
+  border-right: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+}
+
+.prism-rail__brand,
+.prism-rail__item,
+.prism-rail__account {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.prism-rail__brand {
+  color: var(--ink);
+}
+
+.prism-rail__nav {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.prism-rail__item[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.prism-rail__item[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: -7px;
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.prism-rail__item:hover,
+.prism-rail__account:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-rail__item:focus-visible,
+.prism-rail__brand:focus-visible,
+.prism-rail__account:focus-visible,
+.prism-topbar a:focus-visible,
+.prism-topbar button:focus-visible,
+.prism-mobile-header a:focus-visible,
+.prism-mobile-header button:focus-visible,
+.prism-mobile-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prism-rail__tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  z-index: 2;
+  display: none;
+  transform: translateY(-50%);
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .prism-rail__item:hover .prism-rail__tooltip,
+  .prism-rail__item:focus-visible .prism-rail__tooltip {
+    display: block;
+  }
+}
+
+.prism-rail__account {
+  margin-top: auto;
+}
+
+.prism-rail__account > span,
+.prism-topbar__avatar,
+.prism-mobile-header__avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.prism-topbar {
+  position: fixed;
+  z-index: 35;
+  inset: 0 0 auto var(--prism-shell-rail);
+  display: grid;
+  height: var(--prism-shell-topbar);
+  grid-template-columns: minmax(120px, 1fr) minmax(260px, 400px) minmax(120px, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--canvas) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.prism-topbar__wordmark {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -.02em;
+  text-decoration: none;
+}
+
+.prism-omnibar {
+  display: grid;
+  min-width: 0;
+  height: 36px;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+  text-decoration: none;
+}
+
+.prism-omnibar span {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prism-omnibar kbd {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 500 11px/1 var(--font-meta);
+}
+
+.prism-topbar__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+}
+
+.prism-topbar__customize {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: 520 12px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-topbar__customize:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-topbar__customize:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.prism-topbar__account {
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  width: fit-content;
+  min-height: 40px;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 520;
+  text-decoration: none;
+}
+
+.prism-mobile-header,
+.prism-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 1199px) {
+  html[data-prism-shell='true'] {
+    --prism-shell-rail: 0px;
+  }
+
+  html[data-prism-shell='true'] #main-content {
+    padding-left: 0;
+  }
+
+  .prism-rail {
+    display: none;
+  }
+
+  .prism-topbar {
+    left: 0;
+    grid-template-columns: minmax(100px,1fr) minmax(240px,360px) minmax(80px,1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  html[data-prism-shell='true'] {
+    --prism-shell-topbar: 52px;
+  }
+
+  html[data-prism-shell='true'] body {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .prism-topbar {
+    display: none;
+  }
+
+  .prism-mobile-header {
+    position: fixed;
+    z-index: 40;
+    inset: 0 0 auto;
+    display: flex;
+    height: 52px;
+    align-items: center;
+    justify-content: space-between;
+    padding:
+      env(safe-area-inset-top)
+      max(16px, env(safe-area-inset-right))
+      0
+      max(16px, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--line-soft);
+    background: color-mix(in srgb, var(--canvas) 96%, transparent);
+  }
+
+  .prism-mobile-header__brand {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 620;
+    letter-spacing: -.02em;
+    text-decoration: none;
+  }
+
+  .prism-mobile-header__actions {
+    display: flex;
+    gap: 2px;
+  }
+
+  .prism-mobile-header__actions a,
+  .prism-mobile-header__actions button {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--ink-secondary);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .prism-mobile-header__avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .prism-mobile-nav {
+    position: fixed;
+    z-index: 45;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding:
+      2px
+      max(8px, env(safe-area-inset-right))
+      calc(2px + env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    border-top: 1px solid var(--line-soft);
+    background: color-mix(in srgb, var(--surface-1) 97%, transparent);
+  }
+
+  .prism-mobile-nav a {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 52px;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    color: var(--ink-muted);
+    font-size: 10.5px;
+    font-weight: 520;
+    line-height: 13px;
+    text-decoration: none;
+  }
+
+  .prism-mobile-nav a[aria-current='page'] {
+    color: var(--ink);
+  }
+
+  .prism-mobile-nav a[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-rail__item,
+  .prism-topbar a,
+  .prism-topbar button,
+  .prism-mobile-nav a {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .prism-rail,
+  .prism-topbar,
+  .prism-mobile-header,
+  .prism-mobile-nav,
+  .prism-omnibar {
+    border-color: CanvasText;
+  }
+
+  .prism-rail__item[aria-current='page']::after,
+  .prism-mobile-nav a[aria-current='page']::before {
+    background: Highlight;
+  }
+}
+
+
+.prism-account-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(640px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface-1);
+  box-shadow: 0 18px 56px rgb(0 0 0 / 18%);
+  color: var(--ink);
+}
+
+.prism-account-dialog::backdrop {
+  background: rgb(7 10 14 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+.prism-account-dialog__surface {
+  padding: 20px;
+}
+
+.prism-account-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prism-account-dialog__eyebrow {
+  margin-bottom: 3px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 14px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.prism-account-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 26px;
+  letter-spacing: -.02em;
+}
+
+.prism-account-dialog__close,
+.prism-account-dialog__actions button,
+.prism-account-dialog__actions a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font: 520 12.5px/18px var(--font-ui);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.prism-account-dialog__close {
+  border-color: transparent;
+  color: var(--ink-secondary);
+}
+
+.prism-account-dialog__close:hover,
+.prism-account-dialog__actions button:hover,
+.prism-account-dialog__actions a:hover {
+  background: var(--surface-2);
+}
+
+.prism-account-dialog :is(button,a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prism-account-dialog__status {
+  margin-top: 24px;
+  color: var(--ink-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.prism-account-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.prism-account-dialog__actions [data-auth-login] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.prism-account-dialog__actions [hidden] {
+  display: none;
+}
+
+.prism-account-dialog__customize {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 560 13px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-account-dialog__customize:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.prism-account-dialog__meta {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 639px) {
+  .prism-account-dialog {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 20px;
+  }
+
+  .prism-account-dialog__surface {
+    padding: 18px;
+  }
+}
+
+@media (forced-colors: active) {
+  .prism-account-dialog,
+  .prism-account-dialog__actions button,
+  .prism-account-dialog__actions a {
+    border-color: CanvasText;
+  }
+
+  .prism-account-dialog::backdrop {
+    background: Canvas;
+  }
+}
+
+
+.prism-account-dialog__connections {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.prism-account-dialog__connections h3 {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 590;
+  line-height: 20px;
+}
+
+.prism-provider-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  margin-top: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.prism-provider-row strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 580;
+}
+
+.prism-provider-row p {
+  margin-top: 2px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.prism-provider-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.prism-provider-row__actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--ink-secondary);
+  font: 520 11.5px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.prism-provider-row__actions button:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.prism-provider-row__actions button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 639px) {
+  .prism-provider-row {
+    grid-template-columns: 1fr;
+  }
+
+  .prism-provider-row__actions {
+    justify-content: flex-start;
+  }
+}

@@ -9,7 +9,7 @@ const book = catalogue.find((b: any) => b.format === 'epub');
 if (!book) throw new Error('Actual owner catalogue has no EPUB');
 const grant = { schemaVersion: 1, deviceId: '11111111-1111-4111-8111-111111111111', revision: '22222222-2222-4222-8222-222222222222', permissions: ['summary','continue','search'], includePersonal: false };
 const mime = (p: string) => p.endsWith('.js') ? 'application/javascript' : p.endsWith('.css') ? 'text/css' : p.endsWith('.html') ? 'text/html' : p.endsWith('.json') ? 'application/json' : p.endsWith('.svg') ? 'image/svg+xml' : p.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream';
-async function fixture(page: Page) {
+async function fixture(page: Page, homePath = '/home/', prismAtCanonicalHome = false) {
   const calls: string[] = []; let hold = false; let release: () => void = () => {};
   await page.addInitScript(() => {
     (window as any).__requests = []; window.addEventListener('message', e => { if(e.data?.kind === 'read') (window as any).__requests.push(e.data); });
@@ -25,14 +25,15 @@ async function fixture(page: Page) {
     const url = new URL(route.request().url()); calls.push(url.href);
     if (url.origin !== HUB) return route.abort();
     const isOwner = url.pathname.startsWith('/library/');
-    let file = path.join(isOwner ? OWNER : path.resolve('.cache/h16-hub'), isOwner ? url.pathname.slice('/library/'.length) : url.pathname);
+    const hubPath = prismAtCanonicalHome && url.pathname === '/home/' ? '/home/prism-preview/' : url.pathname;
+    let file = path.join(isOwner ? OWNER : path.resolve('.cache/h16-hub'), isOwner ? url.pathname.slice('/library/'.length) : hubPath);
     if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file,'index.html');
     if (hold && url.pathname === '/library/hub/bridge') await new Promise<void>(r => { release = r; });
     if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: mime(file) });
     return route.fulfill({ status: 404, body: 'Fictional fixture: unavailable' });
   });
-  await page.goto(HUB+'/home/');
-  await expect(page.locator('[data-private-library]')).toBeVisible();
+  await page.goto(HUB+homePath);
+  if (homePath === '/home/' && !prismAtCanonicalHome) await expect(page.locator('[data-private-library]')).toBeVisible();
   return { calls, hold: () => { hold = true; }, release: () => { hold = false; release(); } };
 }
 async function seed(page: Page, permissions = grant.permissions, personal = false, version = 9) {
@@ -51,6 +52,33 @@ async function seed(page: Page, permissions = grant.permissions, personal = fals
   }, { book, grant, KEY, INDEX, permissions, personal, version });
 }
 async function connect(page: Page) { await page.getByRole('button',{name:'Connect this browser',exact:true}).click(); await expect(page.locator('[data-library-items]')).toContainText(book.title); }
+test('Prism preview respects the Library owner canonical Home boundary', async ({page}) => {
+  const f = await fixture(page,'/home/prism-preview/');
+  await page.getByRole('button',{name:'Open THIEPN Account',exact:true}).first().click();
+  await expect(page.locator('[data-prism-library-connect]')).toBeDisabled();
+  await expect(page.locator('[data-prism-library-status]')).toContainText('qualified Home route');
+  expect(f.calls.some(url=>url.includes('/library/hub/bridge'))).toBe(false);
+});
+test('Prism Continue hydrates from the real device-local Library provider on canonical Home', async ({page}) => {
+  // Route the actual Prism artifact at the owner-allowlisted path. This is an
+  // isolated cutover fixture, never a change to the deployed Home route.
+  await fixture(page,'/home/',true);
+  await seed(page);
+  await page.getByRole('button',{name:'Open THIEPN Account',exact:true}).first().click();
+  const connectButton=page.locator('[data-prism-library-connect]');
+  await expect(connectButton).toBeVisible();
+  await connectButton.click();
+
+  const continuation=page.locator('[data-prism-block-id="block-continue"]');
+  await expect(continuation.locator('[data-prism-continue-title]')).toHaveText(book.title);
+  await expect(continuation.locator('[data-prism-continue-copy]')).toContainText('Library · 20%');
+  await expect(page.locator('[data-prism-recent-content]')).toContainText(book.title);
+  const href=await continuation.locator('[data-prism-continue-action]').getAttribute('href');
+  expect(href).toContain('/library/hub/continue?');
+  expect(href).toContain('release=');
+  expect(href).not.toContain('CFI');
+  expect(JSON.stringify(await page.evaluate(() => (window as any).__results))).not.toContain('SECRET');
+});
 test('no automatic owner load or reading-storage access; connection without consent reads nothing', async ({page}) => {
   const f = await fixture(page);
   expect(f.calls.some(u => u.includes('/library/hub/bridge'))).toBe(false);
@@ -58,6 +86,20 @@ test('no automatic owner load or reading-storage access; connection without cons
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
   await expect(page.locator('[data-library-status]')).toContainText('Choose sharing');
   expect(await page.evaluate(() => (window as any).__results)).toEqual([]);
+});
+test('Prism summary-only Library data expires from Recent with Continue hidden',async({page})=>{
+  await page.clock.install();
+  await fixture(page,'/home/',true);await seed(page,['summary']);
+  await page.evaluate(()=>{document.querySelector<HTMLElement>('[data-prism-block="continue"]')!.hidden=true;});
+  await page.getByRole('button',{name:'Open THIEPN Account',exact:true}).first().click();
+  await page.locator('[data-prism-library-connect]').click();
+  await expect(page.locator('[data-prism-recent-content]')).toContainText(book.title);
+  await expect(page.locator('[data-prism-continue-title]')).not.toContainText(book.title);
+  const requests=await page.locator('iframe').evaluate(frame=>(frame as HTMLIFrameElement).contentWindow && ((frame as HTMLIFrameElement).contentWindow as any).__requests);
+  expect(requests.map((request:any)=>request.operation)).toEqual(['summary']);
+  await expect(page.locator('[data-prism-library-refresh]')).toBeEnabled();
+  await page.clock.fastForward(120010);
+  await expect(page.locator('[data-prism-recent-content]')).not.toContainText(book.title);
 });
 test('actual owner reads metadata, renders current/furthest separately, and search stays out of URLs', async ({page}) => {
   const f = await fixture(page); await seed(page); await connect(page);

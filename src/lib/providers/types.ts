@@ -15,7 +15,7 @@ export interface ProviderEnvelope extends Omit<RequestContext, 'query'> {
   schemaVersion: 1; status: ProviderStatus; privacy: 'private'; coverage: string;
   observedAt: string; expiresAt: string; sourceUpdatedAt: string | null; data: ProviderData | null;
 }
-export interface ProviderResult { providerId: ProviderId; status: ProviderStatus; envelope?: ProviderEnvelope; }
+export interface ProviderResult { providerId: ProviderId; operation: Operation; status: ProviderStatus; envelope?: ProviderEnvelope; }
 // This snapshot is issued by an adapter's trusted authorization boundary. Frontend
 // checks are leakage prevention, never substitutes for owner/server enforcement.
 export interface ProviderAccess { providerId: ProviderId; context: ProviderContext; permissions: readonly string[]; expiresAt: number; }

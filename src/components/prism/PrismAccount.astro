@@ -1,0 +1,131 @@
+---
+interface Props {
+  returnTo?: string;
+  enableNotes?: boolean;
+  enableTms60?: boolean;
+}
+const { returnTo = '/home/', enableNotes = false, enableTms60 = false } = Astro.props;
+---
+
+<dialog
+  class="prism-account-dialog"
+  id="prism-account-dialog"
+  data-hub-account
+  data-auth-return={returnTo}
+  aria-labelledby="prism-account-title"
+>
+  <div class="prism-account-dialog__surface">
+    <header class="prism-account-dialog__header">
+      <div>
+        <p class="prism-account-dialog__eyebrow">THIEPN</p>
+        <h2 id="prism-account-title">Account</h2>
+      </div>
+      <button type="button" class="prism-account-dialog__close" data-prism-account-close aria-label="Close account">Close</button>
+    </header>
+
+    <p class="prism-account-dialog__status" data-auth-status role="status">Checking your Hub session…</p>
+
+    <div class="prism-account-dialog__actions">
+      <button type="button" data-auth-login hidden>Sign in</button>
+      <button type="button" data-auth-switch hidden>Switch account</button>
+      <button type="button" data-auth-logout hidden>Sign out of Hub</button>
+      <button type="button" data-auth-retry hidden>Try again</button>
+      <a href="https://account.thiepn.dev/" rel="noreferrer">Open Account</a>
+    </div>
+
+    <section class="prism-account-dialog__connections" aria-labelledby="prism-connections-title">
+      <div>
+        <p class="prism-account-dialog__eyebrow">Connections</p>
+        <h3 id="prism-connections-title">Home data</h3>
+      </div>
+      <div class="prism-provider-row" data-prism-provider="library">
+        <div>
+          <strong>Library</strong>
+          <p data-prism-library-status>Not connected in this tab.</p>
+        </div>
+        <div class="prism-provider-row__actions">
+          <button type="button" data-prism-library-connect>Connect</button>
+          <button type="button" data-prism-library-refresh hidden>Refresh</button>
+          <button type="button" data-prism-library-disconnect hidden>Disconnect</button>
+        </div>
+      </div>
+
+      {enableNotes && (
+        <>
+          <div class="prism-provider-row" data-prism-provider="notes">
+            <div>
+              <strong>Notes</strong>
+              <p data-prism-notes-status>Sign in to connect Notes.</p>
+            </div>
+            <div class="prism-provider-row__actions">
+              <button type="button" data-prism-notes-connect>Connect</button>
+              <button type="button" data-prism-notes-refresh hidden>Refresh</button>
+              <button type="button" data-prism-notes-disconnect hidden>Disconnect</button>
+            </div>
+          </div>
+        </>
+      )}
+      {enableTms60 && (
+        <>
+          <div class="prism-provider-row prism-provider-row--tms" data-prism-provider="tms60">
+            <div>
+              <strong>TMS60</strong>
+              <p data-prism-tms60-status>Sign in to connect TMS60.</p>
+            </div>
+            <div class="prism-provider-row__actions">
+              <select aria-label="TMS60 translation" data-prism-tms60-translation>
+                <option value="esv">ESV</option>
+                <option value="niv">NIV</option>
+                <option value="nlt">NLT</option>
+                <option value="hfa">HFA</option>
+                <option value="schlachter1951">Schlachter 1951</option>
+                <option value="klb1985">KLB 1985</option>
+                <option value="krv1961">KRV 1961</option>
+              </select>
+              <button type="button" data-prism-tms60-connect>Connect</button>
+              <button type="button" data-prism-tms60-refresh hidden>Refresh</button>
+              <button type="button" data-prism-tms60-disconnect hidden>Disconnect</button>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+
+    <button type="button" class="prism-account-dialog__customize" data-prism-customize-open disabled>Customize Home</button>
+    <p class="prism-account-dialog__meta">Hub uses your verified THIEPN Account session. Library access is device-local and clears with this tab session. App data remains subject to each provider's permissions.</p>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('#prism-account-dialog');
+  if (dialog) {
+    const triggers = document.querySelectorAll<HTMLElement>('[data-prism-account-open]');
+    const close = dialog.querySelector<HTMLButtonElement>('[data-prism-account-close]');
+    let returnFocus: HTMLElement | null = null;
+
+    const openDialog = (trigger: HTMLElement) => {
+      returnFocus = trigger;
+      if (!dialog.open) {
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      }
+      close?.focus();
+    };
+
+    const closeDialog = () => {
+      if (!dialog.open) return;
+      if (typeof dialog.close === 'function') dialog.close();
+      else {
+        dialog.removeAttribute('open');
+        dialog.dispatchEvent(new Event('close'));
+      }
+    };
+
+    triggers.forEach((trigger) => trigger.addEventListener('click', () => openDialog(trigger)));
+    close?.addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener('close', () => returnFocus?.focus());
+  }
+</script>

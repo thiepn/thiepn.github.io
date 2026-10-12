@@ -1,0 +1,65 @@
+---
+import type { HubProjectEntry } from '../../lib/hub';
+import { createDefaultHomeDocument, validateHomeDocument } from '../../lib/prism/home-document';
+import ContinueBlock from './blocks/ContinueBlock.astro';
+import NowBlock from './blocks/NowBlock.astro';
+import AppsBlock from './blocks/AppsBlock.astro';
+import StudyBlock from './blocks/StudyBlock.astro';
+import RecentBlock from './blocks/RecentBlock.astro';
+import PrismEditUI from './PrismEditUI.astro';
+
+interface Props {
+  entries: HubProjectEntry[];
+}
+
+const { entries } = Astro.props;
+const appManifest = entries.map((entry) => {
+  const p = entry.project.data;
+  const raw = p.liveUrl!;
+  const url = new URL(raw);
+  return {
+    slug: p.slug,
+    title: p.title,
+    href: url.origin === 'https://thiepn.dev' ? `${url.pathname}${url.search}${url.hash}` : raw,
+    accentLight: p.accent.light,
+    accentDark: p.accent.dark,
+  };
+});
+const appManifestJson = JSON.stringify(appManifest).replace(/</g, '\\u003c');
+const homeDocument = createDefaultHomeDocument();
+const validation = validateHomeDocument(homeDocument);
+if (!validation.valid) {
+  throw new Error(`Invalid default Prism HomeDocument: ${validation.errors.join(' | ')}`);
+}
+---
+
+<div
+  class="prism-home page-shell"
+  data-portal-home
+  data-prism-home="v1"
+  data-prism-home-schema={homeDocument.schemaVersion}
+>
+  <div class="prism-home__grid" data-prism-layout="default">
+    <div class="prism-home__section" data-prism-section="section-start">
+      <div class="prism-section-grid">
+        <ContinueBlock />
+        <NowBlock />
+      </div>
+    </div>
+
+    <div class="prism-home__section" data-prism-section="section-apps">
+      <div class="prism-section-grid">
+        <AppsBlock entries={entries} />
+      </div>
+    </div>
+
+    <div class="prism-home__section" data-prism-section="section-activity">
+      <div class="prism-section-grid">
+        <StudyBlock />
+        <RecentBlock />
+      </div>
+    </div>
+  </div>
+  <script is:inline type="application/json" data-prism-app-manifest set:html={appManifestJson}></script>
+  <PrismEditUI />
+</div>

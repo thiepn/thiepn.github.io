@@ -43,9 +43,44 @@ describe('H14 standard managed OAuth and private Notes boundary',()=>{
   });
   it('rejects implicit tokens and clears a failed callback',async()=>{const f=fixture();await f.session.begin(A,consent);const p=JSON.parse(f.storage.getItem(NOTES_PENDING_KEY)!);await expect(f.session.complete(new URLSearchParams({code:'x',state:p.state}),'#access_token=secret')).rejects.toThrow();expect(f.http).not.toHaveBeenCalled();});
   it.each([{sub:B},{client_id:B},{aud:'thiepn-hub'},{role:'service_role'},{iss:'https://evil.test/auth/v1'},{exp:1},{is_anonymous:true},{session_id:'bad'}])('rejects wrong token claims %j without using them as authority',async(claims)=>{const f=fixture({claims});await expect(connect(f)).rejects.toThrow();expect(f.session.connected()).toBe(false);});
+  it('exposes only sanitized provider access after a verified Notes connection',async()=>{
+    const f=fixture();await connect(f);
+    const access=await f.session.providerAccess(consent);
+    expect(access).toEqual({
+      providerId:'notes',
+      context:{scope:'account',accountId:A,workspaceId:null,grantRevision:REV,translationId:null},
+      permissions:consent.permissions,
+      expiresAt:NOW+3600*1000,
+    });
+    expect(JSON.stringify(access)).not.toMatch(/access_token|refresh_token|fictional_refresh|Bearer eyJ/);
+  });
+  it('rejects provider access when current consent no longer matches the connected grant',async()=>{
+    const f=fixture();await connect(f);
+    await expect(f.session.providerAccess({...consent,revision:B})).rejects.toThrow();
+    await expect(f.session.providerAccess({permissions:['app_data.read'],revision:REV})).rejects.toThrow();
+  });
   it('fails closed before private data when current authority denies access',async()=>{const f=fixture({denied:true});await connect(f);await expect(f.session.read('summary',new AbortController().signal)).rejects.toThrow();expect(f.http).toHaveBeenCalledTimes(2);expect(f.session.connected()).toBe(false);});
   it('rejects an extra body field from the owner response',async()=>{const f=fixture({badRow:true});await connect(f);await expect(f.session.read('summary',new AbortController().signal)).rejects.toThrow();expect(f.session.connected()).toBe(false);});
   it('withholds late results after account changes and clearing',async()=>{let release!:()=>void;const f=fixture({delay:()=>new Promise<void>(r=>{release=r;})});await connect(f);const pending=f.session.read('summary',new AbortController().signal);await vi.waitFor(()=>expect(release).toBeTypeOf('function'));f.owner(B);f.session.clear();release();await expect(pending).rejects.toThrow();expect(f.session.connected()).toBe(false);});
+  it('honors a runner-bound Notes request ID and exact owner context',async()=>{
+    const f=fixture();await connect(f);
+    const access=await f.session.providerAccess(consent);
+    const request={providerId:'notes' as const,operation:'summary' as const,requestId:'runner-request-1',context:access.context};
+    const raw=await f.session.readRequest(request,new AbortController().signal);
+    const result=JSON.parse(raw);
+    expect(result.requestId).toBe('runner-request-1');
+    expect(result.context).toEqual(access.context);
+    expect(JSON.parse(String(f.http.mock.calls.at(-1)![1]?.body))).toMatchObject(request);
+  });
+  it('rejects a runner-bound request whose provider context does not match the connected owner',async()=>{
+    const f=fixture();await connect(f);
+    const access=await f.session.providerAccess(consent);
+    const before=f.http.mock.calls.length;
+    const request={providerId:'notes' as const,operation:'summary' as const,requestId:'runner-request-2',context:{...access.context,grantRevision:B}};
+    await expect(f.session.readRequest(request,new AbortController().signal)).rejects.toThrow();
+    expect(f.http.mock.calls.length).toBe(before);
+    expect(f.session.connected()).toBe(false);
+  });
   it('sends private title search in POST bodies, with no URL echo or persistent data',async()=>{const f=fixture();await connect(f);await f.session.read('search',new AbortController().signal,'private % query');expect(f.http.mock.calls.every(([url])=>!String(url).includes('private %'))).toBe(true);expect(JSON.parse(String(f.http.mock.calls[2]![1]?.body)).query).toBe('private % query');expect(f.map.size).toBe(0);});
   it('refreshes near-expiry tokens before checking current grants again',async()=>{const f=fixture({ttl:30});await connect(f);await f.session.read('summary',new AbortController().signal);const forms=f.http.mock.calls.filter(([url])=>String(url).endsWith('/oauth/token')).map(([,init])=>new URLSearchParams(String(init?.body)));expect(forms[1]?.get('grant_type')).toBe('refresh_token');expect(f.map.size).toBe(0);});
   it('has a two-second whole-read deadline even when upstream ignores abort',async()=>{const f=fixture({delay:()=>new Promise<void>(()=>{})});await connect(f);vi.useFakeTimers();const pending=f.session.read('summary',new AbortController().signal);const check=expect(pending).rejects.toThrow();await vi.advanceTimersByTimeAsync(2100);await check;expect(f.session.connected()).toBe(false);});

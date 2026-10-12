@@ -7,6 +7,7 @@ const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSear
 const callbackFragment = callbackQuery ? location.hash : '';
 if (callbackQuery) history.replaceState(null, '', '/home/auth/callback/');
 const root = document.querySelector<HTMLElement>('[data-hub-account]');
+const authReturnTo = root?.dataset.authReturn?.startsWith('/') ? root.dataset.authReturn : '/home/';
 const config = { url: import.meta.env.PUBLIC_THIEPN_SUPABASE_URL, key: import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY, origin: import.meta.env.PUBLIC_HUB_AUTH_ORIGIN, enabled: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1' };
 export let hubIdentity: HubIdentity = { status: 'checking' };
 export function publishIdentity(identity: HubIdentity) {
@@ -69,7 +70,7 @@ if (root) {
           localStorage.setItem(`${HUB_AUTH_KEY}:probe`, '1'); localStorage.removeItem(`${HUB_AUTH_KEY}:probe`);
           if (switching) { const { error } = await client.auth.signOut({ scope: 'local' }); if (error) throw error; }
           const flow = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-          sessionStorage.setItem(HUB_LOGIN_KEY, JSON.stringify({ flow, started: Date.now(), returnTo: '/home/' }));
+          sessionStorage.setItem(HUB_LOGIN_KEY, JSON.stringify({ flow, started: Date.now(), returnTo: authReturnTo }));
           const { data, error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${config.origin}/home/auth/callback/?flow=${flow}`, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } } });
           if (error || !data.url) throw new Error('Sign-in failed');
           const entry = new URL('/hub/entry', ACCOUNT_ORIGIN); entry.searchParams.set('request', data.url);

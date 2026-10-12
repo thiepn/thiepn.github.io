@@ -1,6 +1,6 @@
 import registry from '../data/hub-providers.json';
-import { validateProviderEnvelope } from './providers/contract';
-import type { Operation, ProviderContext, ProviderManifest } from './providers/types';
+import { contextKey, validateProviderEnvelope } from './providers/contract';
+import type { Operation, ProviderAccess, ProviderContext, ProviderEnvelope, ProviderManifest, RequestContext } from './providers/types';
 const protocol = 'thiepn-library-hub-v1';
 const obj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
@@ -11,6 +11,15 @@ export function parseLibraryConsent(v: unknown): LibraryConsent | null {
 }
 export function libraryContinueUrl(item: { resourceId: string; edition?: number; releaseVersion?: string }): string {
   return '/library/hub/continue?' + new URLSearchParams({ resource: item.resourceId, edition: String(item.edition), release: item.releaseVersion ?? '' });
+}
+export function libraryProviderAccess(consent: LibraryConsent, now = Date.now()): ProviderAccess {
+  const manifest = registry.providers.find(p => p.id === 'library') as ProviderManifest;
+  return {
+    providerId: 'library',
+    context: { scope: 'device', deviceId: consent.deviceId, consentRevision: consent.revision },
+    permissions: consent.permissions.map(operation => manifest.requiredPermissions[operation]),
+    expiresAt: now + 300000,
+  };
 }
 /** RAM-only session; one owner frame, nonce-bound responses, two-second deadlines. */
 export class HubLibrarySession {
@@ -34,10 +43,9 @@ export class HubLibrarySession {
     this.pending.clear(); this.frame?.remove(); this.frame = null;
   }
   dispose() { this.clear(); window.removeEventListener('message', this.receive); }
-  private request(body: Record<string, unknown>, signal: AbortSignal): Promise<Record<string, unknown>> {
+  private request(body: Record<string, unknown>, signal: AbortSignal, requestId: string = crypto.randomUUID()): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
-      if (signal.aborted || !this.frame?.contentWindow) { reject(new Error('Cancelled')); return; }
-      const requestId = crypto.randomUUID();
+      if (signal.aborted || !this.frame?.contentWindow || !uuid(requestId)) { reject(new Error('Cancelled')); return; }
       const finish = () => { clearTimeout(timer); signal.removeEventListener('abort', cancel); this.pending.delete(requestId); };
       const cancel = () => { finish(); reject(new Error('Cancelled')); };
       const timer = setTimeout(cancel, 2000);
@@ -64,13 +72,36 @@ export class HubLibrarySession {
     if (result.kind !== 'connected' || Object.keys(result).sort().join(',') !== 'channel,consent,kind,protocol,requestId' || !consent || !consent.permissions.length) throw new Error('Choose sharing in Library');
     this.consent = consent; return consent;
   }
-  async read(operation: Operation, signal: AbortSignal, query = '') {
+  providerAccess(now = Date.now()): ProviderAccess {
+    const consent = this.consent;
+    if (!consent) throw new Error('Library is not connected');
+    return libraryProviderAccess(consent, now);
+  }
+  async read(operation: Operation, signal: AbortSignal, query = ''): Promise<ProviderEnvelope> {
     const consent = this.consent;
     if (!consent?.permissions.includes(operation)) throw new Error('Missing permission');
     const context: ProviderContext = { scope: 'device', deviceId: consent.deviceId, consentRevision: consent.revision };
-    const result = await this.request({ kind: 'read', operation, context, query }, signal);
-    if (consent !== this.consent || result.kind !== 'result' || Object.keys(result).sort().join(',') !== 'channel,envelope,kind,protocol,requestId') throw new Error('Invalid result');
-    const manifest = registry.providers.find(p => p.id === 'library') as ProviderManifest;
-    return validateProviderEnvelope(JSON.stringify(result.envelope), manifest, { providerId: 'library', operation, requestId: result.requestId as string, context });
+    const request: RequestContext = {
+      providerId: 'library',
+      operation,
+      requestId: crypto.randomUUID(),
+      context,
+      ...(operation === 'search' ? { query } : {}),
+    };
+    return JSON.parse(await this.readRequest(request,signal)) as ProviderEnvelope;
+  }
+  async readRequest(request: RequestContext, signal: AbortSignal): Promise<string> {
+    const consent = this.consent;
+    if (!consent?.permissions.includes(request.operation) || request.providerId !== 'library') throw new Error('Missing permission');
+    const context: ProviderContext = { scope: 'device', deviceId: consent.deviceId, consentRevision: consent.revision };
+    if (contextKey(request.context) !== contextKey(context)) throw new Error('Invalid context');
+    if (request.operation === 'search') {
+      if (typeof request.query !== 'string' || !request.query.trim() || request.query.length > 256 || /[\u0000-\u001f\u007f]/.test(request.query)) throw new Error('Invalid query');
+    } else if (request.query !== undefined) throw new Error('Invalid query');
+    const result = await this.request({ kind: 'read', operation: request.operation, context, query: request.query ?? '' }, signal, request.requestId);
+    if (consent !== this.consent || result.kind !== 'result' || Object.keys(result).sort().join(',') !== 'channel,envelope,kind,protocol,requestId' || result.requestId !== request.requestId) throw new Error('Invalid result');
+    const manifest = {...structuredClone(registry.providers.find(p => p.id === 'library') as ProviderManifest),privateReadsEnabled:true,operations:{summary:true,continue:true,search:true,capture:false,inbox:false}};
+    const envelope = validateProviderEnvelope(JSON.stringify(result.envelope), manifest, request);
+    return JSON.stringify(envelope);
   }
 }
