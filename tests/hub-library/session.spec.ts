@@ -31,7 +31,7 @@ async function fixture(page: Page) {
     if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: mime(file) });
     return route.fulfill({ status: 404, body: 'Fictional fixture: unavailable' });
   });
-  await page.goto(HUB+'/home/');
+  await page.goto(HUB+'/home/');await page.locator('.ws-topbar [data-action=account]').click();
   await expect(page.locator('[data-private-library]')).toBeVisible();
   return { calls, hold: () => { hold = true; }, release: () => { hold = false; release(); } };
 }
@@ -54,7 +54,7 @@ async function connect(page: Page) { await page.getByRole('button',{name:'Connec
 test('no automatic owner load or reading-storage access; connection without consent reads nothing', async ({page}) => {
   const f = await fixture(page);
   expect(f.calls.some(u => u.includes('/library/hub/bridge'))).toBe(false);
-  expect(await page.evaluate(() => (window as any).__opens)).toEqual([]);
+  expect(await page.evaluate(() => (window as any).__opens.filter((name:string)=>name!=='thiepn-adaptive-workspace'))).toEqual([]);
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
   await expect(page.locator('[data-library-status]')).toContainText('Choose sharing');
   expect(await page.evaluate(() => (window as any).__results)).toEqual([]);
@@ -85,13 +85,13 @@ test('cross-tab revocation immediately removes previous titles and frame', async
 });
 test('Hide Home clears results; Show Home and reload do not restore them', async ({page}) => {
   await fixture(page); await seed(page); await connect(page);
-  await page.getByRole('button',{name:'Hide Home',exact:true}).click(); await expect(page.locator('[data-library-items]')).toBeEmpty();
-  await page.getByRole('button',{name:'Show Home',exact:true}).click(); await expect(page.locator('[data-library-items]')).toBeEmpty();
+  await page.getByRole('button',{name:'Hide personal content',exact:true}).click(); await expect(page.locator('[data-library-items]')).toBeEmpty();
+  await page.getByRole('button',{name:'Show personal content',exact:true}).click(); await expect(page.locator('[data-library-items]')).toBeEmpty();
   await page.reload(); await expect(page.locator('[data-library-items]')).toBeEmpty(); await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('Hide Home while the owner is loading cancels late connection', async ({page}) => {
   const f = await fixture(page); await seed(page); f.hold(); await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
-  await page.getByRole('button',{name:'Hide Home',exact:true}).click(); f.release(); await expect(page.locator('iframe')).toHaveCount(0); await expect(page.locator('[data-library-items]')).toBeEmpty();
+  await page.getByRole('button',{name:'Hide personal content',exact:true}).click(); f.release(); await expect(page.locator('iframe')).toHaveCount(0); await expect(page.locator('[data-library-items]')).toBeEmpty();
 });
 test('unsupported future DB schema is unavailable, not an empty library', async ({page}) => {
   await fixture(page); await seed(page, grant.permissions, false, 10); await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
@@ -134,7 +134,7 @@ test('identity transition erases device results without transferring consent to 
 test('absent native databases are empty without persisting new databases', async ({page}) => {
   await fixture(page); await page.evaluate(({KEY,grant})=>localStorage.setItem(KEY,JSON.stringify(grant)),{KEY,grant});
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click(); await expect(page.locator('[data-library-status]')).toContainText('No matching saved progress');
-  expect(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name))).toEqual([]);
+  expect(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name).filter(name=>name!=='thiepn-adaptive-workspace'))).toEqual([]);
 });
 test('native progress events erase the prior snapshot and require reconnection', async ({page}) => {
   await fixture(page); await seed(page); await connect(page);

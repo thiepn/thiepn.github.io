@@ -1,0 +1,19 @@
+---
+import DailyHome from '../../../components/hub/DailyHome.astro';
+import { getHubProjects } from '../../../lib/hub';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PortalAccount from '../../../components/hub/PortalAccount.astro';
+import PrivateTms from '../../../components/hub/PrivateTms.astro';
+import PrivateNotes from '../../../components/hub/PrivateNotes.astro';
+import PrivateCapture from '../../../components/hub/PrivateCapture.astro';
+import IntegratedWorkflows from '../../../components/hub/IntegratedWorkflows.astro';
+import '../../../styles/hub.css';
+const entries=await getHubProjects();
+---
+<BaseLayout title="Connections — THIEPN HUB" description="Existing THIEPN app connections and device reading pilot." portal noindex>
+  <div class="portal-home page-shell">
+    <header class="portal-home-heading"><h1>App connections</h1><p>Existing connection features keep their current capability gates. Your new workspace saves locally.</p><a class="portal-button" href="/home/">Return to workspace</a></header>
+    <PortalAccount/><DailyHome entries={entries}/><PrivateTms/><PrivateNotes/><PrivateCapture/><IntegratedWorkflows/><p><a class="portal-button" href="/home/#reading">Open reading connection</a></p>
+  </div>
+</BaseLayout>
+<script>import '../../../scripts/portal-auth';import '../../../scripts/portal-notes';import '../../../scripts/portal-tms60';import '../../../scripts/portal-library';import '../../../scripts/portal-capture';import '../../../scripts/portal-integrated-workflows';</script>

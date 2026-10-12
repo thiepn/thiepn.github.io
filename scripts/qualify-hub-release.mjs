@@ -32,17 +32,18 @@ assert.equal(providers.attentionContract.privateReadsEnabled, false);
 assert.equal(providers.attentionContract.inlineWritesEnabled, false);
 assert.deepEqual(providers.budgets, { visible: 6, concurrency: 3, deadlineMs: 2000, summaryItems: 10, summaryBytes: 32768, searchItems: 20, searchBytes: 65536 });
 
-const files = new Set(['hub-release.json', 'hub-providers.json', 'hub-search.json', 'hub-provider-schema.json', 'hub-attention-schema.json', 'sitemap.xml']);
+const files = new Set(['hub-release.json', 'hub-providers.json', 'hub-search.json', 'hub-provider-schema.json', 'hub-attention-schema.json', 'sitemap.xml', 'home/workspace-sw.js']);
 const sitemap = (await read('sitemap.xml')).toString();
 for (const route of HUB_RELEASE_ROUTES) {
   const file = route === '/' ? 'index.html' : `${route.slice(1)}index.html`;
   const html = (await read(file)).toString();
   files.add(file);
-  if (['/home/', '/inbox/', '/home/auth/callback/'].includes(route)) {
+  if (route.startsWith('/home/') || route === '/inbox/') {
     assert.match(html, /<meta\s+name="robots"\s+content="noindex,nofollow"/);
     assert(!sitemap.includes(`<loc>https://thiepn.dev${route}</loc>`), 'Personal route leaked into sitemap');
   }
-  if (['/home/', '/inbox/', '/search/', '/home/auth/callback/'].includes(route)) assert(!html.includes('static.cloudflareinsights.com'), 'Personal/query surface includes analytics');
+  if (route.startsWith('/home/') || ['/inbox/', '/search/'].includes(route)) assert(!html.includes('static.cloudflareinsights.com'), 'Personal/query surface includes analytics');
+  if (route.startsWith('/home/')) assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(html), 'Managed integration leaked into public workspace');
   for (const match of html.matchAll(/(?:src|href)="(\/_astro\/[^"?#]+)"/g)) files.add(match[1].slice(1));
 }
 const home = (await read('home/index.html')).toString();
@@ -52,12 +53,19 @@ if (status.profile === 'device-reading-pilot') {
   assert.equal(pilot.enabled, true); assert.equal(pilot.scope, 'device');
   assert.equal(pilot.cloudAccess, false); assert.equal(pilot.writes, false); assert.equal(pilot.desktopOnly, false);
   assert.deepEqual(pilot.operations, ['summary','continue']);
-  assert(home.includes('data-reading-pilot') && home.includes('data-library-pilot="v1"'));
+  assert(home.includes('data-reading-pilot') && home.includes('data-library-pilot="v1"') && home.includes('data-library-host-route="/home/"'));
   assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(home), 'Managed integration leaked into device pilot');
   files.add('reading-pilot.json');
 }
-assert.equal([...home.matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Home roster does not match release count');
-assert.equal([...home.matchAll(/\bdata-pin-choice\b/g)].length, status.appCount, 'Pin choices do not match release count');
+assert(home.includes('data-workspace'), 'Adaptive workspace shell is missing');
+assert(!home.includes('data-hub-item'), 'Home must not render the entire Apps catalogue');
+const embeddedApps = home.match(/<script[^>]*data-workspace-apps[^>]*>([\s\S]*?)<\/script>/);
+assert(embeddedApps, 'Workspace app registry is missing');
+const workspaceApps = JSON.parse(embeddedApps[1]);
+assert.equal(workspaceApps.length, status.appCount, 'Workspace app registry count differs from release');
+assert.deepEqual(workspaceApps.map(app=>app.id), hub.projects.map(app=>app.slug), 'Workspace app registry differs from reviewed source');
+assert(workspaceApps.every(app=>typeof app.url==='string' && new URL(app.url).protocol==='https:'), 'Workspace launch URL rejected');
+assert.equal([...(await read('index.html')).toString().matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Apps catalogue roster does not match release count');
 assert.equal((await json('hub-search.json')).projects.length, status.appCount, 'Search roster does not match release count');
 const assets = [];
 for (const file of [...files].sort()) {
