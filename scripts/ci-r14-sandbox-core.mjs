@@ -59,6 +59,17 @@ export function prepareSyntheticBundle({nodePath=process.execPath,workerPath,bas
     const expectedManifestHash=sha256(manifestText);
     inspectBundle(assets,expectedManifestHash);
     return {directory,root,assets,expectedManifestHash,manifest,runtimeSha256:digestFile(join(root,'bin/node')),workerSha256:digestFile(join(root,'app/worker.mjs'))};
-  }catch(e){rmSync(directory,{recursive:true,force:true});throw e;}
+  }catch(e){disposeSyntheticBundle({directory,root});throw e;}
 }
-export function disposeSyntheticBundle(bundle){if(bundle?.directory)rmSync(bundle.directory,{recursive:true,force:true});return !existsSync(bundle?.directory||'');}
+export function disposeSyntheticBundle(bundle){
+  if(!bundle?.directory)return true;
+  // R14: staged rootfs is deliberately read-only (0555). A normal GitHub
+  // runner UID cannot recursively remove files until OWNED directories regain
+  // write/search permissions. Do so only AFTER the isolated child has exited.
+  // Never follow symlinks when restoring permissions during cleanup.
+  for(const p of [bundle.root, ...['bin','app','assets','tmp'].map(n=>join(bundle.root||'',n))]){
+    try{if(p&&lstatSync(p).isDirectory()&&!lstatSync(p).isSymbolicLink())chmodSync(p,0o700);}catch(e){if(e.code!=='ENOENT')throw e;}
+  }
+  rmSync(bundle.directory,{recursive:true,force:true});
+  return !existsSync(bundle.directory);
+}
