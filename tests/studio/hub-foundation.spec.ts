@@ -135,7 +135,7 @@ test('H1 rendered review captures and local shell timings', async ({ page, brows
         if (route === '/home/') await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-11');
         const body = await page.screenshot(); await testInfo.attach(`${name}-${width}-${theme}`, {body, contentType:'image/png'});
         const dir='test-results/h1-review'; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(`${dir}/${name}-${width}-${theme}.png`,body);
-        await timingPage.goto(route); await timingPage.evaluate(() => document.fonts.ready);
+        await timingPage.goto('http://127.0.0.1:4321' + route); await timingPage.evaluate(() => document.fonts.ready);
         timings.push(await timingPage.evaluate(({ route, width, theme }) => ({route,width,theme,domContentLoadedMs:(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).domContentLoadedEventEnd, paints:performance.getEntriesByType('paint').map(p=>({name:p.name,timeMs:p.startTime}))}), {route,width,theme}));
       }
     }
