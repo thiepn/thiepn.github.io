@@ -9,7 +9,31 @@ concurrency:
   group: hub-managed-notes-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-contract:
+    name: Public contracts (private paired tests not executed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify Account CI boundaries
+        run: node --test tests/hub-account-ci-boundaries.test.mjs
+      - name: Verify public integration contracts
+        run: npx vitest run tests/unit/hub-notes-session.test.ts
+      - name: Report private qualification status
+        run: |
+          echo "::notice title=Private paired qualification blocked::Private Account suites require an independently controlled runner. Public contracts do not qualify private integrations."
+          echo "Private paired browser tests: NOT_EXECUTED (independent runner not configured)." >> "$GITHUB_STEP_SUMMARY"
   staged-paired:
+    # Preserve the original pinned paired suite for migration to an independent
+    # trusted control plane. It must not execute in public-repository CI.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
