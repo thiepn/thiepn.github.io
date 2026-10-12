@@ -117,17 +117,30 @@ for (const route of ['/home/', '/search/']) for (const theme of ['light', 'dark'
   });
 }
 
-test('H1 rendered review captures and local shell timings', async ({ page }, testInfo) => {
+test('H1 rendered review captures and local shell timings', async ({ page, browser }, testInfo) => {
+  // Freeze time only for review captures: historical H1 snapshots show 2026-10-11.
+  // A separate unmocked page keeps REAL navigation timing; clock mocking removes
+  // performance navigation entries in some Playwright browser engines.
+  await page.clock.install({ time: new Date('2026-10-11T12:00:00.000Z') });
+  const timingPage = await browser.newPage();
   const timings: unknown[] = [];
-  for (const [width, theme] of [[1440, 'light'], [390, 'dark']] as const) {
-    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
-    await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-    for (const [route, name] of [['/home/', 'home'], ['/search/?q=French+vocabulary', 'search']] as const) {
-      await page.goto(route); await page.evaluate(() => document.fonts.ready);
-      const body = await page.screenshot(); await testInfo.attach(`${name}-${width}-${theme}`, {body, contentType:'image/png'});
-      const dir='test-results/h1-review'; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(`${dir}/${name}-${width}-${theme}.png`,body);
-      timings.push(await page.evaluate(({ route, width, theme }) => ({route,width,theme,domContentLoadedMs:(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).domContentLoadedEventEnd, paints:performance.getEntriesByType('paint').map(p=>({name:p.name,timeMs:p.startTime}))}), {route,width,theme}));
+  try {
+    for (const [width, theme] of [[1440, 'light'], [390, 'dark']] as const) {
+      await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      await timingPage.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      await timingPage.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      for (const [route, name] of [['/home/', 'home'], ['/search/?q=French+vocabulary', 'search']] as const) {
+        await page.goto(route); await page.evaluate(() => document.fonts.ready);
+        if (route === '/home/') await expect(page.locator('[data-local-date]')).toHaveAttribute('data-day', '2026-10-11');
+        const body = await page.screenshot(); await testInfo.attach(`${name}-${width}-${theme}`, {body, contentType:'image/png'});
+        const dir='test-results/h1-review'; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(`${dir}/${name}-${width}-${theme}.png`,body);
+        await timingPage.goto('http://127.0.0.1:4321' + route); await timingPage.evaluate(() => document.fonts.ready);
+        timings.push(await timingPage.evaluate(({ route, width, theme }) => ({route,width,theme,domContentLoadedMs:(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).domContentLoadedEventEnd, paints:performance.getEntriesByType('paint').map(p=>({name:p.name,timeMs:p.startTime}))}), {route,width,theme}));
+      }
     }
+  } finally {
+    await timingPage.close();
   }
   fs.writeFileSync('test-results/h1-review/timings.json',JSON.stringify({environment:'Local headless Chromium; no network/CPU throttling; synthetic timing, not field Web Vitals',timings},null,2));
 });
