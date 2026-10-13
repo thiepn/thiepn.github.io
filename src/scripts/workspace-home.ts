@@ -29,6 +29,7 @@ if (root)
 async function setup(root: HTMLElement) {
     const view = root.dataset.view ?? 'home';
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
+    const agendaModeFromUrl = view === 'calendar' ? new URLSearchParams(location.search).get('mode') : null;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -43,7 +44,7 @@ async function setup(root: HTMLElement) {
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
-    let agendaMode: AgendaMode = 'day'; // View-only: never another calendar/scheduler store.
+    let agendaMode: AgendaMode = agendaModeFromUrl==='week'?'week':'day'; // View-only: never another calendar/scheduler store.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -632,7 +633,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const zone=state!.preferences.timezone;
-        const html=`<div class="ws-context-summary">
+        const html=`<div class="ws-context-summary" data-task-calendar-review>
           <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
           <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
           <div class="ws-form-row">
@@ -642,6 +643,7 @@ async function setup(root: HTMLElement) {
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
           <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
           <p class="ws-muted">Duplicate identical local events are blocked. Existing H10 read-only calendar imports and StudyOS/Google calendars are not written.</p>
@@ -671,6 +673,30 @@ async function setup(root: HTMLElement) {
                 throw new Error('The calendar event was not created. Review the message and try again.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
+        paintTaskCalendarPreview(task,zone);
+    }
+    function paintTaskCalendarPreview(task:Task,zone:string) {
+        const el=dialog.querySelector<HTMLElement>('[data-task-calendar-preview]');
+        if(!el || !state)return;
+        try {
+            const data=new FormData(form);
+            const proposal={taskId:task.id,title:task.title,date:String(data.get('date')??''),
+                time:String(data.get('start')??''),duration:Number(data.get('duration')),
+                allDay:data.has('allDay'),confirmed:true};
+            const preview=prepareTaskCalendarEvent(
+                state.tasks.find(t=>t.id===task.id)??task,proposal,zone).event;
+            const duplicate=identicalLocalEvent(state.events,preview);
+            const overlaps=overlapsForEvent(state.events,preview);
+            const names=[...new Set(overlaps.map(p=>p.first===preview.id?p.second:p.first))]
+                .map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
+            el.innerHTML=`<strong>Proposed local calendar block · ${esc(preview.title)}</strong>
+                <p>${esc(preview.date)} · ${preview.allDay?'All day':esc(preview.start)+' → '+esc(preview.end)} (${esc(zone)})</p>
+                ${duplicate?'<p class="ws-plan-preview-warning">Identical event already exists. This proposal cannot be added again.</p>':''}
+                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}. No external calendars were checked.</p>`:
+                    '<p>No timed overlaps detected in local Hub events. All-day commitments and external sources are not checked for time conflicts.</p>'}`;
+        } catch(e) {
+            el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
+        }
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
@@ -1772,6 +1798,12 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if (el.closest('[data-task-calendar-review]')) {
+            const source=handoffOrigin?.kind==='task'&&handoffOrigin.epoch===epoch
+                ? state.tasks.find(t=>t.id===handoffOrigin.id):undefined;
+            if(source)paintTaskCalendarPreview(source,state.preferences.timezone);
+            return;
+        }
         if (el.closest('[data-review-event-move]')) {
             const original=handoffOrigin?.kind==='event' && handoffOrigin.epoch===epoch
                 ? state.events.find(e=>e.id===handoffOrigin!.id) : undefined;
