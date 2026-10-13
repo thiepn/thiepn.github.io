@@ -543,6 +543,126 @@ async function setup(root: HTMLElement) {
         await mutate(s => s.active = id, '', false);
         if (view === 'apps' && storageReady && !dirty) location.assign('/');
     }
+
+    function originalHandoffRecord() {
+        if (!handoffOrigin || handoffOrigin.epoch !== epoch || !state) return undefined;
+        const origin=handoffOrigin;
+        return origin.kind==='task' ? state.tasks.find(t=>t.id===origin.id) :
+            origin.kind==='note' ? state.notes.find(n=>n.id===origin.id) :
+            state.events.find(e=>e.id===origin.id);
+    }
+    function renderHandoffBar() {
+        const node=root.querySelector<HTMLElement>('[data-handoff-return]');
+        if(!node)return;
+        const record=originalHandoffRecord();
+        if(!record || privacyHeld || state?.preferences.hidden || locked) {
+            node.hidden=true;node.replaceChildren();return;
+        }
+        const kind=handoffOrigin!.kind;
+        node.hidden=false;
+        node.innerHTML=`<div class="ws-handoff-origin"><div><strong>Return to source: ${esc(record.title)}</strong>
+            <small>${kind==='task'?'Hub local task':kind==='note'?'Hub local note':'Hub local event'} · current tab only · no linked records created</small></div>
+            <div>${button('handoff-return','Open original')}${button('handoff-dismiss','Dismiss')}</div></div>`;
+    }
+    function startHandoff(kind:WorkOrigin['kind'],id:string):boolean {
+        if(!state || locked || privacyHeld || state.preferences.hidden) {
+            toast('Personal content is hidden or unavailable. Open the local workspace first.');return false;
+        }
+        const exists=kind==='task'?state.tasks.some(t=>t.id===id):
+            kind==='note'?state.notes.some(n=>n.id===id):state.events.some(e=>e.id===id);
+        if(!exists){toast('That source record is no longer available.');return false;}
+        handoffOrigin={kind,id,epoch};
+        renderHandoffBar();
+        return true;
+    }
+    function showTaskContext(id:string) {
+        if(!startHandoff('task',id))return;
+        const task=state!.tasks.find(t=>t.id===id)!;
+        const details=`<div class="ws-context-summary">
+            <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
+            <p>These actions use only this device's Hub task, notes and calendar. No external owner app receives private text.</p>
+            <div class="ws-context-actions">
+              ${button('edit-task','Edit original task',id)}
+              ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
+              ${button('create-note-from-task','Draft a local note',id)}
+              <a class="ws-button" href="/home/tasks/">Open Tasks</a>
+              <a class="ws-button" href="/home/connections/">Owner app permissions</a>
+            </div><p class="ws-muted">Calendar planning creates a separate local event only after you explicitly review and confirm it. The task itself is not changed.</p>
+          </div>`;
+        openForm('Next actions · Hub task',details,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function showNoteContext(id:string) {
+        if(!startHandoff('note',id))return;
+        const note=state!.notes.find(n=>n.id===id)!;
+        const ownerUrl=providerAction('notes','capture-text');
+        const html=`<div class="ws-context-summary"><strong>${esc(note.title)}</strong>
+          <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
+          <div class="ws-context-actions">
+            ${button('edit-note','Edit original note',id)}
+            ${button('create-task-from-note','Draft a Hub task',id)}
+            <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
+            ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
+          </div><p class="ws-muted">Drafting a task copies editable text into a new Hub form only. Nothing is created until you save, and no Notes cloud record is written.</p></div>`;
+        openForm('Next actions · Hub note',html,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function showEventContext(id:string) {
+        if(!startHandoff('event',id))return;
+        const item=state!.events.find(e=>e.id===id)!;
+        const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
+          <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
+          <div class="ws-context-actions">
+            ${button('edit-event','Edit original event',id)}
+            ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
+            <a class="ws-button" href="/home/calendar/">Open Calendar</a>
+          </div><p class="ws-muted">This event is independent from all tasks and external calendars. New task details must be reviewed before saving.</p></div>`;
+        openForm('Next actions · Hub event',html,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function planTaskInCalendar(id:string) {
+        if(!startHandoff('task',id))return;
+        const task=state!.tasks.find(t=>t.id===id)!;
+        if(task.completedAt){toast('Reopen the completed task before planning new time.');return;}
+        if(dirty || conflict || !storageReady || !store) {
+            toast('Resolve unsaved changes or storage conflicts before creating a calendar event. Export if necessary.');
+            return;
+        }
+        const zone=state!.preferences.timezone;
+        const html=`<div class="ws-context-summary">
+          <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
+          <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
+          <div class="ws-form-row">
+            ${field('Calendar date','date',task.due||today(),'date','required')}
+            ${field('Start time','start',task.time||'09:00','time','required')}
+          </div>
+          ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
+          <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
+          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
+          <p class="ws-muted">Duplicate identical local events are blocked. Existing H10 read-only calendar imports and StudyOS/Google calendars are not written.</p>
+        </div>`;
+        const sourceTitle=task.title;
+        openForm('Review task → local calendar',html,async data=>{
+            if(!state || locked || dirty || conflict || !storageReady || !store)
+                throw new Error('The original workspace must be saved and available before scheduling.');
+            const proposal={taskId:id,title:sourceTitle,date:String(data.get('date')),
+                time:String(data.get('start')),duration:Number(data.get('duration')),
+                allDay:data.has('allDay'),confirmed:data.has('confirm')};
+            // Validate before mutation; validate again inside the native queued writer.
+            prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            await mutate(s=>{
+                const source=s.tasks.find(t=>t.id===id);
+                if(!source)throw new Error('The source task was deleted. No calendar event was created.');
+                const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
+                if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
+                s.events.push(event);
+                activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
+            },'Reviewed Hub calendar event created');
+            if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
+        },'Create reviewed Hub event');
+    }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
         openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
