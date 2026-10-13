@@ -12,6 +12,7 @@ export interface FocusPresentation {
   selectedId: string | null;
   remainingMs: number;
   running: boolean;
+  elapsed: boolean;
 }
 const priorityOrder = {high:0,medium:1,low:2,none:3} as const;
 const esc=(value:unknown) => String(value ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -79,10 +80,10 @@ export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresen
           <span class="ws-focus-clock" role="timer" aria-label="Remaining focus time" data-focus-clock>${focusClock(p.remainingMs)}</span>
           <div class="ws-focus-timer-controls">
             <label>Session length <select data-focus-duration aria-label="Session duration">${([15,25,45] as FocusDuration[]).map(d=>`<option value="${d}"${d===p.duration?' selected':''}>${d} minutes</option>`).join('')}</select></label>
-            ${p.running?btn('focus-pause','Pause'):btn('focus-start',p.remainingMs<p.duration*60000?'Resume':'Start')}
+            ${p.running?btn('focus-pause','Pause'):btn('focus-start',p.elapsed?'Start again':p.remainingMs<p.duration*60000?'Resume':'Start')}
             ${btn('focus-reset','Reset')}
           </div>
-          <p class="ws-focus-timer-note" data-focus-session-status>${p.running?'Session running in this tab. Leaving or hiding the tab pauses it.':'Session paused or not started. No time or mastery is recorded.'}</p>
+          <p class="ws-focus-timer-note" data-focus-session-status>${p.running?'Session running in this tab. Leaving or hiding the tab pauses it.':p.elapsed?'Session elapsed; task completion is still your decision. No progress was recorded.':'Session paused or not started. No time or mastery is recorded.'}</p>
         </div>
       </section>
       <section class="ws-focus-queue" aria-label="Hub task queue">
