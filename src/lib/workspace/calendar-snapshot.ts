@@ -106,8 +106,9 @@ function recurrentDays(block: Component, start: ParsedDate, lastDay: string, war
         Object.keys(options).some(key => !['FREQ', 'INTERVAL', 'COUNT', 'UNTIL', 'BYDAY', 'WKST'].includes(key)) ||
         (options.BYDAY && !options.BYDAY.split(',').every(day => WEEKDAY.includes(day as typeof WEEKDAY[number]))) ||
         (options.WKST && options.WKST !== 'MO') ||
-        (options.COUNT && (!/^\d+$/.test(options.COUNT) || +options.COUNT > 100000)) ||
-        (options.INTERVAL && (!/^\d+$/.test(options.INTERVAL) || +options.INTERVAL > 365))) {
+        (options.COUNT && (!/^\d+$/.test(options.COUNT) || +options.COUNT < 1 || +options.COUNT > 100000)) ||
+        (options.INTERVAL && (!/^\d+$/.test(options.INTERVAL) || +options.INTERVAL < 1 || +options.INTERVAL > 365)) ||
+        (options.UNTIL && !icsDay(options.UNTIL.slice(0,8)))) {
         warnings.push('One unsupported recurrence rule was omitted rather than represented inaccurately.');
         return [];
     }
