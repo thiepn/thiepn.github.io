@@ -74,6 +74,7 @@ async function setup(root: HTMLElement) {
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
     let homeMode:HomeJourneyMode='today'; // Presentation only; all source records remain in the original WorkspaceState.
+    let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
@@ -134,6 +135,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
@@ -841,6 +843,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const original=taskSnapshot(record),own=epoch,source=store;
+        activeUnifiedReview={task:original,epoch};
         const target=record.due&&record.due>=today()?record.due:today();
         const html=`<div class="ws-unified-review" data-unified-review>
           <strong>Original Hub task · ${esc(record.title)}</strong>
@@ -1454,6 +1457,31 @@ async function setup(root: HTMLElement) {
             return;
         }
         switch (action) {
+            case 'unified-mode':
+                if(view==='home' && (HOME_JOURNEY_MODES as readonly string[]).includes(id)) {
+                    if(editing && id!=='workspace'){toast('Save or cancel the current layout edit before switching views.');break;}
+                    if(homeMode==='focus' && id!=='focus')pauseFocusSession();
+                    homeMode=id as HomeJourneyMode;
+                    render();
+                    root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
+                }
+                break;
+            case 'unified-triage':
+                reviewUnifiedTask(id);
+                break;
+            case 'unified-focus-task':
+                if(view==='home' && state.tasks.some(t=>t.id===id && !t.completedAt)) {
+                    pauseFocusSession();
+                    focus.selectedId=id;
+                    focus.queue=state.tasks.find(t=>t.id===id)?.due?'due':'inbox';
+                    focus.remainingMs=focus.duration*60000;
+                    focus.elapsed=false;
+                    homeMode='focus';
+                    render();
+                    root.querySelector<HTMLElement>('#ws-daily-focus')?.scrollIntoView({block:'start'});
+                    root.querySelector<HTMLButtonElement>('[data-action=focus-start]')?.focus();
+                }
+                break;
             case 'focus-queue':
                 if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
                     focus.queue=id as FocusQueue;
@@ -2057,6 +2085,11 @@ async function setup(root: HTMLElement) {
             if(original)paintEventMovePreview(original,state.preferences.timezone);
             return;
         }
+        if (el.closest('[data-unified-review]')) {
+            const original=activeUnifiedReview;
+            if(original && original.epoch===epoch)paintUnifiedTaskPreview(original.task);
+            return;
+        }
         if (el.hasAttribute('data-week-task-id')) {
             if(view!=='calendar'||privacyHeld||state.preferences.hidden)return;
             const id=el.dataset.weekTaskId!;
@@ -2326,6 +2359,7 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         homeMode='today';
+        activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
