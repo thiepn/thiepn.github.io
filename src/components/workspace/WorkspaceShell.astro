@@ -11,6 +11,7 @@ import '../../styles/workspace.css';
 import '../../styles/continuation.css';
 import '../../styles/capture-tasks.css';
 import '../../styles/workspace-widgets-h13.css';
+import '../../styles/workspace-palette-h14.css';
 import '@fontsource-variable/instrument-sans';
 interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps' }
 const {view='home'}=Astro.props;
@@ -33,7 +34,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
       <div class="ws-nav-bottom"><a href="/flows/" title="Workflow guides" class="ws-nav-link"><Fragment set:html={icon('book-open')}/><span>Workflow guides</span></a><a href="/home/settings/" title="Settings" class="ws-nav-link"><Fragment set:html={icon('gear-six')}/><span>Settings</span></a><button type="button" class="ws-nav-link" data-action="account" title="Account"><Fragment set:html={icon('user-circle')}/><span data-profile-label>This device</span></button></div>
     </aside>
     <div class="ws-body">
-      <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search apps, Hub tasks and local notes</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture locally in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
+      <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture locally in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
           <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='apps' ? <button class="ws-button" type="button" data-action="capture">+ Capture</button> : <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
@@ -61,7 +62,15 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <nav class="ws-mobile-nav" aria-label="Mobile workspace navigation">{navigation.map(([key,label,url,ic])=><a href={url} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
     <div class="ws-toast" data-workspace-toast role="status" hidden></div>
     <dialog class="ws-dialog" data-workspace-dialog aria-labelledby="ws-dialog-title"><form data-workspace-form><header><h2 id="ws-dialog-title"></h2><button type="button" class="ws-button" data-action="close-dialog" aria-label="Close dialog">Close</button></header><div data-dialog-fields></div><p class="ws-error" data-dialog-error role="alert"></p><footer><button type="button" class="ws-button" data-action="close-dialog">Cancel</button><button type="submit" class="ws-primary" data-dialog-submit>Save</button></footer></form></dialog>
-    <dialog class="ws-dialog ws-search-dialog" data-search-dialog aria-labelledby="ws-search-title"><header><h2 id="ws-search-title">Search your workspace</h2><button type="button" class="ws-button" data-action="close-search">Close</button></header><label class="ws-sr" for="workspace-search">Search apps, tasks and notes</label><input id="workspace-search" type="search" placeholder="Search apps, tasks and notes…" autocomplete="off"/><div data-search-results></div></dialog>
+    <dialog class="ws-dialog ws-search-dialog ws-action-palette" data-search-dialog aria-labelledby="ws-search-title">
+      <header><div><h2 id="ws-search-title">Search & actions</h2><p class="ws-palette-caption">Apps and local Hub data only · other app records require owner consent</p></div><button type="button" class="ws-button" data-action="close-search" aria-label="Close search and actions">Close</button></header>
+      <label class="ws-sr" for="workspace-search">Search apps, local tasks, notes and calendar, or enter an action</label>
+      <div class="ws-palette-input-row"><span set:html={icon('magnifying-glass')} /><input id="workspace-search" type="search" role="searchbox" aria-controls="ws-palette-results" placeholder="Search or type > actions · @ apps · # tasks" autocomplete="off" enterkeyhint="search"/></div>
+      <nav class="ws-palette-scopes" data-palette-scopes aria-label="Search categories"></nav>
+      <div class="ws-palette-summary" data-palette-summary role="status" aria-live="polite"></div>
+      <div data-search-results id="ws-palette-results" class="ws-palette-results" role="group" aria-label="Search matches and commands"></div>
+      <footer class="ws-palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>Enter</kbd> Open</span><span><kbd>Esc</kbd> Close</span><span>Only Hub records are searched · no external provider query</span></footer>
+    </dialog>
     <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/>{readingHost ? <><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/><ContinuationDesk/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a><a href="/home/settings/" class="ws-button">Workspace settings</a></dialog>
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
