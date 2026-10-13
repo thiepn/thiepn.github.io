@@ -93,7 +93,7 @@ export function renderPlannerReviewSummary(state:WorkspaceState,selected:string)
     const p=reviewDay(state,selected);
     return `<div class="ws-plan-sidebar"><p>Hub-local review: ${p.timed.length} timed, ${p.allDay.length} all-day; ${p.deadlines.length} task deadline${p.deadlines.length===1?'':'s'}.</p>
       ${p.overlaps.length?`<strong>${p.overlaps.length} possible timed overlap${p.overlaps.length===1?'':'s'}</strong><p>Use Calendar to review event times. No changes have been made.</p>`:''}
-      <div>${navButton('planning-prev','← Day')}${navButton('planning-today','Today')}${navButton('planning-next','Day →')}</div>
+      <div>${navButton('planning-prev-day','← Day')}${navButton('planning-today','Today')}${navButton('planning-next-day','Day →')}</div>
       <a href="/home/calendar/">Open full day/week review →</a>
     </div>`;
 }
