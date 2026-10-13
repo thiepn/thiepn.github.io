@@ -23,7 +23,7 @@ self.addEventListener('fetch',event=>{
  if(request.method!=='GET'||url.origin!==self.location.origin)return;
  const catalogueFilter=url.pathname==='/apps/'&&url.searchParams.size===1&&url.searchParams.has('category')&&FILTERS.has(url.searchParams.get('category'));
  if(url.search&&!catalogueFilter)return;
- if(request.mode==='navigate'&&PAGES.has(url.pathname)){
+ if((request.mode==='navigate'||request.headers.get('X-Hub-Navigation')==='1')&&PAGES.has(url.pathname)){
   event.respondWith(fetch(request).then(response=>{if(response.ok){const copy=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(url.pathname,copy)));}return response;}).catch(()=>caches.open(CACHE).then(cache=>cache.match(url.pathname)).then(hit=>hit||Response.error())));return;
  }
  if(url.pathname.startsWith('/_astro/')||url.pathname==='/favicon.svg')event.respondWith(caches.open(CACHE).then(cache=>cache.match(request)).then(hit=>hit||fetch(request).then(response=>{if(response.ok){const copy=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(request,copy)));}return response;})));

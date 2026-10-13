@@ -115,10 +115,10 @@ for (const route of routes.routes.filter((route) => !route.endsWith('.json'))) {
         await new Promise((resolve) => setTimeout(resolve, 40));
       }
     });
-    for (const image of await page.locator('img:visible').all()) {
-      await image.scrollIntoViewIfNeeded();
-      await expect(image).toHaveJSProperty('complete', true, { timeout: 15000 });
-    }
+    // Load the complete visible roster together, without a separate layout-stability
+    // wait for every thumbnail. The scroll above still exercises lazy loading.
+    await page.locator('img:visible').evaluateAll((images) => images.forEach((image) => { (image as HTMLImageElement).loading = 'eager'; }));
+    await expect.poll(() => page.locator('img:visible').evaluateAll((images) => images.filter((image) => !(image as HTMLImageElement).complete).map((image) => image.getAttribute('src'))), { timeout: 15000 }).toEqual([]);
     const broken = await page.locator('img:visible').evaluateAll((elements) => elements.filter((element) => !(element as HTMLImageElement).naturalWidth).map((element) => element.getAttribute('src')));
     expect(broken).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
