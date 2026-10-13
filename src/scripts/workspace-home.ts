@@ -343,7 +343,7 @@ async function setup(root: HTMLElement) {
                 ${button('task-plan-tomorrow', 'Tomorrow', t.id, 'ws-button')}
                 ${button('task-plan-week', 'In 7 days', t.id, 'ws-button')}
                 ${t.priority !== 'high' ? button('task-plan-high', 'High priority', t.id, 'ws-button') : button('task-plan-normal', 'Normal priority', t.id, 'ws-button')}
-                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}
+                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}${button('context-task', 'Next actions', t.id, 'ws-text-button')}${button('plan-task-event', 'Calendar block', t.id, 'ws-text-button')}
               </div>` : '';
             return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
               <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/>
@@ -351,7 +351,7 @@ async function setup(root: HTMLElement) {
               ${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : view === 'tasks' && !t.completedAt ? '<small class="ws-muted">Inbox</small>' : ''}
               ${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}
               ${t.time ? `<time>${esc(t.time)}</time>` : ''}
-              ${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
+              ${button('context-task', 'Next', t.id, 'ws-text-button')}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
             </div>${actions}</div>`;
         }).join('');
     }
@@ -363,7 +363,7 @@ async function setup(root: HTMLElement) {
         return `<div class="ws-calendar-heading"><strong>${new Date(first + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', year: 'numeric' })}</strong><div>${button('month-prev', icon('caret-left'), '', 'ws-icon-button')}${button('month-next', icon('caret-right'), '', 'ws-icon-button')}</div></div><div class="ws-month">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}${dates.map(d => `<button type="button" data-action="select-date" data-id="${d}" aria-label="${esc(dateLabel(d, true))}" aria-pressed="${d === selected}" class="${d === selected ? 'selected' : ''} ${d === today() ? 'today' : ''} ${d.slice(0, 7) !== first.slice(0, 7) ? 'outside' : ''} ${state!.events.some(e => eventRange(e)[0]! <= d && eventRange(e)[1]! >= d) || state!.tasks.some(t => t.due === d) ? 'has-event' : ''}">${Number(d.slice(8))}</button>`).join('')}</div>`;
     }
     function eventRange(e: CalendarEvent) { return e.allDay ? [e.date,e.endDate] : [dayKey(state!.preferences.timezone,new Date(e.start)),dayKey(state!.preferences.timezone,new Date(e.end))]; }
-    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
+    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('context-event', 'Next', e.id, 'ws-text-button')}${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
     function renderPlanner() {
         const el = $('[data-planner]');
         if (!state || (privacyHeld || state.preferences.hidden)) {
@@ -411,7 +411,7 @@ async function setup(root: HTMLElement) {
             }
             case 'continue': {
                 const recent = [...state!.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, w.view === 'detailed' ? 6 : 4);
-                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('')
+                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}${button('context-note', 'Next', n.id, 'ws-text-button')}</div>`).join('')
                     : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
                 return `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Launch links here; approved owner metadata appears separately in the Continue desk on Home or App connections.</p>${renderOwnerHandoffs(apps, 2)}<a class="ws-text-button" href="/home/connections/">Check connected sources</a></div>`;
             }
@@ -665,7 +665,7 @@ async function setup(root: HTMLElement) {
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -1190,6 +1190,48 @@ async function setup(root: HTMLElement) {
                 break;
             case 'rail':
                 void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
+                break;
+            case 'context-task':
+                showTaskContext(id);
+                break;
+            case 'context-note':
+                showNoteContext(id);
+                break;
+            case 'context-event':
+                showEventContext(id);
+                break;
+            case 'plan-task-event':
+                planTaskInCalendar(id);
+                break;
+            case 'create-note-from-task': {
+                if(!startHandoff('task',id))break;
+                const task=state.tasks.find(t=>t.id===id);
+                if(task)editNote('',taskNoteSeed(task));
+                break;
+            }
+            case 'create-task-from-note': {
+                if(!startHandoff('note',id))break;
+                const note=state.notes.find(n=>n.id===id);
+                if(note)editTask('',noteTaskSeed(note));
+                break;
+            }
+            case 'create-task-from-event': {
+                if(!startHandoff('event',id))break;
+                const event=state.events.find(e=>e.id===id);
+                if(event)editTask('',{title:event.title,notes:'From reviewed Hub calendar event. Confirm details before saving.'});
+                break;
+            }
+            case 'handoff-return': {
+                const origin=handoffOrigin;
+                if(!origin || !originalHandoffRecord()){toast('Original record is no longer available.');handoffOrigin=null;renderHandoffBar();break;}
+                if(origin.kind==='task')editTask(origin.id);
+                else if(origin.kind==='note')editNote(origin.id);
+                else editEvent(origin.id);
+                break;
+            }
+            case 'handoff-dismiss':
+                handoffOrigin=null;
+                renderHandoffBar();
                 break;
             case 'new-task':
                 editTask();
