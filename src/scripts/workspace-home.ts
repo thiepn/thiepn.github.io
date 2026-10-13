@@ -10,6 +10,7 @@ import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type Palet
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
+import { renderReturnJourney, type ReturnContext } from '../lib/workspace/return-journey';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -442,14 +443,23 @@ async function setup(root: HTMLElement) {
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return view === 'home' ? renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
+        return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
+    }
+    function returnContext(): ReturnContext {
+        return {today:today(),storageReady,dirty,conflict,offline:!navigator.onLine,
+            editing:!!editing,recoveryDraft,account:hubIdentity.status==='signed-in'};
+    }
+    function updateReturnPanel() {
+        if(!state || view!=='home' || locked || privacyHeld || state.preferences.hidden)return;
+        const panel=root.querySelector<HTMLElement>('[data-return-panel]');
+        if(panel)panel.innerHTML=renderReturnJourney(state,returnContext());
     }
     function render() {
         observer?.disconnect();
         if (!state)
             return;
-        const focus = document.activeElement as HTMLElement | null;
-        const action = focus?.dataset.action, id = focus?.dataset.id, toggle = focus?.dataset.taskToggle;
+        const focusedElement = document.activeElement as HTMLElement | null;
+        const action = focusedElement?.dataset.action, id = focusedElement?.dataset.id, toggle = focusedElement?.dataset.taskToggle;
         root.dataset.rail = state.preferences.rail ? 'expanded' : 'collapsed';
         root.dataset.density = state.preferences.density;
         root.dataset.calendarZone = state.preferences.timezone;
