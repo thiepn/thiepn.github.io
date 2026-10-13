@@ -69,7 +69,8 @@ function weekBody(state:WorkspaceState,selected:string,today:string):string {
 }
 /** Native day/week view over the original records. No writes and no data caching. */
 export function renderPlanningReview(state:WorkspaceState,selected:string,mode:AgendaMode,today:string,
-    selectedTaskIds:ReadonlySet<string>=new Set<string>(),taskFilter:WeekTaskFilter='carry'):string {
+    selectedTaskIds:ReadonlySet<string>=new Set<string>(),taskFilter:WeekTaskFilter='carry',
+    returnWeekDate:string|null=null):string {
     const range=mode==='week'?reviewWeek(state,selected):[reviewDay(state,selected)];
     const totals=range.reduce((sum,p)=>({event:sum.event+p.events.length,due:sum.due+p.deadlines.length,overlap:sum.overlap+p.overlaps.length}),{event:0,due:0,overlap:0});
     return `<section class="ws-planning-review" data-planning-review aria-label="Hub local planning review">
@@ -83,6 +84,7 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
             ${navButton('planning-today','Today')}
             ${navButton('planning-tomorrow','Tomorrow')}
             ${navButton('planning-next',mode==='week'?'Next week':'Next day')}
+            ${mode==='day' && returnWeekDate ? navButton('week-return','Return to reviewed week') : ''}
           </div>
         </div>
       </header>
