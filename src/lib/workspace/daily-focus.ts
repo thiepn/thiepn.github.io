@@ -65,7 +65,7 @@ export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresen
       ${!selected.due?btn('task-plan-today','Schedule today',selected.id):btn('task-plan-tomorrow','Move to tomorrow',selected.id)}
       ${btn('focus-next','Choose next')}
     </div>` : `<p class="ws-focus-empty">Choose a task from a queue below. This is a local focus selection, not a new assignment or progress record.</p>`;
-  return `<section class="ws-daily-focus" aria-labelledby="ws-focus-title" data-focus-panel>
+  return `<section class="ws-daily-focus" id="ws-daily-focus" aria-labelledby="ws-focus-title" data-focus-panel>
     <header class="ws-focus-heading"><div><p class="ws-home-eyebrow">Daily focus · local Hub</p><h2 id="ws-focus-title">One next action at a time</h2><p>Choose your task and concentrate without changing your calendar or other apps.</p></div>
       <div class="ws-focus-heading-actions">
         <button type="button" class="ws-focus-button ws-focus-quiet-toggle" data-action="focus-quiet" aria-pressed="${p.quiet}">${p.quiet?'Exit quiet view':'Quiet view'}</button>
