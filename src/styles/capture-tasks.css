@@ -1,0 +1,50 @@
+/* H12: native Hub capture, Inbox triage and task scheduling. */
+.ws-capture-routing{display:grid;gap:13px;min-width:0;}
+.ws-capture-routing .ws-field{display:grid;gap:6px;}
+.ws-capture-routing textarea{width:100%;min-height:118px;resize:vertical;line-height:1.5;}
+.ws-capture-routing [data-capture-task-options]{display:grid;gap:9px;padding:12px;border:1px solid var(--ws-line);border-radius:7px;}
+.ws-capture-routing [hidden],.ws-capture-routing [data-capture-task-options][hidden]{display:none!important;}
+.ws-capture-routing select,.ws-capture-routing input[type=date]{width:100%;min-width:0;max-width:100%;}
+.ws-capture-handoff{border-top:1px solid var(--ws-line);padding-top:10px;display:flex;align-items:center;gap:7px 13px;flex-wrap:wrap;font-size:12px;}
+.ws-capture-handoff span{flex:1 1 190px;color:var(--ws-muted);line-height:1.55;}
+.ws-capture-handoff a{color:var(--ws-accent);font-weight:600;min-height:40px;display:inline-flex;align-items:center;}
+.ws-capture-handoff button{min-height:40px;}
+.ws-capture-form .ws-capture-bottom{justify-content:flex-end;}
+.ws-capture-form .ws-capture-bottom>button{min-height:42px;}
+.ws-task-center{display:grid;gap:12px;margin-bottom:16px;border:1px solid var(--ws-line);background:var(--ws-surface);border-radius:9px;padding:16px;}
+.ws-task-center>header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;}
+.ws-task-center h2{font-size:17px;font-weight:670;}
+.ws-task-center header p{font-size:12px;color:var(--ws-muted);margin-top:4px;line-height:1.5;}
+.ws-task-filter-list{display:flex;gap:7px;flex-wrap:wrap;}
+.ws-task-filter-button{appearance:none;background:transparent;border:1px solid var(--ws-line);color:var(--ws-ink);font:inherit;font-size:12px;padding:7px 10px;border-radius:6px;min-height:42px;display:inline-flex;align-items:center;gap:9px;cursor:pointer;}
+.ws-task-filter-button strong{font-variant-numeric:tabular-nums;font-size:12px;min-width:14px;text-align:right;}
+.ws-task-filter-button.active{border-color:var(--ws-accent);background:var(--ws-accent-soft);color:var(--ws-accent);font-weight:600;}
+.ws-task-filter-button:hover,.ws-task-filter-button:focus-visible{border-color:var(--ws-accent);}
+.ws-task-explainer{color:var(--ws-muted);font-size:12px;line-height:1.5;}
+.ws-task-results .ws-task-entry{border-bottom:1px solid var(--ws-line);padding:2px 0 10px;}
+.ws-task-results .ws-task-entry:last-child{border-bottom:0;}
+.ws-task-results .ws-task{border-bottom:0;padding-bottom:4px;gap:8px;flex-wrap:wrap;}
+.ws-task-results .ws-task .ws-task-title{min-width:145px;font-size:13px;}
+.ws-task-results .ws-task input[type=checkbox]{width:19px;height:19px;flex-shrink:0;accent-color:var(--ws-accent);}
+.ws-task-results .ws-task-planning{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px 26px;}
+.ws-task-results .ws-task-planning .ws-button,.ws-task-results .ws-task-planning .ws-text-button{font-size:11px;min-height:38px;padding:7px 10px;white-space:normal;text-align:center;}
+.ws-task-results .ws-task-planning .ws-text-button{color:var(--ws-accent);font-weight:600;}
+.ws-task-date-presets{display:flex;gap:6px;flex-wrap:wrap;padding:3px 0 12px;}
+.ws-task-date-presets button{font-size:11px;min-height:40px;padding:6px 10px;}
+.ws-inbox-link{display:inline-flex;align-items:center;min-height:36px;color:var(--ws-accent);font-size:12px;font-weight:650;text-decoration:none;}
+.ws-inbox-link:hover{text-decoration:underline;}
+.ws-capture-routing :is(button,a,input,select,textarea):focus-visible,
+.ws-task-center button:focus-visible,.ws-task-results button:focus-visible,.ws-task-date-presets button:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px;}
+@media(max-width:767px){
+ .ws-task-center{padding:13px;gap:10px;}
+ .ws-task-filter-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+ .ws-task-filter-button{justify-content:space-between;min-width:0;min-height:45px;}
+ .ws-task-filter-button:last-child{grid-column:1/-1;}
+ .ws-task-results{padding:13px;}
+ .ws-task-results .ws-task-planning{padding-left:0;}
+ .ws-task-results .ws-task-planning .ws-button,.ws-task-results .ws-task-planning .ws-text-button{min-height:44px;}
+ .ws-capture-handoff a,.ws-capture-handoff button{min-height:44px;}
+ .ws-task-date-presets button{min-height:44px;}
+ .ws-capture-routing .ws-form-row{grid-template-columns:minmax(0,1fr);}
+}
+@media(forced-colors:active){.ws-task-center,.ws-task-filter-button,.ws-capture-routing [data-capture-task-options]{border-color:CanvasText;}}
