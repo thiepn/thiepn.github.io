@@ -2127,6 +2127,14 @@ async function setup(root: HTMLElement) {
             state && !locked && !privacyHeld && !state.preferences.hidden &&
             !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) {
             const key=event.key.toLowerCase();
+            if(key==='p') {
+                event.preventDefault();
+                agendaMode='week';
+                render();
+                root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                root.querySelector<HTMLButtonElement>('[data-action=week-preview]')?.focus();
+                return;
+            }
             if(['j','k','d','w'].includes(key)) {
                 event.preventDefault();
                 if(key==='d'||key==='w')agendaMode=key==='d'?'day':'week';
