@@ -804,7 +804,7 @@ async function setup(root: HTMLElement) {
     function renderSearch() {
         const rows = $('[data-search-results]');
         const canRead = !!state && !locked && !privacyHeld && !state.preferences.hidden;
-        const result = findPalette({apps, state:canRead ? state : null, query:searchQuery, scope:searchScope, route:location.pathname, today:today()});
+        const result = findPalette({apps, state:canRead ? state : null, query:searchQuery, scope:searchScope, route:location.pathname, today:state ? today() : dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone)});
         const scopes = $('[data-palette-scopes]');
         scopes.innerHTML = PALETTE_SCOPES.map(scope => `<button type="button" data-action="palette-scope" data-id="${scope}" class="ws-palette-chip" aria-pressed="${scope === result.actualScope}">${scope === 'all' ? 'All' : scope === 'actions' ? 'Commands' : scope === 'calendar' ? 'Calendar' : scope[0]!.toUpperCase()+scope.slice(1)}</button>`).join('');
         const summary = $('[data-palette-summary]');
