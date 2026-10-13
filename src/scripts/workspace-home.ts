@@ -11,6 +11,7 @@ import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILT
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
+import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -42,6 +43,8 @@ async function setup(root: HTMLElement) {
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    // Context handoff is UI-only and never a new relation table or cross-app progress record.
+    let handoffOrigin: WorkOrigin | null = null;
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
@@ -340,7 +343,7 @@ async function setup(root: HTMLElement) {
                 ${button('task-plan-tomorrow', 'Tomorrow', t.id, 'ws-button')}
                 ${button('task-plan-week', 'In 7 days', t.id, 'ws-button')}
                 ${t.priority !== 'high' ? button('task-plan-high', 'High priority', t.id, 'ws-button') : button('task-plan-normal', 'Normal priority', t.id, 'ws-button')}
-                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}
+                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}${button('context-task', 'Next actions', t.id, 'ws-text-button')}${button('plan-task-event', 'Calendar block', t.id, 'ws-text-button')}
               </div>` : '';
             return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
               <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/>
@@ -348,7 +351,7 @@ async function setup(root: HTMLElement) {
               ${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : view === 'tasks' && !t.completedAt ? '<small class="ws-muted">Inbox</small>' : ''}
               ${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}
               ${t.time ? `<time>${esc(t.time)}</time>` : ''}
-              ${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
+              ${button('context-task', 'Next', t.id, 'ws-text-button')}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
             </div>${actions}</div>`;
         }).join('');
     }
@@ -360,7 +363,7 @@ async function setup(root: HTMLElement) {
         return `<div class="ws-calendar-heading"><strong>${new Date(first + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', year: 'numeric' })}</strong><div>${button('month-prev', icon('caret-left'), '', 'ws-icon-button')}${button('month-next', icon('caret-right'), '', 'ws-icon-button')}</div></div><div class="ws-month">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}${dates.map(d => `<button type="button" data-action="select-date" data-id="${d}" aria-label="${esc(dateLabel(d, true))}" aria-pressed="${d === selected}" class="${d === selected ? 'selected' : ''} ${d === today() ? 'today' : ''} ${d.slice(0, 7) !== first.slice(0, 7) ? 'outside' : ''} ${state!.events.some(e => eventRange(e)[0]! <= d && eventRange(e)[1]! >= d) || state!.tasks.some(t => t.due === d) ? 'has-event' : ''}">${Number(d.slice(8))}</button>`).join('')}</div>`;
     }
     function eventRange(e: CalendarEvent) { return e.allDay ? [e.date,e.endDate] : [dayKey(state!.preferences.timezone,new Date(e.start)),dayKey(state!.preferences.timezone,new Date(e.end))]; }
-    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
+    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('context-event', 'Next', e.id, 'ws-text-button')}${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
     function renderPlanner() {
         const el = $('[data-planner]');
         if (!state || (privacyHeld || state.preferences.hidden)) {
@@ -408,7 +411,7 @@ async function setup(root: HTMLElement) {
             }
             case 'continue': {
                 const recent = [...state!.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, w.view === 'detailed' ? 6 : 4);
-                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('')
+                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}${button('context-note', 'Next', n.id, 'ws-text-button')}</div>`).join('')
                     : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
                 return `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Launch links here; approved owner metadata appears separately in the Continue desk on Home or App connections.</p>${renderOwnerHandoffs(apps, 2)}<a class="ws-text-button" href="/home/connections/">Check connected sources</a></div>`;
             }
@@ -478,6 +481,7 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarZone = state.preferences.timezone;
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
+        if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; }
         root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         const rail = $('[data-action=rail]');
@@ -508,6 +512,7 @@ async function setup(root: HTMLElement) {
                 : renderMobileToday(state, today());
         }
         syncReadingPanels();
+        renderHandoffBar();
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
         root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
         root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
@@ -538,9 +543,135 @@ async function setup(root: HTMLElement) {
         await mutate(s => s.active = id, '', false);
         if (view === 'apps' && storageReady && !dirty) location.assign('/');
     }
-    function editTask(id = '') {
+
+    function originalHandoffRecord() {
+        if (!handoffOrigin || handoffOrigin.epoch !== epoch || !state) return undefined;
+        const origin=handoffOrigin;
+        return origin.kind==='task' ? state.tasks.find(t=>t.id===origin.id) :
+            origin.kind==='note' ? state.notes.find(n=>n.id===origin.id) :
+            state.events.find(e=>e.id===origin.id);
+    }
+    function renderHandoffBar() {
+        const node=root.querySelector<HTMLElement>('[data-handoff-return]');
+        if(!node)return;
+        const record=originalHandoffRecord();
+        if(!record || privacyHeld || state?.preferences.hidden || locked) {
+            node.hidden=true;node.replaceChildren();return;
+        }
+        const kind=handoffOrigin!.kind;
+        node.hidden=false;
+        node.innerHTML=`<div class="ws-handoff-origin"><div><strong>Return to source: ${esc(record.title)}</strong>
+            <small>${kind==='task'?'Hub local task':kind==='note'?'Hub local note':'Hub local event'} · current tab only · no linked records created</small></div>
+            <div>${button('handoff-return','Open original')}${button('handoff-dismiss','Dismiss')}</div></div>`;
+    }
+    function startHandoff(kind:WorkOrigin['kind'],id:string):boolean {
+        if(!state || locked || privacyHeld || state.preferences.hidden) {
+            toast('Personal content is hidden or unavailable. Open the local workspace first.');return false;
+        }
+        const exists=kind==='task'?state.tasks.some(t=>t.id===id):
+            kind==='note'?state.notes.some(n=>n.id===id):state.events.some(e=>e.id===id);
+        if(!exists){toast('That source record is no longer available.');return false;}
+        handoffOrigin={kind,id,epoch};
+        renderHandoffBar();
+        return true;
+    }
+    function showTaskContext(id:string) {
+        if(!startHandoff('task',id))return;
+        const task=state!.tasks.find(t=>t.id===id)!;
+        const details=`<div class="ws-context-summary">
+            <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
+            <p>These actions use only this device's Hub task, notes and calendar. No external owner app receives private text.</p>
+            <div class="ws-context-actions">
+              ${button('edit-task','Edit original task',id)}
+              ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
+              ${button('create-note-from-task','Draft a local note',id)}
+              <a class="ws-button" href="/home/tasks/">Open Tasks</a>
+              <a class="ws-button" href="/home/connections/">Owner app permissions</a>
+            </div><p class="ws-muted">Calendar planning creates a separate local event only after you explicitly review and confirm it. The task itself is not changed.</p>
+          </div>`;
+        openForm('Next actions · Hub task',details,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function showNoteContext(id:string) {
+        if(!startHandoff('note',id))return;
+        const note=state!.notes.find(n=>n.id===id)!;
+        const ownerUrl=providerAction('notes','capture-text');
+        const html=`<div class="ws-context-summary"><strong>${esc(note.title)}</strong>
+          <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
+          <div class="ws-context-actions">
+            ${button('edit-note','Edit original note',id)}
+            ${button('create-task-from-note','Draft a Hub task',id)}
+            <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
+            ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
+          </div><p class="ws-muted">Drafting a task copies editable text into a new Hub form only. Nothing is created until you save, and no Notes cloud record is written.</p></div>`;
+        openForm('Next actions · Hub note',html,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function showEventContext(id:string) {
+        if(!startHandoff('event',id))return;
+        const item=state!.events.find(e=>e.id===id)!;
+        const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
+          <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
+          <div class="ws-context-actions">
+            ${button('edit-event','Edit original event',id)}
+            ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
+            <a class="ws-button" href="/home/calendar/">Open Calendar</a>
+          </div><p class="ws-muted">This event is independent from all tasks and external calendars. New task details must be reviewed before saving.</p></div>`;
+        openForm('Next actions · Hub event',html,()=>{});
+        $('[data-dialog-submit]').hidden=true;
+    }
+    function planTaskInCalendar(id:string) {
+        if(!startHandoff('task',id))return;
+        const task=state!.tasks.find(t=>t.id===id)!;
+        if(task.completedAt){toast('Reopen the completed task before planning new time.');return;}
+        if(dirty || conflict || !storageReady || !store) {
+            toast('Resolve unsaved changes or storage conflicts before creating a calendar event. Export if necessary.');
+            return;
+        }
+        const zone=state!.preferences.timezone;
+        const html=`<div class="ws-context-summary">
+          <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
+          <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
+          <div class="ws-form-row">
+            ${field('Calendar date','date',task.due||today(),'date','required')}
+            ${field('Start time','start',task.time||'09:00','time','required')}
+          </div>
+          ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
+          <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
+          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
+          <p class="ws-muted">Duplicate identical local events are blocked. Existing H10 read-only calendar imports and StudyOS/Google calendars are not written.</p>
+        </div>`;
+        const sourceTitle=task.title;
+        openForm('Review task → local calendar',html,async data=>{
+            if(!state || locked || dirty || conflict || !storageReady || !store)
+                throw new Error('The original workspace must be saved and available before scheduling.');
+            const proposal={taskId:id,title:sourceTitle,date:String(data.get('date')),
+                time:String(data.get('start')),duration:Number(data.get('duration')),
+                allDay:data.has('allDay'),confirmed:data.has('confirm')};
+            // Validate before mutation; validate again inside the native queued writer.
+            const preview=prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            if (identicalLocalEvent(state.events,preview.event))
+                throw new Error('An identical local calendar event already exists. No duplicate was created.');
+            await mutate(s=>{
+                const source=s.tasks.find(t=>t.id===id);
+                if(!source)throw new Error('The source task was deleted. No calendar event was created.');
+                const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
+                if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
+                s.events.push(event);
+                activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
+            },'Reviewed Hub calendar event created');
+            if (!state.events.some(event=>event.title===preview.event.title &&
+                event.start===preview.event.start && event.end===preview.event.end &&
+                event.date===preview.event.date && event.allDay===preview.event.allDay))
+                throw new Error('The calendar event was not created. Review the message and try again.');
+            if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
+        },'Create reviewed Hub event');
+    }
+    function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -577,9 +708,9 @@ async function setup(root: HTMLElement) {
             }, 'Event saved');
         });
     }
-    function editNote(id = '') {
+    function editNote(id = '', seed?: {title:string;body:string}) {
         const note = state!.notes.find(n => n.id === id);
-        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
+        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
             const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
             if (!next.title)
                 throw new Error('Enter a title.');
@@ -1065,6 +1196,48 @@ async function setup(root: HTMLElement) {
                 break;
             case 'rail':
                 void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
+                break;
+            case 'context-task':
+                showTaskContext(id);
+                break;
+            case 'context-note':
+                showNoteContext(id);
+                break;
+            case 'context-event':
+                showEventContext(id);
+                break;
+            case 'plan-task-event':
+                planTaskInCalendar(id);
+                break;
+            case 'create-note-from-task': {
+                if(!startHandoff('task',id))break;
+                const task=state.tasks.find(t=>t.id===id);
+                if(task)editNote('',taskNoteSeed(task));
+                break;
+            }
+            case 'create-task-from-note': {
+                if(!startHandoff('note',id))break;
+                const note=state.notes.find(n=>n.id===id);
+                if(note)editTask('',noteTaskSeed(note));
+                break;
+            }
+            case 'create-task-from-event': {
+                if(!startHandoff('event',id))break;
+                const event=state.events.find(e=>e.id===id);
+                if(event)editTask('',{title:event.title,notes:'From reviewed Hub calendar event. Confirm details before saving.'});
+                break;
+            }
+            case 'handoff-return': {
+                const origin=handoffOrigin;
+                if(!origin || !originalHandoffRecord()){toast('Original record is no longer available.');handoffOrigin=null;renderHandoffBar();break;}
+                if(origin.kind==='task')editTask(origin.id);
+                else if(origin.kind==='note')editNote(origin.id);
+                else editEvent(origin.id);
+                break;
+            }
+            case 'handoff-dismiss':
+                handoffOrigin=null;
+                renderHandoffBar();
                 break;
             case 'new-task':
                 editTask();
@@ -1684,6 +1857,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        handoffOrigin=null;
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);

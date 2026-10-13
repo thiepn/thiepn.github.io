@@ -14,6 +14,7 @@ import '../../styles/workspace-widgets-h13.css';
 import '../../styles/workspace-palette-h14.css';
 import '../../styles/workspace-focus-h15.css';
 import '../../styles/workspace-return-h16.css';
+import '../../styles/workspace-handoffs-h17.css';
 import '@fontsource-variable/instrument-sans';
 interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps' }
 const {view='home'}=Astro.props;
@@ -42,6 +43,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='apps' ? <button class="ws-button" type="button" data-action="capture">+ Capture</button> : <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
+          <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
           <div data-workspace-today hidden></div>
           {view==='home' && <ContinuationDesk compact />}
           {(view==='home' || view==='calendar') && <section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">

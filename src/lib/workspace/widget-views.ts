@@ -16,6 +16,7 @@ const rowTask = (t:Task,when:string,extra='') => `<div class="ws-widget-record">
     <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}"/>
     <div class="ws-widget-record-main"><button type="button" class="ws-widget-record-title" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>
       <small>${esc(when)}${t.priority==='high'?' · High priority':''}</small>${extra}</div>
+    <button type="button" class="ws-handoff-inline" data-action="context-task" data-id="${esc(t.id)}">Next</button>
     </div>`;
 function inbox(w:Widget,state:WorkspaceState):string {
     const pending=cleanTasks(state.tasks).filter(t=>!t.due).sort((a,b)=>priorityOrder[a.priority]-priorityOrder[b.priority] || a.title.localeCompare(b.title));
@@ -64,7 +65,8 @@ function commitments(w:Widget,state:WorkspaceState,today:string):string {
       ${items.length?items.map(item=>`<div class="ws-widget-record ws-widget-agenda">
         <span class="ws-widget-date">${esc(dateLabel(item.startDay))}</span>
         <div class="ws-widget-record-main"><button type="button" class="ws-widget-record-title" data-action="${item.kind==='task'?'edit-task':'edit-event'}" data-id="${esc(item.id)}">${esc(item.title)}</button>
-           <small>${item.kind==='task'?'Task':'Event'} · ${esc(item.time||item.duration)} ${item.kind==='event'?'· Hub local':''}</small></div></div>`).join(''):blank('No Hub events or task deadlines within this range.','new-event','Add event')}
+           <small>${item.kind==='task'?'Task':'Event'} · ${esc(item.time||item.duration)} ${item.kind==='event'?'· Hub local':''}</small></div>
+        <button type="button" class="ws-handoff-inline" data-action="${item.kind==='task'?'context-task':'context-event'}" data-id="${esc(item.id)}">Next</button></div>`).join(''):blank('No Hub events or task deadlines within this range.','new-event','Add event')}
       ${agenda.length>items.length?`<a class="ws-widget-more" href="/home/calendar/">${agenda.length-items.length} more in calendar →</a>`:''}
       ${source('Local Hub events + tasks only · Google and StudyOS are not read')}</div>`;
 }
@@ -81,7 +83,7 @@ function captures(w:Widget,state:WorkspaceState):string {
       ${shown.length?shown.map(item=>`<div class="ws-widget-record ws-widget-capture"><div class="ws-widget-record-main">
          ${item.kind==='note'?`<button class="ws-widget-record-title" type="button" data-action="edit-note" data-id="${esc(item.id)}">${esc(item.title)}</button>`:`<strong class="ws-widget-record-title">${esc(item.title)}</strong>`}
          <small>${item.kind==='note'?'Hub local note':'Historical task capture'} · ${esc(new Date(item.at).toLocaleDateString())}</small>
-         </div></div>`).join(''):blank('Nothing captured in this Hub workspace yet.','capture','Capture locally')}
+         </div>${item.kind==='note'?`<button type="button" class="ws-handoff-inline" data-action="context-note" data-id="${esc(item.id)}">Next</button>`:''}</div>`).join(''):blank('Nothing captured in this Hub workspace yet.','capture','Capture locally')}
       ${state.captureDraft?`<p class="ws-widget-draft">Unfinished local capture draft available. ${action('capture','Resume draft')}</p>`:''}
       ${source('Hub notes and task capture history · never owner Notes')}</div>`;
 }
