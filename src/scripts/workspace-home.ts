@@ -731,6 +731,80 @@ async function setup(root: HTMLElement) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }
     }
+    function paintWeekChangePreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const el=dialog.querySelector<HTMLElement>('[data-week-shift-preview]');
+        if(!el || !state || origin!==epoch)return;
+        const target=dialog.querySelector<HTMLInputElement>('[name=target]')?.value??'';
+        try {
+            if(target<today())
+                throw new Error('Choose today or a future date for carryover, not an already overdue date.');
+            const changes=prepareWeeklyShift(state.tasks,snapshots,target);
+            el.innerHTML=`<strong>${changes.length} actual task due-date change${changes.length===1?'':'s'}</strong>
+                <ul>${changes.map(c=>`<li><strong>${esc(c.title)}</strong>: ${esc(c.before)} → ${esc(c.after)}
+                   ${c.clearedTime?`· task clock ${esc(c.clearedTime)} will be cleared`:''}</li>`).join('')}</ul>
+                <p>No calendar events, source notes or external appointments will change.
+                  These tasks remain incomplete; the task due dates are not reserved time blocks.</p>`;
+        } catch(error) {
+            el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
+        }
+    }
+    function reviewWeeklyCarryover() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
+            return;
+        if(conflict || dirty || !storageReady || !store) {
+            toast('Storage is unavailable, unsaved or conflicted. Export/retry before changing task dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks before reviewing carryover.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const suggested=addDays(weekDays(selected)[0]!,7);
+        const defaultTarget=suggested<today()?today():suggested;
+        const details=`<div class="ws-week-review-form" data-week-review-form>
+          <p><strong>Source: ${snapshots.length} selected Hub-local tasks</strong></p>
+          <p>The original tasks retain their IDs, titles, priority and completion state. The proposed due date is editable. Existing task clock times will be cleared by the original H12 planner.</p>
+          ${field('New due date','target',defaultTarget,'date',`required min="${today()}"`)}
+          <div class="ws-week-preview" data-week-shift-preview aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed the selected unfinished tasks and target date. Change their Hub due dates only; do not add appointments or complete tasks.</label>
+          <p class="ws-muted">This is one owner-scoped Hub workspace mutation, with its original undo and CAS handling. Imported calendars and other apps are untouched.</p>
+          <p class="ws-muted">If the original record changes in another tab, export/review instead of forcing a merge.</p>
+        </div>`;
+        const own=epoch,source=store;
+        openForm('Review weekly task carryover',details,async data=>{
+            if(epoch!==own || !state || store!==source || !storageReady || locked ||
+               privacyHeld || state.preferences.hidden || conflict || dirty)
+                throw new Error('Identity, storage or unsaved workspace state changed. Export or reload and review again.');
+            if(!data.has('confirm'))
+                throw new Error('Explicitly confirm the task due-date changes.');
+            const target=String(data.get('target')??'');
+            if(!validDate(target) || target<today())
+                throw new Error('Choose a valid present or future Hub due date.');
+            const changes=prepareWeeklyShift(state.tasks,snapshots,target);
+            const expectedChangedIds=new Set(changes.map(c=>c.id));
+            await mutate(next=>{
+                // Entire selection validated before applying any changes; no partial batch on stale evidence.
+                const applied=applyWeeklyShift(next.tasks,snapshots,target);
+                activity(next,`Reviewed weekly due-date move: ${applied.length} Hub task${applied.length===1?'':'s'} → ${target}`,'task');
+            },'Reviewed weekly Hub due dates updated');
+            if(epoch!==own || !state)
+                throw new Error('The active account changed. No result is claimed.');
+            if([...expectedChangedIds].some(id=>{
+                const t=state!.tasks.find(x=>x.id===id);
+                return !t || t.due!==target || !!t.time;
+            })) throw new Error('Task changes were not applied. Reopen planning and review.');
+            if(dirty || conflict)
+                throw new Error('Changes are in this tab but not confirmed saved. Export or retry; do not submit again.');
+            weekSelection.clear();
+            weekFilter='week';
+            render();
+        },'Apply reviewed due dates');
+        paintWeekChangePreview(snapshots,own);
+    }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
         openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
