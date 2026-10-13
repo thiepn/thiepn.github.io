@@ -52,7 +52,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
         <span><strong>${summary.completedToday}</strong> completed today</span>
       </div>
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
-      <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><a href="/home/calendar/" class="ws-button">Calendar</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
+      <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="/home/calendar/" class="ws-button">Calendar</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
     </section>`;
 }
 
@@ -68,7 +68,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
     const inbox = state.tasks.filter(t => !t.completedAt && !t.due).length;
     return `<section class="ws-home-lead" aria-label="Daily overview">
       <header class="ws-home-lead-heading"><div><p class="ws-home-eyebrow">Your day</p><h2>Pick up what matters</h2><p>Priorities and events saved in this browser, with direct links to your THIEPN apps.</p></div>
-        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><button type="button" class="ws-button" data-action="new-task">+ Task</button></div>
+        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><button type="button" class="ws-button" data-action="capture-task">+ Inbox task</button><button type="button" class="ws-button" data-action="new-task">+ Dated task</button></div>
       </header>
       <div class="ws-home-lead-grid">
         <section class="ws-home-panel" aria-labelledby="ws-priorities"><header><h3 id="ws-priorities">Next priorities</h3><a href="/home/tasks/">All tasks</a></header>
