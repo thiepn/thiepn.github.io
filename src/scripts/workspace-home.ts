@@ -59,6 +59,7 @@ async function setup(root: HTMLElement) {
     let agendaMode: AgendaMode = agendaModeFromUrl==='week'?'week':'day'; // View-only: never another calendar/scheduler store.
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
+    let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
@@ -126,6 +127,7 @@ async function setup(root: HTMLElement) {
     let observer: ResizeObserver | null = null;
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
+        activeWeekReview=null;
         void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
@@ -762,6 +764,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        activeWeekReview={snapshots,epoch};
         const suggested=addDays(weekDays(selected)[0]!,7);
         const defaultTarget=suggested<today()?today():suggested;
         const details=`<div class="ws-week-review-form" data-week-review-form>
@@ -1982,9 +1985,8 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (el.closest('[data-week-review-form]')) {
-            const ids=[...weekSelection].filter(id=>state.tasks.some(t=>t.id===id&&!t.completedAt));
-            const snapshots=ids.map(id=>taskSnapshot(state.tasks.find(t=>t.id===id)!));
-            paintWeekChangePreview(snapshots,epoch);
+            const review=activeWeekReview;
+            if(review && review.epoch===epoch)paintWeekChangePreview(review.snapshots,review.epoch);
             return;
         }
         if (el.hasAttribute('data-focus-duration')) {
@@ -2224,6 +2226,7 @@ async function setup(root: HTMLElement) {
         clearFocusIdentity();
         handoffOrigin=null;
         weekSelection.clear();
+        activeWeekReview=null;
         weekFilter='carry';
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
