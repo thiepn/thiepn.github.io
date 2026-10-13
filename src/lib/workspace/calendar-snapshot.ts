@@ -129,7 +129,7 @@ function recurrentDays(block: Component, start: ParsedDate, lastDay: string, war
             : Math.floor(diffDays(day, firstWeek) / 7) % interval === 0 && byDay.includes(weekday!);
         if (!accepted) continue;
         if (++generated > count) break;
-        if (matching.length < 200 || day <= lastDay) matching.push(day);
+        matching.push(day);
     }
     if (limit === MAX_RECURRENCE_DAYS && addDays(start.day, limit) < lastDay) warnings.push('A recurring series older than 20 years was truncated.');
     return matching;
@@ -166,7 +166,15 @@ export function parseICalendar(text: string, filename: string, sourceId: string,
     const horizonStart = dayKey(selectedZone, new Date(now));
     const horizonEnd = addDays(horizonStart, 31);
     const overrideDates = new Set<string>();
+    const excludedDates = new Set<string>();
     for (const block of components) {
+        const uid = plain(property(block, 'UID')?.value ?? '', 240);
+        for (const prop of block.get('EXDATE') ?? []) {
+            for (const item of prop.value.split(',')) {
+                const excluded = parseDate({ value: item, params: prop.params }, defaultZone);
+                if (uid && excluded) excludedDates.add(`${uid}:${excluded.day}`);
+            }
+        }
         const rec = property(block, 'RECURRENCE-ID');
         if (rec) {
             const d = parseDate(rec, defaultZone);
@@ -185,7 +193,7 @@ export function parseICalendar(text: string, filename: string, sourceId: string,
         const override = !!property(block,'RECURRENCE-ID');
         const days = override ? [start.day] : recurrentDays(block, start, horizonEnd, warnings);
         for (const day of days) {
-            if (!override && overrideDates.has(`${uid}:${day}`)) continue;
+            if (!override && (overrideDates.has(`${uid}:${day}`) || excludedDates.has(`${uid}:${day}`))) continue;
             const event = makeEvent(block, start, end, day, sourceId, sourceName);
             if (!event || event.endDay < horizonStart || event.startDay > horizonEnd) continue;
             const key = `${uid}:${event.allDay ? day : event.start}`;
