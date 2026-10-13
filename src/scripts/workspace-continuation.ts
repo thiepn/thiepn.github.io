@@ -121,7 +121,31 @@ function start(desks:HTMLElement[]) {
     section.append(node('small','ws-owner-context','Read-only metadata · valid until '+new Date(envelope.expiresAt).toLocaleTimeString()));
     return section;
   }
+  function renderWidgets() {
+    // Reuse this H11 desk's existing current owner envelopes; no second cache or transport.
+    for (const host of document.querySelectorAll<HTMLElement>('[data-owner-widget-live]')) {
+      host.replaceChildren();
+      if (!privateOK()) {
+        host.append(node('p','ws-owner-empty','Private workspace is hidden.'));
+        continue;
+      }
+      const allowed = new Set(host.dataset.ownerWidgetSources?.split(',') ?? []);
+      const ids = sources.filter(id=>allowed.has(id) && selected.has(id));
+      const active = ids.filter(id=>current.has(id));
+      if (!active.length) {
+        host.append(node('p','ws-owner-empty',ids.length ?
+          'No approved owner read in this tab. Use the existing owner connection to check or refresh.' :
+          'No enabled owner sources. Use widget settings to select them.'));
+        continue;
+      }
+      const heading = node('p','ws-widget-ownership','Owner connection states · data shown only with a valid grant');
+      const list = node('div','ws-widget-owner-preview');
+      for (const id of active) list.append(sourceCard(id,2));
+      host.append(heading,list);
+    }
+  }
   function render(){
+    renderWidgets();
     for(const desk of desks) {
       const results=desk.querySelector<HTMLElement>('[data-owner-continue-results]');
       const status=desk.querySelector<HTMLElement>('[data-owner-overview-status]');
@@ -182,5 +206,7 @@ function start(desks:HTMLElement[]) {
   const workspace=document.querySelector<HTMLElement>('[data-workspace]');
   if(workspace)new MutationObserver(()=>{if(!privateOK())clear();else render();})
     .observe(workspace,{attributes:true,attributeFilter:['data-calendar-private']});
+  const workspaceContent=document.querySelector('[data-workspace-content]');
+  if(workspaceContent)new MutationObserver(()=>renderWidgets()).observe(workspaceContent,{childList:true});
   render();
 }

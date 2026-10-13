@@ -5,6 +5,7 @@ import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
+import { utilityWidget } from '../lib/workspace/widget-views';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
@@ -306,6 +307,8 @@ async function setup(root: HTMLElement) {
     function widgetBody(w: Widget) {
         if (w.typeVersion > 1)
             return empty('Newer widget version', 'This widget is preserved. Update the app to use it.');
+        const utility = utilityWidget(w, state!, apps, today());
+        if (utility !== null) return utility;
         switch (w.type) {
             case 'app-shortcuts': {
                 const ids = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
@@ -371,7 +374,7 @@ async function setup(root: HTMLElement) {
         if (view !== 'apps') $('[data-workspace-date]').textContent = dateLabel(today(), true);
         $('#ws-title').textContent = view === 'apps' ? 'Apps' : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('add-widget', '+ Widget')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (view !== 'apps') {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
@@ -584,6 +587,20 @@ async function setup(root: HTMLElement) {
             const ids = w.config.trackerIds;
             config = `<p class="ws-muted">Select trackers, or leave all unchecked to show all.</p>${state!.trackers.map(t => `<label class="ws-choice"><input type="checkbox" name="trackerIds" value="${esc(t.id)}" ${Array.isArray(ids) && ids.includes(t.id) ? 'checked' : ''}/>${esc(t.title)}</label>`).join('')}`;
         }
+        else if (['task-inbox','task-priorities','upcoming-commitments','recent-captures','quick-plan'].includes(w.type)) {
+            const selectedLimit = Number.isInteger(w.config.itemLimit) ? Number(w.config.itemLimit) : 6;
+            config = select('Items to show','itemLimit',[['2','2 items'],['3','3 items'],['4','4 items'],['6','6 items'],['8','8 items'],['12','12 items']],String(selectedLimit));
+            if (w.type === 'upcoming-commitments')
+                config += select('Agenda horizon','dateRange',[['3','Next 3 days'],['7','Next 7 days'],['14','Next 14 days']],String(w.config.dateRange ?? 7));
+            if (w.type === 'recent-captures')
+                config += select('Captured records','sourceKind',[['both','Hub notes + task capture history'],['notes','Hub notes only'],['tasks','Task capture history only']],String(w.config.sourceKind ?? 'both'));
+        }
+        else if (w.type === 'owner-handoffs') {
+            const ids = Array.isArray(w.config.ownerSources) ? w.config.ownerSources : ['notes','library','tms60'];
+            config = '<p class="ws-muted">Select owner-app links. Approved metadata is only displayed in the original connection/reading interface.</p>' +
+              [['notes','Notes'],['library','Library'],['tms60','TMS60']].map(([id,label]) =>
+                `<label class="ws-choice"><input type="checkbox" name="ownerSources" value="${id}" ${ids.includes(id)?'checked':''}/> ${label}</label>`).join('');
+        }
         const widgetId = w.id;
         openForm('Configure ' + spec.title, field('Widget title', 'title', typeof w.config.title === 'string' ? w.config.title : spec.title, 'text', 'required maxlength="80"') + select('View', 'view', spec.views.map(v => [v, v[0]!.toUpperCase() + v.slice(1)]), w.view) + `<div class="ws-form-row">${field('Width (columns)', 'width', String(w.desktop.w), 'number', `required min="${spec.minWidth}" max="12"`)}${field('Height (8px steps)', 'height', String(w.desktop.h), 'number', `required min="${spec.minHeight}" max="120"`)}</div><div class="ws-form-row">${field('Column position', 'x', String(w.desktop.x), 'number', 'required min="0" max="8"')}${field('Row position', 'y', String(w.desktop.y), 'number', 'required min="0" max="10000"')}</div>${config}<div class="ws-content-toolbar">${button('move-widget-up', 'Move earlier', widgetId)}${button('move-widget-down', 'Move later', widgetId)}${button('remove-widget', 'Remove widget', widgetId)}</div>`, data => {
             const ids = data.getAll('appIds').map(String);
@@ -604,6 +621,23 @@ async function setup(root: HTMLElement) {
                     else
                         delete item.config.trackerIds;
                 }
+                if (['task-inbox','task-priorities','upcoming-commitments','recent-captures','quick-plan'].includes(item.type)) {
+                    const itemLimit = Number(data.get('itemLimit'));
+                    if (![2,3,4,6,8,12].includes(itemLimit)) throw new Error('Choose a valid widget item limit.');
+                    item.config.itemLimit = itemLimit;
+                }
+                if (item.type === 'upcoming-commitments') {
+                    const dateRange = Number(data.get('dateRange'));
+                    if (![3,7,14].includes(dateRange)) throw new Error('Choose a valid agenda range.');
+                    item.config.dateRange = dateRange;
+                }
+                if (item.type === 'recent-captures') {
+                    const sourceKind = String(data.get('sourceKind'));
+                    if (!['both','notes','tasks'].includes(sourceKind)) throw new Error('Choose a valid capture source.');
+                    item.config.sourceKind = sourceKind;
+                }
+                if (item.type === 'owner-handoffs')
+                    item.config.ownerSources = data.getAll('ownerSources').map(String);
                 ws.widgets = place(ws.widgets, widgetId, { x: Number(data.get('x')), y: Number(data.get('y')), w: Number(data.get('width')), h: Number(data.get('height')) });
             });
         });
@@ -611,7 +645,12 @@ async function setup(root: HTMLElement) {
     function widgetPicker() {
         if (!editing)
             beginEdit();
-        openForm('Add a widget', `<div class="ws-widget-library">${Object.entries(WIDGETS).map(([type, spec]) => button('add-type', `${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`, type, 'ws-widget-choice')).join('')}</div>`, () => { });
+        const groups: Array<{title:string;description:string;types:string[]}> = [
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
+            {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
+        ];
+        openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><p class="ws-muted">${group.description}</p><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div><p class="ws-muted">Adding a widget changes only your layout. Select Done to save; no tasks, notes or external records are created.</p>`, () => { });
         $('[data-dialog-submit]').hidden = true;
     }
     function createWorkspace(duplicateId = '') {
