@@ -74,18 +74,19 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
         const rows = events.length ? events.slice(0,30).map(event => {
             const day = eventDate(event,displayZone());
             const when = event.allDay ? 'All day' : eventTime(event.start,displayZone());
-            const multiDay = event.endDay !== event.startDay ? ` · until ${formatDay(event.endDay)}` : '';
+            const lastDay = event.allDay ? event.endDay : dayInZone(event.end, displayZone());
+            const multiDay = lastDay !== day ? ` · until ${formatDay(lastDay)}` : '';
             return `<li class="ws-calendar-external-event"><span class="ws-calendar-when">${esc(formatDay(day))}<small>${esc(when)}</small></span>
                 <span><strong>${esc(event.title)}</strong><small>${esc(event.sourceName)} · ${event.allDay ? 'All day' : esc(displayZone())}${esc(multiDay)}</small></span>
                 <span class="ws-calendar-readonly">Read only</span></li>`;
-        }).join('') : empty('No events to show', sources.length ? 'Choose another calendar or import a newer export. This is not proof that Google Calendar is empty.' : 'Select an .ics export from Google Calendar or another calendar to preview it here.');
+        }).join('') : '';
         content.innerHTML = `
             ${error ? `<p role="alert" class="ws-calendar-error">${esc(error)}</p>` : ''}
             ${message ? `<p class="ws-calendar-message">${esc(message)}</p>` : ''}
             ${controls}
             ${warnings.length ? `<details class="ws-calendar-warnings"><summary>Import notes (${warnings.length})</summary><ul>${warnings.slice(0,6).map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
             ${events.length ? `<p class="ws-calendar-source-note">${events.length} event(s) in the next 7 days · showing ${Math.min(30,events.length)} · timezone ${esc(displayZone())}. Export time is not live Google sync time.</p>` : ''}
-            <ul class="ws-calendar-external-list">${rows}</ul>
+            ${rows ? `<ul class="ws-calendar-external-list">${rows}</ul>` : empty('No events to show', sources.length ? 'Choose another calendar or import a newer export. This is not proof that Google Calendar is empty.' : 'Select an .ics export from Google Calendar or another calendar to preview it here.')}
             ${sources.length ? `<button type="button" class="ws-text-button" data-calendar-clear>Clear all imported calendars</button>` : ''}
         `;
     }
@@ -103,7 +104,7 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             for (const file of files) {
                 if (file.size > SNAPSHOT_MAX_BYTES) { failures.push(`${file.name}: larger than 2 MB`); continue; }
                 if (!/\.ics$/i.test(file.name)) { failures.push(`${file.name}: choose an .ics file`); continue; }
-                if (sources.length + results.length >= SNAPSHOT_MAX_SOURCES) { failures.push('Maximum six imported calendars per session.'); break; }
+                if (sources.filter(s => !files.some(f => f.name === s.filename)).length + results.length >= SNAPSHOT_MAX_SOURCES) { failures.push('Maximum six imported calendars per session.'); break; }
                 try {
                     const parsed = parseICalendar(await file.text(),file.name,crypto.randomUUID(),displayZone());
                     if (own !== generation || isPrivate()) return;
