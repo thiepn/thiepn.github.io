@@ -34,7 +34,7 @@ let structuredProjects;
 let structuredCollection;
 let structuredCollections;
 let structuredPageType: 'WebPage' | 'CollectionPage' | 'AboutPage' | undefined;
-if (!noindex && pathname === '/') {
+if (!noindex && pathname === '/apps/') {
   structuredProjects = (await getHubProjects()).map((entry) => entry.project.data);
   structuredPageType = 'CollectionPage';
 } else if (!noindex && pathname.startsWith('/project/')) {
