@@ -998,6 +998,12 @@ async function setup(root: HTMLElement) {
             exportWorkspace();
             return;
         }
+        if (action === 'retry-locked') {
+            if (locked && rawRecovery && hubIdentity.status!=='checking' && hubIdentity.status!=='unavailable')
+                void loadIdentity(hubIdentity);
+            else toast('Reopen a verified Hub identity before retrying the original saved record.');
+            return;
+        }
         if (!state || locked) {
             toast('Your saved workspace is not available. App links remain usable.');
             return;
@@ -1581,6 +1587,14 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        if (event.altKey && event.shiftKey && event.key.toLowerCase()==='r' && !event.repeat &&
+            !dialog.open && !searchDialog.open && !account.open && view==='home' &&
+            state && !locked && !privacyHeld && !state.preferences.hidden) {
+            event.preventDefault();
+            root.querySelector<HTMLElement>('[data-return-panel]')?.scrollIntoView({behavior:'auto',block:'start'});
+            root.querySelector<HTMLButtonElement>('[data-return-panel] button')?.focus();
+            return;
+        }
         if (event.altKey && event.shiftKey && event.key.toLowerCase()==='f' &&
             !event.repeat && !dialog.open && !searchDialog.open && !account.open && view==='home' &&
             state && !locked && !privacyHeld && !state.preferences.hidden) {
@@ -1732,7 +1746,7 @@ async function setup(root: HTMLElement) {
             if (rawRecovery) {
                 locked = true;
                 notice(e instanceof Error ? e.message : 'Saved workspace cannot be opened.', button('export', 'Export recovery file'));
-                if (view !== 'apps') $('[data-workspace-content]').innerHTML = '<section class="ws-recovery"><h2>Local workspace needs recovery</h2><p>The original saved document was left untouched. Export a recovery copy before changing browser storage.</p>' + button('export', 'Export recovery JSON') + '</section>';
+                if (view !== 'apps') $('[data-workspace-content]').innerHTML = '<section class="ws-recovery"><h2>Local workspace needs recovery</h2><p>The saved record could not be parsed or opened. It was not overwritten. Export its original recovery JSON before retrying. Do not clear site data or import over it before preserving the original.</p>' + button('export', 'Export original recovery JSON') + button('retry-locked','Recheck saved record') + '<p class="ws-muted">No tasks, notes or progress can be read safely until this record can be opened. Public app links remain usable.</p></section>';
                 saved('Saved record left untouched');
                 return;
             }
