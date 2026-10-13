@@ -51,3 +51,13 @@ strong.ws-widget-record-title{cursor:default;}
  .ws-widget-plan-actions .ws-widget-action{flex:1 1 80px;}
 }
 @media(forced-colors:active){.ws-widget-action,.ws-widget-handoff,.ws-widget-draft{border-color:CanvasText;}}
+
+/* Authorized owner metadata is reused from H11's existing RAM-only Continue desk. */
+.ws-widget-owner-live{display:grid;gap:7px;margin-top:5px;min-width:0;}
+.ws-widget-owner-preview{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;}
+.ws-widget-owner-preview .ws-owner-source{padding:9px;gap:5px;min-width:0;}
+.ws-widget-owner-preview .ws-owner-source header{gap:7px;}
+.ws-widget-owner-preview .ws-owner-items{gap:4px;}
+.ws-widget-owner-preview .ws-owner-item{min-height:46px;}
+.ws-widget-owner-preview .ws-owner-context{overflow-wrap:anywhere;}
+@media(max-width:767px){.ws-widget-owner-preview .ws-owner-item{min-height:48px;}}
