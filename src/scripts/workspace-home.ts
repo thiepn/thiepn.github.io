@@ -1425,6 +1425,62 @@ async function setup(root: HTMLElement) {
             case 'delete-log':
                 void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
                 break;
+            case 'planning-day':
+                agendaMode='day';
+                render();
+                break;
+            case 'planning-week':
+                agendaMode='week';
+                render();
+                break;
+            case 'planning-prev':
+            case 'planning-next':
+            case 'planning-prev-day':
+            case 'planning-next-day': {
+                const magnitude=(view==='calendar' && agendaMode==='week' &&
+                    (action==='planning-prev'||action==='planning-next'))?7:1;
+                selected=addDays(selected,
+                    (action==='planning-prev'||action==='planning-prev-day'?-1:1)*magnitude);
+                month=selected.slice(0,7)+'-01';
+                render();
+                break;
+            }
+            case 'planning-today':
+            case 'planning-tomorrow':
+                selected=addDays(today(),action==='planning-tomorrow'?1:0);
+                month=selected.slice(0,7)+'-01';
+                if (view==='calendar') agendaMode='day';
+                render();
+                break;
+            case 'planning-jump-day':
+                if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+                    selected=id;
+                    month=selected.slice(0,7)+'-01';
+                    agendaMode='day';
+                    render();
+                }
+                break;
+            case 'planning-task-selected': {
+                if(!state.tasks.some(t=>t.id===id&&!t.completedAt)) {
+                    toast('This task was completed or no longer exists.');
+                    break;
+                }
+                if(conflict||dirty||!storageReady) {
+                    toast('Resolve unsaved storage changes before moving a due date. You can export a backup.');
+                    break;
+                }
+                const date=selected;
+                void mutate(s=>{
+                    const task=s.tasks.find(t=>t.id===id);
+                    if(!task || task.completedAt) throw new Error('The task is no longer open.');
+                    applyTaskPlan(task,'today',date);
+                    activity(s,`Moved task due date by explicit planning action: ${task.title} → ${date}`,'task');
+                },'Task due date changed on this device');
+                break;
+            }
+            case 'review-event-time':
+                reviewEventTime(id);
+                break;
             case 'select-date':
                 selected = id;
                 month = id.slice(0, 7) + '-01';
@@ -1716,6 +1772,12 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if (el.closest('[data-review-event-move]')) {
+            const original=handoffOrigin?.kind==='event' && handoffOrigin.epoch===epoch
+                ? state.events.find(e=>e.id===handoffOrigin!.id) : undefined;
+            if(original)paintEventMovePreview(original,state.preferences.timezone);
+            return;
+        }
         if (el.hasAttribute('data-focus-duration')) {
             const duration=Number(el.value);
             if ([15,25,45].includes(duration)) {
@@ -1839,6 +1901,21 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        if (event.altKey && event.shiftKey && !event.repeat &&
+            !dialog.open && !searchDialog.open && !account.open && view==='calendar' &&
+            state && !locked && !privacyHeld && !state.preferences.hidden &&
+            !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) {
+            const key=event.key.toLowerCase();
+            if(['j','k','d','w'].includes(key)) {
+                event.preventDefault();
+                if(key==='d'||key==='w')agendaMode=key==='d'?'day':'week';
+                else selected=addDays(selected,(key==='j'?-1:1)*(agendaMode==='week'?7:1));
+                month=selected.slice(0,7)+'-01';
+                render();
+                root.querySelector<HTMLElement>('[data-planning-review]')?.scrollIntoView({block:'start'});
+                return;
+            }
+        }
         if (event.altKey && event.shiftKey && event.key.toLowerCase()==='r' && !event.repeat &&
             !dialog.open && !searchDialog.open && !account.open && view==='home' &&
             state && !locked && !privacyHeld && !state.preferences.hidden) {
