@@ -41,6 +41,8 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
     function render() {
         const content = root.querySelector<HTMLElement>('[data-calendar-preview]');
         if (!content) return;
+        const focusedInclude = content.contains(document.activeElement)
+            ? (document.activeElement as HTMLElement).dataset.calendarInclude : undefined;
         if (isPrivate()) {
             content.innerHTML = empty('Personal calendar hidden', 'Your imported calendar snapshot is cleared when Hub hides personal content.');
             return;
@@ -69,10 +71,10 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             ready:'Read-only imported snapshot',
         }[status];
         const controls = sources.length ? `<fieldset class="ws-calendar-sources"><legend>Selected calendars</legend>
-            ${sources.map(s => `<label class="ws-calendar-source"><input type="checkbox" data-calendar-include="${esc(s.id)}" ${s.included?'checked':''}/>
-                <span><strong>${esc(s.name)}</strong><small>${esc(s.filename)} · Imported ${esc(stamp(s.importedAt))} ${now - s.importedAt >= SNAPSHOT_STALE_MS ? '· stale' : '· snapshot'}</small></span>
+            ${sources.map(s => `<div class="ws-calendar-source"><label><input type="checkbox" data-calendar-include="${esc(s.id)}" ${s.included?'checked':''}/>
+                <span><strong>${esc(s.name)}</strong><small>${esc(s.filename)} · Imported ${esc(stamp(s.importedAt))} ${now - s.importedAt >= SNAPSHOT_STALE_MS ? '· stale' : '· snapshot'}</small></span></label>
                 <button type="button" class="ws-text-button" data-calendar-remove="${esc(s.id)}" aria-label="Remove ${esc(s.name)} calendar">Remove</button>
-            </label>`).join('')}
+            </div>`).join('')}
             </fieldset>` : '';
         const warnings = sources.flatMap(s => s.warnings.map(w => `${s.name}: ${w}`));
         const rows = events.length ? events.slice(0,30).map(event => {
@@ -93,6 +95,8 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             ${rows ? `<ul class="ws-calendar-external-list">${rows}</ul>` : empty('No events to show', sources.length ? 'Choose another calendar or import a newer export. This is not proof that Google Calendar is empty.' : 'Select an .ics export from Google Calendar or another calendar to preview it here.')}
             ${sources.length ? `<button type="button" class="ws-text-button" data-calendar-clear>Clear all imported calendars</button>` : ''}
         `;
+        if (focusedInclude) content.querySelectorAll<HTMLInputElement>('[data-calendar-include]')
+            .forEach(input => { if (input.dataset.calendarInclude === focusedInclude) input.focus(); });
     }
 
     root.querySelector<HTMLInputElement>('[data-calendar-ics]')?.addEventListener('change', event => {
@@ -143,6 +147,7 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
         const id=target.dataset.calendarRemove;
         sources=sources.filter(s=>s.id!==id);
         render();
+        root.querySelector<HTMLElement>('[data-calendar-ics]')?.focus();
     });
     const observer = new MutationObserver(() => { if (isPrivate()) clear(); else render(); });
     observer.observe(workspace,{attributes:true,attributeFilter:['data-calendar-private','data-calendar-zone']});
