@@ -72,7 +72,7 @@ export function renderReturnJourney(state:WorkspaceState, context:ReturnContext)
     </div>
     <footer class="ws-return-footer">
       <span>Hub: ${esc(workspace?.title??'Local workspace')} · ${context.storageReady?(context.dirty?'unsaved changes':'local storage connected'):'storage not connected'}</span>
-      <a href="/home/connections/">Owner-app connections ↗</a>
+      <a href="#ws-owner-continue">Check owner source freshness ↓</a><a href="/home/connections/">Owner-app connections ↗</a>
       <span>External progress is not inferred from app links.</span>
     </footer>
   </section>`;
