@@ -55,7 +55,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
       ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>Next Hub task: ${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
       ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished Hub capture · on this device</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
-      <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="#ws-daily-focus" class="ws-button">Focus</a><a href="/home/calendar/" class="ws-button">Calendar</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
+      <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="#ws-daily-focus" class="ws-button">Focus</a><a href="/home/calendar/" class="ws-button">Day agenda</a><a href="/home/calendar/?mode=week" class="ws-button">Week agenda</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
     </section>`;
 }
 
@@ -80,7 +80,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
           <a class="ws-inbox-link" href="/home/tasks/?filter=inbox">Process inbox · ${inbox} unscheduled task${inbox===1?'':'s'} →</a>
           <small class="ws-home-source">Source: Hub tasks on this device</small>
         </section>
-        <section class="ws-home-panel" aria-labelledby="ws-upcoming"><header><h3 id="ws-upcoming">Coming up</h3><a href="/home/calendar/">Calendar</a></header>
+        <section class="ws-home-panel" aria-labelledby="ws-upcoming"><header><h3 id="ws-upcoming">Coming up</h3><a href="/home/calendar/">Calendar</a><a href="/home/calendar/?mode=week">Week overview</a></header>
           <p class="ws-home-context">Upcoming local events · 7-day view</p>
           <div class="ws-home-list">${events}</div>
           <button type="button" class="ws-text-button" data-action="new-event">+ Add local event</button>
