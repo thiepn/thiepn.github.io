@@ -33,6 +33,8 @@ async function setup(root: HTMLElement) {
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
     let initialCalendarDate = calendarParams && validDate(calendarParams.get('date')??'') ? calendarParams.get('date') : null;
+    const initialReturnWeek = calendarParams && validDate(calendarParams.get('return')??'') ? calendarParams.get('return') : null;
+    let initialCalendarRestorePending=true;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -45,6 +47,7 @@ async function setup(root: HTMLElement) {
         const query=new URLSearchParams();
         if(initialCalendarDate)query.set('date',initialCalendarDate);
         if(agendaModeFromUrl==='week')query.set('mode','week');
+        if(initialReturnWeek)query.set('return',initialReturnWeek);
         history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
     } else if (location.search || location.hash) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
@@ -56,7 +59,7 @@ async function setup(root: HTMLElement) {
     let agendaMode: AgendaMode = agendaModeFromUrl==='week'?'week':'day'; // View-only: never another calendar/scheduler store.
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
-    let weekReturnDate:string|null=null; // Only current tab and safe calendar date/mode URL, never a private work item.
+    let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -486,6 +489,22 @@ async function setup(root: HTMLElement) {
         if (html)el.innerHTML=html;
         else el.replaceChildren();
     }
+    function updateCalendarNavigation() {
+        if(view!=='calendar' || !state) return;
+        const query=new URLSearchParams();
+        if(validDate(selected))query.set('date',selected);
+        if(agendaMode==='week')query.set('mode','week');
+        if(agendaMode==='day'&&weekReturnDate&&validDate(weekReturnDate))
+            query.set('return',weekReturnDate);
+        const next=location.pathname+(query.size?'?'+query.toString():'');
+        if(location.pathname+location.search!==next)
+            history.replaceState(null,'',next);
+    }
+    function pruneWeekSelection() {
+        if(!state) {weekSelection.clear();return;}
+        for(const id of weekSelection)
+            if(!state.tasks.some(t=>t.id===id&&!t.completedAt))weekSelection.delete(id);
+    }
     function render() {
         observer?.disconnect();
         if (!state)
@@ -498,7 +517,9 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; }
+        pruneWeekSelection();
+        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (view==='calendar') updateCalendarNavigation();
         root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
@@ -2058,6 +2079,8 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         handoffOrigin=null;
+        weekSelection.clear();
+        weekFilter='carry';
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);
@@ -2131,7 +2154,10 @@ async function setup(root: HTMLElement) {
             return;
         state = loaded ?? initialState(apps.map(a => a.id), legacy);
         privacyHeld = state.preferences.hidden;
-        selected = today();
+        selected = view==='calendar' && initialCalendarRestorePending && initialCalendarDate ? initialCalendarDate : today();
+        if(initialCalendarRestorePending)initialCalendarRestorePending=false;
+        else weekReturnDate=null;
+        initialCalendarDate=null;
         month = selected.slice(0, 7) + '-01';
         if (storageReady) {
             try {
