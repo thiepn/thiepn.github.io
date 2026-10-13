@@ -42,7 +42,7 @@ async function setup(root: HTMLElement) {
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
-    let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false};
+    let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
@@ -266,10 +266,11 @@ async function setup(root: HTMLElement) {
         pauseFocusSession();
         focus.selectedId=null;
         focus.remainingMs=focus.duration*60000;
+        focus.elapsed=false;
     }
     function clearFocusIdentity() {
         pauseFocusSession();
-        focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false};
+        focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
         root.dataset.focusQuiet='false';
     }
     function focusPulse() {
@@ -282,6 +283,7 @@ async function setup(root: HTMLElement) {
         paintFocusTime();
         if(focus.remainingMs===0) {
             pauseFocusSession();
+            focus.elapsed=true;
             paintFocusTime('Session elapsed. The task is not marked complete; choose your next step.');
             toast('Focus timer elapsed. Your task remains open until you complete it.');
             render();
@@ -295,6 +297,7 @@ async function setup(root: HTMLElement) {
         if(focus.running)return;
         if(focus.remainingMs<=0)focus.remainingMs=focus.duration*60000;
         focus.running=true;
+        focus.elapsed=false;
         focusEndsAt=Date.now()+focus.remainingMs;
         clearInterval(focusTick);
         focusTick=setInterval(focusPulse,1000);
@@ -995,16 +998,18 @@ async function setup(root: HTMLElement) {
                     pauseFocusSession();
                     focus.selectedId=id;
                     focus.remainingMs=focus.duration*60000;
+                    focus.elapsed=false;
                     render();
                 }
                 break;
             case 'focus-next': {
-                const items=focusTasks(state,today(),focus.queue);
+                const items=focusTasks(state,today(),focus.queue).slice(0,focus.limit);
                 if (!items.length) {resetFocusSelection();render();break;}
                 const index=items.findIndex(t=>t.id===focus.selectedId);
                 pauseFocusSession();
                 focus.selectedId=items[(index+1)%items.length]!.id;
                 focus.remainingMs=focus.duration*60000;
+                focus.elapsed=false;
                 render();
                 break;
             }
@@ -1018,6 +1023,7 @@ async function setup(root: HTMLElement) {
             case 'focus-reset':
                 pauseFocusSession();
                 focus.remainingMs=focus.duration*60000;
+                focus.elapsed=false;
                 render();
                 break;
             case 'focus-quiet':
@@ -1368,6 +1374,7 @@ async function setup(root: HTMLElement) {
                 pauseFocusSession();
                 focus.duration=duration as FocusDuration;
                 focus.remainingMs=duration*60000;
+                focus.elapsed=false;
                 render();
             }
             return;
