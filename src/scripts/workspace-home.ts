@@ -71,6 +71,7 @@ async function setup(root: HTMLElement) {
     let observer: ResizeObserver | null = null;
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
+        void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
         const scope = target.widget ? root.querySelector<HTMLElement>(`[data-widget-id="${CSS.escape(target.widget)}"]`) : root;
@@ -191,6 +192,7 @@ async function setup(root: HTMLElement) {
               <p class="ws-muted">A task is saved only to Hub. A date is optional; Inbox tasks stay visible until planned.</p>
             </div>
             <div class="ws-capture-handoff"><span>Prefer the Notes app? Text is never transferred automatically.</span>
+              <button type="button" class="ws-text-button" data-action="save-capture-draft">Save draft now</button>
               <button type="button" class="ws-text-button" data-action="copy-capture">Copy draft</button>
               <a href="${esc(notes)}" rel="noreferrer">Open Notes ↗</a></div>
             <small class="ws-muted">Draft autosaves in this account's existing local Hub workspace. Esc closes without losing it.</small>
@@ -214,8 +216,19 @@ async function setup(root: HTMLElement) {
             activity(s, `Captured ${prepared.kind}: ${prepared.kind === 'task' ? prepared.task.title : prepared.note.title}`, prepared.kind);
         }, prepared.kind === 'task' ? 'Task captured in Hub' : 'Note captured in Hub');
     }
-    function openCapture() {
+    function openCapture(kind: 'note' | 'task' = 'note') {
         openForm('Quick capture · this device', captureFields('dialog'), saveCaptureData, 'Save in Hub');
+        const select = dialog.querySelector<HTMLSelectElement>('[data-capture-kind]');
+        if (select) { select.value = kind; syncCaptureControls(select); }
+    }
+    function flushCaptureDraft() {
+        if (!captureTimer || !state || locked) return queue;
+        clearTimeout(captureTimer);
+        captureTimer = undefined;
+        const own = epoch;
+        queue = queue.then(async () => { if (own === epoch) await persist(); })
+            .catch(e => toast(e instanceof Error ? e.message : 'Draft could not be saved.'));
+        return queue;
     }
     function syncCaptureControls(el: HTMLElement) {
         const form = el.closest('form');
@@ -331,7 +344,7 @@ async function setup(root: HTMLElement) {
               <p class="ws-task-explainer">${taskFilter==='inbox'?'Unscheduled tasks waiting for a decision. Use the one-tap planning actions below.':taskFilter==='today'?'Due today and overdue. Unscheduled tasks are kept in Inbox.':taskFilter==='upcoming'?'Scheduled after today. Move dates or update details without copying tasks.':taskFilter==='completed'?'Completed task history stays in this local workspace.':'Every Hub task in this workspace.'}</p>
             </section>
             <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
-              <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture', '+ Capture to inbox')}</div>
+              <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', taskFilter==='inbox'?'Capture a task without a due date; plan it here when ready.':'Choose another filter or add a task.', 'capture', 'Quick capture')}
             </section>`;
         }
@@ -832,6 +845,12 @@ async function setup(root: HTMLElement) {
             }
             case 'capture':
                 openCapture();
+                break;
+            case 'capture-task':
+                openCapture('task');
+                break;
+            case 'save-capture-draft':
+                void flushCaptureDraft().then(() => toast(dirty ? 'Draft is still unsaved. Export a backup or retry.' : 'Draft saved locally on this device.'));
                 break;
             case 'copy-capture': {
                 const draft = target.closest('form')?.querySelector<HTMLTextAreaElement>('[data-capture-draft]')?.value ?? state.captureDraft;
@@ -1408,6 +1427,7 @@ async function setup(root: HTMLElement) {
         if (state && !dirty && !editing)
             void reloadSaved();
     });
+    window.addEventListener('pagehide', () => { void flushCaptureDraft(); });
     window.addEventListener('beforeunload', event => {
         if (dirty) {
             event.preventDefault();
