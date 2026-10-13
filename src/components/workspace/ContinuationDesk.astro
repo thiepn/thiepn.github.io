@@ -3,7 +3,7 @@ import { providerAction } from '../../lib/providers/registry';
 interface Props { compact?: boolean; }
 const compact = Astro.props.compact ?? false;
 ---
-<section class:list={['ws-owner-continue', {'ws-owner-continue-compact':compact}]} data-owner-continue data-compact={compact ? 'true' : 'false'} aria-label="Continue from connected apps">
+<section id={compact ? 'ws-owner-continue' : undefined} class:list={['ws-owner-continue', {'ws-owner-continue-compact':compact}]} data-owner-continue data-compact={compact ? 'true' : 'false'} aria-label="Continue from connected apps">
   <header class="ws-owner-continue-heading">
     <div>
       <h2>Continue from your apps</h2>
