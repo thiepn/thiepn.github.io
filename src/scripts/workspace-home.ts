@@ -832,6 +832,73 @@ async function setup(root: HTMLElement) {
         },'Apply reviewed due dates');
         paintWeekChangePreview(snapshots,own);
     }
+    function reviewUnifiedTask(id:string) {
+        if (!state || locked || privacyHeld || state.preferences.hidden) return;
+        const record=state.tasks.find(t=>t.id===id&&!t.completedAt);
+        if(!record){toast('Task was completed or is no longer available.');return;}
+        if(!storageReady || dirty || conflict || !store){
+            toast('Task planning is blocked by unavailable, unsaved or conflicting local storage. Export or retry first.');
+            return;
+        }
+        const original=taskSnapshot(record),own=epoch,source=store;
+        const target=record.due&&record.due>=today()?record.due:today();
+        const html=`<div class="ws-unified-review" data-unified-review>
+          <strong>Original Hub task · ${esc(record.title)}</strong>
+          <p>Current status: ${record.due?'due '+esc(record.due):'Inbox (unscheduled)'} · ${esc(record.priority)} priority${record.time?' · clock '+esc(record.time):''}. Task and local calendar remain independent.</p>
+          ${field('Proposed due date','due',target,'date',`required min="${today()}"`)}
+          <label class="ws-unified-choice"><input type="checkbox" name="inbox" ${record.due?'':'checked'}/>
+            Keep in Inbox without a due date</label>
+          ${select('Priority','priority',[['none','None'],['low','Low'],['medium','Medium'],['high','High']],record.priority)}
+          <div class="ws-unified-review-preview" data-unified-review-preview aria-live="polite"></div>
+          <label class="ws-unified-choice ws-unified-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed this Hub task and approve only its due-date/priority change. No calendar appointment is created and nothing is marked completed.</label>
+          <p class="ws-muted">The original H12 planning writer clears an existing task clock when its due day changes. Nothing is sent to Google, StudyOS, ILIAS or owner Notes.</p>
+        </div>`;
+        openForm('Review task plan · Hub local',html,async data=>{
+            if(epoch!==own || store!==source || !state || dirty || conflict || !storageReady || locked ||
+                privacyHeld || state.preferences.hidden)throw new Error('Workspace or ownership changed. Export/reload and review again.');
+            if(!data.has('confirm'))throw new Error('Confirm your task plan explicitly.');
+            const isInbox=data.has('inbox');
+            const day=String(data.get('due')??'');
+            const nextDue=isInbox?'':day;
+            const nextPriority=String(data.get('priority'));
+            if(!isInbox && (!safeNavigationDay(day)||day<today()))
+                throw new Error('Choose today or a later valid due date, or keep the task in Inbox.');
+            if(!['none','low','medium','high'].includes(nextPriority))
+                throw new Error('Choose a valid task priority.');
+            const current=state.tasks.find(t=>t.id===id);
+            if(!current || JSON.stringify(taskSnapshot(current))!==JSON.stringify(original))
+                throw new Error('Task changed since review. Reopen from the current record.');
+            if(nextDue===original.due && nextPriority===original.priority)
+                throw new Error('No changes to save. Adjust the task date or priority, or close.');
+            await mutate(next=>{
+                const t=next.tasks.find(t=>t.id===id);
+                if(!t || JSON.stringify(taskSnapshot(t))!==JSON.stringify(original))
+                    throw new Error('Task changed while saving. No plan was applied.');
+                if(nextDue!==t.due)applyTaskPlan(t,isInbox?'inbox':'today',isInbox?today():day);
+                t.priority=nextPriority as Task['priority'];
+                activity(next,`Reviewed task plan: ${t.title} · ${t.due||'Inbox'} · ${t.priority} priority`,'task');
+            },'Reviewed Hub task plan updated');
+            if(epoch!==own||!state)throw new Error('Identity changed; no save is claimed.');
+            const saved=state.tasks.find(t=>t.id===id);
+            if(!saved || saved.due!==nextDue || saved.priority!==nextPriority)
+                throw new Error('Task plan was not applied. Reopen the task.');
+            if(dirty || conflict)throw new Error('Task changes remain unconfirmed in this tab. Export or retry rather than submitting twice.');
+        },'Apply reviewed task plan');
+        paintUnifiedTaskPreview(original);
+    }
+    function paintUnifiedTaskPreview(original:TaskBeforeMove) {
+        const el=dialog.querySelector<HTMLElement>('[data-unified-review-preview]');
+        if(!el)return;
+        const data=new FormData(form);
+        const inbox=data.has('inbox'),date=String(data.get('due')??''),prio=String(data.get('priority')??'');
+        const day=inbox?'Inbox':date;
+        const valid=inbox||safeNavigationDay(date)&&date>=today();
+        el.innerHTML=valid?`<p><strong>Before:</strong> ${esc(original.due||'Inbox')} · ${esc(original.priority)} priority</p>
+            <p><strong>After review:</strong> ${esc(day)} · ${esc(prio)} priority${(inbox?'':date)!==original.due&&original.time?' · original task clock will be cleared':''}</p>
+            <p>Hub task only. No event is created, moved or completed.</p>`:
+            '<p class="ws-unified-review-error">Choose a valid present/future due date or select Inbox.</p>';
+    }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
         openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
