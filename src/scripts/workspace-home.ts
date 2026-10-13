@@ -5,6 +5,8 @@ import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
+import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
+import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -33,7 +35,7 @@ async function setup(root: HTMLElement) {
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
-    let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
+    let taskFilter: TaskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
     let changeVersion = 0;
@@ -164,6 +166,65 @@ async function setup(root: HTMLElement) {
         submit.disabled = true;
         void Promise.resolve().then(() => submitForm!(new FormData(form))).then(() => dialog.close()).catch(e => { $('[data-dialog-error]').textContent = e instanceof Error ? e.message : 'Unable to save.'; }).finally(() => { submit.disabled = false; });
     });
+
+    /** Both the capture dialog and existing widget submit through the original mutation writer. */
+    function captureFields(id: string) {
+        const notes = providerAction('notes','capture-text') ?? '/apps/';
+        return `<div class="ws-capture-routing">
+            <label class="ws-field" for="capture-${esc(id)}">What do you want to capture?
+              <textarea id="capture-${esc(id)}" name="body" data-capture-draft maxlength="10000" rows="4" placeholder="First line: a clear title&#10;Optional details below…" required>${esc(state!.captureDraft)}</textarea>
+            </label>
+            <label class="ws-field">Save in this device
+              <select name="kind" data-capture-kind aria-label="Capture destination"><option value="note">Local note</option><option value="task">Local task</option></select>
+            </label>
+            <div data-capture-task-options hidden>
+              <div class="ws-form-row">
+                <label class="ws-field">Plan task
+                  <select name="duePreset" data-capture-due><option value="inbox">Inbox · decide later</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="week">In 7 days</option><option value="date">Pick a date</option></select>
+                </label>
+                <label class="ws-field">Priority
+                  <select name="priority"><option value="none">Normal</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                </label>
+              </div>
+              <label class="ws-field" data-capture-custom-date hidden>Custom due date<input name="customDate" type="date" value="${esc(today())}"/></label>
+              <p class="ws-muted">A task is saved only to Hub. A date is optional; Inbox tasks stay visible until planned.</p>
+            </div>
+            <div class="ws-capture-handoff"><span>Prefer the Notes app? Text is never transferred automatically.</span>
+              <button type="button" class="ws-text-button" data-action="copy-capture">Copy draft</button>
+              <a href="${esc(notes)}" rel="noreferrer">Open Notes ↗</a></div>
+            <small class="ws-muted">Draft autosaves in this account's existing local Hub workspace. Esc closes without losing it.</small>
+          </div>`;
+    }
+    async function saveCaptureData(data: FormData) {
+        if (!state || locked) throw new Error('Workspace is unavailable.');
+        const prepared = prepareCapture({
+            body: String(data.get('body') ?? ''),
+            kind: String(data.get('kind') ?? 'note'),
+            duePreset: String(data.get('duePreset') ?? 'inbox'),
+            customDate: String(data.get('customDate') ?? ''),
+            priority: String(data.get('priority') ?? 'none'),
+            today: today(),
+        });
+        clearTimeout(captureTimer);
+        await mutate(s => {
+            if (prepared.kind === 'task') s.tasks.push(prepared.task);
+            else s.notes.unshift(prepared.note);
+            s.captureDraft = '';
+            activity(s, `Captured ${prepared.kind}: ${prepared.kind === 'task' ? prepared.task.title : prepared.note.title}`, prepared.kind);
+        }, prepared.kind === 'task' ? 'Task captured in Hub' : 'Note captured in Hub');
+    }
+    function openCapture() {
+        openForm('Quick capture · this device', captureFields('dialog'), saveCaptureData, 'Save in Hub');
+    }
+    function syncCaptureControls(el: HTMLElement) {
+        const form = el.closest('form');
+        if (!form) return;
+        const task = form.querySelector<HTMLSelectElement>('[data-capture-kind]')?.value === 'task';
+        const options = form.querySelector<HTMLElement>('[data-capture-task-options]');
+        if (options) options.hidden = !task;
+        const custom = form.querySelector<HTMLElement>('[data-capture-custom-date]');
+        if (custom) custom.hidden = !task || form.querySelector<HTMLSelectElement>('[data-capture-due]')?.value !== 'date';
+    }
     function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
     function taskRows(tasks: Task[]) { return tasks.map(t => `<div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}"><input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/><button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : ''}${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}${t.time ? `<time>${esc(t.time)}</time>` : ''}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}</div>`).join(''); }
     function calendarHTML() {
@@ -224,7 +285,7 @@ async function setup(root: HTMLElement) {
                     : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
                 return `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Launch links here; approved owner metadata appears separately in the Continue desk on Home or App connections.</p>${renderOwnerHandoffs(apps, 2)}<a class="ws-text-button" href="/home/connections/">Check connected sources</a></div>`;
             }
-            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · Hub local, not Notes</small></form>`;
+            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Save in Hub</button></div><small class="ws-muted">${dirty ? 'Draft not saved yet' : 'Draft saved locally'} · not synced to Notes</small></form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
@@ -363,7 +424,7 @@ async function setup(root: HTMLElement) {
                     s.notes[ix] = next;
                 else
                     s.notes.unshift(next);
-                s.captureDraft = '';
+                if (!note) s.captureDraft = '';
                 activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
             }, 'Note saved on this device');
         });
@@ -703,7 +764,7 @@ async function setup(root: HTMLElement) {
                 break;
             }
             case 'capture':
-                editNote();
+                openCapture();
                 break;
             case 'edit-note':
                 editNote(id);
@@ -990,6 +1051,7 @@ async function setup(root: HTMLElement) {
                 toast('Theme changed for this session; browser preference storage is unavailable.');
             }
         }
+        if (el.matches('[data-capture-kind],[data-capture-due]')) syncCaptureControls(el);
         if (el.dataset.historySelect) {
             const id = el.dataset.historySelect, value = el.value;
             if (editing)
@@ -1024,22 +1086,10 @@ async function setup(root: HTMLElement) {
         if (!capture || !state)
             return;
         event.preventDefault();
-        clearTimeout(captureTimer);
-        const data = new FormData(capture), body = String(data.get('body')).trim(), kind = data.get('kind');
-        if (!body)
-            return;
-        if (kind === 'task' && body.length > 240) {
-            toast('Task titles can contain up to 240 characters. Capture longer text as a note.');
-            return;
-        }
-        void mutate(s => {
-            if (kind === 'task')
-                s.tasks.push({ id: uid(), title: body, notes: '', due: today(), time: '', priority: 'none', completedAt: null });
-            else
-                s.notes.unshift({ id: uid(), title: body.split('\n')[0]!.slice(0, 80), body, updatedAt: stamp() });
-            s.captureDraft = '';
-            activity(s, `Captured ${kind}: ${body.slice(0, 80)}`, String(kind));
-        }, `${kind === 'task' ? 'Task' : 'Note'} captured`);
+        const submit = capture.querySelector<HTMLButtonElement>('[type=submit]');
+        if (submit) submit.disabled = true;
+        void saveCaptureData(new FormData(capture)).catch(e => toast(e instanceof Error ? e.message : 'Unable to capture.'))
+            .finally(() => { if (submit && submit.isConnected) submit.disabled = false; });
     });
     root.addEventListener('keydown', event => {
         const target = event.target as HTMLElement;
