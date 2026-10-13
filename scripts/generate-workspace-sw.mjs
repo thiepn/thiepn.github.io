@@ -25,6 +25,8 @@ self.addEventListener('fetch',event=>{
  if(url.pathname.startsWith('/_astro/')||url.pathname==='/favicon.svg')event.respondWith(caches.open(CACHE).then(cache=>cache.match(request)).then(hit=>hit||fetch(request).then(response=>{if(response.ok){const copy=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(request,copy)));}return response;})));
 });
 `;
+await fs.writeFile('dist/workspace-sw.js', source.trim() + '\n');
+// Retain the old worker URL for browsers with a /home/ registration.
 await fs.mkdir('dist/home', { recursive: true });
 await fs.writeFile('dist/home/workspace-sw.js', source.trim() + '\n');
 console.log(`Workspace offline shell: ${assets.size} public assets / ${cache}`);

@@ -9,7 +9,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 960 });
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto('/');
+    await page.goto('/apps/');
 
     const catalogue = page.locator('[data-hub-catalogue]');
     await expect(catalogue).toBeVisible();
@@ -35,7 +35,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
 }
 
 test('Tiny Tools appears once as an ordinary Hub app card, not an embedded toolbox', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   await expect(page.getByRole('heading', { name: 'Tiny Tools', exact: true })).toHaveCount(1);
   await expect(page.locator('#tiny-tools')).toHaveCount(0);
   await expect(page.locator('[data-toolbox-overview]')).toHaveCount(0);
@@ -48,7 +48,7 @@ test('Tiny Tools appears once as an ordinary Hub app card, not an embedded toolb
 });
 
 test('each category filter reveals exactly its locked app count', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   const visibleCards = page.locator('[data-hub-item]:visible');
   for (const [category, count] of Object.entries(expectedCounts)) {
     const button = page.locator(`button[data-hub-category="${category}"]`);

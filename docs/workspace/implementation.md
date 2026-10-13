@@ -26,3 +26,11 @@ Existing owner handoffs and feature-gated cloud integrations remain at `/home/co
 CI-boundary PR #132 is merged; the UI PR now targets main. Media PR #133 and Orrery PR #134 are independent. Preserve the owner-only exact-main release workflow. After integrated Quality passes, dispatch Deploy to GitHub Pages on main with its exact qualified SHA, then run served UI/persistence/editing smoke checks. The connected tools cannot dispatch workflows and the local GitHub CLI token is invalid; live release cannot be claimed from this workspace.
 
 Screenshots in this directory show the runnable implementation with disposable sample records, not the currently served site. See `design-qa.md` at the project root.
+
+## Main-site routing
+
+The workspace is the primary page at `https://thiepn.dev/`. The existing complete catalogue now renders at `/apps/` with its category filters, canonical URL and no-JavaScript launchers. Navigation, project return links, sitemap and release checks use the new catalogue address.
+
+`/home/` stays a real workspace compatibility page because the pinned Library owner bridge only trusts that parent pathname. The root Account dialog links to `/home/#reading`, which opens the reading dialog. Both workspace addresses use the unchanged scoped IndexedDB database; no data migration or reset is required. Tasks, calendar, trackers, settings, connections and auth callback addresses remain available.
+
+The offline shell registers `/workspace-sw.js` at root scope, with an explicit allowlist of workspace pages and static assets. Apps, auth callbacks, connection pages, queries and APIs are outside its navigation cache. The old `/home/workspace-sw.js` endpoint is retained for existing browser registrations. Root personal content remains noindex and has no analytics or sitemap entry; `/apps/` is indexable.

@@ -24,7 +24,7 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
   test(`Hub hierarchy and layout ${width} ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto('/');
+    await page.goto('/apps/');
 
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('h1')).toHaveText('Apps');
@@ -48,7 +48,7 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
 }
 
 test('Hub renders the locked app membership, order, direct launch and details links', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   const cards = page.locator('[data-hub-item]');
   await expect(cards).toHaveCount(hub.expectedCount);
 
@@ -74,7 +74,7 @@ test('Hub renders the locked app membership, order, direct launch and details li
 });
 
 test('Hub category filters and URL state work without a redundant search bar', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   const visibleCards = page.locator('[data-hub-item]:visible');
 
   await expect(visibleCards).toHaveCount(hub.expectedCount);
@@ -92,7 +92,7 @@ test('Hub category filters and URL state work without a redundant search bar', a
   await expect(allButton).toHaveAttribute('aria-pressed', 'true');
   await expect(page).not.toHaveURL(/category=/);
 
-  await page.goto('/?category=faith');
+  await page.goto('/apps/?category=faith');
   await expect(visibleCards).toHaveCount(categories.faith);
   await expect(page.locator('button[data-hub-category="faith"]')).toHaveAttribute('aria-pressed', 'true');
 });
@@ -189,7 +189,7 @@ test('archive search, empty state, filters and browser Back', async ({ page }) =
 });
 
 test('global search supports keyboard, no results, Escape and focus restoration', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   await page.locator('.site-header__search').focus();
   await page.keyboard.press('Control+k');
   const input = page.locator('[data-catalogue-search-input]');
@@ -211,7 +211,7 @@ test('global search retries after an index network failure', async ({ page }) =>
     if (++attempts === 1) await route.fulfill({ status: 503, body: 'Unavailable' });
     else await route.continue();
   });
-  await page.goto('/');
+  await page.goto('/apps/');
   await page.keyboard.press('Control+k');
   await expect(page.locator('[data-catalogue-search-status]')).toContainText(/could not|unavailable|couldn.t|unable/i);
   await page.keyboard.press('Escape');
@@ -222,7 +222,7 @@ test('global search retries after an index network failure', async ({ page }) =>
 
 test('mobile menu, search handoff and persistent theme', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/');
+  await page.goto('/apps/');
   const menu = page.getByRole('button', { name: 'Menu', exact: true });
   await menu.click();
   const mobileNav = page.getByRole('navigation', { name: 'Mobile navigation', exact: true });
@@ -249,7 +249,7 @@ test('app Hub and archive survive JavaScript disabled', async ({ browser }) => {
   expect(await page.locator('[data-simple-item]').count()).toBeGreaterThan(20);
   await expect(page.locator('.mobile-menu__noscript')).toBeVisible();
 
-  await page.goto('http://127.0.0.1:4321/');
+  await page.goto('http://127.0.0.1:4321/apps/');
   await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
   await expect(page.getByRole('heading', { name: 'Tiny Tools', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Micro Arcade', exact: true })).toBeVisible();
@@ -258,7 +258,7 @@ test('app Hub and archive survive JavaScript disabled', async ({ browser }) => {
   await context.close();
 });
 
-for (const route of ['/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/scan/', '/privacy/', '/byte/']) for (const theme of ['light', 'dark'] as const) {
+for (const route of ['/apps/', '/work/', '/projects/', '/about/', '/books/', '/collections/', '/collection/browser-games/', '/project/micro-arcade/', '/project/pdf-studio/', '/project/manuscript/', '/project/tiny-tools/', '/scan/', '/privacy/', '/byte/']) for (const theme of ['light', 'dark'] as const) {
   test(`accessibility ${route} ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
@@ -318,7 +318,7 @@ test('Micro Arcade recording is opt-in and never blocks the project launch link'
 });
 
 test('Tiny Tools is one Hub card while its project page retains the suite overview', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   const card = page.getByRole('heading', { name: 'Tiny Tools', exact: true }).locator('..').locator('..');
   await expect(page.getByRole('heading', { name: 'Tiny Tools', exact: true })).toHaveCount(1);
   await expect(page.locator('#tiny-tools')).toHaveCount(0);

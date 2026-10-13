@@ -10,7 +10,7 @@ test('served profile, local customization, Search and manual workflow handoffs',
   page.on('request', r => { if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) privateRequests.push(new URL(r.url()).pathname); });
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/home/');
+  await page.goto('/');
   await expect(page.locator('[data-auth-login]')).toBeHidden();
   await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');

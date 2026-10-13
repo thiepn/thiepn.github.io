@@ -11,11 +11,13 @@ const faults = [
   ['pilot scope drift', 'reading-pilot.json', text => { const value=JSON.parse(text);value.cloudAccess=true;return JSON.stringify(value); }],
   ['auth enablement', 'hub-release.json', text => { const value = JSON.parse(text); value.features.hubSignIn = true; return JSON.stringify(value); }],
   ['provider operation drift', 'hub-providers.json', text => { const value = JSON.parse(text); value.providers[0].operations.summary = true; return JSON.stringify(value); }],
+  ['Root indexing', 'index.html', text => text.replace('noindex,nofollow', 'index,follow')],
+  ['Root managed panel leakage', 'index.html', text => text + '<section data-private-tms></section>'],
   ['Home indexing', 'home/index.html', text => text.replace('noindex,nofollow', 'index,follow')],
   ['Search analytics', 'search/index.html', text => text + '<script src="https://static.cloudflareinsights.com/beacon.min.js"></script>'],
   ['personal sitemap route', 'sitemap.xml', text => text.replace('</urlset>', '<url><loc>https://thiepn.dev/home/</loc></url></urlset>')],
   ['unreviewed workspace app', 'home/index.html', text => text.replace('"id":"notes"', '"id":"unreviewed-notes"')],
-  ['missing app catalogue roster', 'index.html', text => text.replace('data-hub-slug=', 'data-unreviewed-slug=')],
+  ['missing app catalogue roster', 'apps/index.html', text => text.replace('data-hub-slug=', 'data-unreviewed-slug=')],
   ['calendar indexing', 'home/calendar/index.html', text => text.replace('noindex,nofollow', 'index,follow')],
 ];
 try {

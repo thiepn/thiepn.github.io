@@ -24,7 +24,7 @@ const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
         <div class="portal-search-actions"><a href={project.liveUrl!}>Open app <span aria-hidden="true">↗</span></a><a href={`/project/${project.slug}/`}>Details</a></div>
       </article>)}
     </div>
-    <p class="portal-search-empty" data-portal-search-empty hidden>No apps match. Try another name or task, or <a href="/#apps">browse all apps</a>.</p>
+    <p class="portal-search-empty" data-portal-search-empty hidden>No apps match. Try another name or task, or <a href="/apps/#apps">browse all apps</a>.</p>
     </section>
     <section id="search-actions" aria-labelledby="scope-actions" data-search-panel="actions" hidden>
       <p class="portal-muted">Choose an action to open its app. Search does not execute a save or change app data.</p>

@@ -6,9 +6,11 @@ The production source for **thiepn.dev**, built with Astro and static content.
 
 ### THIEPN HUB foundation (H1)
 
-The public root now launches the complete reviewed 27-app Hub. `/home/` adds
-personal pins, spacing and themes; `/search/` finds apps by name or task and
-opens them directly; `/apps/` resolves to `/`. Home preferences are browser-local.
+The main site at `/` opens the customizable workspace with app shortcuts, tasks,
+calendar and trackers. `/apps/` contains the complete reviewed app catalogue;
+`/search/` finds apps by name or task. `/home/` remains a compatible workspace
+and the trusted host for the device reading connection. Workspace data stays
+in the same browser-local database when navigating between these addresses.
 THIEPN Account remains independently deployed; private summaries and Account
 preference sync are later phases. See [the H1 contract](docs/HUB_H1.md).
 

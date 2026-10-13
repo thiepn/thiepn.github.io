@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-async function ready(page:Page){await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
+import fs from 'node:fs';
+const hub = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+async function ready(page:Page){await page.goto('/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function save(page:Page){await page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function task(page:Page,title='Read chapter six'){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await save(page);}
 test('tasks, notes and tracker logs persist through layout edits and reload',async({page})=>{
@@ -24,10 +26,10 @@ test('pointer drag and resize commit logical placement that survives reflow',asy
  await ready(page);await page.getByRole('button',{name:'Customize',exact:true}).click();const handle=page.locator('[data-drag]').nth(1),cell=page.locator('[data-widget-id]').nth(1),before=await cell.getAttribute('style');const box=(await handle.boundingBox())!;await page.mouse.move(box.x+8,box.y+8);await page.mouse.down();await page.mouse.move(box.x+8,box.y+88,{steps:5});await page.mouse.up();await expect(cell).not.toHaveAttribute('style',before!);const after=await cell.getAttribute('style');await page.getByRole('button',{name:'Done',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.setViewportSize({width:1440,height:1024});await expect(cell).toHaveAttribute('style',after!);await page.reload();await expect(page.locator('[data-widget-id]').nth(1)).toHaveAttribute('style',after!);
 });
 test('another tab cannot silently overwrite an active layout edit',async({page,context})=>{
- await ready(page);const other=await context.newPage();await other.goto('/home/');await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await page.getByRole('button',{name:'Customize',exact:true}).click();await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await task(other,'From another tab');await expect(page.locator('[data-workspace-notice]')).toContainText('Another tab changed');await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByText('Editing layout',{exact:true})).toBeVisible();await expect(page.locator('[data-workspace-notice]')).toContainText('saved layout changed');await other.reload();await expect(other.locator('.ws-task-title')).toHaveText('From another tab');await other.close();
+ await ready(page);const other=await context.newPage();await other.goto('/');await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await page.getByRole('button',{name:'Customize',exact:true}).click();await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await task(other,'From another tab');await expect(page.locator('[data-workspace-notice]')).toContainText('Another tab changed');await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByText('Editing layout',{exact:true})).toBeVisible();await expect(page.locator('[data-workspace-notice]')).toContainText('saved layout changed');await other.reload();await expect(other.locator('.ws-task-title')).toHaveText('From another tab');await other.close();
 });
 test('blocked IndexedDB keeps content in memory and never claims it was saved',async({page})=>{
- await page.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{get(){throw new DOMException('Blocked','SecurityError');}});});await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');await taskWithoutSave(page);await expect(page.locator('.ws-task-title')).toHaveText('Unsaved task');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');const download=page.waitForEvent('download');await page.locator('[data-action=export]').first().click();expect((await download).suggestedFilename()).toContain('thiepn-workspace');
+ await page.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{get(){throw new DOMException('Blocked','SecurityError');}});});await page.goto('/');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');await taskWithoutSave(page);await expect(page.locator('.ws-task-title')).toHaveText('Unsaved task');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');const download=page.waitForEvent('download');await page.locator('[data-action=export]').first().click();expect((await download).suggestedFilename()).toContain('thiepn-workspace');
 });
 async function taskWithoutSave(page:Page){await page.locator('[data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill('Unsaved task');await page.locator('[data-dialog-submit]').click();}
 test('identity changes clear private local content and do not import it into a guest',async({page})=>{
@@ -58,4 +60,24 @@ test('populated workspace remains readable and keyboard scrollable in both theme
  await page.addScriptTag({path:process.env.AXE_PATH||'/tmp/audit-tools/node_modules/axe-core/axe.min.js'});
  for(const colorScheme of ['light','dark'] as const){await page.emulateMedia({colorScheme,reducedMotion:'reduce'});await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe(colorScheme);expect(await page.evaluate(async()=>(await (window as any).axe.run(document)).violations.map((v:any)=>({id:v.id,targets:v.nodes.map((n:any)=>n.target)})))).toEqual([]);}
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await expect(page.locator('.ws-nav a.active .ws-icon')).toBeVisible();await page.setViewportSize({width:390,height:844});expect((await page.locator('#ws-title').boundingBox())!.width).toBeGreaterThan(200);
+});
+
+test('root workspace, Apps catalogue and legacy Home share navigation and saved data', async ({page}) => {
+ await page.goto('/home/'); await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ const origin = new URL(page.url()).origin;
+ await task(page, 'Keep existing Home data');
+ await page.locator('.ws-brand a').click(); await expect(page).toHaveURL(origin + '/');
+ await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await expect(page.locator('[data-library-pilot]')).toHaveCount(0);
+ await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
+ await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+ await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
+ await page.locator('.site-nav').getByRole('link',{name:'Home',exact:true}).click();
+ await expect(page).toHaveURL(origin + '/'); await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await page.locator('.ws-topbar [data-action=account]').click();
+ await page.getByRole('link',{name:'Open reading connection',exact:true}).click();
+ await expect(page).toHaveURL(origin + '/home/');
+ await expect(page.locator('[data-account-dialog]')).toBeVisible();
+ await expect(page.locator('[data-reading-shell]')).toHaveAttribute('data-library-host-route','/home/');
+ await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
 });

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const hub: { expectedCount: number } = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
 
 test('Hub app cards use native article/link semantics without ARIA-role violations', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/apps/');
   await page.addScriptTag({ path: process.env.AXE_PATH || '/tmp/audit-tools/node_modules/axe-core/axe.min.js' });
   const result = await page.evaluate(async () => await (window as any).axe.run(document, { runOnly: { type: 'rule', values: ['aria-allowed-role'] } }));
   expect(result.violations).toEqual([]);

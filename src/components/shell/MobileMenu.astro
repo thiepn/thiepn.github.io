@@ -2,20 +2,21 @@
 import ThemeControl from './ThemeControl.astro';
 const path = Astro.url.pathname;
 const active = (href: string) => {
-  if (href === '/#apps' || href === '/') return path === '/';
+  if (href === '/') return path === '/';
+  if (href === '/apps/#apps') return path === '/apps/';
   if (href === '/projects/') return path.startsWith('/projects/') || path.startsWith('/project/');
   if (href === '/collections/') return path.startsWith('/collections/') || path.startsWith('/collection/');
   if (href === '/about/') return path.startsWith('/about/');
   return path.startsWith(href);
 };
-const items: [string,string][] = [['Home', '/home/'], ['Apps', '/#apps'], ['Work', '/work/'], ['About', '/about/'], ['Project archive', '/projects/']];
+const items: [string,string][] = [['Home', '/'], ['Apps', '/apps/#apps'], ['Work', '/work/'], ['About', '/about/'], ['Project archive', '/projects/']];
 ---
 <div class="mobile-menu" data-mobile-menu>
   <button class="mobile-menu__trigger" type="button" data-mobile-menu-open aria-haspopup="dialog" aria-controls="mobile-navigation">Menu</button>
   <dialog class="mobile-menu__dialog" id="mobile-navigation" data-mobile-menu-dialog aria-labelledby="mobile-menu-title">
     <div class="mobile-menu__surface">
       <header class="mobile-menu__header">
-        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN apps">THIEPN</a>
+        <a class="mobile-menu__wordmark" href="/" aria-label="THIEPN HUB Home">THIEPN</a>
         <button class="mobile-menu__close" type="button" data-mobile-menu-close aria-label="Close navigation menu">Close</button>
       </header>
       <div class="mobile-menu__index">
@@ -40,7 +41,7 @@ const items: [string,string][] = [['Home', '/home/'], ['Apps', '/#apps'], ['Work
   </dialog>
   <noscript>
     <nav class="mobile-menu__noscript" aria-label="Mobile navigation without JavaScript">
-      <a href="/home/">Home</a><a href="/#apps">Apps</a><a href="/work/">Work</a><a href="/about/">About</a><a href="/projects/">Project archive</a>
+      <a href="/">Home</a><a href="/apps/#apps">Apps</a><a href="/work/">Work</a><a href="/about/">About</a><a href="/projects/">Project archive</a>
     </nav>
   </noscript>
 </div>
