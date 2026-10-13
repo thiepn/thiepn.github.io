@@ -131,16 +131,16 @@ function start(desks:HTMLElement[]) {
       }
       const allowed = new Set(host.dataset.ownerWidgetSources?.split(',') ?? []);
       const ids = sources.filter(id=>allowed.has(id) && selected.has(id));
-      const ready = ids.filter(id=>current.get(id)?.envelope && current.get(id)?.status==='ready');
-      if (!ready.length) {
+      const active = ids.filter(id=>current.has(id));
+      if (!active.length) {
         host.append(node('p','ws-owner-empty',ids.length ?
-          'Not connected or no approved snapshot in this tab. Open the owner connection above to grant or refresh access.' :
+          'No approved owner read in this tab. Use the existing owner connection to check or refresh.' :
           'No enabled owner sources. Use widget settings to select them.'));
         continue;
       }
-      const heading = node('p','ws-widget-ownership','Authorized owner metadata · valid only in this tab');
+      const heading = node('p','ws-widget-ownership','Owner connection states · data shown only with a valid grant');
       const list = node('div','ws-widget-owner-preview');
-      for (const id of ready) list.append(sourceCard(id,2));
+      for (const id of active) list.append(sourceCard(id,2));
       host.append(heading,list);
     }
   }
