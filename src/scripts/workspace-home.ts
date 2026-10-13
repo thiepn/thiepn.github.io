@@ -5,6 +5,7 @@ import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
+import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -217,8 +218,13 @@ async function setup(root: HTMLElement) {
                 const chosen = ids.map(id => apps.find(a => a.id === id)).filter((a): a is AppShortcut => !!a);
                 return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
             }
-            case 'continue': return state!.notes.length ? state!.notes.slice(0, 8).map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('') : empty('Pick up where you left off', 'Your captured notes will appear here. App resource connections are available separately.', 'capture', 'Capture a note');
-            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · local capture</small></form>`;
+            case 'continue': {
+                const recent = [...state!.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, w.view === 'detailed' ? 6 : 4);
+                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('')
+                    : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
+                return `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Direct app actions only. Hub has not read your books, lessons or app records.</p>${renderOwnerHandoffs(apps)}</div>`;
+            }
+            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · Hub local, not Notes</small></form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
@@ -238,7 +244,7 @@ async function setup(root: HTMLElement) {
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return renderGrid();
+        return view === 'home' ? renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
     }
     function render() {
         observer?.disconnect();
@@ -263,6 +269,17 @@ async function setup(root: HTMLElement) {
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
         renderPlanner();
+        const mobileToday = $('[data-workspace-today]');
+        if (view === 'apps' || view === 'settings') {
+            mobileToday.hidden = true;
+            mobileToday.innerHTML = '';
+        }
+        else {
+            mobileToday.hidden = false;
+            mobileToday.innerHTML = privacyHeld || state.preferences.hidden
+                ? '<section class="ws-mobile-today"><strong>Today is hidden</strong><p>Personal information is masked on this device.</p></section>'
+                : renderMobileToday(state, today());
+        }
         syncReadingPanels();
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
         root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
@@ -1166,6 +1183,8 @@ async function setup(root: HTMLElement) {
         $('[data-workspace-list]').innerHTML = '';
         if (view !== 'apps') $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
         $('[data-planner]').innerHTML = '';
+        $('[data-workspace-today]').innerHTML = '';
+        $('[data-workspace-today]').hidden = true;
         $('[data-toolbar]').innerHTML = '';
         $('#ws-title').textContent = view === 'apps' ? 'Apps' : 'Personal workspace';
         $('[data-workspace-toast]').hidden = true;
@@ -1202,6 +1221,7 @@ async function setup(root: HTMLElement) {
             if (rawRecovery) {
                 locked = true;
                 notice(e instanceof Error ? e.message : 'Saved workspace cannot be opened.', button('export', 'Export recovery file'));
+                if (view !== 'apps') $('[data-workspace-content]').innerHTML = '<section class="ws-recovery"><h2>Local workspace needs recovery</h2><p>The original saved document was left untouched. Export a recovery copy before changing browser storage.</p>' + button('export', 'Export recovery JSON') + '</section>';
                 saved('Saved record left untouched');
                 return;
             }
