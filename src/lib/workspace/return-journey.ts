@@ -77,3 +77,41 @@ export function renderReturnJourney(state:WorkspaceState, context:ReturnContext)
     </footer>
   </section>`;
 }
+
+/** Read-only comparison of the original in-memory state and canonical IndexedDB record. */
+export function renderSavedComparison(current: WorkspaceState, saved: WorkspaceState|null):string {
+  if(!saved) return '<p>No saved workspace record was found for the current identity. Export this tab before any reload.</p>';
+  const categories = [
+    {name:'Tasks',left:current.tasks,right:saved.tasks},
+    {name:'Notes',left:current.notes,right:saved.notes},
+    {name:'Calendar events',left:current.events,right:saved.events},
+    {name:'Layouts',left:current.workspaces,right:saved.workspaces},
+  ];
+  const sections = categories.map(category=>{
+    const original=new Map(category.right.map(value=>[value.id,JSON.stringify(value)]));
+    const left=new Map(category.left.map(value=>[value.id,JSON.stringify(value)]));
+    const newRecords=category.left.filter(item=>!original.has(item.id));
+    const different=category.left.filter(item=>original.has(item.id)&&original.get(item.id)!==JSON.stringify(item));
+    const missing=category.right.filter(item=>!left.has(item.id));
+    return `<tr><th scope="row">${esc(category.name)}</th>
+      <td>${category.left.length}</td><td>${category.right.length}</td>
+      <td>${newRecords.length} new · ${different.length} changed · ${missing.length} only in saved</td></tr>`;
+  }).join('');
+  return `<p>The comparison reads only the existing account-scoped saved record. It does not apply changes, resolve conflicts or copy external app content.</p>
+    <table class="ws-return-diff"><thead><tr><th scope="col">Local source</th><th scope="col">This tab</th><th scope="col">Saved</th><th scope="col">Differences</th></tr></thead><tbody>${sections}</tbody></table>
+    <p>Revision: this tab ${current.revision}; saved record ${saved.revision}. A difference is not automatically safe to merge. Export the in-memory copy, then decide whether to reload.</p>`;
+}
+export function renderRecoveryStrip(state:WorkspaceState,context:ReturnContext,privateView:boolean):string {
+  if (!context.dirty && !context.conflict && context.storageReady && !context.recoveryDraft) return '';
+  const messages = [
+    context.conflict?'A different tab modified this account-scoped workspace. Your current copy is not automatically merged.':null,
+    !context.storageReady?'Browser storage is unavailable. This tab may contain the only remaining copy.':null,
+    context.dirty?'Unsaved changes exist in this tab. Export before discarding them.':null,
+    context.recoveryDraft?'An interrupted layout draft is available for review.':null,
+  ].filter(Boolean);
+  return `<aside class="ws-return-strip" aria-label="Workspace recovery">
+    <div><strong>${privateView?'Workspace recovery needs attention':'Review your saved workspace'}</strong>
+       <p>${privateView?'Show personal content to review details. No private records are displayed here.':esc(messages.join(' '))}</p></div>
+    <div>${button('export','Export backup')}${context.conflict?button('review-return','Compare records'):''}${context.storageReady?button('reload','Review reload'):button('retry','Retry storage')}${context.recoveryDraft&&!privateView?button('review-return','Review layout'):''}</div>
+  </aside>`;
+}
