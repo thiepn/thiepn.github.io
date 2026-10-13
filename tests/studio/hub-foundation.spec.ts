@@ -67,7 +67,7 @@ test('Public task search is direct, reloadable, curated and network independent'
   for (const slug of hub.excluded) await expect(page.locator(`[data-portal-search-slug="${slug}"]`)).toHaveCount(0);
 });
 
-test('Alias, Home privacy, and no-JavaScript launchers', async ({ browser, request }) => {
+test('Apps route, Home privacy, and no-JavaScript launchers', async ({ browser, request }) => {
   const home = await request.get('/home/'); expect(await home.text()).toContain('noindex,nofollow');
   expect(await (await request.get('/sitemap.xml')).text()).not.toContain('https://thiepn.dev/home/');
   expect(await (await request.get('/sitemap.xml')).text()).toContain('https://thiepn.dev/search/');
