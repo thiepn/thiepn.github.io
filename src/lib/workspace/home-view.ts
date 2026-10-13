@@ -65,6 +65,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
         ? summary.upcomingEvents.slice(0, 2).map(e => agendaRow(e, today, state.preferences.timezone)).join('')
         : `<p class="ws-home-empty">No local events in the next seven days. Connected calendars are not shown here.</p>`;
     const handoffs = renderOwnerHandoffs(apps, 2);
+    const inbox = state.tasks.filter(t => !t.completedAt && !t.due).length;
     return `<section class="ws-home-lead" aria-label="Daily overview">
       <header class="ws-home-lead-heading"><div><p class="ws-home-eyebrow">Your day</p><h2>Pick up what matters</h2><p>Priorities and events saved in this browser, with direct links to your THIEPN apps.</p></div>
         <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><button type="button" class="ws-button" data-action="new-task">+ Task</button></div>
@@ -73,6 +74,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
         <section class="ws-home-panel" aria-labelledby="ws-priorities"><header><h3 id="ws-priorities">Next priorities</h3><a href="/home/tasks/">All tasks</a></header>
           <p class="ws-home-context">${summary.overdue ? summary.overdue + ' overdue · ' : ''}${summary.dueToday} due today · ${summary.completedToday} completed today</p>
           <div class="ws-home-list">${tasks}</div>
+          <a class="ws-inbox-link" href="/home/tasks/?filter=inbox">Process inbox · ${inbox} unscheduled task${inbox===1?'':'s'} →</a>
           <small class="ws-home-source">Source: Hub tasks on this device</small>
         </section>
         <section class="ws-home-panel" aria-labelledby="ws-upcoming"><header><h3 id="ws-upcoming">Coming up</h3><a href="/home/calendar/">Calendar</a></header>
