@@ -46,7 +46,7 @@ export function renderReturnJourney(state:WorkspaceState, context:ReturnContext)
   const workspace=state.workspaces.find(w=>w.id===state.active);
   const diverged=!!recover && state.workspaces.find(w=>w.id===recover.workspaceId)?.revision!==recover.baseRevision;
   const blocked=context.dirty||context.conflict||!context.storageReady;
-  const surface = blocked?'attention':savedDraft||recover?'resume':'ready';
+  const surface = blocked?'attention':savedDraft||recover||context.editing?'resume':'ready';
   return `<section class="ws-return" data-return-status="${surface}" aria-labelledby="ws-return-title">
     <header class="ws-return-heading">
       <div><p class="ws-home-eyebrow">Return to Hub · this browser</p>
@@ -102,16 +102,17 @@ export function renderSavedComparison(current: WorkspaceState, saved: WorkspaceS
     <p>Revision: this tab ${current.revision}; saved record ${saved.revision}. A difference is not automatically safe to merge. Export the in-memory copy, then decide whether to reload.</p>`;
 }
 export function renderRecoveryStrip(state:WorkspaceState,context:ReturnContext,privateView:boolean):string {
-  if (!context.dirty && !context.conflict && context.storageReady && !context.recoveryDraft) return '';
+  if (!context.dirty && !context.conflict && context.storageReady && !context.recoveryDraft && !context.editing) return '';
   const messages = [
     context.conflict?'A different tab modified this account-scoped workspace. Your current copy is not automatically merged.':null,
     !context.storageReady?'Browser storage is unavailable. This tab may contain the only remaining copy.':null,
     context.dirty?'Unsaved changes exist in this tab. Export before discarding them.':null,
     context.recoveryDraft?'An interrupted layout draft is available for review.':null,
+    context.editing?'A layout edit is open. Save or cancel it before switching workspaces.':null,
   ].filter(Boolean);
   return `<aside class="ws-return-strip" aria-label="Workspace recovery">
     <div><strong>${privateView?'Workspace recovery needs attention':'Review your saved workspace'}</strong>
-       <p>${privateView?'Show personal content to review details. No private records are displayed here.':esc(messages.join(' '))}</p></div>
+       <p>${privateView?'Show personal content to review details. No private records are displayed here.':esc('Workspace '+(state.workspaces.find(w=>w.id===state.active)?.title??'local')+'. '+messages.join(' '))}</p></div>
     <div>${button('export','Export backup')}${context.conflict?button('review-return','Compare records'):''}${context.storageReady?button('reload','Review reload'):button('retry','Retry storage')}${context.recoveryDraft&&!privateView?button('review-return','Review layout'):''}</div>
   </aside>`;
 }
