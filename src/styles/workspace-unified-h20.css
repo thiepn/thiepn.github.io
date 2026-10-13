@@ -103,3 +103,10 @@
  .ws-unified-task-links a{min-height:44px;flex:1 1 100px;justify-content:center;}
 }
 @media(forced-colors:active){.ws-unified-nav,.ws-unified-mode,.ws-unified-today,.ws-unified-action,.ws-unified-group,.ws-unified-review-preview{border-color:CanvasText;}}
+
+.ws-unified-last-note{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;min-width:0;padding:12px;border:1px solid var(--ws-line);border-radius:7px;background:var(--ws-soft);}
+.ws-unified-last-note>span{display:grid;gap:4px;flex:1 1 190px;min-width:0;}
+.ws-unified-last-note strong{font-size:12px;line-height:1.45;overflow-wrap:anywhere;}
+.ws-unified-last-note small{font-size:11px;color:var(--ws-muted);line-height:1.55;}
+.ws-unified-last-note>div{display:flex;flex-wrap:wrap;gap:6px;}
+@media(max-width:767px){.ws-unified-last-note>div{width:100%;}.ws-unified-last-note .ws-unified-action{min-height:44px;flex:1 1 110px;}}
