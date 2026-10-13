@@ -809,7 +809,9 @@ async function setup(root: HTMLElement) {
         scopes.innerHTML = PALETTE_SCOPES.map(scope => `<button type="button" data-action="palette-scope" data-id="${scope}" class="ws-palette-chip" aria-pressed="${scope === result.actualScope}">${scope === 'all' ? 'All' : scope === 'actions' ? 'Commands' : scope === 'calendar' ? 'Calendar' : scope[0]!.toUpperCase()+scope.slice(1)}</button>`).join('');
         const summary = $('[data-palette-summary]');
         summary.textContent = result.restricted
-            ? 'Personal records are hidden or unavailable. Reviewed app links and public navigation remain available.'
+            ? (hubIdentity.status==='checking' || !state ? 'Checking your Hub identity and local workspace · reviewed app links remain searchable.'
+              : locked ? 'Local workspace storage is unavailable. Only public app links and navigation are searchable.'
+              : 'Personal records are hidden. Reviewed app links and public navigation remain searchable.')
             : !navigator.onLine ? 'Offline · local records and saved app links only; connected app contents are not searched.'
             : 'Hub local + reviewed app catalogue · external app records are never queried.';
         const groupOrder = ['actions','tasks','calendar','notes','apps'] as const;
