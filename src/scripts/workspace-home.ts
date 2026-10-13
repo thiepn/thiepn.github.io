@@ -16,6 +16,7 @@ import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventReq
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
+import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -34,6 +35,8 @@ if (root)
 async function setup(root: HTMLElement) {
     const view = root.dataset.view ?? 'home';
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
+    const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
+    let homeModeRestorePending=true;
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
     let initialCalendarDate = calendarParams && safeNavigationDay(calendarParams.get('date')) ? calendarParams.get('date') : null;
@@ -46,6 +49,9 @@ async function setup(root: HTMLElement) {
         const url = new URL(location.href); url.search = ''; url.hash = '';
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
+    } else if(view==='home') {
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
+        history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
         const query=new URLSearchParams();
@@ -72,6 +78,8 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
+    let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
@@ -132,6 +140,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
@@ -363,12 +372,10 @@ async function setup(root: HTMLElement) {
     function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
     function taskRows(tasks: Task[]) {
         return tasks.map(t => {
-            const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Plan task ${esc(t.title)}">
-                ${!t.due ? button('task-plan-today', 'Today', t.id, 'ws-button') : button('task-plan-inbox', 'Inbox', t.id, 'ws-button')}
-                ${button('task-plan-tomorrow', 'Tomorrow', t.id, 'ws-button')}
-                ${button('task-plan-week', 'In 7 days', t.id, 'ws-button')}
-                ${t.priority !== 'high' ? button('task-plan-high', 'High priority', t.id, 'ws-button') : button('task-plan-normal', 'Normal priority', t.id, 'ws-button')}
-                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}${button('context-task', 'Next actions', t.id, 'ws-text-button')}${button('plan-task-event', 'Calendar block', t.id, 'ws-text-button')}
+            const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Review task ${esc(t.title)}">
+                ${button('unified-triage','Review due date & priority',t.id,'ws-button')}
+                ${button('context-task', 'Next actions', t.id, 'ws-text-button')}
+                ${button('plan-task-event', 'Review calendar block', t.id, 'ws-text-button')}
               </div>` : '';
             return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
               <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/>
@@ -461,6 +468,7 @@ async function setup(root: HTMLElement) {
                   || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
             return `<section class="ws-task-center" aria-labelledby="ws-task-center-title">
               <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div>${button('capture', '+ Capture')}</header>
+              <nav class="ws-unified-task-links" aria-label="Related Hub workflows"><a href="/">Today</a><a href="/?mode=focus">Focus</a><a href="/home/calendar/?mode=week">Week plan</a></nav>
               <div class="ws-task-filter-list" role="group" aria-label="Task views">
                 ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
               </div>
@@ -475,7 +483,20 @@ async function setup(root: HTMLElement) {
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
+        if(view==='home') {
+            const mode=editing?'workspace':homeMode;
+            const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus());
+            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
+            return menu+`<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>`+
+                renderHomeOverview(state!, apps, today())+renderGrid();
+        }
+        return renderGrid();
+    }
+    function journeyStatus():JourneyStatus {
+        return {offline:!navigator.onLine,dirty,conflict,storageReady,
+            hasCapture:!!state?.captureDraft.trim(),hasLayoutDraft:!!recoveryDraft,
+            accountLabel:hubIdentity.status==='signed-in'?'Account-scoped browser storage':'This device'};
     }
     function returnContext(): ReturnContext {
         return {today:today(),storageReady,dirty,conflict,offline:!navigator.onLine,
@@ -526,7 +547,13 @@ async function setup(root: HTMLElement) {
         pruneWeekSelection();
         if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
-        root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
+        if (view==='home') {
+            const mode=editing?'workspace':homeMode;
+            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
+            if(location.pathname+location.search!==url)history.replaceState(null,'',url);
+        }
+        root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
+        root.dataset.homeMode = view==='home' ? (editing?'workspace':homeMode) : '';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
@@ -544,7 +571,7 @@ async function setup(root: HTMLElement) {
         renderPlanner();
         if (searchDialog.open) renderSearch();
         const mobileToday = $('[data-workspace-today]');
-        if (view === 'apps' || view === 'settings') {
+        if (view === 'apps' || view === 'settings' || (view==='home' && (editing?'workspace':homeMode)!=='workspace')) {
             mobileToday.hidden = true;
             mobileToday.innerHTML = '';
         }
@@ -815,6 +842,74 @@ async function setup(root: HTMLElement) {
             render();
         },'Apply reviewed due dates');
         paintWeekChangePreview(snapshots,own);
+    }
+    function reviewUnifiedTask(id:string) {
+        if (!state || locked || privacyHeld || state.preferences.hidden) return;
+        const record=state.tasks.find(t=>t.id===id&&!t.completedAt);
+        if(!record){toast('Task was completed or is no longer available.');return;}
+        if(!storageReady || dirty || conflict || !store){
+            toast('Task planning is blocked by unavailable, unsaved or conflicting local storage. Export or retry first.');
+            return;
+        }
+        const original=taskSnapshot(record),own=epoch,source=store;
+        activeUnifiedReview={task:original,epoch};
+        const target=record.due&&record.due>=today()?record.due:today();
+        const html=`<div class="ws-unified-review" data-unified-review>
+          <strong>Original Hub task · ${esc(record.title)}</strong>
+          <p>Current status: ${record.due?'due '+esc(record.due):'Inbox (unscheduled)'} · ${esc(record.priority)} priority${record.time?' · clock '+esc(record.time):''}. Task and local calendar remain independent.</p>
+          ${field('Proposed due date','due',target,'date',`required min="${today()}"`)}
+          <label class="ws-unified-choice"><input type="checkbox" name="inbox" ${record.due?'':'checked'}/>
+            Keep in Inbox without a due date</label>
+          ${select('Priority','priority',[['none','None'],['low','Low'],['medium','Medium'],['high','High']],record.priority)}
+          <div class="ws-unified-review-preview" data-unified-review-preview aria-live="polite"></div>
+          <label class="ws-unified-choice ws-unified-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed this Hub task and approve only its due-date/priority change. No calendar appointment is created and nothing is marked completed.</label>
+          <p class="ws-muted">The original H12 planning writer clears an existing task clock when its due day changes. Nothing is sent to Google, StudyOS, ILIAS or owner Notes.</p>
+        </div>`;
+        openForm('Review task plan · Hub local',html,async data=>{
+            if(epoch!==own || store!==source || !state || dirty || conflict || !storageReady || locked ||
+                privacyHeld || state.preferences.hidden)throw new Error('Workspace or ownership changed. Export/reload and review again.');
+            if(!data.has('confirm'))throw new Error('Confirm your task plan explicitly.');
+            const isInbox=data.has('inbox');
+            const day=String(data.get('due')??'');
+            const nextDue=isInbox?'':day;
+            const nextPriority=String(data.get('priority'));
+            if(!isInbox && (!safeNavigationDay(day)||day<today()))
+                throw new Error('Choose today or a later valid due date, or keep the task in Inbox.');
+            if(!['none','low','medium','high'].includes(nextPriority))
+                throw new Error('Choose a valid task priority.');
+            const current=state.tasks.find(t=>t.id===id);
+            if(!current || JSON.stringify(taskSnapshot(current))!==JSON.stringify(original))
+                throw new Error('Task changed since review. Reopen from the current record.');
+            if(nextDue===original.due && nextPriority===original.priority)
+                throw new Error('No changes to save. Adjust the task date or priority, or close.');
+            await mutate(next=>{
+                const t=next.tasks.find(t=>t.id===id);
+                if(!t || JSON.stringify(taskSnapshot(t))!==JSON.stringify(original))
+                    throw new Error('Task changed while saving. No plan was applied.');
+                if(nextDue!==t.due)applyTaskPlan(t,isInbox?'inbox':'today',isInbox?today():day);
+                t.priority=nextPriority as Task['priority'];
+                activity(next,`Reviewed task plan: ${t.title} · ${t.due||'Inbox'} · ${t.priority} priority`,'task');
+            },'Reviewed Hub task plan updated');
+            if(epoch!==own||!state)throw new Error('Identity changed; no save is claimed.');
+            const saved=state.tasks.find(t=>t.id===id);
+            if(!saved || saved.due!==nextDue || saved.priority!==nextPriority)
+                throw new Error('Task plan was not applied. Reopen the task.');
+            if(dirty || conflict)throw new Error('Task changes remain unconfirmed in this tab. Export or retry rather than submitting twice.');
+        },'Apply reviewed task plan');
+        paintUnifiedTaskPreview(original);
+    }
+    function paintUnifiedTaskPreview(original:TaskBeforeMove) {
+        const el=dialog.querySelector<HTMLElement>('[data-unified-review-preview]');
+        if(!el)return;
+        const data=new FormData(form);
+        const inbox=data.has('inbox'),date=String(data.get('due')??''),prio=String(data.get('priority')??'');
+        const day=inbox?'Inbox':date;
+        const valid=inbox||safeNavigationDay(date)&&date>=today();
+        el.innerHTML=valid?`<p><strong>Before:</strong> ${esc(original.due||'Inbox')} · ${esc(original.priority)} priority</p>
+            <p><strong>After review:</strong> ${esc(day)} · ${esc(prio)} priority${(inbox?'':date)!==original.due&&original.time?' · original task clock will be cleared':''}</p>
+            <p>Hub task only. No event is created, moved or completed.</p>`:
+            '<p class="ws-unified-review-error">Choose a valid present/future due date or select Inbox.</p>';
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
@@ -1371,6 +1466,31 @@ async function setup(root: HTMLElement) {
             return;
         }
         switch (action) {
+            case 'unified-mode':
+                if(view==='home' && (HOME_JOURNEY_MODES as readonly string[]).includes(id)) {
+                    if(editing && id!=='workspace'){toast('Save or cancel the current layout edit before switching views.');break;}
+                    if(homeMode==='focus' && id!=='focus')pauseFocusSession();
+                    homeMode=id as HomeJourneyMode;
+                    render();
+                    root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
+                }
+                break;
+            case 'unified-triage':
+                reviewUnifiedTask(id);
+                break;
+            case 'unified-focus-task':
+                if(view==='home' && state.tasks.some(t=>t.id===id && !t.completedAt)) {
+                    pauseFocusSession();
+                    focus.selectedId=id;
+                    focus.queue=state.tasks.find(t=>t.id===id)?.due?'due':'inbox';
+                    focus.remainingMs=focus.duration*60000;
+                    focus.elapsed=false;
+                    homeMode='focus';
+                    render();
+                    root.querySelector<HTMLElement>('#ws-daily-focus')?.scrollIntoView({block:'start'});
+                    root.querySelector<HTMLButtonElement>('[data-action=focus-start]')?.focus();
+                }
+                break;
             case 'focus-queue':
                 if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
                     focus.queue=id as FocusQueue;
@@ -1974,6 +2094,11 @@ async function setup(root: HTMLElement) {
             if(original)paintEventMovePreview(original,state.preferences.timezone);
             return;
         }
+        if (el.closest('[data-unified-review]')) {
+            const original=activeUnifiedReview;
+            if(original && original.epoch===epoch)paintUnifiedTaskPreview(original.task);
+            return;
+        }
         if (el.hasAttribute('data-week-task-id')) {
             if(view!=='calendar'||privacyHeld||state.preferences.hidden)return;
             const id=el.dataset.weekTaskId!;
@@ -2242,6 +2367,11 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        if(homeModeRestorePending) {
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
+            homeModeRestorePending=false;
+        } else homeMode='today';
+        activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;

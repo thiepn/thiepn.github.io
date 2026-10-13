@@ -55,7 +55,11 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
       ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>Next Hub task: ${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
       ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished Hub capture · on this device</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
-      <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="#ws-daily-focus" class="ws-button">Focus</a><a href="/home/calendar/" class="ws-button">Day agenda</a><a href="/home/calendar/?mode=week" class="ws-button">Week agenda</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
+      <div class="ws-mobile-today-actions">
+          <button type="button" data-action="capture" class="ws-button">Capture</button>
+          <a href="/home/tasks/?filter=inbox" class="ws-button">Triage Inbox</a>
+          <a href="/home/calendar/?mode=week" class="ws-button">Plan week</a>
+        </div>
     </section>`;
 }
 
@@ -71,7 +75,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
     const inbox = state.tasks.filter(t => !t.completedAt && !t.due).length;
     return `<section class="ws-home-lead" aria-label="Daily overview">
       <header class="ws-home-lead-heading"><div><p class="ws-home-eyebrow">Your day</p><h2>Pick up what matters</h2><p>Priorities and events saved in this browser, with direct links to your THIEPN apps.</p></div>
-        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><button type="button" class="ws-button" data-action="capture-task">+ Inbox task</button><button type="button" class="ws-button" data-action="new-task">+ Dated task</button><a href="#ws-daily-focus" class="ws-button">Focus one task</a></div>
+        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><a href="/home/tasks/?filter=inbox" class="ws-button">Task Inbox</a><button type="button" class="ws-button" data-action="unified-mode" data-id="focus">Focus view</button></div>
       </header>
       <div class="ws-home-lead-grid">
         <section class="ws-home-panel" aria-labelledby="ws-priorities"><header><h3 id="ws-priorities">Next priorities</h3><a href="/home/tasks/">All tasks</a></header>
