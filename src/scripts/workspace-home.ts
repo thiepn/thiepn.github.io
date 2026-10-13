@@ -2,7 +2,7 @@ import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity } from './portal-auth';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon } from '../lib/workspace/icons';
-import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
+import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
@@ -14,6 +14,7 @@ import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type R
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
+import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -23,13 +24,21 @@ const button = (action: string, label: string, id = '', className = 'ws-button')
 const field = (label: string, name: string, value = '', type = 'text', extra = '') => `<label class="ws-field">${label}<input aria-label="${esc(label)}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/></label>`;
 const select = (label: string, name: string, options: string[][], value: string) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}">${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
 const area = (label: string, name: string, value: string, max = 10000) => `<label class="ws-field">${label}<textarea aria-label="${esc(label)}" name="${name}" maxlength="${max}">${esc(value)}</textarea></label>`;
+const safeNavigationDay = (value:string|null):value is string => {
+    if(!value || !/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+    try {return validDate(value);}catch{return false;}
+};
 const root = document.querySelector<HTMLElement>('[data-workspace]');
 if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
     const view = root.dataset.view ?? 'home';
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
-    const agendaModeFromUrl = view === 'calendar' ? new URLSearchParams(location.search).get('mode') : null;
+    const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
+    const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
+    let initialCalendarDate = calendarParams && safeNavigationDay(calendarParams.get('date')) ? calendarParams.get('date') : null;
+    const initialReturnWeek = calendarParams && safeNavigationDay(calendarParams.get('return')) ? weekDays(calendarParams.get('return')!)[0]! : null;
+    let initialCalendarRestorePending=true;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -37,6 +46,13 @@ async function setup(root: HTMLElement) {
         const url = new URL(location.href); url.search = ''; url.hash = '';
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
+    } else if (view === 'calendar') {
+        // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
+        const query=new URLSearchParams();
+        if(initialCalendarDate)query.set('date',initialCalendarDate);
+        if(agendaModeFromUrl==='week')query.set('mode','week');
+        if(initialReturnWeek)query.set('return',initialReturnWeek);
+        history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
     } else if (location.search || location.hash) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
@@ -45,6 +61,10 @@ async function setup(root: HTMLElement) {
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let agendaMode: AgendaMode = agendaModeFromUrl==='week'?'week':'day'; // View-only: never another calendar/scheduler store.
+    let weekFilter:WeekTaskFilter='carry';
+    let weekSelection=new Set<string>();
+    let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -111,6 +131,7 @@ async function setup(root: HTMLElement) {
     let observer: ResizeObserver | null = null;
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
+        activeWeekReview=null;
         void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
@@ -451,7 +472,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
         return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
@@ -474,6 +495,22 @@ async function setup(root: HTMLElement) {
         if (html)el.innerHTML=html;
         else el.replaceChildren();
     }
+    function updateCalendarNavigation() {
+        if(view!=='calendar' || !state) return;
+        const query=new URLSearchParams();
+        if(safeNavigationDay(selected))query.set('date',selected);
+        if(agendaMode==='week')query.set('mode','week');
+        if(weekReturnDate&&safeNavigationDay(weekReturnDate)&&weekDays(selected)[0]!==weekReturnDate)
+            query.set('return',weekReturnDate);
+        const next=location.pathname+(query.size?'?'+query.toString():'');
+        if(location.pathname+location.search!==next)
+            history.replaceState(null,'',next);
+    }
+    function pruneWeekSelection() {
+        if(!state) {weekSelection.clear();return;}
+        for(const id of weekSelection)
+            if(!state.tasks.some(t=>t.id===id&&!t.completedAt))weekSelection.delete(id);
+    }
     function render() {
         observer?.disconnect();
         if (!state)
@@ -486,7 +523,9 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; }
+        pruneWeekSelection();
+        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (view==='calendar') updateCalendarNavigation();
         root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
@@ -697,6 +736,85 @@ async function setup(root: HTMLElement) {
         } catch(e) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }
+    }
+    function paintWeekChangePreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const el=dialog.querySelector<HTMLElement>('[data-week-shift-preview]');
+        if(!el || !state || origin!==epoch)return;
+        const target=dialog.querySelector<HTMLInputElement>('[name=target]')?.value??'';
+        try {
+            if(target<today())
+                throw new Error('Choose today or a future date for carryover, not an already overdue date.');
+            const changes=prepareWeeklyShift(state.tasks,snapshots,target);
+            el.innerHTML=`<strong>${changes.length} actual task due-date change${changes.length===1?'':'s'}</strong>
+                <ul>${changes.map(c=>`<li><strong>${esc(c.title)}</strong>: ${esc(c.before)} → ${esc(c.after)}
+                   ${c.clearedTime?`· task clock ${esc(c.clearedTime)} will be cleared`:''}</li>`).join('')}</ul>
+                <p>No calendar events, source notes or external appointments will change.
+                  These tasks remain incomplete; the task due dates are not reserved time blocks.</p>`;
+        } catch(error) {
+            el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
+        }
+    }
+    function reviewWeeklyCarryover() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
+            return;
+        if(conflict || dirty || !storageReady || !store) {
+            toast('Storage is unavailable, unsaved or conflicted. Export/retry before changing task dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks before reviewing carryover.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        activeWeekReview={snapshots,epoch};
+        const suggested=addDays(weekDays(selected)[0]!,7);
+        const defaultTarget=suggested<today()?today():suggested;
+        const details=`<div class="ws-week-review-form" data-week-review-form>
+          <p><strong>Source: ${snapshots.length} selected Hub-local tasks</strong></p>
+          <p>The original tasks retain their IDs, titles, priority and completion state. The proposed due date is editable. Existing task clock times will be cleared by the original H12 planner.</p>
+          ${field('New due date','target',defaultTarget,'date',`required min="${today()}"`)}
+          <div class="ws-week-preview" data-week-shift-preview aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed the selected unfinished tasks and target date. Change their Hub due dates only; do not add appointments or complete tasks.</label>
+          <p class="ws-muted">This is one owner-scoped Hub workspace mutation, with its original undo and CAS handling. Imported calendars and other apps are untouched.</p>
+          <p class="ws-muted">If the original record changes in another tab, export/review instead of forcing a merge.</p>
+        </div>`;
+        const own=epoch,source=store;
+        openForm('Review weekly task carryover',details,async data=>{
+            if(epoch!==own || !state || store!==source || !storageReady || locked ||
+               privacyHeld || state.preferences.hidden || conflict || dirty)
+                throw new Error('Identity, storage or unsaved workspace state changed. Export or reload and review again.');
+            if(!data.has('confirm'))
+                throw new Error('Explicitly confirm the task due-date changes.');
+            const target=String(data.get('target')??'');
+            if(!validDate(target) || target<today())
+                throw new Error('Choose a valid present or future Hub due date.');
+            const changes=prepareWeeklyShift(state.tasks,snapshots,target);
+            const expectedChangedIds=new Set(changes.map(c=>c.id));
+            await mutate(next=>{
+                // Entire selection validated before applying any changes; no partial batch on stale evidence.
+                const applied=applyWeeklyShift(next.tasks,snapshots,target);
+                activity(next,`Reviewed weekly due-date move: ${applied.length} Hub task${applied.length===1?'':'s'} → ${target}`,'task');
+            },'Reviewed weekly Hub due dates updated');
+            if(epoch!==own || !state)
+                throw new Error('The active account changed. No result is claimed.');
+            if([...expectedChangedIds].some(id=>{
+                const t=state!.tasks.find(x=>x.id===id);
+                return !t || t.due!==target || !!t.time;
+            })) throw new Error('Task changes were not applied. Reopen planning and review.');
+            if(dirty || conflict)
+                throw new Error('Changes are in this tab but not confirmed saved. Export or retry; do not submit again.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=target;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed due dates');
+        paintWeekChangePreview(snapshots,own);
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
@@ -1451,7 +1569,52 @@ async function setup(root: HTMLElement) {
             case 'delete-log':
                 void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
                 break;
+            case 'week-filter':
+                if(view==='calendar' && (WEEK_FILTERS as readonly string[]).includes(id)){
+                    weekFilter=id as WeekTaskFilter;
+                    agendaMode='week';
+                    render();
+                }
+                break;
+            case 'week-select-visible': {
+                if(view!=='calendar'||privacyHeld||state.preferences.hidden)break;
+                const visible=eligibleWeekTasks(state,selected,weekFilter).slice(0,MAX_WEEK_ROWS);
+                let added=0;
+                for(const task of visible) {
+                    if(weekSelection.size>=MAX_WEEK_BATCH)break;
+                    if(!weekSelection.has(task.id)){weekSelection.add(task.id);added++;}
+                }
+                render();
+                toast(added
+                    ? `Selected ${weekSelection.size} unfinished Hub tasks for review. No due dates have changed.`
+                    : `Selection unchanged. You can review at most ${MAX_WEEK_BATCH} tasks at once.`);
+                break;
+            }
+            case 'week-clear':
+                weekSelection.clear();
+                render();
+                break;
+            case 'week-preview':
+                reviewWeeklyCarryover();
+                break;
+            case 'week-scroll-review':
+                if(view==='calendar' && agendaMode==='week') {
+                    root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                    root.querySelector<HTMLButtonElement>('[data-action=week-preview]')?.focus();
+                }
+                break;
+            case 'week-return':
+                if(weekReturnDate && safeNavigationDay(weekReturnDate)) {
+                    selected=weekReturnDate;
+                    weekReturnDate=null;
+                    month=selected.slice(0,7)+'-01';
+                    agendaMode='week';
+                    render();
+                    root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                }
+                break;
             case 'planning-day':
+                if(agendaMode==='week' && !weekReturnDate)weekReturnDate=weekDays(selected)[0]!;
                 agendaMode='day';
                 render();
                 break;
@@ -1479,7 +1642,8 @@ async function setup(root: HTMLElement) {
                 render();
                 break;
             case 'planning-jump-day':
-                if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+                if (validDate(id)) {
+                    if (agendaMode==='week' && !weekReturnDate)weekReturnDate=weekDays(selected)[0]!;
                     selected=id;
                     month=selected.slice(0,7)+'-01';
                     agendaMode='day';
@@ -1810,6 +1974,31 @@ async function setup(root: HTMLElement) {
             if(original)paintEventMovePreview(original,state.preferences.timezone);
             return;
         }
+        if (el.hasAttribute('data-week-task-id')) {
+            if(view!=='calendar'||privacyHeld||state.preferences.hidden)return;
+            const id=el.dataset.weekTaskId!;
+            if(!state.tasks.some(t=>t.id===id&&!t.completedAt)) {
+                el.checked=false;
+                toast('That task is no longer unfinished. Reopen the weekly review.');
+                return;
+            }
+            if(el.checked) {
+                if(weekSelection.size>=MAX_WEEK_BATCH&&!weekSelection.has(id)){
+                    el.checked=false;
+                    toast(`Select no more than ${MAX_WEEK_BATCH} tasks per reviewed batch.`);
+                    return;
+                }
+                weekSelection.add(id);
+            } else weekSelection.delete(id);
+            render();
+            root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
+            return;
+        }
+        if (el.closest('[data-week-review-form]')) {
+            const review=activeWeekReview;
+            if(review && review.epoch===epoch)paintWeekChangePreview(review.snapshots,review.epoch);
+            return;
+        }
         if (el.hasAttribute('data-focus-duration')) {
             const duration=Number(el.value);
             if ([15,25,45].includes(duration)) {
@@ -1938,6 +2127,14 @@ async function setup(root: HTMLElement) {
             state && !locked && !privacyHeld && !state.preferences.hidden &&
             !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) {
             const key=event.key.toLowerCase();
+            if(key==='p') {
+                event.preventDefault();
+                agendaMode='week';
+                render();
+                root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                root.querySelector<HTMLButtonElement>('[data-action=week-preview]')?.focus();
+                return;
+            }
             if(['j','k','d','w'].includes(key)) {
                 event.preventDefault();
                 if(key==='d'||key==='w')agendaMode=key==='d'?'day':'week';
@@ -2046,6 +2243,9 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         handoffOrigin=null;
+        weekSelection.clear();
+        activeWeekReview=null;
+        weekFilter='carry';
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);
@@ -2119,7 +2319,10 @@ async function setup(root: HTMLElement) {
             return;
         state = loaded ?? initialState(apps.map(a => a.id), legacy);
         privacyHeld = state.preferences.hidden;
-        selected = today();
+        selected = view==='calendar' && initialCalendarRestorePending && initialCalendarDate ? initialCalendarDate : today();
+        if(initialCalendarRestorePending)initialCalendarRestorePending=false;
+        else weekReturnDate=null;
+        initialCalendarDate=null;
         month = selected.slice(0, 7) + '-01';
         if (storageReady) {
             try {
