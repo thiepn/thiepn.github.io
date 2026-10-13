@@ -6,12 +6,12 @@ export const WIDGETS = {
     'tracker-summary': { title: 'Trackers', icon: 'chart-bar', description: 'Goals and progress that you choose to track.', views: ['table', 'progress', 'compact'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
     'tracker-history': { title: 'Weekly rhythm', icon: 'chart-line-up', description: 'See your logged activity over time.', views: ['chart', 'matrix'], width: 6, height: 34, minWidth: 4, minHeight: 24 },
     'recent-activity': { title: 'Recent activity', icon: 'clock-counter-clockwise', description: 'Your recent actions in this workspace.', views: ['list', 'detailed'], width: 12, height: 24, minWidth: 4, minHeight: 16 },
-    'task-inbox': { title: 'Task inbox', icon: 'tray', description: 'Unscheduled Hub tasks, ready to sort and plan.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
-    'task-priorities': { title: 'Next priorities', icon: 'list-checks', description: 'Due, overdue and high-priority tasks from this device.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
-    'upcoming-commitments': { title: 'Upcoming commitments', icon: 'calendar-check', description: 'Local Hub events and task due dates with honest sources.', views: ['agenda', 'compact'], width: 6, height: 40, minWidth: 4, minHeight: 20 },
+    'task-inbox': { title: 'Task inbox', icon: 'check-square', description: 'Unscheduled Hub tasks, ready to sort and plan.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
+    'task-priorities': { title: 'Next priorities', icon: 'check-square', description: 'Due, overdue and high-priority tasks from this device.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
+    'upcoming-commitments': { title: 'Upcoming commitments', icon: 'calendar-blank', description: 'Local Hub events and task due dates with honest sources.', views: ['agenda', 'compact'], width: 6, height: 40, minWidth: 4, minHeight: 20 },
     'recent-captures': { title: 'Recent captures', icon: 'notebook', description: 'Captured Hub notes and tasks, not external app activity.', views: ['list', 'detailed'], width: 6, height: 32, minWidth: 4, minHeight: 20 },
-    'quick-plan': { title: 'Quick planning', icon: 'calendar-plus', description: 'Plan unscheduled tasks using existing Hub task actions.', views: ['compact', 'detailed'], width: 6, height: 36, minWidth: 4, minHeight: 20 },
-    'owner-handoffs': { title: 'Connected app handoffs', icon: 'arrow-square-out', description: 'Source-honest owner-app actions and existing access routes.', views: ['compact', 'detailed'], width: 6, height: 28, minWidth: 4, minHeight: 20 },
+    'quick-plan': { title: 'Quick planning', icon: 'calendar-blank', description: 'Plan unscheduled tasks using existing Hub task actions.', views: ['compact', 'detailed'], width: 6, height: 36, minWidth: 4, minHeight: 20 },
+    'owner-handoffs': { title: 'Connected app handoffs', icon: 'arrow-up-right', description: 'Source-honest owner-app actions and existing access routes.', views: ['compact', 'detailed'], width: 6, height: 28, minWidth: 4, minHeight: 20 },
 } as const;
 export type WidgetType = keyof typeof WIDGETS;
 export function specification(type: string) { return Object.hasOwn(WIDGETS, type) ? WIDGETS[type as WidgetType] : undefined; }
