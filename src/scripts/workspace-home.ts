@@ -651,7 +651,9 @@ async function setup(root: HTMLElement) {
                 time:String(data.get('start')),duration:Number(data.get('duration')),
                 allDay:data.has('allDay'),confirmed:data.has('confirm')};
             // Validate before mutation; validate again inside the native queued writer.
-            prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            const preview=prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            if (identicalLocalEvent(state.events,preview.event))
+                throw new Error('An identical local calendar event already exists. No duplicate was created.');
             await mutate(s=>{
                 const source=s.tasks.find(t=>t.id===id);
                 if(!source)throw new Error('The source task was deleted. No calendar event was created.');
@@ -660,6 +662,10 @@ async function setup(root: HTMLElement) {
                 s.events.push(event);
                 activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
             },'Reviewed Hub calendar event created');
+            if (!state.events.some(event=>event.title===preview.event.title &&
+                event.start===preview.event.start && event.end===preview.event.end &&
+                event.date===preview.event.date && event.allDay===preview.event.allDay))
+                throw new Error('The calendar event was not created. Review the message and try again.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
     }
