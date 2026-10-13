@@ -16,6 +16,7 @@ import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventReq
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
+import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -72,6 +73,7 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
+    let homeMode:HomeJourneyMode='today'; // Presentation only; all source records remain in the original WorkspaceState.
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
@@ -475,7 +477,20 @@ async function setup(root: HTMLElement) {
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
+        if(view==='home') {
+            const mode=editing?'workspace':homeMode;
+            const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus());
+            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
+            return menu+`<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>`+
+                renderHomeOverview(state!, apps, today())+renderGrid();
+        }
+        return renderGrid();
+    }
+    function journeyStatus():JourneyStatus {
+        return {offline:!navigator.onLine,dirty,conflict,storageReady,
+            hasCapture:!!state?.captureDraft.trim(),hasLayoutDraft:!!recoveryDraft,
+            accountLabel:hubIdentity.status==='signed-in'?'Account-scoped browser storage':'This device'};
     }
     function returnContext(): ReturnContext {
         return {today:today(),storageReady,dirty,conflict,offline:!navigator.onLine,
@@ -526,7 +541,8 @@ async function setup(root: HTMLElement) {
         pruneWeekSelection();
         if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
-        root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
+        root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
+        root.dataset.homeMode = view==='home' ? (editing?'workspace':homeMode) : '';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
@@ -544,7 +560,7 @@ async function setup(root: HTMLElement) {
         renderPlanner();
         if (searchDialog.open) renderSearch();
         const mobileToday = $('[data-workspace-today]');
-        if (view === 'apps' || view === 'settings') {
+        if (view === 'apps' || view === 'settings' || (view==='home' && (editing?'workspace':homeMode)!=='workspace')) {
             mobileToday.hidden = true;
             mobileToday.innerHTML = '';
         }
@@ -2242,6 +2258,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        homeMode='today';
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
