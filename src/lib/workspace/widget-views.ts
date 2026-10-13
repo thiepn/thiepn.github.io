@@ -85,7 +85,7 @@ function captures(w:Widget,state:WorkspaceState):string {
       ${state.captureDraft?`<p class="ws-widget-draft">Unfinished local capture draft available. ${action('capture','Resume draft')}</p>`:''}
       ${source('Hub notes and task capture history · never owner Notes')}</div>`;
 }
-function quickPlan(w:Widget,state:WorkspaceState,today:string):string {
+function quickPlan(w:Widget,state:WorkspaceState):string {
     const tasks=cleanTasks(state.tasks).filter(t=>!t.due).sort((a,b)=>priorityOrder[a.priority]-priorityOrder[b.priority]||a.title.localeCompare(b.title));
     const items=tasks.slice(0,limit(w));
     return `<div class="ws-widget-utility">
@@ -114,7 +114,7 @@ export function utilityWidget(w:Widget,state:WorkspaceState,apps:readonly AppSho
     if(w.type==='task-priorities')return priorities(w,state,today);
     if(w.type==='upcoming-commitments')return commitments(w,state,today);
     if(w.type==='recent-captures')return captures(w,state);
-    if(w.type==='quick-plan')return quickPlan(w,state,today);
+    if(w.type==='quick-plan')return quickPlan(w,state);
     if(w.type==='owner-handoffs')return ownerHandoffs(w,apps);
     return null;
 }
