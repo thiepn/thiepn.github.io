@@ -374,7 +374,7 @@ async function setup(root: HTMLElement) {
         if (view !== 'apps') $('[data-workspace-date]').textContent = dateLabel(today(), true);
         $('#ws-title').textContent = view === 'apps' ? 'Apps' : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('add-widget', '+ Widget')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (view !== 'apps') {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
@@ -645,7 +645,12 @@ async function setup(root: HTMLElement) {
     function widgetPicker() {
         if (!editing)
             beginEdit();
-        openForm('Add a widget', `<div class="ws-widget-library">${Object.entries(WIDGETS).map(([type, spec]) => button('add-type', `${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`, type, 'ws-widget-choice')).join('')}</div>`, () => { });
+        const groups: Array<{title:string;description:string;types:string[]}> = [
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
+            {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
+        ];
+        openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><p class="ws-muted">${group.description}</p><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div><p class="ws-muted">Adding a widget changes only your layout. Select Done to save; no tasks, notes or external records are created.</p>`, () => { });
         $('[data-dialog-submit]').hidden = true;
     }
     function createWorkspace(duplicateId = '') {
