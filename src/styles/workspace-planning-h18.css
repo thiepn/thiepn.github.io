@@ -8,6 +8,7 @@
 .ws-plan-nav>div{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
 .ws-plan-button{appearance:none;display:inline-flex;justify-content:center;align-items:center;min-height:39px;padding:7px 10px;border:1px solid var(--ws-line);border-radius:6px;font:inherit;font-size:11px;line-height:1.4;color:var(--ws-ink);background:var(--ws-surface);cursor:pointer;text-align:center;max-width:100%;}
 .ws-plan-button:hover{background:var(--ws-accent-soft);border-color:var(--ws-accent);color:var(--ws-accent);}
+.ws-plan-button[aria-pressed=true]{border-color:var(--ws-accent);background:var(--ws-accent-soft);color:var(--ws-accent);font-weight:700;}
 .ws-plan-button:focus-visible,.ws-plan-week-date:focus-visible,.ws-planning-review a:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px;}
 .ws-plan-provenance{font-size:11px;color:var(--ws-muted);line-height:1.65;border-left:2px solid var(--ws-line);padding:5px 9px;background:var(--ws-soft);}
 .ws-plan-day{display:grid;gap:14px;}
