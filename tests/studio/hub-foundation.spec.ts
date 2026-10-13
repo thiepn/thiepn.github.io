@@ -36,7 +36,7 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(3);
   expect(await page.evaluate(()=>localStorage.getItem('notes:sentinel'))).toBe('keep');
   expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
-  await page.goto('/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+  await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
 test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
@@ -73,8 +73,8 @@ test('Alias, Home privacy, and no-JavaScript launchers', async ({ browser, reque
   expect(await (await request.get('/sitemap.xml')).text()).toContain('https://thiepn.dev/search/');
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/');
-  await page.goto('http://127.0.0.1:4321/home/'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+  await page.goto('http://127.0.0.1:4321/'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(hub.expectedCount);
   await context.close();
 });

@@ -1,4 +1,20 @@
 ---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import HubCatalogue from '../../components/hub/HubCatalogue.astro';
+import HubClosing from '../../components/hub/HubClosing.astro';
+import { getHubProjects } from '../../lib/hub';
+import '../../styles/hub.css';
+
+const apps = await getHubProjects();
 ---
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="refresh" content="0;url=/" /><meta name="robots" content="noindex" /><link rel="canonical" href="https://thiepn.dev/" /><title>Apps — THIEPN</title></head><body><main><h1>THIEPN apps</h1><p><a href="/">Open all THIEPN apps</a></p></main></body></html>
+<BaseLayout
+  title="THIEPN — Apps, tools, games and learning projects"
+  description={`Open all ${apps.length} THIEPN apps from one place: tools, creative apps, learning projects, Bible and faith resources, explorations and games by Jonathan.`}
+  portal
+>
+  <div class="hub-home page-shell">
+    <HubCatalogue entries={apps} />
+    <HubClosing />
+  </div>
+</BaseLayout>
+<script>import '../../scripts/hub-catalogue';</script>

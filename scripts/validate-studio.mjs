@@ -25,10 +25,12 @@ for (const file of ['src/pages/index.astro', 'src/pages/work/index.astro', 'src/
   }
 }
 
-const homepage = fs.readFileSync('src/pages/index.astro', 'utf8');
-assert(homepage.includes('getHubProjects'), 'Homepage must resolve the canonical Hub registry');
-assert(homepage.includes('<HubCatalogue'), 'Homepage must render the complete Hub catalogue');
-assert(!homepage.includes('<HubHero'), 'Homepage must begin with apps instead of a hero landing section');
+const root = fs.readFileSync('src/pages/index.astro', 'utf8');
+assert(root.includes('<WorkspaceShell'), 'Homepage must render the adaptive workspace');
+const homepage = fs.readFileSync('src/pages/apps/index.astro', 'utf8');
+assert(homepage.includes('getHubProjects'), 'Apps page must resolve the canonical Hub registry');
+assert(homepage.includes('<HubCatalogue'), 'Apps page must render the complete Hub catalogue');
+assert(!homepage.includes('<HubHero'), 'Apps page must begin with apps instead of a hero landing section');
 assert(!homepage.includes('ArcadeShowcase'), 'Micro Arcade must not have a privileged homepage showcase');
 assert(!homepage.includes('TinyToolsSpotlight'), 'Tiny Tools must not have a privileged homepage spotlight');
 assert.equal(hub.projects.length, hub.expectedCount, 'Hub membership must match its reviewed declared count');

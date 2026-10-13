@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "routes": [
-    "/",
     "/about/",
+    "/apps/",
     "/books/",
     "/byte/",
     "/catalogue.json",

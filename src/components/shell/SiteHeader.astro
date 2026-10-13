@@ -4,15 +4,15 @@ import MobileMenu from './MobileMenu.astro';
 interface Props { portal?: boolean; }
 const { portal = false } = Astro.props;
 const path = Astro.url.pathname;
-const appsActive = path === '/';
+const appsActive = path === '/apps/';
 const workActive = path.startsWith('/work/') || path.startsWith('/project');
 ---
 <header class="site-header">
   <div class="page-shell site-header__inner">
-    <a class="site-brand" href="/" aria-label="THIEPN apps" aria-current={path === '/' ? 'page' : undefined} data-site-brand><BrandMark size={28}/><span>THIEPN</span></a>
+    <a class="site-brand" href="/" aria-label="THIEPN HUB Home" aria-current={path === '/' ? 'page' : undefined} data-site-brand><BrandMark size={28}/><span>THIEPN</span></a>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a href="/home/" aria-current={path === '/home/' ? 'page' : undefined}>Home</a>
-      <a href="/#apps" aria-current={appsActive ? 'page' : undefined}>Apps</a>
+      <a href="/" aria-current={path === '/' ? 'page' : undefined}>Home</a>
+      <a href="/apps/#apps" aria-current={appsActive ? 'page' : undefined}>Apps</a>
       {portal && <a href="/inbox/" aria-current={path === '/inbox/' ? 'page' : undefined}>Inbox</a>}
       <a href="/work/" aria-current={workActive ? 'page' : undefined}>Work</a>
       <a href="/about/" aria-current={path.startsWith('/about/') ? 'page' : undefined}>About</a>
