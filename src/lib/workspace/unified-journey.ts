@@ -21,7 +21,7 @@ function taskRow(task:Task,today:string) {
   return `<li class="ws-unified-task">
     <label class="ws-unified-task-toggle"><input type="checkbox" data-task-toggle="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"/></label>
     <div class="ws-unified-task-body"><strong>${esc(task.title)}</strong><small>${esc(status)} · ${esc(task.priority)} priority${task.time?' · task clock '+esc(task.time):''}</small></div>
-    <div class="ws-unified-task-actions">${textButton('unified-triage','Plan',task.id)}${textButton('context-task','Next',task.id)}</div>
+    <div class="ws-unified-task-actions">${textButton('unified-triage','Plan',task.id)}${textButton('unified-focus-task','Focus',task.id)}${textButton('context-task','Next',task.id)}</div>
   </li>`;
 }
 const humanDate=(day:string)=>new Date(day+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
@@ -63,6 +63,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
   const inbox=focusTasks(state,today,'inbox').slice(0,4);
   const events=[...plan.timed,...plan.allDay].slice(0,4);
   const first=nextTask(state,today);
+  const lastNote=[...state.notes].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
   const pending=state.captureDraft.trim().length>0;
   return `<section class="ws-unified-today" id="ws-unified-today" aria-labelledby="ws-unified-title" data-unified-today>
     <header class="ws-unified-heading"><div><p class="ws-home-eyebrow">Today · ${esc(humanDate(today))}</p>
@@ -96,6 +97,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         `<p class="ws-unified-empty">No Hub-local events today. No external calendar has been checked.</p>`}
       ${plan.overlaps.length?`<p class="ws-unified-overlap">${plan.overlaps.length} possible local timed overlap${plan.overlaps.length===1?'':'s'} · <a href="/home/calendar/">Review event times</a></p>`:''}
     </section>
+    ${lastNote?`<section class="ws-unified-last-note"><span><strong>Continue local note: ${esc(lastNote.title)}</strong><small>Original Hub note · last edited ${esc(new Date(lastNote.updatedAt).toLocaleDateString())} · no owner Notes data read</small></span><div>${textButton('edit-note','Open note',lastNote.id)}${textButton('context-note','Next',lastNote.id)}</div></section>`:''}
     <footer><span>Suggested next step is based only on real Hub task dates and priorities${first?' · '+esc(first.title):''}.</span>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
