@@ -51,7 +51,15 @@ export function reviewDay(state:WorkspaceState,date:string):DayPlan {
     const overdue=state.tasks.filter(t=>!t.completedAt && !!t.due && t.due<date)
         .sort((a,b)=>a.due.localeCompare(b.due)||priority[a.priority]-priority[b.priority]||a.title.localeCompare(b.title));
     const inboxCount=state.tasks.filter(t=>!t.completedAt&&!t.due).length;
-    return {date,events,timed,allDay,deadlines,overdue,inboxCount,overlaps:timedOverlaps(timed)};
+    const overlaps=timedOverlaps(timed).filter(pair=>{
+        const a=timed.find(event=>event.id===pair.first)!;
+        const b=timed.find(event=>event.id===pair.second)!;
+        const intersectionStart=Math.max(instant(a.start),instant(b.start));
+        const intersectionEnd=Math.min(instant(a.end),instant(b.end))-1; // Timed interval is end-exclusive.
+        return dayKey(zone,new Date(intersectionStart))<=date &&
+            dayKey(zone,new Date(intersectionEnd))>=date;
+    });
+    return {date,events,timed,allDay,deadlines,overdue,inboxCount,overlaps};
 }
 export function reviewWeek(state:WorkspaceState,anchor:string):DayPlan[] {
     return weekDays(anchor).map(date=>reviewDay(state,date));
