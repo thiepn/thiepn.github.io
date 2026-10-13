@@ -52,6 +52,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
         <span><strong>${summary.completedToday}</strong> completed today</span>
       </div>
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
+      ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished Hub capture · on this device</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
       <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="#ws-daily-focus" class="ws-button">Focus</a><a href="/home/calendar/" class="ws-button">Calendar</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
     </section>`;
 }
