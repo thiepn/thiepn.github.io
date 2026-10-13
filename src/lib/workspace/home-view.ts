@@ -64,7 +64,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
     const events = summary.upcomingEvents.length
         ? summary.upcomingEvents.slice(0, 2).map(e => agendaRow(e, today, state.preferences.timezone)).join('')
         : `<p class="ws-home-empty">No local events in the next seven days. Connected calendars are not shown here.</p>`;
-    const handoffs = renderOwnerHandoffs(apps);
+    const handoffs = renderOwnerHandoffs(apps, 2);
     return `<section class="ws-home-lead" aria-label="Daily overview">
       <header class="ws-home-lead-heading"><div><p class="ws-home-eyebrow">Your day</p><h2>Pick up what matters</h2><p>Priorities and events saved in this browser, with direct links to your THIEPN apps.</p></div>
         <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><button type="button" class="ws-button" data-action="new-task">+ Task</button></div>
@@ -82,9 +82,9 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
           <small class="ws-home-source">Source: Hub local calendar · not Google Calendar</small>
         </section>
         <section class="ws-home-panel ws-home-continue" aria-labelledby="ws-continue-apps"><header><h3 id="ws-continue-apps">Continue in your apps</h3><a href="/apps/">All apps</a></header>
-          <p class="ws-home-context">Owner-app actions. Hub has not read recent lessons or reading progress.</p>
+          <p class="ws-home-context">Canonical app actions. Authorized metadata, when available, appears separately in the connected Continue desk.</p>
           <div class="ws-home-handoffs">${handoffs || `<p class="ws-home-empty">Open Apps to choose a THIEPN application.</p>`}</div>
-          <small class="ws-home-source">App links only · no cross-app data access</small>
+          <small class="ws-home-source">These links do not read cross-app data</small>
         </section>
       </div>
     </section>`;

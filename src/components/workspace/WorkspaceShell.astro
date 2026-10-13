@@ -3,10 +3,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PortalAccount from '../hub/PortalAccount.astro';
 import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
+import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
+import '../../styles/continuation.css';
 import '@fontsource-variable/instrument-sans';
 interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps' }
 const {view='home'}=Astro.props;
@@ -35,6 +37,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='apps' ? <button class="ws-button" type="button" data-action="capture">+ Capture</button> : <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-today hidden></div>
+          {view==='home' && <ContinuationDesk compact />}
           {(view==='home' || view==='calendar') && <section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
             <header class="ws-calendar-export-heading"><div><h2 id="ws-external-calendar-title">External calendar · read only</h2><p>Preview selected calendar exports alongside your independent Hub calendar.</p></div><a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" rel="noopener noreferrer">Open Google Calendar ↗</a></header>
             <p class="ws-calendar-limits">Live Google/StudyOS access is <strong>not connected</strong>. StudyOS owns its separate Google Calendar authorization. Hub does not reuse your Google sign-in, access token or StudyOS data. Export an <code>.ics</code> file from the chosen calendar and select it below for a temporary read-only view. Imported ILIAS/KLIPS appointments appear only if included in that export.</p>
@@ -57,8 +60,8 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <div class="ws-toast" data-workspace-toast role="status" hidden></div>
     <dialog class="ws-dialog" data-workspace-dialog aria-labelledby="ws-dialog-title"><form data-workspace-form><header><h2 id="ws-dialog-title"></h2><button type="button" class="ws-button" data-action="close-dialog" aria-label="Close dialog">Close</button></header><div data-dialog-fields></div><p class="ws-error" data-dialog-error role="alert"></p><footer><button type="button" class="ws-button" data-action="close-dialog">Cancel</button><button type="submit" class="ws-primary" data-dialog-submit>Save</button></footer></form></dialog>
     <dialog class="ws-dialog ws-search-dialog" data-search-dialog aria-labelledby="ws-search-title"><header><h2 id="ws-search-title">Search your workspace</h2><button type="button" class="ws-button" data-action="close-search">Close</button></header><label class="ws-sr" for="workspace-search">Search apps, tasks and notes</label><input id="workspace-search" type="search" placeholder="Search apps, tasks and notes…" autocomplete="off"/><div data-search-results></div></dialog>
-    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/>{readingHost ? <><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a><a href="/home/settings/" class="ws-button">Workspace settings</a></dialog>
+    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/>{readingHost ? <><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/><ContinuationDesk/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a><a href="/home/settings/" class="ws-button">Workspace settings</a></dialog>
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';</script>

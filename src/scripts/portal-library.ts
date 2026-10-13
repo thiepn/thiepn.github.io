@@ -2,6 +2,7 @@ import { checkReadingPilot, desktopReadingPilot, READING_PILOT_MOBILE_ENABLED } 
 import {integratedWorkflows} from '../lib/workflows/integrated';
 import { HubLibrarySession, libraryContinueUrl } from '../lib/hub-library-session';
 import type { Operation } from '../lib/providers/types';
+import { notifyOwnerContinue, publishOwnerContinue } from '../lib/workspace/owner-continuation';
 const root = document.querySelector<HTMLElement>('[data-private-library]');
 if (root) {
   const hostDialog = root.closest<HTMLDialogElement>('dialog');
@@ -42,7 +43,7 @@ if (root) {
   const radios = [...root.querySelectorAll<HTMLInputElement>('[name="library-operation"]')];
   let permissions = new Set<Operation>(), generation = 0, controller: AbortController | null = null, timer: ReturnType<typeof setTimeout> | undefined;
   const session = new HubLibrarySession(() => clear('Library data or sharing changed. Connect again to check current progress.'));
-  function erase(message: string) { if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; if(empty)empty.hidden=true; panel.hidden = true; form.reset(); status.textContent = message; }
+  function erase(message: string) { notifyOwnerContinue('library',message.startsWith('Checking') ? 'loading' : 'unconnected'); if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('library'); ++generation; controller?.abort(); controller = null; clearTimeout(timer); list.replaceChildren(); freshness.textContent = ''; if(empty)empty.hidden=true; panel.hidden = true; form.reset(); status.textContent = message; }
   function controls() { connect.disabled = !available() || !!pending; refresh.disabled = !!pending; root!.setAttribute('aria-busy', String(!!pending)); radios.forEach(r => { r.disabled = !!pending || !permissions.has(r.value as Operation); }); form.hidden = !permissions.has('search'); refresh.hidden = !permissions.has('summary') && !permissions.has('continue'); disconnect.hidden = !permissions.size; }
   function clear(message = 'Connect this browser to check saved reading progress.', preservePending = false) { if (!preservePending) pending = undefined; session.clear(); permissions.clear(); erase(message); if(pilot && joined)pilotStatus!.textContent='Joined for this tab. Connect this browser to check reading progress.'; controls(); }
   async function run(action: () => Promise<void>) {
@@ -57,6 +58,7 @@ if (root) {
       const envelope = await session.read(operation, controller.signal, query);
       if (epoch !== generation || !available()) return;
       if (!['ready','empty'].includes(envelope.status) || !envelope.data) throw new Error('Unavailable');
+      publishOwnerContinue(envelope);
       if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for (const item of envelope.data.items) {
         const li = document.createElement('li'), a = document.createElement('a');
@@ -76,8 +78,8 @@ if (root) {
       if(pilot)pilotStatus!.textContent='Connected for this tab. Reading metadata clears when you leave Home.';
       panel.hidden = false; status.textContent = envelope.status === 'empty' ? (operation === 'search' ? 'No matching saved reading titles.' : 'No matching saved progress for current EPUB/PDF releases in this browser.') : 'Saved reading progress on this browser';
       freshness.textContent = `Device-local · checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Legacy web progress and other browsers are not included.`;
-      timer = setTimeout(() => clear('This reading snapshot expired. Connect again to check Library.'), Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
-    } catch { if (epoch === generation) clear('Library could not be checked. Review sharing or open My Library; unavailable storage is not an empty library.'); }
+      timer = setTimeout(() => { clear('This reading snapshot expired. Connect again to check Library.'); notifyOwnerContinue('library','stale'); }, Math.max(0, Date.parse(envelope.expiresAt) - Date.now()));
+    } catch { if (epoch === generation) { clear('Library could not be checked. Review sharing or open My Library; unavailable storage is not an empty library.'); notifyOwnerContinue('library',navigator.onLine ? 'error' : 'offline'); } }
     finally { if (epoch === generation) controller = null; controls(); }
   }
   connect.addEventListener('click', () => void run(async () => {
