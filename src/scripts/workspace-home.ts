@@ -67,6 +67,7 @@ async function setup(root: HTMLElement) {
         }
         if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
         if (target !== input && !choices.includes(target)) return;
+        if (target === input && (event.key === 'Home' || event.key === 'End')) return;
         event.preventDefault();
         const index=choices.indexOf(target);
         let next=-1;
