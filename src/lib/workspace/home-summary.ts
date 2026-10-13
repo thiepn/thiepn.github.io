@@ -25,7 +25,7 @@ export function buildHomeSummary(state: WorkspaceState, today: string): HomeSumm
     const available = state.tasks.filter(t => !t.completedAt);
     const dueToday = available.filter(t => t.due === today).length;
     const overdue = available.filter(t => !!t.due && t.due < today).length;
-    const completedToday = state.tasks.filter(t => t.completedAt && dayKey(state.preferences.timezone, new Date(t.completedAt)) === today).length;
+    const completedToday = state.tasks.filter(t => t.completedAt && Number.isFinite(Date.parse(t.completedAt)) && dayKey(state.preferences.timezone, new Date(t.completedAt)) === today).length;
     const candidates: HomeTask[] = available
         .filter(t => !t.due || t.due <= horizon)
         .map(task => ({
