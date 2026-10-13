@@ -1597,6 +1597,12 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-scroll-review':
+                if(view==='calendar' && agendaMode==='week') {
+                    root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                    root.querySelector<HTMLButtonElement>('[data-action=week-preview]')?.focus();
+                }
+                break;
             case 'week-return':
                 if(weekReturnDate && safeNavigationDay(weekReturnDate)) {
                     selected=weekReturnDate;
@@ -1608,7 +1614,7 @@ async function setup(root: HTMLElement) {
                 }
                 break;
             case 'planning-day':
-                if(agendaMode==='week')weekReturnDate=weekDays(selected)[0]!;
+                if(agendaMode==='week' && !weekReturnDate)weekReturnDate=weekDays(selected)[0]!;
                 agendaMode='day';
                 render();
                 break;
@@ -1637,7 +1643,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'planning-jump-day':
                 if (validDate(id)) {
-                    if (agendaMode==='week')weekReturnDate=weekDays(selected)[0]!;
+                    if (agendaMode==='week' && !weekReturnDate)weekReturnDate=weekDays(selected)[0]!;
                     selected=id;
                     month=selected.slice(0,7)+'-01';
                     agendaMode='day';
