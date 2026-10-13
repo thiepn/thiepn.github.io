@@ -10,6 +10,7 @@ import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type Palet
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
+import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -40,6 +41,9 @@ async function setup(root: HTMLElement) {
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    // Focus selection, quiet mode and clock are deliberately session-only UI state.
+    let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false};
+    let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
@@ -244,6 +248,58 @@ async function setup(root: HTMLElement) {
             activity(s, `Captured ${prepared.kind}: ${prepared.kind === 'task' ? prepared.task.title : prepared.note.title}`, prepared.kind);
         }, prepared.kind === 'task' ? 'Task captured in Hub' : 'Note captured in Hub');
     }
+    function paintFocusTime(message?:string) {
+        const clock=root.querySelector<HTMLElement>('[data-focus-clock]');
+        if (clock) clock.textContent=focusClock(focus.remainingMs);
+        const status=root.querySelector<HTMLElement>('[data-focus-session-status]');
+        if (status && message) status.textContent=message;
+    }
+    function pauseFocusSession() {
+        if(focus.running) focus.remainingMs=Math.max(0,focusEndsAt-Date.now());
+        focus.running=false;
+        focusEndsAt=0;
+        clearInterval(focusTick);
+        focusTick=undefined;
+        paintFocusTime('Paused on this device. No work session or completed task has been recorded.');
+    }
+    function resetFocusSelection() {
+        pauseFocusSession();
+        focus.selectedId=null;
+        focus.remainingMs=focus.duration*60000;
+    }
+    function clearFocusIdentity() {
+        pauseFocusSession();
+        focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false};
+        root.dataset.focusQuiet='false';
+    }
+    function focusPulse() {
+        if(!focus.running)return;
+        if(document.hidden || !state || locked || privacyHeld || state.preferences.hidden) {
+            pauseFocusSession();
+            return;
+        }
+        focus.remainingMs=Math.max(0,focusEndsAt-Date.now());
+        paintFocusTime();
+        if(focus.remainingMs===0) {
+            pauseFocusSession();
+            paintFocusTime('Session elapsed. The task is not marked complete; choose your next step.');
+            toast('Focus timer elapsed. Your task remains open until you complete it.');
+            render();
+        }
+    }
+    function startFocusSession() {
+        if (!state || !focus.selectedId || !state.tasks.some(t=>t.id===focus.selectedId&&!t.completedAt)) {
+            toast('Choose an open Hub task before starting your focus timer.');
+            return;
+        }
+        if(focus.running)return;
+        if(focus.remainingMs<=0)focus.remainingMs=focus.duration*60000;
+        focus.running=true;
+        focusEndsAt=Date.now()+focus.remainingMs;
+        clearInterval(focusTick);
+        focusTick=setInterval(focusPulse,1000);
+        render();
+    }
     function openCapture(kind: 'note' | 'task' = 'note') {
         if (!state || locked || privacyHeld || state.preferences.hidden) { toast('Personal content is hidden. Show it before capturing.'); return; }
         openForm('Quick capture · this device', captureFields('dialog'), saveCaptureData, 'Save in Hub');
@@ -383,7 +439,7 @@ async function setup(root: HTMLElement) {
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return view === 'home' ? renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
+        return view === 'home' ? renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
     }
     function render() {
         observer?.disconnect();
@@ -395,6 +451,9 @@ async function setup(root: HTMLElement) {
         root.dataset.density = state.preferences.density;
         root.dataset.calendarZone = state.preferences.timezone;
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
+        if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
+        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; }
+        root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
@@ -1445,6 +1504,7 @@ async function setup(root: HTMLElement) {
         }
     }
     async function loadIdentity(identity: HubIdentity) {
+        clearFocusIdentity();
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);
