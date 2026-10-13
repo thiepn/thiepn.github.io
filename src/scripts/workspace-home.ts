@@ -217,6 +217,7 @@ async function setup(root: HTMLElement) {
         }, prepared.kind === 'task' ? 'Task captured in Hub' : 'Note captured in Hub');
     }
     function openCapture(kind: 'note' | 'task' = 'note') {
+        if (!state || locked || privacyHeld || state.preferences.hidden) { toast('Personal content is hidden. Show it before capturing.'); return; }
         openForm('Quick capture · this device', captureFields('dialog'), saveCaptureData, 'Save in Hub');
         const select = dialog.querySelector<HTMLSelectElement>('[data-capture-kind]');
         if (select) { select.value = kind; syncCaptureControls(select); }
@@ -855,6 +856,7 @@ async function setup(root: HTMLElement) {
             case 'copy-capture': {
                 const draft = target.closest('form')?.querySelector<HTMLTextAreaElement>('[data-capture-draft]')?.value ?? state.captureDraft;
                 if (!draft) { toast('Enter a draft before copying.'); break; }
+                if (!navigator.clipboard?.writeText) { toast('Clipboard unavailable. Select and copy your draft manually.'); break; }
                 void navigator.clipboard.writeText(draft).then(() => toast('Draft copied. Paste it in the owner app to save there.'))
                   .catch(() => toast('Clipboard unavailable. Select and copy your draft manually.'));
                 break;
