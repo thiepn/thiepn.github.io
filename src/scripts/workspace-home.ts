@@ -1355,10 +1355,76 @@ async function setup(root: HTMLElement) {
                 else
                     void reloadSaved();
                 break;
+            case 'return-focus':
+                if (view==='home' && !privacyHeld && !state.preferences.hidden) {
+                    root.querySelector<HTMLElement>('#ws-daily-focus')?.scrollIntoView({block:'start'});
+                    root.querySelector<HTMLButtonElement>('[data-action=focus-quiet]')?.focus();
+                } else location.assign('/');
+                break;
+            case 'review-return': {
+                if (!store || !storageReady || locked || privacyHeld || state.preferences.hidden) {
+                    toast('Show personal content and reconnect local storage before comparing saved records.');
+                    break;
+                }
+                const own=epoch, source=store;
+                void source.load().then(savedState=>{
+                    if(own!==epoch || store!==source || !state || privacyHeld || state.preferences.hidden) return;
+                    const detail=renderSavedComparison(state,savedState);
+                    const draft=recoveryDraft;
+                    const caution=draft?'<p class="ws-muted">An original layout draft exists. It has not been merged with the saved workspace.</p>':'';
+                    openForm('Compare this tab with saved Hub',detail+caution+
+                      '<p class="ws-muted">To preserve changes, export the current tab first. Reload is a separate, deliberate action.</p>'+
+                      button('export','Export this tab'),()=>{});
+                    $('[data-dialog-submit]').hidden=true;
+                }).catch(e=>toast(e instanceof Error?e.message:'Could not read saved records.'));
+                break;
+            }
+            case 'recover-draft-as-new': {
+                if (!recoveryDraft || !storageReady || !store || locked || conflict || dirty ||
+                    state.workspaces.length>=10) {
+                    toast('Preserve your current workspace first. Save a backup or resolve storage before recovering the layout.');
+                    break;
+                }
+                const draft=clone(recoveryDraft);
+                const original=state.workspaces.find(w=>w.id===draft.workspaceId);
+                if(!original) {toast('Original layout is unavailable. Export and review the saved draft.');break;}
+                const source=store, own=epoch, copy=clone(draft.workspace);
+                copy.id=uid();
+                copy.title=(original.title.slice(0,68)+' recovered').slice(0,80);
+                copy.revision=0;
+                copy.updatedAt=stamp();
+                copy.widgets.forEach(w=>{w.id=uid();});
+                void mutate(s=>{
+                    if(s.workspaces.length>=10) throw new Error('At most 10 workspaces are supported.');
+                    s.workspaces.push(copy);
+                    s.active=copy.id;
+                },'Recovered layout saved as separate workspace').then(async()=>{
+                    if(own!==epoch || source!==store || dirty || state?.active!==copy.id) return;
+                    try {
+                        await source.draft(null);
+                        if(own===epoch) {recoveryDraft=null;notice('');render();}
+                    } catch {
+                        notice('The recovered layout is saved. Its original draft could not be cleared.',button('export','Export'));
+                    }
+                });
+                break;
+            }
             case 'resume-draft':
                 if (recoveryDraft) {
                     const draft = clone(recoveryDraft);
-                    void mutate(s => s.active = draft.workspaceId, '', false).then(() => { editing = draft; recoveryDraft = null; notice(''); render(); });
+                    const draftEpoch=epoch;
+                    const savedLayout=state.workspaces.find(w=>w.id===draft.workspaceId);
+                    if (!savedLayout || savedLayout.revision!==draft.baseRevision || conflict || dirty) {
+                        toast('The saved layout changed. Review recovery or preserve this draft as a separate layout.');
+                        break;
+                    }
+                    void mutate(s => s.active = draft.workspaceId, '', false).then(() => {
+                        if(dirty || !state || epoch!==draftEpoch) return;
+                        editing=draft;
+                        recoveryDraft=null;
+                        notice('');
+                        render();
+                    });
                 }
                 break;
             case 'discard-draft':
