@@ -75,7 +75,7 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
         <div><p class="ws-home-eyebrow">Local Hub planning</p><h2>${mode==='day'?esc(label(selected)):esc(label(range[0]!.date))+' – '+esc(label(range[6]!.date))}</h2>
           <p>${totals.event} event occurrence${totals.event===1?'':'s'} · ${totals.due} task deadline${totals.due===1?'':'s'} · ${totals.overlap} possible timed overlap${totals.overlap===1?'':'s'}</p></div>
         <div class="ws-plan-nav">
-          <div role="group" aria-label="Agenda display">${navButton('planning-day','Day')}${navButton('planning-week','Week')}</div>
+          <div role="group" aria-label="Agenda display"><button type="button" class="ws-plan-button" data-action="planning-day" aria-pressed="${mode==='day'}">Day</button><button type="button" class="ws-plan-button" data-action="planning-week" aria-pressed="${mode==='week'}">Week</button></div>
           <div role="group" aria-label="Move planning date">
             ${navButton('planning-prev',mode==='week'?'Previous week':'Previous day')}
             ${navButton('planning-today','Today')}
