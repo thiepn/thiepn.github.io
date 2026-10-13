@@ -984,6 +984,49 @@ async function setup(root: HTMLElement) {
             return;
         }
         switch (action) {
+            case 'focus-queue':
+                if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
+                    focus.queue=id as FocusQueue;
+                    render();
+                }
+                break;
+            case 'focus-select':
+                if (view==='home' && state.tasks.some(t=>t.id===id&&!t.completedAt)) {
+                    pauseFocusSession();
+                    focus.selectedId=id;
+                    focus.remainingMs=focus.duration*60000;
+                    render();
+                }
+                break;
+            case 'focus-next': {
+                const items=focusTasks(state,today(),focus.queue);
+                if (!items.length) {resetFocusSelection();render();break;}
+                const index=items.findIndex(t=>t.id===focus.selectedId);
+                pauseFocusSession();
+                focus.selectedId=items[(index+1)%items.length]!.id;
+                focus.remainingMs=focus.duration*60000;
+                render();
+                break;
+            }
+            case 'focus-start':
+                if (view==='home')startFocusSession();
+                break;
+            case 'focus-pause':
+                pauseFocusSession();
+                render();
+                break;
+            case 'focus-reset':
+                pauseFocusSession();
+                focus.remainingMs=focus.duration*60000;
+                render();
+                break;
+            case 'focus-quiet':
+                if(view==='home') {
+                    focus.quiet=!focus.quiet;
+                    render();
+                    root.querySelector<HTMLButtonElement>('[data-action=focus-quiet]')?.focus();
+                }
+                break;
             case 'rail':
                 void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
                 break;
@@ -1319,6 +1362,21 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if (el.hasAttribute('data-focus-duration')) {
+            const duration=Number(el.value);
+            if ([15,25,45].includes(duration)) {
+                pauseFocusSession();
+                focus.duration=duration as FocusDuration;
+                focus.remainingMs=duration*60000;
+                render();
+            }
+            return;
+        }
+        if (el.hasAttribute('data-focus-limit')) {
+            const limit=Number(el.value);
+            if ([3,5,8].includes(limit)) {focus.limit=limit as FocusLimit;render();}
+            return;
+        }
         if (el.dataset.taskToggle) {
             const id = el.dataset.taskToggle;
             void mutate(s => {
@@ -1424,6 +1482,14 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        if (event.altKey && event.shiftKey && event.key.toLowerCase()==='f' &&
+            !event.repeat && !dialog.open && !searchDialog.open && !account.open && view==='home' &&
+            state && !locked && !privacyHeld && !state.preferences.hidden) {
+            event.preventDefault();
+            root.querySelector<HTMLElement>('[data-focus-panel]')?.scrollIntoView({behavior:'auto',block:'start'});
+            root.querySelector<HTMLButtonElement>('[data-action=focus-quiet]')?.focus();
+            return;
+        }
         if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space' && !event.repeat && !dialog.open && !searchDialog.open && !account.open && state && !locked && !privacyHeld && !state.preferences.hidden) {
             event.preventDefault();
             openCapture();
@@ -1612,6 +1678,11 @@ async function setup(root: HTMLElement) {
             notice('');
     }
     window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
+    document.addEventListener('visibilitychange',()=>{
+        if(document.hidden)pauseFocusSession();
+        else if(state && !privacyHeld && !state.preferences.hidden && view==='home')render();
+    });
+    window.addEventListener('pagehide',()=>{pauseFocusSession();});
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing)
             void reloadSaved();
