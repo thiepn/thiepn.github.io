@@ -72,7 +72,7 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
  await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
- await page.locator('.site-nav').getByRole('link',{name:'Home',exact:true}).click();
+ await page.locator('.ws-nav').getByRole('link',{name:'Home',exact:true}).click();
  await expect(page).toHaveURL(origin + '/'); await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
  await page.locator('.ws-topbar [data-action=account]').click();
  await page.getByRole('link',{name:'Open reading connection',exact:true}).click();

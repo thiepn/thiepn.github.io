@@ -18,6 +18,8 @@ const faults = [
   ['personal sitemap route', 'sitemap.xml', text => text.replace('</urlset>', '<url><loc>https://thiepn.dev/home/</loc></url></urlset>')],
   ['unreviewed workspace app', 'home/index.html', text => text.replace('"id":"notes"', '"id":"unreviewed-notes"')],
   ['missing app catalogue roster', 'apps/index.html', text => text.replace('data-hub-slug=', 'data-unreviewed-slug=')],
+  ['Apps analytics', 'apps/index.html', text => text + '<script src="https://static.cloudflareinsights.com/beacon.min.js"></script>'],
+  ['Apps shell missing', 'apps/index.html', text => text.replace('data-view="apps"', 'data-view="legacy"')],
   ['calendar indexing', 'home/calendar/index.html', text => text.replace('noindex,nofollow', 'index,follow')],
 ];
 try {

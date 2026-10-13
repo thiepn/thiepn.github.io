@@ -1,4 +1,5 @@
 ---
+import {icon} from '../../lib/workspace/icons';
 import HubMedia from './HubMedia.astro';
 import { presentation } from '../../lib/showcase';
 import { HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
@@ -17,7 +18,7 @@ const liveUrl = parsedLiveUrl.origin === 'https://thiepn.dev'
 const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : hub.badge === 'new' ? 'New' : null;
 ---
 <article
-  class="hub-card"
+  class="hub-card ws-widget"
   data-hub-item
   data-hub-item-category={hub.category}
   data-hub-slug={p.slug}
@@ -35,8 +36,8 @@ const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : h
     <h2><a href={liveUrl}>{p.title}</a></h2>
     <p>{hub.description}</p>
     <div class="hub-card__actions">
-      <a class="hub-card__open" href={liveUrl}>Open app <span aria-hidden="true">↗</span></a>
-      <a class="hub-card__details" href={details}>Details</a>
+      <a class="hub-card__open ws-primary" href={liveUrl}>Open app <Fragment set:html={icon('arrow-up-right')}/></a>
+      <a class="hub-card__details ws-button" href={details}>Details</a>
     </div>
   </div>
 </article>

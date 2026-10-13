@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { HUB_CATEGORIES } from '../src/data/taxonomy.ts';
 import { HUB_WORKSPACE_ROUTES } from '../src/lib/hub-release-policy.ts';
 
 // Cache only the static, public workspace shell and build assets. Local user
@@ -14,11 +15,14 @@ const source = `
 const CACHE=${JSON.stringify(cache)};
 const CORE=${JSON.stringify([...assets])};
 const PAGES=new Set(${JSON.stringify(HUB_WORKSPACE_ROUTES)});
+const FILTERS=new Set(${JSON.stringify(['all', ...HUB_CATEGORIES])});
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('thiepn-workspace-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
- if(request.method!=='GET'||url.origin!==self.location.origin||url.search)return;
+ if(request.method!=='GET'||url.origin!==self.location.origin)return;
+ const catalogueFilter=url.pathname==='/apps/'&&url.searchParams.size===1&&url.searchParams.has('category')&&FILTERS.has(url.searchParams.get('category'));
+ if(url.search&&!catalogueFilter)return;
  if(request.mode==='navigate'&&PAGES.has(url.pathname)){
   event.respondWith(fetch(request).then(response=>{if(response.ok){const copy=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(url.pathname,copy)));}return response;}).catch(()=>caches.open(CACHE).then(cache=>cache.match(url.pathname)).then(hit=>hit||Response.error())));return;
  }

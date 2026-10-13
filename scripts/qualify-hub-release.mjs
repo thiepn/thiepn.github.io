@@ -42,8 +42,8 @@ for (const route of HUB_RELEASE_ROUTES) {
     assert.match(html, /<meta\s+name="robots"\s+content="noindex,nofollow"/);
     assert(!sitemap.includes(`<loc>https://thiepn.dev${route}</loc>`), 'Personal route leaked into sitemap');
   }
-  if ((route === '/' || route.startsWith('/home/')) || ['/inbox/', '/search/'].includes(route)) assert(!html.includes('static.cloudflareinsights.com'), 'Personal/query surface includes analytics');
-  if ((route === '/' || route.startsWith('/home/'))) assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(html), 'Managed integration leaked into public workspace');
+  if ((route === '/' || route.startsWith('/home/')) || ['/apps/', '/inbox/', '/search/'].includes(route)) assert(!html.includes('static.cloudflareinsights.com'), 'Personal/query surface includes analytics');
+  if ((route === '/' || route === '/apps/' || route.startsWith('/home/'))) assert(!/data-private-(?:notes|tms|capture)|data-integrated-workflows/.test(html), 'Managed integration leaked into public workspace');
   for (const match of html.matchAll(/(?:src|href)="(\/_astro\/[^"?#]+)"/g)) files.add(match[1].slice(1));
 }
 const root = (await read('index.html')).toString();
@@ -71,7 +71,12 @@ assert.equal(workspaceApps.length, status.appCount, 'Workspace app registry coun
 assert.deepEqual(workspaceApps.map(app=>app.id), hub.projects.map(app=>app.slug), 'Workspace app registry differs from reviewed source');
 assert(workspaceApps.every(app=>typeof app.url==='string' && new URL(app.url).protocol==='https:'), 'Workspace launch URL rejected');
 }
-assert.equal([...(await read('apps/index.html')).toString().matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Apps catalogue roster does not match release count');
+const catalogue = (await read('apps/index.html')).toString();
+assert(catalogue.includes('data-workspace') && catalogue.includes('data-view="apps"'), 'Apps must share the workspace shell');
+assert(!catalogue.includes('class="site-header"') && !catalogue.includes('class="site-footer"'), 'Apps must not expose a second shell');
+assert(!catalogue.includes('name="robots" content="noindex'), 'Public catalogue must remain indexable');
+assert(sitemap.includes('<loc>https://thiepn.dev/apps/</loc>'), 'Public catalogue is missing from sitemap');
+assert.equal([...catalogue.matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Apps catalogue roster does not match release count');
 assert.equal((await json('hub-search.json')).projects.length, status.appCount, 'Search roster does not match release count');
 const assets = [];
 for (const file of [...files].sort()) {

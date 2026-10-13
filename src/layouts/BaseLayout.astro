@@ -122,6 +122,6 @@ const structuredData = noindex ? null : serializeStructuredData(buildStructuredG
     {portal && !workspace && <PortalNavigation />}
     {!workspace && <CatalogueSearch portal={portal} />}
     <script>import '../scripts/catalogue-search-bootstrap';</script>
-    <PrivacyAnalytics noindex={noindex || pathname === '/search/'} />
+    <PrivacyAnalytics noindex={noindex || workspace || pathname === '/search/'} />
   </body>
 </html>

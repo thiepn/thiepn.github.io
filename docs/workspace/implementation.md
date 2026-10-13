@@ -33,4 +33,10 @@ The workspace is the primary page at `https://thiepn.dev/`. The existing complet
 
 `/home/` stays a real workspace compatibility page because the pinned Library owner bridge only trusts that parent pathname. The root Account dialog links to `/home/#reading`, which opens the reading dialog. Both workspace addresses use the unchanged scoped IndexedDB database; no data migration or reset is required. Tasks, calendar, trackers, settings, connections and auth callback addresses remain available.
 
-The offline shell registers `/workspace-sw.js` at root scope, with an explicit allowlist of workspace pages and static assets. Apps, auth callbacks, connection pages, queries and APIs are outside its navigation cache. The old `/home/workspace-sw.js` endpoint is retained for existing browser registrations. Root personal content remains noindex and has no analytics or sitemap entry; `/apps/` is indexable.
+The offline shell registers `/workspace-sw.js` at root scope, with an explicit allowlist of workspace pages and static assets. The public Apps catalogue shares the offline shell; its category filters are the only allowed navigation query. Auth callbacks, connection pages, other queries and APIs are outside the navigation cache. The old `/home/workspace-sw.js` endpoint is retained for existing browser registrations. Root personal content remains noindex and has no analytics or sitemap entry; `/apps/` is indexable.
+
+## One Hub interface
+
+Home, Apps, Tasks, Calendar, Trackers and Settings use `WorkspaceShell`: one expandable rail, topbar search/capture/account, responsive mobile navigation, and persistent desktop tasks/agenda planner. Apps supplies its server-rendered catalogue through the shell slot. Catalogue cards and category controls use the same workspace typography, spacing, borders, colours and buttons; the second public-site header/footer and closing section are removed from Apps.
+
+The shared controller keeps public catalogue nodes in place while identity, privacy, tasks and layout preferences change. Category links survive hydration and reload. Personal data stays masked under the privacy shield or an unavailable identity; public app browsing remains usable with disabled or unavailable storage. Search restores focus on close. Apps remains indexable and has no analytics while the planner renders personal local data.
