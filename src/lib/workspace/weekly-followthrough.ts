@@ -34,9 +34,7 @@ export function weekPlanningSummary(state:WorkspaceState,anchor:string) {
   return {days,categories,open:open.length,
     timedOccurrences:days.reduce((n,d)=>n+d.timed.length,0),
     allDayOccurrences:days.reduce((n,d)=>n+d.allDay.length,0),
-    overlapOccurrences:days.reduce((n,d)=>n+d.overlaps.length,0),
-    completedInWeek:state.tasks.filter(t=>t.completedAt&&validDate(t.completedAt.slice(0,10))&&
-      t.completedAt.slice(0,10)>=monday(anchor)&&t.completedAt.slice(0,10)<=weekEnd(anchor)).length};
+    overlapOccurrences:days.reduce((n,d)=>n+d.overlaps.length,0)};
 }
 export function taskSnapshot(task:Task):TaskBeforeMove {
   return {id:task.id,title:task.title,due:task.due,time:task.time,
