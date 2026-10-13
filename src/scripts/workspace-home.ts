@@ -49,16 +49,41 @@ async function setup(root: HTMLElement) {
     const searchDialog = $<HTMLDialogElement>('[data-search-dialog]');
     let searchReturnFocus: HTMLElement | null = null;
     searchDialog.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && !event.isComposing) {
+        if (event.isComposing) return;
+        if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
             searchDialog.close();
+            return;
         }
+        const target=event.target as HTMLElement;
+        const input=$<HTMLInputElement>('#workspace-search');
+        const choices=Array.from(searchDialog.querySelectorAll<HTMLElement>('[data-palette-primary],.ws-palette-quick-action'));
+        if (event.key === 'Enter' && target === input) {
+            if (!choices.length) return;
+            event.preventDefault();
+            choices[0]!.click();
+            return;
+        }
+        if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+        if (target !== input && !choices.includes(target)) return;
+        event.preventDefault();
+        const index=choices.indexOf(target);
+        let next=-1;
+        if (event.key === 'ArrowDown') next = index<0 ? 0 : Math.min(choices.length-1,index+1);
+        else if (event.key === 'ArrowUp') next = index<=0 ? -1 : index-1;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = choices.length-1;
+        if (next<0 || !choices.length) input.focus();
+        else choices[next]!.focus();
     });
     searchDialog.addEventListener('close', () => {
         const target = searchReturnFocus?.isConnected ? searchReturnFocus : $('[data-action=search]');
-        target.focus();
         searchReturnFocus = null;
+        searchQuery = '';
+        $<HTMLInputElement>('#workspace-search').value = '';
+        $('[data-search-results]').replaceChildren();
+        if (!dialog.open && !account.open) target.focus();
     });
     let readingOpened = false;
     function syncReadingPanels() {
@@ -384,6 +409,7 @@ async function setup(root: HTMLElement) {
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
         renderPlanner();
+        if (searchDialog.open) renderSearch();
         const mobileToday = $('[data-workspace-today]');
         if (view === 'apps' || view === 'settings') {
             mobileToday.hidden = true;
@@ -1333,21 +1359,7 @@ async function setup(root: HTMLElement) {
             root.querySelector<HTMLElement>(`[${target.dataset.drag ? 'data-drag' : 'data-resize'}="${CSS.escape(id)}"]`)?.focus();
             toast('Widget position updated. Choose Done to save.');
         }
-        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowDown') {
-            event.preventDefault();
-            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
-            const index = results.indexOf(target);
-            results[(index + 1) % results.length]?.focus();
-        }
-        if ($<HTMLDialogElement>('[data-search-dialog]').open && event.key === 'ArrowUp') {
-            event.preventDefault();
-            const results = Array.from(root.querySelectorAll<HTMLElement>('.ws-search-result'));
-            const index = results.indexOf(target);
-            if (index <= 0)
-                $('#workspace-search').focus();
-            else
-                results[index - 1]?.focus();
-        }
+
     });
     window.addEventListener('keydown', event => {
         if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space' && !event.repeat && !dialog.open && !searchDialog.open && !account.open && state && !locked && !privacyHeld && !state.preferences.hidden) {
@@ -1357,8 +1369,8 @@ async function setup(root: HTMLElement) {
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !(event.target as HTMLElement).matches('textarea,[contenteditable=true]')) {
             event.preventDefault();
-            if (!$<HTMLDialogElement>('[data-search-dialog]').open)
-                openSearch();
+            if (searchDialog.open) $<HTMLInputElement>('#workspace-search').focus();
+            else openSearch();
         }
     });
     root.addEventListener('pointerdown', event => {
