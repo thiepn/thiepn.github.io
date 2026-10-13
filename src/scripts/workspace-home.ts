@@ -5,6 +5,8 @@ import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
+import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
+import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -19,6 +21,7 @@ if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
     const view = root.dataset.view ?? 'home';
+    const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -33,7 +36,7 @@ async function setup(root: HTMLElement) {
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
-    let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
+    let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
     let changeVersion = 0;
@@ -68,6 +71,7 @@ async function setup(root: HTMLElement) {
     let observer: ResizeObserver | null = null;
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
+        void flushCaptureDraft();
         const target = formReturn;
         if (!target || dialog.open || target.epoch !== epoch || !state) return;
         const scope = target.widget ? root.querySelector<HTMLElement>(`[data-widget-id="${CSS.escape(target.widget)}"]`) : root;
@@ -164,8 +168,98 @@ async function setup(root: HTMLElement) {
         submit.disabled = true;
         void Promise.resolve().then(() => submitForm!(new FormData(form))).then(() => dialog.close()).catch(e => { $('[data-dialog-error]').textContent = e instanceof Error ? e.message : 'Unable to save.'; }).finally(() => { submit.disabled = false; });
     });
+
+    /** Both the capture dialog and existing widget submit through the original mutation writer. */
+    function captureFields(id: string) {
+        const notes = providerAction('notes','capture-text') ?? '/apps/';
+        return `<div class="ws-capture-routing">
+            <label class="ws-field" for="capture-${esc(id)}">What do you want to capture?
+              <textarea id="capture-${esc(id)}" name="body" data-capture-draft maxlength="10000" rows="4" placeholder="First line: a clear title&#10;Optional details below…" required>${esc(state!.captureDraft)}</textarea>
+            </label>
+            <label class="ws-field">Save in this device
+              <select name="kind" data-capture-kind aria-label="Capture destination"><option value="note">Local note</option><option value="task">Local task</option></select>
+            </label>
+            <div data-capture-task-options hidden>
+              <div class="ws-form-row">
+                <label class="ws-field">Plan task
+                  <select name="duePreset" data-capture-due><option value="inbox">Inbox · decide later</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="week">In 7 days</option><option value="date">Pick a date</option></select>
+                </label>
+                <label class="ws-field">Priority
+                  <select name="priority"><option value="none">Normal</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                </label>
+              </div>
+              <label class="ws-field" data-capture-custom-date hidden>Custom due date<input name="customDate" type="date" value="${esc(today())}"/></label>
+              <p class="ws-muted">A task is saved only to Hub. A date is optional; Inbox tasks stay visible until planned.</p>
+            </div>
+            <div class="ws-capture-handoff"><span>Prefer the Notes app? Text is never transferred automatically.</span>
+              <button type="button" class="ws-text-button" data-action="save-capture-draft">Save draft now</button>
+              <button type="button" class="ws-text-button" data-action="copy-capture">Copy draft</button>
+              <a href="${esc(notes)}" rel="noreferrer">Open Notes ↗</a></div>
+            <small class="ws-muted">Draft autosaves in this account's existing local Hub workspace. Esc closes without losing it.</small>
+          </div>`;
+    }
+    async function saveCaptureData(data: FormData) {
+        if (!state || locked) throw new Error('Workspace is unavailable.');
+        const prepared = prepareCapture({
+            body: String(data.get('body') ?? ''),
+            kind: String(data.get('kind') ?? 'note'),
+            duePreset: String(data.get('duePreset') ?? 'inbox'),
+            customDate: String(data.get('customDate') ?? ''),
+            priority: String(data.get('priority') ?? 'none'),
+            today: today(),
+        });
+        clearTimeout(captureTimer);
+        await mutate(s => {
+            if (prepared.kind === 'task') s.tasks.push(prepared.task);
+            else s.notes.unshift(prepared.note);
+            s.captureDraft = '';
+            activity(s, `Captured ${prepared.kind}: ${prepared.kind === 'task' ? prepared.task.title : prepared.note.title}`, prepared.kind);
+        }, prepared.kind === 'task' ? 'Task captured in Hub' : 'Note captured in Hub');
+    }
+    function openCapture(kind: 'note' | 'task' = 'note') {
+        if (!state || locked || privacyHeld || state.preferences.hidden) { toast('Personal content is hidden. Show it before capturing.'); return; }
+        openForm('Quick capture · this device', captureFields('dialog'), saveCaptureData, 'Save in Hub');
+        const select = dialog.querySelector<HTMLSelectElement>('[data-capture-kind]');
+        if (select) { select.value = kind; syncCaptureControls(select); }
+    }
+    function flushCaptureDraft() {
+        if (!captureTimer || !state || locked) return queue;
+        clearTimeout(captureTimer);
+        captureTimer = undefined;
+        const own = epoch;
+        queue = queue.then(async () => { if (own === epoch) await persist(); })
+            .catch(e => toast(e instanceof Error ? e.message : 'Draft could not be saved.'));
+        return queue;
+    }
+    function syncCaptureControls(el: HTMLElement) {
+        const form = el.closest('form');
+        if (!form) return;
+        const task = form.querySelector<HTMLSelectElement>('[data-capture-kind]')?.value === 'task';
+        const options = form.querySelector<HTMLElement>('[data-capture-task-options]');
+        if (options) options.hidden = !task;
+        const custom = form.querySelector<HTMLElement>('[data-capture-custom-date]');
+        if (custom) custom.hidden = !task || form.querySelector<HTMLSelectElement>('[data-capture-due]')?.value !== 'date';
+    }
     function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
-    function taskRows(tasks: Task[]) { return tasks.map(t => `<div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}"><input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/><button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : ''}${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}${t.time ? `<time>${esc(t.time)}</time>` : ''}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}</div>`).join(''); }
+    function taskRows(tasks: Task[]) {
+        return tasks.map(t => {
+            const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Plan task ${esc(t.title)}">
+                ${!t.due ? button('task-plan-today', 'Today', t.id, 'ws-button') : button('task-plan-inbox', 'Inbox', t.id, 'ws-button')}
+                ${button('task-plan-tomorrow', 'Tomorrow', t.id, 'ws-button')}
+                ${button('task-plan-week', 'In 7 days', t.id, 'ws-button')}
+                ${t.priority !== 'high' ? button('task-plan-high', 'High priority', t.id, 'ws-button') : button('task-plan-normal', 'Normal priority', t.id, 'ws-button')}
+                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}
+              </div>` : '';
+            return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
+              <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/>
+              <button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>
+              ${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : view === 'tasks' && !t.completedAt ? '<small class="ws-muted">Inbox</small>' : ''}
+              ${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}
+              ${t.time ? `<time>${esc(t.time)}</time>` : ''}
+              ${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
+            </div>${actions}</div>`;
+        }).join('');
+    }
     function calendarHTML() {
         const first = month;
         const offset = (new Date(first + 'T12:00:00Z').getUTCDay() + 6) % 7;
@@ -224,7 +318,7 @@ async function setup(root: HTMLElement) {
                     : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
                 return `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Launch links here; approved owner metadata appears separately in the Continue desk on Home or App connections.</p>${renderOwnerHandoffs(apps, 2)}<a class="ws-text-button" href="/home/connections/">Check connected sources</a></div>`;
             }
-            case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · Hub local, not Notes</small></form>`;
+            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Save in Hub</button></div><small class="ws-muted">${dirty ? 'Draft not saved yet' : 'Draft saved locally'} · not synced to Notes</small></form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
@@ -237,8 +331,23 @@ async function setup(root: HTMLElement) {
         if (view === 'settings')
             return settingsHTML();
         if (view === 'tasks') {
-            const tasks = state!.tasks.filter(t => taskFilter === 'all' || taskFilter === 'completed' ? taskFilter === 'all' || !!t.completedAt : !t.completedAt && (taskFilter === 'upcoming' ? t.due > today() : t.due <= today())).sort((a, b) => a.due.localeCompare(b.due) || a.time.localeCompare(b.time));
-            return `<div class="ws-content-toolbar"><select aria-label="Task filter" data-task-filter>${['today', 'upcoming', 'all', 'completed'].map(v => `<option value="${v}" ${taskFilter === v ? 'selected' : ''}>${v === 'today' ? 'Today and overdue' : v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select>${button('new-task', '+ Add task')}</div><section class="ws-surface">${tasks.length ? taskRows(tasks) : empty('Your next step starts here', 'Create a task, add a due date and check it off when you finish.', 'new-task', 'Add a task')}</section>`;
+            const counts = taskCounts(state!.tasks, today());
+            const tasks = state!.tasks.filter(t => taskMatchesFilter(t, taskFilter, today()))
+                .sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt)
+                  || (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')
+                  || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
+                  || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
+            return `<section class="ws-task-center" aria-labelledby="ws-task-center-title">
+              <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div>${button('capture', '+ Capture')}</header>
+              <div class="ws-task-filter-list" role="group" aria-label="Task views">
+                ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
+              </div>
+              <p class="ws-task-explainer">${taskFilter==='inbox'?'Unscheduled tasks waiting for a decision. Use the one-tap planning actions below.':taskFilter==='today'?'Due today and overdue. Unscheduled tasks are kept in Inbox.':taskFilter==='upcoming'?'Scheduled after today. Move dates or update details without copying tasks.':taskFilter==='completed'?'Completed task history stays in this local workspace.':'Every Hub task in this workspace.'}</p>
+            </section>
+            <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
+              <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
+              ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', taskFilter==='inbox'?'Capture a task without a due date; plan it here when ready.':'Choose another filter or add a task.', 'capture', 'Quick capture')}
+            </section>`;
         }
         if (view === 'calendar')
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
@@ -314,7 +423,7 @@ async function setup(root: HTMLElement) {
     }
     function editTask(id = '') {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -363,7 +472,7 @@ async function setup(root: HTMLElement) {
                     s.notes[ix] = next;
                 else
                     s.notes.unshift(next);
-                s.captureDraft = '';
+                if (!note) s.captureDraft = '';
                 activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
             }, 'Note saved on this device');
         });
@@ -681,6 +790,39 @@ async function setup(root: HTMLElement) {
             case 'new-task':
                 editTask();
                 break;
+            case 'task-date-today':
+            case 'task-date-tomorrow':
+            case 'task-date-week':
+            case 'task-date-inbox': {
+                const due = dialog.querySelector<HTMLInputElement>('input[name=due]');
+                const time = dialog.querySelector<HTMLInputElement>('input[name=time]');
+                if (due) due.value = action === 'task-date-inbox' ? '' : action === 'task-date-today' ? today() : addDays(today(), action === 'task-date-tomorrow' ? 1 : 7);
+                if (time && action === 'task-date-inbox') time.value = '';
+                break;
+            }
+            case 'task-show-inbox':
+                taskFilter = 'inbox';
+                render();
+                break;
+            case 'task-filter-set':
+                if ((TASK_FILTERS as readonly string[]).includes(id)) { taskFilter = id as TaskFilter; render(); }
+                break;
+            case 'task-plan-today':
+            case 'task-plan-tomorrow':
+            case 'task-plan-week':
+            case 'task-plan-inbox':
+            case 'task-plan-high':
+            case 'task-plan-normal': {
+                if (!state.tasks.some(t => t.id === id && !t.completedAt)) break;
+                const plan = action.slice('task-plan-'.length) as TaskPlanAction;
+                void mutate(s => {
+                    const task = s.tasks.find(t => t.id === id);
+                    if (!task) return;
+                    applyTaskPlan(task, plan, dayKey(s.preferences.timezone));
+                    activity(s, `Planned task: ${task.title}`, 'task');
+                }, 'Task plan updated');
+                break;
+            }
             case 'edit-task':
                 editTask(id);
                 break;
@@ -703,8 +845,22 @@ async function setup(root: HTMLElement) {
                 break;
             }
             case 'capture':
-                editNote();
+                openCapture();
                 break;
+            case 'capture-task':
+                openCapture('task');
+                break;
+            case 'save-capture-draft':
+                void flushCaptureDraft().then(() => toast(dirty ? 'Draft is still unsaved. Export a backup or retry.' : 'Draft saved locally on this device.'));
+                break;
+            case 'copy-capture': {
+                const draft = target.closest('form')?.querySelector<HTMLTextAreaElement>('[data-capture-draft]')?.value ?? state.captureDraft;
+                if (!draft) { toast('Enter a draft before copying.'); break; }
+                if (!navigator.clipboard?.writeText) { toast('Clipboard unavailable. Select and copy your draft manually.'); break; }
+                void navigator.clipboard.writeText(draft).then(() => toast('Draft copied. Paste it in the owner app to save there.'))
+                  .catch(() => toast('Clipboard unavailable. Select and copy your draft manually.'));
+                break;
+            }
             case 'edit-note':
                 editNote(id);
                 break;
@@ -974,8 +1130,7 @@ async function setup(root: HTMLElement) {
             }, el.checked ? 'Task completed' : 'Task reopened');
         }
         if (el.dataset.taskFilter !== undefined) {
-            taskFilter = el.value;
-            render();
+            if ((TASK_FILTERS as readonly string[]).includes(el.value)) { taskFilter = el.value as TaskFilter; render(); }
         }
         if (el.dataset.preference === 'density')
             void mutate(s => s.preferences.density = el.value as 'compact' | 'comfortable', '', false);
@@ -990,6 +1145,7 @@ async function setup(root: HTMLElement) {
                 toast('Theme changed for this session; browser preference storage is unavailable.');
             }
         }
+        if (el.matches('[data-capture-kind],[data-capture-due]')) syncCaptureControls(el);
         if (el.dataset.historySelect) {
             const id = el.dataset.historySelect, value = el.value;
             if (editing)
@@ -1024,25 +1180,18 @@ async function setup(root: HTMLElement) {
         if (!capture || !state)
             return;
         event.preventDefault();
-        clearTimeout(captureTimer);
-        const data = new FormData(capture), body = String(data.get('body')).trim(), kind = data.get('kind');
-        if (!body)
-            return;
-        if (kind === 'task' && body.length > 240) {
-            toast('Task titles can contain up to 240 characters. Capture longer text as a note.');
-            return;
-        }
-        void mutate(s => {
-            if (kind === 'task')
-                s.tasks.push({ id: uid(), title: body, notes: '', due: today(), time: '', priority: 'none', completedAt: null });
-            else
-                s.notes.unshift({ id: uid(), title: body.split('\n')[0]!.slice(0, 80), body, updatedAt: stamp() });
-            s.captureDraft = '';
-            activity(s, `Captured ${kind}: ${body.slice(0, 80)}`, String(kind));
-        }, `${kind === 'task' ? 'Task' : 'Note'} captured`);
+        const submit = capture.querySelector<HTMLButtonElement>('[type=submit]');
+        if (submit) submit.disabled = true;
+        void saveCaptureData(new FormData(capture)).catch(e => toast(e instanceof Error ? e.message : 'Unable to capture.'))
+            .finally(() => { if (submit && submit.isConnected) submit.disabled = false; });
     });
     root.addEventListener('keydown', event => {
         const target = event.target as HTMLElement;
+        if (target.matches('[data-capture-draft]') && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            target.closest<HTMLFormElement>('form')?.requestSubmit();
+            return;
+        }
         if (target.matches('[data-drag],[data-resize]') && editing && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
             event.preventDefault();
             const id = target.dataset.drag ?? target.dataset.resize!;
@@ -1089,6 +1238,11 @@ async function setup(root: HTMLElement) {
         }
     });
     window.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space' && !event.repeat && !dialog.open && !searchDialog.open && !account.open && state && !locked && !privacyHeld && !state.preferences.hidden) {
+            event.preventDefault();
+            openCapture();
+            return;
+        }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !(event.target as HTMLElement).matches('textarea,[contenteditable=true]')) {
             event.preventDefault();
             if (!$<HTMLDialogElement>('[data-search-dialog]').open)
@@ -1275,6 +1429,7 @@ async function setup(root: HTMLElement) {
         if (state && !dirty && !editing)
             void reloadSaved();
     });
+    window.addEventListener('pagehide', () => { void flushCaptureDraft(); });
     window.addEventListener('beforeunload', event => {
         if (dirty) {
             event.preventDefault();
