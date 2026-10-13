@@ -39,7 +39,7 @@ strong.ws-widget-record-title{cursor:default;}
 .ws-widget-connection{color:var(--ws-accent);font-size:11px;font-weight:650;display:inline-flex;align-items:center;min-height:30px;text-decoration:none;}
 .ws-widget-connection:hover{text-decoration:underline;}
 .ws-widget-owner{gap:7px;}
-.ws-widget[data-widget-type=task-inbox],.ws-widget[data-widget-type=task-priorities],.ws-widget[data-widget-type=quick-plan]{min-width:0;}
+ .ws-cell[data-widget-type=task-inbox],.ws-cell[data-widget-type=task-priorities],.ws-cell[data-widget-type=quick-plan]{min-width:0;}
 .ws-widget-body .ws-widget-utility :is(button,a){touch-action:manipulation;}
 @media(max-width:767px){
  .ws-widget-plan-actions{margin-left:0;}
