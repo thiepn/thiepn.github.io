@@ -1558,7 +1558,46 @@ async function setup(root: HTMLElement) {
             case 'delete-log':
                 void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
                 break;
+            case 'week-filter':
+                if(view==='calendar' && (WEEK_FILTERS as readonly string[]).includes(id)){
+                    weekFilter=id as WeekTaskFilter;
+                    agendaMode='week';
+                    render();
+                }
+                break;
+            case 'week-select-visible': {
+                if(view!=='calendar'||privacyHeld||state.preferences.hidden)break;
+                const visible=eligibleWeekTasks(state,selected,weekFilter).slice(0,MAX_WEEK_ROWS);
+                let added=0;
+                for(const task of visible) {
+                    if(weekSelection.size>=MAX_WEEK_BATCH)break;
+                    if(!weekSelection.has(task.id)){weekSelection.add(task.id);added++;}
+                }
+                render();
+                toast(added
+                    ? `Selected ${weekSelection.size} unfinished Hub tasks for review. No due dates have changed.`
+                    : `Selection unchanged. You can review at most ${MAX_WEEK_BATCH} tasks at once.`);
+                break;
+            }
+            case 'week-clear':
+                weekSelection.clear();
+                render();
+                break;
+            case 'week-preview':
+                reviewWeeklyCarryover();
+                break;
+            case 'week-return':
+                if(weekReturnDate && validDate(weekReturnDate)) {
+                    selected=weekReturnDate;
+                    weekReturnDate=null;
+                    month=selected.slice(0,7)+'-01';
+                    agendaMode='week';
+                    render();
+                    root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
+                }
+                break;
             case 'planning-day':
+                if(agendaMode==='week')weekReturnDate=weekDays(selected)[0]!;
                 agendaMode='day';
                 render();
                 break;
@@ -1586,7 +1625,8 @@ async function setup(root: HTMLElement) {
                 render();
                 break;
             case 'planning-jump-day':
-                if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+                if (validDate(id)) {
+                    if (agendaMode==='week')weekReturnDate=weekDays(selected)[0]!;
                     selected=id;
                     month=selected.slice(0,7)+'-01';
                     agendaMode='day';
@@ -1915,6 +1955,31 @@ async function setup(root: HTMLElement) {
             const original=handoffOrigin?.kind==='event' && handoffOrigin.epoch===epoch
                 ? state.events.find(e=>e.id===handoffOrigin!.id) : undefined;
             if(original)paintEventMovePreview(original,state.preferences.timezone);
+            return;
+        }
+        if (el.hasAttribute('data-week-task-id')) {
+            if(view!=='calendar'||privacyHeld||state.preferences.hidden)return;
+            const id=el.dataset.weekTaskId!;
+            if(!state.tasks.some(t=>t.id===id&&!t.completedAt)) {
+                el.checked=false;
+                toast('That task is no longer unfinished. Reopen the weekly review.');
+                return;
+            }
+            if(el.checked) {
+                if(weekSelection.size>=MAX_WEEK_BATCH&&!weekSelection.has(id)){
+                    el.checked=false;
+                    toast(`Select no more than ${MAX_WEEK_BATCH} tasks per reviewed batch.`);
+                    return;
+                }
+                weekSelection.add(id);
+            } else weekSelection.delete(id);
+            render();
+            return;
+        }
+        if (el.closest('[data-week-review-form]')) {
+            const ids=[...weekSelection].filter(id=>state.tasks.some(t=>t.id===id&&!t.completedAt));
+            const snapshots=ids.map(id=>taskSnapshot(state.tasks.find(t=>t.id===id)!));
+            paintWeekChangePreview(snapshots,epoch);
             return;
         }
         if (el.hasAttribute('data-focus-duration')) {
