@@ -11,6 +11,7 @@ import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILT
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
+import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -42,6 +43,8 @@ async function setup(root: HTMLElement) {
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    // Context handoff is UI-only and never a new relation table or cross-app progress record.
+    let handoffOrigin: WorkOrigin | null = null;
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
@@ -478,6 +481,7 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarZone = state.preferences.timezone;
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
+        if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; }
         root.dataset.focusQuiet = view==='home' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         const rail = $('[data-action=rail]');
@@ -508,6 +512,7 @@ async function setup(root: HTMLElement) {
                 : renderMobileToday(state, today());
         }
         syncReadingPanels();
+        renderHandoffBar();
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
         root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
         root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
@@ -538,9 +543,9 @@ async function setup(root: HTMLElement) {
         await mutate(s => s.active = id, '', false);
         if (view === 'apps' && storageReady && !dirty) location.assign('/');
     }
-    function editTask(id = '') {
+    function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -577,9 +582,9 @@ async function setup(root: HTMLElement) {
             }, 'Event saved');
         });
     }
-    function editNote(id = '') {
+    function editNote(id = '', seed?: {title:string;body:string}) {
         const note = state!.notes.find(n => n.id === id);
-        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
+        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
             const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
             if (!next.title)
                 throw new Error('Enter a title.');
@@ -1684,6 +1689,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        handoffOrigin=null;
         const own = ++epoch;
         root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);
