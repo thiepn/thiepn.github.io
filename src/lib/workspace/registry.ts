@@ -6,6 +6,12 @@ export const WIDGETS = {
     'tracker-summary': { title: 'Trackers', icon: 'chart-bar', description: 'Goals and progress that you choose to track.', views: ['table', 'progress', 'compact'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
     'tracker-history': { title: 'Weekly rhythm', icon: 'chart-line-up', description: 'See your logged activity over time.', views: ['chart', 'matrix'], width: 6, height: 34, minWidth: 4, minHeight: 24 },
     'recent-activity': { title: 'Recent activity', icon: 'clock-counter-clockwise', description: 'Your recent actions in this workspace.', views: ['list', 'detailed'], width: 12, height: 24, minWidth: 4, minHeight: 16 },
+    'task-inbox': { title: 'Task inbox', icon: 'tray', description: 'Unscheduled Hub tasks, ready to sort and plan.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
+    'task-priorities': { title: 'Next priorities', icon: 'list-checks', description: 'Due, overdue and high-priority tasks from this device.', views: ['compact', 'detailed'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
+    'upcoming-commitments': { title: 'Upcoming commitments', icon: 'calendar-check', description: 'Local Hub events and task due dates with honest sources.', views: ['agenda', 'compact'], width: 6, height: 40, minWidth: 4, minHeight: 20 },
+    'recent-captures': { title: 'Recent captures', icon: 'notebook', description: 'Captured Hub notes and tasks, not external app activity.', views: ['list', 'detailed'], width: 6, height: 32, minWidth: 4, minHeight: 20 },
+    'quick-plan': { title: 'Quick planning', icon: 'calendar-plus', description: 'Plan unscheduled tasks using existing Hub task actions.', views: ['compact', 'detailed'], width: 6, height: 36, minWidth: 4, minHeight: 20 },
+    'owner-handoffs': { title: 'Connected app handoffs', icon: 'arrow-square-out', description: 'Source-honest owner-app actions and existing access routes.', views: ['compact', 'detailed'], width: 6, height: 28, minWidth: 4, minHeight: 20 },
 } as const;
 export type WidgetType = keyof typeof WIDGETS;
 export function specification(type: string) { return Object.hasOwn(WIDGETS, type) ? WIDGETS[type as WidgetType] : undefined; }
@@ -20,6 +26,10 @@ export function validWidget(widget: Widget): boolean {
         return true; // Future widgets are retained, never rewritten.
     if (widget.config.title !== undefined && (typeof widget.config.title !== 'string' || !widget.config.title.trim() || widget.config.title.length > 80)) return false;
     if (widget.config.useActions !== undefined && typeof widget.config.useActions !== 'boolean') return false;
+    if (widget.config.itemLimit !== undefined && (!Number.isSafeInteger(widget.config.itemLimit) || Number(widget.config.itemLimit) < 2 || Number(widget.config.itemLimit) > 12)) return false;
+    if (widget.config.dateRange !== undefined && ![3, 7, 14].includes(Number(widget.config.dateRange))) return false;
+    if (widget.config.sourceKind !== undefined && !['both', 'notes', 'tasks'].includes(String(widget.config.sourceKind))) return false;
+    if (widget.config.ownerSources !== undefined && (!Array.isArray(widget.config.ownerSources) || widget.config.ownerSources.length > 3 || new Set(widget.config.ownerSources).size !== widget.config.ownerSources.length || widget.config.ownerSources.some((id:unknown) => !['notes','library','tms60'].includes(String(id))))) return false;
     if (!(spec.views as readonly string[]).includes(widget.view) || r.w < spec.minWidth || r.h < spec.minHeight)
         return false;
     const ids = widget.config.appIds ?? widget.config.trackerIds;
