@@ -34,6 +34,7 @@ export const SNAPSHOT_VISIBLE_EVENTS = 60;
 export const SNAPSHOT_STALE_MS = 6 * 60 * 60 * 1000;
 export const SNAPSHOT_EXPIRE_MS = 24 * 60 * 60 * 1000;
 const MAX_RECURRENCE_DAYS = 7300;
+const MAX_RECURRENCE_ITERATIONS = 60_000;
 const WEEKDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
 
 function property(block: Component, name: string) { return block.get(name)?.[0]; }
@@ -98,7 +99,7 @@ function parseRows(content: string): { meta: Component; components: Component[] 
     }
     return { meta, components };
 }
-function recurrentDays(block: Component, start: ParsedDate, lastDay: string, warnings: string[]): string[] {
+function recurrentDays(block: Component, start: ParsedDate, lastDay: string, warnings: string[], budget: { remaining: number }): string[] {
     const rule = property(block, 'RRULE');
     if (!rule) return [start.day];
     const options = Object.fromEntries(rule.value.split(';').map(part => part.split('=', 2))) as Record<string,string>;
@@ -122,6 +123,7 @@ function recurrentDays(block: Component, start: ParsedDate, lastDay: string, war
     const matching: string[] = [];
     const limit = Math.min(MAX_RECURRENCE_DAYS, Math.max(0, diffDays(lastDay, start.day)));
     for (let delta = 0; delta <= limit; delta++) {
+        if (--budget.remaining < 0) { warnings.push('Recurrence expansion reached the safe processing limit; recheck the source calendar.'); break; }
         const day = addDays(start.day, delta);
         if (untilDay && day > untilDay) break;
         const weekday = WEEKDAY[new Date(day + 'T12:00:00Z').getUTCDay()];
@@ -166,6 +168,7 @@ export function parseICalendar(text: string, filename: string, sourceId: string,
     let floating = 0, invalid = 0, repeated = 0;
     const horizonStart = dayKey(selectedZone, new Date(now));
     const horizonEnd = addDays(horizonStart, 31);
+    const recurrenceBudget = { remaining: MAX_RECURRENCE_ITERATIONS };
     const overrideDates = new Set<string>();
     const excludedDates = new Set<string>();
     for (const block of components) {
@@ -192,7 +195,9 @@ export function parseICalendar(text: string, filename: string, sourceId: string,
         if (property(block,'STATUS')?.value.toUpperCase() === 'CANCELLED') continue;
         const end = parseDate(property(block,'DTEND'), defaultZone);
         const override = !!property(block,'RECURRENCE-ID');
-        const days = override ? [start.day] : recurrentDays(block, start, horizonEnd, warnings);
+        if (block.has('RDATE')) warnings.push('Extra RDATE occurrences are not supported; check the original calendar for additional dates.');
+        if (property(block,'RECURRENCE-ID')?.params.RANGE) warnings.push('This-and-future recurrence changes are not supported; check the original calendar.');
+        const days = override ? [start.day] : recurrentDays(block, start, horizonEnd, warnings, recurrenceBudget);
         for (const day of days) {
             if (!override && (overrideDates.has(`${uid}:${day}`) || excludedDates.has(`${uid}:${day}`))) continue;
             const event = makeEvent(block, start, end, day, sourceId, sourceName);
