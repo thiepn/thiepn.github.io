@@ -10,7 +10,7 @@ import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type Palet
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
-import { renderReturnJourney, type ReturnContext } from '../lib/workspace/return-journey';
+import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -141,6 +141,8 @@ async function setup(root: HTMLElement) {
             dirty = changeVersion !== savedVersion;
             conflict = false;
             saved();
+            updateReturnPanel();
+            updateRecoveryStrip();
             channel?.postMessage({ key: store.key, revision: state.revision });
         }
         catch (err) {
@@ -149,6 +151,8 @@ async function setup(root: HTMLElement) {
             dirty = true;
             conflict = err instanceof RevisionConflict;
             saved();
+            updateReturnPanel();
+            updateRecoveryStrip();
             notice(err instanceof RevisionConflict ? err.message : 'Changes are in memory but could not be saved. Export a backup or retry.', button('export', 'Export') + button('retry', 'Retry') + button('reload', 'Reload saved data'));
         }
     }
@@ -454,6 +458,15 @@ async function setup(root: HTMLElement) {
         const panel=root.querySelector<HTMLElement>('[data-return-panel]');
         if(panel)panel.innerHTML=renderReturnJourney(state,returnContext());
     }
+    function updateRecoveryStrip() {
+        const el=root.querySelector<HTMLElement>('[data-workspace-recovery]');
+        if (!el) return;
+        if(!state || locked) { el.hidden=true;el.replaceChildren();return; }
+        const html=renderRecoveryStrip(state,returnContext(),privacyHeld||state.preferences.hidden);
+        el.hidden=!html;
+        if (html)el.innerHTML=html;
+        else el.replaceChildren();
+    }
     function render() {
         observer?.disconnect();
         if (!state)
@@ -504,6 +517,7 @@ async function setup(root: HTMLElement) {
         }
         if (!dirty)
             saved();
+        updateRecoveryStrip();
         if (toggle)
             root.querySelector<HTMLInputElement>(`[data-task-toggle="${CSS.escape(toggle)}"]`)?.focus();
         else if (action)
@@ -1442,6 +1456,8 @@ async function setup(root: HTMLElement) {
             contentUndo = null;
             dirty = true;
             saved('Draft not saved yet…');
+            updateReturnPanel();
+            updateRecoveryStrip();
             clearTimeout(captureTimer);
             const own = epoch;
             captureTimer = setTimeout(() => {
@@ -1608,6 +1624,8 @@ async function setup(root: HTMLElement) {
         $<HTMLDialogElement>('[data-search-dialog]').close();
         $<HTMLDialogElement>('[data-account-dialog]').close();
         $('[data-workspace-list]').innerHTML = '';
+        $('[data-workspace-recovery]').hidden = true;
+        $('[data-workspace-recovery]').replaceChildren();
         if (view !== 'apps') $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
         $('[data-planner]').innerHTML = '';
         $('[data-workspace-today]').innerHTML = '';
@@ -1682,6 +1700,8 @@ async function setup(root: HTMLElement) {
                     return;
                 if (editing || dirty) {
                     conflict = true;
+                    updateReturnPanel();
+                    updateRecoveryStrip();
                     notice('Another tab changed this workspace. Your local edits are kept.', button('export', 'Export') + button('reload', 'Reload saved data'));
                 }
                 else
@@ -1695,6 +1715,8 @@ async function setup(root: HTMLElement) {
             notice('');
     }
     window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
+    window.addEventListener('online',()=>{updateReturnPanel();updateRecoveryStrip();});
+    window.addEventListener('offline',()=>{updateReturnPanel();updateRecoveryStrip();});
     document.addEventListener('visibilitychange',()=>{
         if(document.hidden)pauseFocusSession();
         else if(state && !privacyHeld && !state.preferences.hidden && view==='home')render();
