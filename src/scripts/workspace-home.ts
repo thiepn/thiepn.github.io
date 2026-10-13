@@ -494,7 +494,7 @@ async function setup(root: HTMLElement) {
         const query=new URLSearchParams();
         if(validDate(selected))query.set('date',selected);
         if(agendaMode==='week')query.set('mode','week');
-        if(agendaMode==='day'&&weekReturnDate&&validDate(weekReturnDate))
+        if(weekReturnDate&&validDate(weekReturnDate)&&weekDays(selected)[0]!==weekReturnDate)
             query.set('return',weekReturnDate);
         const next=location.pathname+(query.size?'?'+query.toString():'');
         if(location.pathname+location.search!==next)
@@ -801,6 +801,10 @@ async function setup(root: HTMLElement) {
                 throw new Error('Changes are in this tab but not confirmed saved. Export or retry; do not submit again.');
             weekSelection.clear();
             weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=target;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
             render();
         },'Apply reviewed due dates');
         paintWeekChangePreview(snapshots,own);
@@ -1974,6 +1978,7 @@ async function setup(root: HTMLElement) {
                 weekSelection.add(id);
             } else weekSelection.delete(id);
             render();
+            root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
             return;
         }
         if (el.closest('[data-week-review-form]')) {
