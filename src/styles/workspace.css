@@ -131,3 +131,6 @@
 .ws [data-reading-shell] input{background:var(--ws-surface);border:1px solid var(--ws-line);padding:7px;}
 .ws [data-reading-shell] fieldset{border:1px solid var(--ws-line);padding:12px;margin:12px 0;}
 @media(max-width:767px){.ws-topbar-actions>.ws-icon-button:last-child{display:inline-flex;}}
+
+.ws a.ws-primary:hover{color:var(--ws-surface);}
+[data-theme=dark] .ws a.ws-primary:hover{color:#11233d;}

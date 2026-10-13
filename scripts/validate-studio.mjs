@@ -29,6 +29,7 @@ const root = fs.readFileSync('src/pages/index.astro', 'utf8');
 assert(root.includes('<WorkspaceShell'), 'Homepage must render the adaptive workspace');
 const homepage = fs.readFileSync('src/pages/apps/index.astro', 'utf8');
 assert(homepage.includes('getHubProjects'), 'Apps page must resolve the canonical Hub registry');
+assert(homepage.includes('<WorkspaceShell'), 'Apps must use the same shell as Home');
 assert(homepage.includes('<HubCatalogue'), 'Apps page must render the complete Hub catalogue');
 assert(!homepage.includes('<HubHero'), 'Apps page must begin with apps instead of a hero landing section');
 assert(!homepage.includes('ArcadeShowcase'), 'Micro Arcade must not have a privileged homepage showcase');

@@ -42,8 +42,9 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    if (width > 760) await expect(page.locator('.site-nav')).toBeVisible();
-    else await expect(page.locator('.site-nav')).not.toBeVisible();
+    if (width > 767) await expect(page.locator('.ws-navigation')).toBeVisible();
+    else await expect(page.locator('.ws-mobile-nav')).toBeVisible();
+    await expect(page.locator('.site-header')).toHaveCount(0);
   });
 }
 
@@ -189,7 +190,7 @@ test('archive search, empty state, filters and browser Back', async ({ page }) =
 });
 
 test('global search supports keyboard, no results, Escape and focus restoration', async ({ page }) => {
-  await page.goto('/apps/');
+  await page.goto('/work/');
   await page.locator('.site-header__search').focus();
   await page.keyboard.press('Control+k');
   const input = page.locator('[data-catalogue-search-input]');
@@ -211,7 +212,7 @@ test('global search retries after an index network failure', async ({ page }) =>
     if (++attempts === 1) await route.fulfill({ status: 503, body: 'Unavailable' });
     else await route.continue();
   });
-  await page.goto('/apps/');
+  await page.goto('/work/');
   await page.keyboard.press('Control+k');
   await expect(page.locator('[data-catalogue-search-status]')).toContainText(/could not|unavailable|couldn.t|unable/i);
   await page.keyboard.press('Escape');
@@ -222,7 +223,7 @@ test('global search retries after an index network failure', async ({ page }) =>
 
 test('mobile menu, search handoff and persistent theme', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/apps/');
+  await page.goto('/work/');
   const menu = page.getByRole('button', { name: 'Menu', exact: true });
   await menu.click();
   const mobileNav = page.getByRole('navigation', { name: 'Mobile navigation', exact: true });

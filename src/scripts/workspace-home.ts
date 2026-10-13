@@ -1,3 +1,4 @@
+import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity } from './portal-auth';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon } from '../lib/workspace/icons';
@@ -16,11 +17,17 @@ const root = document.querySelector<HTMLElement>('[data-workspace]');
 if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
+    const view = root.dataset.view ?? 'home';
     const openReading = location.hash === '#reading';
-    if (location.search || location.hash) history.replaceState(null,'',location.pathname);
+    if (view === 'apps') {
+        // Catalogue filters are public. Keep them without retaining private search terms.
+        const category = new URLSearchParams(location.search).get('category');
+        const url = new URL(location.href); url.search = ''; url.hash = '';
+        if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
+        history.replaceState(null, '', url.pathname + url.search);
+    } else if (location.search || location.hash) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
-    const view = root.dataset.view ?? 'home';
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
@@ -33,6 +40,20 @@ async function setup(root: HTMLElement) {
     const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
     const form = $<HTMLFormElement>('[data-workspace-form]');
     const account = $<HTMLDialogElement>('[data-account-dialog]');
+    const searchDialog = $<HTMLDialogElement>('[data-search-dialog]');
+    let searchReturnFocus: HTMLElement | null = null;
+    searchDialog.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !event.isComposing) {
+            event.preventDefault();
+            event.stopPropagation();
+            searchDialog.close();
+        }
+    });
+    searchDialog.addEventListener('close', () => {
+        const target = searchReturnFocus?.isConnected ? searchReturnFocus : $('[data-action=search]');
+        target.focus();
+        searchReturnFocus = null;
+    });
     let readingOpened = false;
     function syncReadingPanels() {
         if (account.open) readingOpened = true;
@@ -230,14 +251,17 @@ async function setup(root: HTMLElement) {
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
-        $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        if (view !== 'apps') $('[data-workspace-date]').textContent = dateLabel(today(), true);
+        $('#ws-title').textContent = view === 'apps' ? 'Apps' : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : button('capture', '+ Capture');
-        if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
-            $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
-        else
-            $('[data-workspace-content]').innerHTML = fullContent();
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
+        // Static catalogue nodes keep their category state while the shared planner rerenders.
+        if (view !== 'apps') {
+            if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
+                $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
+            else
+                $('[data-workspace-content]').innerHTML = fullContent();
+        }
         renderPlanner();
         syncReadingPanels();
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
@@ -262,6 +286,10 @@ async function setup(root: HTMLElement) {
             if (grid)
                 observer.observe(grid);
         }
+    }
+    async function switchWorkspace(id: string) {
+        await mutate(s => s.active = id, '', false);
+        if (view === 'apps' && storageReady && !dirty) location.assign('/');
     }
     function editTask(id = '') {
         const t = state!.tasks.find(x => x.id === id);
@@ -582,7 +610,7 @@ async function setup(root: HTMLElement) {
             found.push(button('search-note', `${icon('notebook')}<div>${esc(n.title)}<small>Local note</small></div>`, n.id, 'ws-search-result'));
         rows.innerHTML = found.slice(0, 40).join('') || empty('Nothing found', 'Try an app name, task or phrase from a local note.');
     }
-    function openSearch() { const search = $<HTMLDialogElement>('[data-search-dialog]'); searchQuery = ''; $('#workspace-search').textContent = ''; $<HTMLInputElement>('#workspace-search').value = ''; renderSearch(); search.showModal(); $('#workspace-search').focus(); }
+    function openSearch(trigger?: HTMLElement) { searchReturnFocus = trigger ?? (root.contains(document.activeElement) ? document.activeElement as HTMLElement : $('[data-action=search]')); const search = $<HTMLDialogElement>('[data-search-dialog]'); searchQuery = ''; $('#workspace-search').textContent = ''; $<HTMLInputElement>('#workspace-search').value = ''; renderSearch(); search.showModal(); $('#workspace-search').focus(); }
     root.addEventListener('click', event => {
         const target = (event.target as HTMLElement).closest<HTMLElement>('[data-action],[data-workspace-id]');
         if (!target)
@@ -606,7 +634,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'search') {
-            openSearch();
+            openSearch(target);
             return;
         }
         if (action === 'export') {
@@ -622,7 +650,7 @@ async function setup(root: HTMLElement) {
                 toast('Finish or cancel the layout edit before switching workspaces.');
                 return;
             }
-            void mutate(s => s.active = target.dataset.workspaceId!, '', false);
+            void switchWorkspace(target.dataset.workspaceId!);
             return;
         }
         switch (action) {
@@ -780,7 +808,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'switch-workspace':
                 if (editing) { toast('Finish or cancel editing before switching workspaces.'); break; }
-                openForm('Choose workspace', select('Workspace','workspace',state.workspaces.map(w=>[w.id,w.title]),state.active) + button('new-workspace','New workspace'), async data => { await mutate(s=>s.active=String(data.get('workspace')),'',false); });
+                openForm('Choose workspace', select('Workspace','workspace',state.workspaces.map(w=>[w.id,w.title]),state.active) + button('new-workspace','New workspace'), async data => { await switchWorkspace(String(data.get('workspace'))); });
                 break;
             case 'presets':
                 choosePreset();
@@ -1134,10 +1162,10 @@ async function setup(root: HTMLElement) {
         $<HTMLDialogElement>('[data-search-dialog]').close();
         $<HTMLDialogElement>('[data-account-dialog]').close();
         $('[data-workspace-list]').innerHTML = '';
-        $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
+        if (view !== 'apps') $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
         $('[data-planner]').innerHTML = '';
         $('[data-toolbar]').innerHTML = '';
-        $('#ws-title').textContent = 'Personal workspace';
+        $('#ws-title').textContent = view === 'apps' ? 'Apps' : 'Personal workspace';
         $('[data-workspace-toast]').hidden = true;
         saved('Checking identity…');
         $('[data-profile-label]').textContent = identity.status === 'signed-in' ? identity.label : 'This device';

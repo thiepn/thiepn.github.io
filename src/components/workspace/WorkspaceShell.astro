@@ -8,7 +8,7 @@ import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
 import '@fontsource-variable/instrument-sans';
-interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings' }
+interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps' }
 const {view='home'}=Astro.props;
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
 const readingHost = Astro.url.pathname === '/home/' || Astro.url.pathname === '/home';
@@ -20,7 +20,7 @@ const apps=entries.map(({project,hub})=>{
 });
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar']];
 ---
-<BaseLayout title="Workspace — THIEPN HUB" description="Your personal apps, tasks, calendar and trackers in one adaptable workspace." noindex workspace>
+<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
@@ -32,15 +32,15 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search apps, tasks and notes</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
-          <header class="ws-page-heading"><div><h1 id="ws-title">Personal workspace</h1><p data-workspace-date>Your day, your way</p></div><div class="ws-toolbar" data-toolbar><button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button></div></header>
+          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='apps' ? <button class="ws-button" type="button" data-action="capture">+ Capture</button> : <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
-          <div data-workspace-content><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></div>
+          <div data-workspace-content>{view==='apps' ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
           <noscript><p class="ws-notice">App links work without JavaScript. Tasks, calendar, trackers and layout customization require JavaScript.</p></noscript>
         </section>
         <aside class="ws-planner" aria-label="Tasks and agenda"><div data-planner><h2>Today</h2><p class="ws-muted">Your local calendar and tasks will appear here.</p></div><footer><span set:html={icon('desktop')}/><div><strong>This device</strong><p data-workspace-status role="status">Opening local storage…</p><button class="ws-text-button" type="button" data-action="export">Export backup</button></div></footer></aside>
       </div>
     </div>
-    <nav class="ws-mobile-nav" aria-label="Mobile workspace navigation">{[...navigation.filter(n=>n[0]!=='apps'),['settings','Settings','/home/settings/','gear-six']].map(([key,label,url,ic])=><a href={url} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
+    <nav class="ws-mobile-nav" aria-label="Mobile workspace navigation">{[...navigation,['settings','Settings','/home/settings/','gear-six']].map(([key,label,url,ic])=><a href={url} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
     <div class="ws-toast" data-workspace-toast role="status" hidden></div>
     <dialog class="ws-dialog" data-workspace-dialog aria-labelledby="ws-dialog-title"><form data-workspace-form><header><h2 id="ws-dialog-title"></h2><button type="button" class="ws-button" data-action="close-dialog" aria-label="Close dialog">Close</button></header><div data-dialog-fields></div><p class="ws-error" data-dialog-error role="alert"></p><footer><button type="button" class="ws-button" data-action="close-dialog">Cancel</button><button type="submit" class="ws-primary" data-dialog-submit>Save</button></footer></form></dialog>
     <dialog class="ws-dialog ws-search-dialog" data-search-dialog aria-labelledby="ws-search-title"><header><h2 id="ws-search-title">Search your workspace</h2><button type="button" class="ws-button" data-action="close-search">Close</button></header><label class="ws-sr" for="workspace-search">Search apps, tasks and notes</label><input id="workspace-search" type="search" placeholder="Search apps, tasks and notes…" autocomplete="off"/><div data-search-results></div></dialog>
