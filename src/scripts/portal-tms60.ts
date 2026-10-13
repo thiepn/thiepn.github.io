@@ -2,6 +2,7 @@ import {integratedWorkflows} from '../lib/workflows/integrated';
 import { hubIdentity, readHubTmsConsent } from './portal-auth';
 import { HubNotesSession } from '../lib/hub-notes-session';
 import type { Operation } from '../lib/providers/types';
+import { notifyOwnerContinue, publishOwnerContinue } from '../lib/workspace/owner-continuation';
 
 import {managedQuery as query,managedFragment as fragment,managedCallback,managedTarget} from '../lib/hub-managed-return';
 const translationReturn=managedTarget?.match(/^thiepn:hub-tms60:pkce:([a-z0-9]+):v1$/)?.[1];
@@ -31,6 +32,7 @@ if(root){
     if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.clear('tms60');
     ++generation;controller?.abort();controller=null;clearTimeout(timer);list.replaceChildren();counts.textContent='';freshness.textContent='';panel.hidden=true;form.reset();
     refresh.hidden=disconnect.hidden=true;status.textContent=message;
+    notifyOwnerContinue('tms60', message.startsWith('Checking') ? 'loading' : 'unconnected');
   }
   function clear(message?:string,removePending=true){session?.clear(removePending);permissions.clear();configureOperations();erase(message);}
   function controls(){connect.disabled=Boolean(!owner() || !session || root!.hidden || document.hidden);}
@@ -49,9 +51,11 @@ if(root){
       if(epoch!==generation || root!.hidden || document.hidden)return;
       if(['unconnected','unsupported'].includes(envelope.status)){
         erase(envelope.status==='unconnected'?'No cloud snapshot for this translation. Sync it in TMS60, then refresh.':'This translation’s cloud snapshot cannot be read yet. Open TMS60 to check its sync.');
+        notifyOwnerContinue('tms60', envelope.status);
         refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;return;
       }
       if(!['ready','empty'].includes(envelope.status) || !envelope.data)throw new Error('Unavailable');
+      publishOwnerContinue(envelope);
       if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for(const item of envelope.data.items){
         const li=document.createElement('li'),a=document.createElement('a');
@@ -64,8 +68,8 @@ if(root){
       panel.hidden=false;refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;
       status.textContent=envelope.status==='empty'?(operation==='search'?'No matching Bible references.':operation==='continue'?'No recent synced practice.':'No due review tasks.'):'Synced TMS60 references';
       freshness.textContent=`Cloud snapshot checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Open TMS60 for current local changes.`;
-      timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check TMS60 again.');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
-    }catch{if(epoch===generation)clear('TMS60 could not be checked. Your sharing may have changed; reconnect or open TMS60.');}
+      timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check TMS60 again.');notifyOwnerContinue('tms60','stale');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
+    }catch{if(epoch===generation){clear('TMS60 could not be checked. Your sharing may have changed; reconnect or open TMS60.');notifyOwnerContinue('tms60',navigator.onLine ? 'error' : 'offline');}}
     finally{if(epoch===generation)controller=null;controls();}
   }
   connect.addEventListener('click',()=>void(async()=>{
