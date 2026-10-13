@@ -12,6 +12,7 @@ function priorityRow(entry: HomeTask): string {
         <input type="checkbox" data-task-toggle="${escapeHTML(task.id)}" aria-label="Complete ${escapeHTML(task.title)}"/>
         <button type="button" data-action="edit-task" data-id="${escapeHTML(task.id)}" class="ws-home-task-open"><strong>${escapeHTML(task.title)}</strong><small>${escapeHTML(when)}${task.time ? ' · ' + escapeHTML(task.time) : ''}</small></button>
         ${task.priority !== 'none' ? `<span class="ws-home-priority" data-priority="${task.priority}">${escapeHTML(task.priority)}</span>` : ''}
+        <button type="button" class="ws-handoff-inline" data-action="context-task" data-id="${escapeHTML(task.id)}">Next actions</button>
     </div>`;
 }
 function agendaRow(entry: HomeEvent, today: string, zone: string): string {
@@ -20,7 +21,7 @@ function agendaRow(entry: HomeEvent, today: string, zone: string): string {
     const clock = event.allDay ? 'All day' : timeLabel(event.start, zone);
     const span = startDay !== endDay ? ' · through ' + dayLabel(endDay) : '';
     return `<div class="ws-home-event"><span class="ws-home-event-time">${escapeHTML(day)}<small>${escapeHTML(clock)}</small></span>
-      <button type="button" class="ws-home-event-open" data-action="edit-event" data-id="${escapeHTML(event.id)}"><strong>${escapeHTML(event.title)}</strong><small>Local Hub event${escapeHTML(span)}</small></button></div>`;
+      <button type="button" class="ws-home-event-open" data-action="edit-event" data-id="${escapeHTML(event.id)}"><strong>${escapeHTML(event.title)}</strong><small>Local Hub event${escapeHTML(span)}</small></button><button type="button" class="ws-handoff-inline" data-action="context-event" data-id="${escapeHTML(event.id)}">Next</button></div>`;
 }
 
 /** All links are supplied by the published Hub launcher list, not synthesized deep links. */
@@ -52,6 +53,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
         <span><strong>${summary.completedToday}</strong> completed today</span>
       </div>
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
+      ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>Next Hub task: ${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
       ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished Hub capture · on this device</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
       <div class="ws-mobile-today-actions"><button type="button" data-action="new-task" class="ws-button">+ Task</button><button type="button" data-action="capture-task" class="ws-button">Inbox</button><a href="#ws-daily-focus" class="ws-button">Focus</a><a href="/home/calendar/" class="ws-button">Calendar</a><button type="button" data-action="capture" class="ws-button">Capture</button></div>
     </section>`;
