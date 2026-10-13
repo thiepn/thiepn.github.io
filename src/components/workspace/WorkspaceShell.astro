@@ -21,7 +21,7 @@ const apps=entries.map(({project,hub})=>{
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar']];
 ---
 <BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
-  <div class="ws" data-workspace data-view={view} data-rail="expanded">
+  <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
       <nav class="ws-nav">{navigation.map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
@@ -35,6 +35,18 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='apps' ? <button class="ws-button" type="button" data-action="capture">+ Capture</button> : <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-today hidden></div>
+          {(view==='home' || view==='calendar') && <section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
+            <header class="ws-calendar-export-heading"><div><h2 id="ws-external-calendar-title">External calendar · read only</h2><p>Preview selected calendar exports alongside your independent Hub calendar.</p></div><a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" rel="noopener noreferrer">Open Google Calendar ↗</a></header>
+            <p class="ws-calendar-limits">Live Google/StudyOS access is <strong>not connected</strong>. StudyOS owns its separate Google Calendar authorization. Hub does not reuse your Google sign-in, access token or StudyOS data. Export an <code>.ics</code> file from the chosen calendar and select it below for a temporary read-only view. Imported ILIAS/KLIPS appointments appear only if included in that export.</p>
+            <div class="ws-calendar-import">
+              <label for="ws-calendar-file" class="ws-button">Choose .ics calendar files</label>
+              <input type="file" accept=".ics,text/calendar" multiple id="ws-calendar-file" data-calendar-ics aria-describedby="ws-calendar-import-detail"/>
+              <p id="ws-calendar-import-detail">Up to six exports, 2 MB each. Files are processed in this tab, never uploaded or written into Hub events. Reimport to refresh; leaving this page clears the preview.</p>
+            </div>
+            <p class="ws-calendar-state" role="status" aria-live="polite" data-calendar-status>Not connected · no private calendar has been read</p>
+            <div data-calendar-preview><p>Choose an .ics export to preview upcoming events.</p></div>
+            <noscript><p>Calendar file preview requires JavaScript. Your local Hub calendar and the Google Calendar link remain available.</p></noscript>
+          </section>}
           <div data-workspace-content>{view==='apps' ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
           <noscript><p class="ws-notice">App links work without JavaScript. Tasks, calendar, trackers and layout customization require JavaScript.</p></noscript>
         </section>
@@ -49,4 +61,4 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';</script>

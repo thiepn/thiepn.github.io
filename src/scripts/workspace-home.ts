@@ -254,6 +254,8 @@ async function setup(root: HTMLElement) {
         const action = focus?.dataset.action, id = focus?.dataset.id, toggle = focus?.dataset.taskToggle;
         root.dataset.rail = state.preferences.rail ? 'expanded' : 'collapsed';
         root.dataset.density = state.preferences.density;
+        root.dataset.calendarZone = state.preferences.timezone;
+        root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
@@ -1163,6 +1165,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         const own = ++epoch;
+        root.dataset.calendarPrivate = 'pending';
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
