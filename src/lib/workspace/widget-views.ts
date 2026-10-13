@@ -1,6 +1,6 @@
 import { addDays, dayKey } from './model';
 import { taskCounts } from './task-flow';
-import type { AppShortcut, CalendarEvent, Task, Widget, WorkspaceState } from './types';
+import type { AppShortcut, Task, Widget, WorkspaceState } from './types';
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const action = (name:string,label:string,id='') => `<button type="button" class="ws-widget-action" data-action="${esc(name)}"${id ? ` data-id="${esc(id)}"` : ''}>${esc(label)}</button>`;
@@ -101,11 +101,12 @@ function ownerHandoffs(w:Widget,apps:readonly AppShortcut[]):string {
         {id:'tms60',slug:'tms60',label:'TMS60',route:'/home/connections/',detail:'Translation-specific consent for references'}];
     const shown=choices.filter(c=>ids.includes(c.id));
     return `<div class="ws-widget-utility ws-widget-owner">
-      <p class="ws-widget-ownership">These are app handoffs. Verified private metadata appears only after consent in the original connection/reading view, not in this widget.</p>
+      <p class="ws-widget-ownership">App links stay available. If you approve an owner read in this tab, the existing H11 Continue desk supplies a temporary read-only snapshot below.</p>
       ${shown.map(c=>{const app=apps.find(a=>a.id===c.slug);return app?`<a class="ws-widget-handoff" href="${esc(app.action?.url??app.url)}" rel="noreferrer"><strong>${c.label} ↗</strong><small>${esc(c.detail)}</small></a><a class="ws-widget-connection" href="${c.route}">Review ${c.label} access →</a>`:''}).join('')}
       ${!shown.length?'<p class="ws-widget-ownership">All owner handoffs are hidden in widget settings.</p>':''}
+      <div data-owner-widget-live data-owner-widget-sources="${esc(shown.map(c=>c.id).join(','))}" class="ws-widget-owner-live"><p class="ws-widget-ownership">No authorized owner snapshot loaded in this tab. Grant access through the original connection panel.</p></div>
       <p class="ws-widget-ownership">StudyOS: no approved Hub read contract. Nothing has been synchronized.</p>
-      ${source('Launch links only · original Account/Core and app permissions apply')}</div>`;
+      ${source('Read-only metadata only when owner authorized · expires with owner session')}</div>`;
 }
 /** Pure view over the existing workspace; actions delegate to workspace-home's sole writer. */
 export function utilityWidget(w:Widget,state:WorkspaceState,apps:readonly AppShortcut[],today:string):string|null {
