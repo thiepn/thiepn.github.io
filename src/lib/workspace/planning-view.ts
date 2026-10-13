@@ -1,6 +1,7 @@
 
 import { reviewDay, reviewWeek, type AgendaMode, type DayPlan } from './planning-review';
 import type { CalendarEvent, WorkspaceState, Task } from './types';
+import { renderWeeklyFollowThrough, type WeekTaskFilter } from './weekly-followthrough';
 
 const esc=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const label=(day:string)=>new Date(day+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',month:'short',day:'numeric',weekday:'short'});
@@ -67,7 +68,8 @@ function weekBody(state:WorkspaceState,selected:string,today:string):string {
     </div>`;
 }
 /** Native day/week view over the original records. No writes and no data caching. */
-export function renderPlanningReview(state:WorkspaceState,selected:string,mode:AgendaMode,today:string):string {
+export function renderPlanningReview(state:WorkspaceState,selected:string,mode:AgendaMode,today:string,
+    selectedTaskIds:ReadonlySet<string>=new Set<string>(),taskFilter:WeekTaskFilter='carry'):string {
     const range=mode==='week'?reviewWeek(state,selected):[reviewDay(state,selected)];
     const totals=range.reduce((sum,p)=>({event:sum.event+p.events.length,due:sum.due+p.deadlines.length,overlap:sum.overlap+p.overlaps.length}),{event:0,due:0,overlap:0});
     return `<section class="ws-planning-review" data-planning-review aria-label="Hub local planning review">
@@ -85,7 +87,7 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
         </div>
       </header>
       <p class="ws-plan-provenance">Source: Hub local events and native Hub task due dates only. A deadline is not a booked interval. No Google, StudyOS, ILIAS, owner Notes, or connected calendars have been queried.</p>
-      ${mode==='week'?weekBody(state,selected,today):dayBody(state,selected,today)}
+      ${mode==='week'?weekBody(state,selected,today)+renderWeeklyFollowThrough(state,selected,today,selectedTaskIds,taskFilter):dayBody(state,selected,today)}
       <footer>${navButton('new-event','Add local event')} ${navButton('new-task','Add Hub task')} <a href="/home/tasks/?filter=inbox">Task Inbox</a></footer>
     </section>`;
 }
