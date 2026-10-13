@@ -692,6 +692,82 @@ async function setup(root: HTMLElement) {
             }, 'Task saved on this device');
         });
     }
+
+    function movePreviewRequest(data:FormData,confirmed:boolean):MoveEventRequest {
+        return {date:String(data.get('date')??''),endDate:String(data.get('endDate')??''),
+            startTime:String(data.get('startTime')??''),endTime:String(data.get('endTime')??''),
+            allDay:data.has('allDay'),confirmed};
+    }
+    function paintEventMovePreview(source:CalendarEvent,zone:string) {
+        const el=dialog.querySelector<HTMLElement>('[data-event-move-preview]');
+        if(!el || !state)return;
+        try {
+            const candidate=reviewedEventMove(source,movePreviewRequest(new FormData(form),true),zone);
+            const same=JSON.stringify(candidate)===JSON.stringify(source);
+            const issues=overlapsForEvent(state.events,candidate);
+            const uniqueIds=new Set(issues.map(p=>p.first===source.id?p.second:p.first));
+            const otherTitles=[...uniqueIds].map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
+            const warning=issues.length
+              ? `<p class="ws-plan-preview-warning">${issues.length} possible overlap${issues.length===1?'':'s'} with existing timed Hub events: ${esc(otherTitles.join(', '))}. Review carefully; no event changes have been made.</p>`
+              : `<p>${candidate.allDay?'All-day events have no exact time to compare.':'No timed overlaps were detected among local Hub events.'} This does not check external calendars.</p>`;
+            el.innerHTML=`<strong>Proposed Hub event · ${esc(candidate.title)}</strong>
+              <p>${esc(candidate.date)}${candidate.endDate!==candidate.date?' through '+esc(candidate.endDate):''} · ${candidate.allDay?'All day':esc(candidate.start)+' → '+esc(candidate.end)}</p>
+              ${same?'<p>The proposed date and time are unchanged.</p>':''}${warning}`;
+        } catch(e) {
+            el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Choose a valid date and time.')}</p>`;
+        }
+    }
+    function reviewEventTime(id:string) {
+        if (!state || locked || privacyHeld || state.preferences.hidden) return;
+        const original=state.events.find(e=>e.id===id);
+        if(!original) { toast('This local event no longer exists.');return; }
+        if (dirty || conflict || !storageReady || !store) {
+            toast('Resolve unsaved changes or a storage conflict before reviewing this event. Export a backup if needed.');
+            return;
+        }
+        if(!startHandoff('event',id))return;
+        const zone=state.preferences.timezone;
+        const localClock=(iso:string)=>new Intl.DateTimeFormat('en-GB',
+          {timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
+        const request={
+            date:original.allDay?original.date:dayKey(zone,new Date(original.start)),
+            endDate:original.allDay?original.endDate:dayKey(zone,new Date(original.end)),
+            startTime:original.allDay?'09:00':localClock(original.start),
+            endTime:original.allDay?'10:00':localClock(original.end),
+        };
+        const html=`<div data-review-event-move class="ws-plan-review-form">
+           <p><strong>Hub local calendar · ${esc(original.title)}</strong></p>
+           <p class="ws-muted">This action will change only the existing local event. It does not change task due dates, external calendars or academic records.</p>
+           <div class="ws-form-row">${field('Start date','date',request.date,'date','required')}
+              ${field('End date','endDate',request.endDate,'date','required')}</div>
+           <div class="ws-form-row">${field('Start time','startTime',request.startTime,'time')}
+              ${field('End time','endTime',request.endTime,'time')}</div>
+           <label class="ws-choice"><input type="checkbox" name="allDay" ${original.allDay?'checked':''}/> All-day event</label>
+           <p class="ws-muted">Timezone: ${esc(zone)}. End time must follow start; timed midnight endings are exclusive. All-day end date is inclusive.</p>
+           <div data-event-move-preview class="ws-plan-preview" aria-live="polite"></div>
+           <label class="ws-choice ws-plan-confirm"><input type="checkbox" name="confirm" required/>
+             I reviewed the date, time, other local events and understand that saving changes this one Hub calendar event only.</label>
+           <p class="ws-muted">Possible overlaps are warnings, not automatic rescheduling. No imported or connected calendars are checked.</p>
+         </div>`;
+        const oldState=JSON.stringify(original),formEpoch=epoch;
+        openForm('Review local event time',html,async data=>{
+            if(epoch!==formEpoch||!state||locked||!storageReady||dirty||conflict||privacyHeld||state.preferences.hidden)
+                throw new Error('The workspace changed or is not writable. Export/recover before retrying.');
+            const candidate=reviewedEventMove(original,movePreviewRequest(data,data.has('confirm')),state.preferences.timezone);
+            if(JSON.stringify(candidate)===oldState)throw new Error('No event time or date was changed.');
+            await mutate(s=>{
+                const ix=s.events.findIndex(e=>e.id===id);
+                if(ix<0 || JSON.stringify(s.events[ix])!==oldState)
+                    throw new Error('The original event changed in another action. Reopen the time review.');
+                const next=reviewedEventMove(s.events[ix]!,movePreviewRequest(data,true),s.preferences.timezone);
+                s.events[ix]=next;
+                activity(s,`Reviewed local event time: ${next.title}`,'event');
+            },'Local event time updated');
+            if(dirty||conflict)
+                throw new Error('The event change is in memory but not confirmed saved. Export or retry without submitting twice.');
+        },'Save reviewed event time');
+        paintEventMovePreview(original,zone);
+    }
     function editEvent(id = '') {
         const ev = state!.events.find(e => e.id === id);
         const zone = state!.preferences.timezone;
