@@ -24,6 +24,10 @@ const button = (action: string, label: string, id = '', className = 'ws-button')
 const field = (label: string, name: string, value = '', type = 'text', extra = '') => `<label class="ws-field">${label}<input aria-label="${esc(label)}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/></label>`;
 const select = (label: string, name: string, options: string[][], value: string) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}">${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
 const area = (label: string, name: string, value: string, max = 10000) => `<label class="ws-field">${label}<textarea aria-label="${esc(label)}" name="${name}" maxlength="${max}">${esc(value)}</textarea></label>`;
+const safeNavigationDay = (value:string|null):value is string => {
+    if(!value || !/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+    try {return validDate(value);}catch{return false;}
+};
 const root = document.querySelector<HTMLElement>('[data-workspace]');
 if (root)
     void setup(root);
@@ -32,8 +36,8 @@ async function setup(root: HTMLElement) {
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
-    let initialCalendarDate = calendarParams && validDate(calendarParams.get('date')??'') ? calendarParams.get('date') : null;
-    const initialReturnWeek = calendarParams && validDate(calendarParams.get('return')??'') ? calendarParams.get('return') : null;
+    let initialCalendarDate = calendarParams && safeNavigationDay(calendarParams.get('date')) ? calendarParams.get('date') : null;
+    const initialReturnWeek = calendarParams && safeNavigationDay(calendarParams.get('return')) ? weekDays(calendarParams.get('return')!)[0]! : null;
     let initialCalendarRestorePending=true;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
@@ -494,9 +498,9 @@ async function setup(root: HTMLElement) {
     function updateCalendarNavigation() {
         if(view!=='calendar' || !state) return;
         const query=new URLSearchParams();
-        if(validDate(selected))query.set('date',selected);
+        if(safeNavigationDay(selected))query.set('date',selected);
         if(agendaMode==='week')query.set('mode','week');
-        if(weekReturnDate&&validDate(weekReturnDate)&&weekDays(selected)[0]!==weekReturnDate)
+        if(weekReturnDate&&safeNavigationDay(weekReturnDate)&&weekDays(selected)[0]!==weekReturnDate)
             query.set('return',weekReturnDate);
         const next=location.pathname+(query.size?'?'+query.toString():'');
         if(location.pathname+location.search!==next)
@@ -1594,7 +1598,7 @@ async function setup(root: HTMLElement) {
                 reviewWeeklyCarryover();
                 break;
             case 'week-return':
-                if(weekReturnDate && validDate(weekReturnDate)) {
+                if(weekReturnDate && safeNavigationDay(weekReturnDate)) {
                     selected=weekReturnDate;
                     weekReturnDate=null;
                     month=selected.slice(0,7)+'-01';
