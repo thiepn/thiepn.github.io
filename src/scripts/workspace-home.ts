@@ -6,6 +6,7 @@ import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerT
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
+import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
@@ -39,7 +40,7 @@ async function setup(root: HTMLElement) {
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
-    let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
+    let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
     const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
@@ -764,22 +765,82 @@ async function setup(root: HTMLElement) {
             }, 'Backup imported', true, true);
         }, replace ? 'Replace local data' : 'Add imported data'), 0);
     }
+    const paletteIcon = (item: PaletteResult) => icon(item.icon === 'action' ? 'arrow-up-right' : item.icon);
+    function paletteEntry(item: PaletteResult): string {
+        const content = `${paletteIcon(item)}<span class="ws-palette-label"><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></span><span class="ws-palette-enter" aria-hidden="true">↵</span>`;
+        const main = item.href
+            ? `<a href="${esc(item.href)}" class="ws-search-result ws-palette-primary" data-palette-primary>${content}</a>`
+            : `<button type="button" class="ws-search-result ws-palette-primary" data-palette-primary data-action="palette-execute" data-command="${esc(item.command ?? '')}" data-id="${esc(item.resourceId ?? '')}">${content}</button>`;
+        const extras = item.extra?.length ? `<div class="ws-palette-quick" aria-label="Quick actions for ${esc(item.title)}">${item.extra.map(extra => `<button type="button" class="ws-palette-quick-action" data-action="palette-execute" data-command="${esc(extra.command)}" data-id="${esc(extra.id ?? '')}" aria-label="${esc(extra.label)}: ${esc(item.title)}">${esc(extra.label)}</button>`).join('')}</div>` : '';
+        return `<div class="ws-palette-item">${main}${extras}</div>`;
+    }
     function renderSearch() {
         const rows = $('[data-search-results]');
-        if (!state || (privacyHeld || state.preferences.hidden)) {
-            rows.innerHTML = apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)).map(a => `<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`).join('');
+        const canRead = !!state && !locked && !privacyHeld && !state.preferences.hidden;
+        const result = findPalette({apps, state:canRead ? state : null, query:searchQuery, scope:searchScope, route:location.pathname, today:today()});
+        const scopes = $('[data-palette-scopes]');
+        scopes.innerHTML = PALETTE_SCOPES.map(scope => `<button type="button" data-action="palette-scope" data-id="${scope}" class="ws-palette-chip" aria-pressed="${scope === result.actualScope}">${scope === 'all' ? 'All' : scope === 'actions' ? 'Commands' : scope === 'calendar' ? 'Calendar' : scope[0]!.toUpperCase()+scope.slice(1)}</button>`).join('');
+        const summary = $('[data-palette-summary]');
+        summary.textContent = result.restricted
+            ? 'Personal records are hidden or unavailable. Reviewed app links and public navigation remain available.'
+            : !navigator.onLine ? 'Offline · local records and saved app links only; connected app contents are not searched.'
+            : 'Hub local + reviewed app catalogue · external app records are never queried.';
+        const groupOrder = ['actions','tasks','calendar','notes','apps'] as const;
+        rows.innerHTML = groupOrder.map(group => {
+            const items = result.results.filter(item=>item.group===group);
+            return items.length ? `<section class="ws-palette-group" aria-label="${GROUP_NAMES[group]}"><header><h3>${GROUP_NAMES[group]}</h3><span>${items.length}</span></header><div>${items.map(paletteEntry).join('')}</div></section>` : '';
+        }).join('') || `<div class="ws-palette-empty"><strong>No matching ${esc(result.actualScope==='all'?'results':result.actualScope)}.</strong><p>Search Hub apps, task titles, local notes, or calendar events. Try <code>&gt;</code> for commands, <code>@</code> for apps, or <code>#</code> for tasks.</p>${result.restricted?'<p>Private results require an available, unmasked local workspace.</p>':''}</div>`;
+        if (result.truncated) rows.insertAdjacentHTML('beforeend','<p class="ws-palette-truncated">Showing the most relevant matches. Narrow your search to see more.</p>');
+        const count = result.results.length;
+        $('#workspace-search').setAttribute('aria-label', `Search Hub · ${count} result${count===1?'':'s'}`);
+    }
+    function openSearch(trigger?: HTMLElement) {
+        if (dialog.open || account.open) return;
+        searchReturnFocus = trigger ?? (root.contains(document.activeElement) ? document.activeElement as HTMLElement : $('[data-action=search]'));
+        searchQuery = '';
+        searchScope = 'all';
+        $<HTMLInputElement>('#workspace-search').value = '';
+        renderSearch();
+        if (!searchDialog.open) searchDialog.showModal();
+        $<HTMLInputElement>('#workspace-search').focus();
+    }
+    function executePalette(command: string, resourceId: string) {
+        if (!state || locked || privacyHeld || state.preferences.hidden) {
+            toast('Personal records are currently unavailable. Unlock the workspace before using local actions.');
             return;
         }
-        const found: string[] = [];
-        for (const a of apps.filter(a => a.title.toLocaleLowerCase().includes(searchQuery)))
-            found.push(`<a class="ws-search-result" href="${esc(a.url)}">${icon(a.icon)}<div>${esc(a.title)}<small>App</small></div></a>`);
-        for (const t of state.tasks.filter(t => (t.title + ' ' + t.notes).toLocaleLowerCase().includes(searchQuery)))
-            found.push(button('search-task', `${icon('check-square')}<div>${esc(t.title)}<small>Local task</small></div>`, t.id, 'ws-search-result'));
-        for (const n of state.notes.filter(n => (n.title + ' ' + n.body).toLocaleLowerCase().includes(searchQuery)))
-            found.push(button('search-note', `${icon('notebook')}<div>${esc(n.title)}<small>Local note</small></div>`, n.id, 'ws-search-result'));
-        rows.innerHTML = found.slice(0, 40).join('') || empty('Nothing found', 'Try an app name, task or phrase from a local note.');
+        if (!['capture','capture-task','new-task','new-event','edit-task','edit-note','edit-event',
+            'task-plan-today','task-plan-tomorrow','task-plan-week','task-plan-high'].includes(command)) return;
+        if (command.startsWith('edit-')) {
+            const exists = command==='edit-task'?state.tasks.some(t=>t.id===resourceId):
+                command==='edit-note'?state.notes.some(n=>n.id===resourceId):
+                state.events.some(e=>e.id===resourceId);
+            if (!exists) { toast('This local record is no longer available.'); renderSearch(); return; }
+        }
+        if (command.startsWith('task-plan-') && !state.tasks.some(t=>t.id===resourceId&&!t.completedAt)) {
+            toast('This task was completed or is no longer available.');
+            renderSearch();
+            return;
+        }
+        searchDialog.close();
+        if (command==='capture') openCapture();
+        else if (command==='capture-task') openCapture('task');
+        else if (command==='new-task') editTask();
+        else if (command==='new-event') editEvent();
+        else if (command==='edit-task') editTask(resourceId);
+        else if (command==='edit-note') editNote(resourceId);
+        else if (command==='edit-event') editEvent(resourceId);
+        else if (command.startsWith('task-plan-')) {
+            const plan = command.slice('task-plan-'.length) as TaskPlanAction;
+            void mutate(s => {
+                const task = s.tasks.find(t=>t.id===resourceId);
+                if (!task) return;
+                applyTaskPlan(task,plan,dayKey(s.preferences.timezone));
+                activity(s,`Planned task via palette: ${task.title}`,'task');
+            },'Task plan updated');
+        }
     }
-    function openSearch(trigger?: HTMLElement) { searchReturnFocus = trigger ?? (root.contains(document.activeElement) ? document.activeElement as HTMLElement : $('[data-action=search]')); const search = $<HTMLDialogElement>('[data-search-dialog]'); searchQuery = ''; $('#workspace-search').textContent = ''; $<HTMLInputElement>('#workspace-search').value = ''; renderSearch(); search.showModal(); $('#workspace-search').focus(); }
+
     root.addEventListener('click', event => {
         const target = (event.target as HTMLElement).closest<HTMLElement>('[data-action],[data-workspace-id]');
         if (!target)
@@ -804,6 +865,18 @@ async function setup(root: HTMLElement) {
         }
         if (action === 'search') {
             openSearch(target);
+            return;
+        }
+        if (action === 'palette-scope') {
+            if ((PALETTE_SCOPES as readonly string[]).includes(id)) {
+                searchScope = id as PaletteScope;
+                renderSearch();
+                $<HTMLInputElement>('#workspace-search').focus();
+            }
+            return;
+        }
+        if (action === 'palette-execute') {
+            executePalette(target.dataset.command ?? '',id);
             return;
         }
         if (action === 'export') {
@@ -1197,7 +1270,7 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
         if (el.id === 'workspace-search') {
-            searchQuery = el.value.toLocaleLowerCase().trim();
+            searchQuery = el.value.slice(0,100);
             renderSearch();
         }
         if (el.hasAttribute('data-capture-draft') && state) {
