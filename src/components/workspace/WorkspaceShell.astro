@@ -65,7 +65,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <dialog class="ws-dialog ws-search-dialog ws-action-palette" data-search-dialog aria-labelledby="ws-search-title">
       <header><div><h2 id="ws-search-title">Search & actions</h2><p class="ws-palette-caption">Apps and local Hub data only · other app records require owner consent</p></div><button type="button" class="ws-button" data-action="close-search" aria-label="Close search and actions">Close</button></header>
       <label class="ws-sr" for="workspace-search">Search apps, local tasks, notes and calendar, or enter an action</label>
-      <div class="ws-palette-input-row"><span set:html={icon('magnifying-glass')} /><input id="workspace-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="ws-palette-results" placeholder="Search or type > actions · @ apps · # tasks" autocomplete="off" enterkeyhint="search"/></div>
+      <div class="ws-palette-input-row"><span set:html={icon('magnifying-glass')} /><input id="workspace-search" type="search" role="searchbox" aria-controls="ws-palette-results" placeholder="Search or type > actions · @ apps · # tasks" autocomplete="off" enterkeyhint="search"/></div>
       <nav class="ws-palette-scopes" data-palette-scopes aria-label="Search categories"></nav>
       <div class="ws-palette-summary" data-palette-summary role="status" aria-live="polite"></div>
       <div data-search-results id="ws-palette-results" class="ws-palette-results" role="group" aria-label="Search matches and commands"></div>
