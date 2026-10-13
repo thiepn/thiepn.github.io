@@ -9,7 +9,7 @@ if (root && workspace) initialize(root, workspace);
 
 function initialize(root: HTMLElement, workspace: HTMLElement) {
     let sources: CalendarSnapshotSource[] = [];
-    let loading = false, message = '', error = '';
+    let loading = false, message = '', error = '', hadExpired = false;
     let generation = 0;
     const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]!);
     const displayZone = () => workspace.dataset.calendarZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -33,6 +33,7 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
         loading = false;
         message = '';
         error = '';
+        hadExpired = false;
         const file = root.querySelector<HTMLInputElement>('[data-calendar-ics]');
         if (file) file.value = '';
         render();
@@ -46,12 +47,15 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
         }
         const now = Date.now();
         const expired = sources.filter(s => now - s.importedAt >= SNAPSHOT_EXPIRE_MS);
-        if (expired.length) sources = sources.filter(s => now - s.importedAt < SNAPSHOT_EXPIRE_MS);
+        if (expired.length) {
+            hadExpired = true;
+            sources = sources.filter(s => now - s.importedAt < SNAPSHOT_EXPIRE_MS);
+        }
         const included = sources.filter(s => s.included);
         const stale = included.some(s => now - s.importedAt >= SNAPSHOT_STALE_MS);
         const events = selectedCalendarEvents(sources, displayZone(), now);
         const status = loading ? 'loading' : error ? 'error' :
-            expired.length && !sources.length ? 'expired' :
+            hadExpired && !sources.length ? 'expired' :
             !sources.length ? 'disconnected' : !included.length ? 'empty' :
             stale ? 'stale' : events.length ? 'ready' : 'empty';
         root.dataset.calendarStatus = status;
@@ -117,6 +121,7 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             // Reimports with the same filename replace its previous snapshot, not accumulate copies.
             const replaced = new Set(results.map(s => s.filename));
             sources = [...sources.filter(s => !replaced.has(s.filename)), ...results].slice(0,SNAPSHOT_MAX_SOURCES);
+            if (results.length) hadExpired = false;
             loading = false;
             error = failures.join(' · ');
             message = results.length ? `Imported ${results.length} calendar export(s) into temporary browser memory. No upload, account sync or Google API call occurred.` : '';
