@@ -85,6 +85,7 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
             ${navButton('planning-today','Today')}
             ${navButton('planning-tomorrow','Tomorrow')}
             ${navButton('planning-next',mode==='week'?'Next week':'Next day')}
+            ${mode==='week'?navButton('week-scroll-review','Review unfinished tasks'):''}
             ${returnWeekDate && weekDays(selected)[0]!==returnWeekDate ? navButton('week-return','Return to reviewed week') : ''}
           </div>
         </div>
