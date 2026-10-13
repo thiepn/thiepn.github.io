@@ -12,6 +12,8 @@ import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
+import { reviewDay, reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
+import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -41,6 +43,7 @@ async function setup(root: HTMLElement) {
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
+    let agendaMode: AgendaMode = 'day'; // View-only: never another calendar/scheduler store.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -371,7 +374,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const tasks = state.tasks.filter(t => t.due === selected || (!t.due && selected === today())).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || a.time.localeCompare(b.time));
-        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)}</p></section>`;
+        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${renderPlannerReviewSummary(state,selected)}${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)} · task deadlines do not book calendar time</p></section>`;
         el.querySelectorAll<HTMLElement>('[data-action=month-prev]').forEach(b => b.setAttribute('aria-label', 'Previous month'));
         el.querySelectorAll<HTMLElement>('[data-action=month-next]').forEach(b => b.setAttribute('aria-label', 'Next month'));
         el.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=new-event]').forEach(b => b.setAttribute('aria-label', 'Add event'));
@@ -447,7 +450,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
         return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
