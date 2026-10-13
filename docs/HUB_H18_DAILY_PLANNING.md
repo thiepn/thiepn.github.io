@@ -28,7 +28,7 @@ H18 extends the original Account/Core-owned Hub `WorkspaceState` and `WorkspaceS
 - Compact touch-sized navigation, accessible Day/Week selected states and stacked planning/event controls.
 - On the calendar page (outside form controls and dialogs): **Alt+Shift+J / Alt+Shift+K** moves back/forward one day or week, while **Alt+Shift+D / Alt+Shift+W** switches Day/Week mode. Original H14 Ctrl/Cmd+K, H15 Alt+Shift+F, H16 Alt+Shift+R and normal calendar/month navigation remain unchanged.
 
-## Exact changed files (6)
+## Exact changed files (7)
 
 1. `src/lib/workspace/planning-review.ts` — original local event/task day/week projections, day-scoped timed overlaps, and validated existing-event change preparation.
 2. `src/lib/workspace/planning-view.ts` — full desktop/mobile Day/Week UI, event/time warnings, task due groupings, week tiles, source labels, actions, sidebar summary.
