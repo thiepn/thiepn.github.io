@@ -797,6 +797,7 @@ async function setup(root: HTMLElement) {
                     activity(s, `Planned task: ${task.title}`, 'task');
                 }, 'Task plan updated');
                 break;
+            }
             case 'edit-task':
                 editTask(id);
                 break;
@@ -1097,8 +1098,7 @@ async function setup(root: HTMLElement) {
             }, el.checked ? 'Task completed' : 'Task reopened');
         }
         if (el.dataset.taskFilter !== undefined) {
-            taskFilter = el.value;
-            render();
+            if ((TASK_FILTERS as readonly string[]).includes(el.value)) { taskFilter = el.value as TaskFilter; render(); }
         }
         if (el.dataset.preference === 'density')
             void mutate(s => s.preferences.density = el.value as 'compact' | 'comfortable', '', false);
@@ -1155,6 +1155,11 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('keydown', event => {
         const target = event.target as HTMLElement;
+        if (target.matches('[data-capture-draft]') && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            target.closest<HTMLFormElement>('form')?.requestSubmit();
+            return;
+        }
         if (target.matches('[data-drag],[data-resize]') && editing && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
             event.preventDefault();
             const id = target.dataset.drag ?? target.dataset.resize!;
@@ -1201,6 +1206,11 @@ async function setup(root: HTMLElement) {
         }
     });
     window.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space' && !event.repeat && !dialog.open && !searchDialog.open && !account.open && state && !locked && !privacyHeld && !state.preferences.hidden) {
+            event.preventDefault();
+            openCapture();
+            return;
+        }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !(event.target as HTMLElement).matches('textarea,[contenteditable=true]')) {
             event.preventDefault();
             if (!$<HTMLDialogElement>('[data-search-dialog]').open)
