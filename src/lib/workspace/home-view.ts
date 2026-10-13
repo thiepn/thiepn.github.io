@@ -24,14 +24,14 @@ function agendaRow(entry: HomeEvent, today: string, zone: string): string {
 }
 
 /** All links are supplied by the published Hub launcher list, not synthesized deep links. */
-export function renderOwnerHandoffs(apps: readonly AppShortcut[]): string {
+export function renderOwnerHandoffs(apps: readonly AppShortcut[], limit = 4): string {
     const choices: Array<{ id: string; label: string; description: string; useAction: boolean }> = [
         { id: 'thiepn-library', label: 'Continue in Library', description: 'Open reading in Library', useAction: true },
         { id: 'notes', label: 'Write in Notes', description: 'Create in the Notes app', useAction: true },
         { id: 'tms60', label: 'Study verses', description: 'Open TMS60', useAction: true },
         { id: 'le-carnet-francais', label: 'Open French course', description: 'No lesson progress read', useAction: false },
     ];
-    const links = choices.map(choice => {
+    const links = choices.slice(0, Math.max(0, Math.min(4, limit))).map(choice => {
         const app = apps.find(item => item.id === choice.id);
         if (!app) return '';
         const url = choice.useAction ? (app.action?.url ?? app.url) : app.url;
