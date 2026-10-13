@@ -1,3 +1,4 @@
+import { setupHubCatalogue } from './hub-catalogue';
 import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity } from './portal-auth';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -17,7 +18,7 @@ const root = document.querySelector<HTMLElement>('[data-workspace]');
 if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
-    const view = root.dataset.view ?? 'home';
+    let view = root.dataset.view ?? 'home';
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -254,7 +255,7 @@ async function setup(root: HTMLElement) {
         if (view !== 'apps') $('[data-workspace-date]').textContent = dateLabel(today(), true);
         $('#ws-title').textContent = view === 'apps' ? 'Apps' : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '') + button('capture', '+ Capture');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (view !== 'apps') {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
@@ -291,8 +292,95 @@ async function setup(root: HTMLElement) {
     }
     async function switchWorkspace(id: string) {
         await mutate(s => s.active = id, '', false);
-        if (view === 'apps' && storageReady && !dirty) location.assign('/');
+        if (view === 'apps') await navigateWorkspace(new URL('/', location.href));
     }
+    const more = $<HTMLDialogElement>('[data-more-dialog]');
+    const moreTrigger = $('[data-more-trigger]');
+    moreTrigger.addEventListener('click', () => more.showModal());
+    $('[data-more-close]').addEventListener('click', () => more.close());
+    let moreNavigation = false;
+    more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
+    const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
+    const documents = new Map<string, Document>();
+    let navigationTicket = 0;
+    let committedUrl = location.pathname + location.search;
+    function updateNavigation() {
+        root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link').forEach(link => {
+            const active = routes[new URL(link.href).pathname] === view;
+            link.classList.toggle('active', active);
+            if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+        });
+        if (['calendar','trackers','settings'].includes(view)) moreTrigger.setAttribute('aria-current','page');
+        else moreTrigger.removeAttribute('aria-current');
+    }
+    async function navigateWorkspace(url: URL, pop = false) {
+        const next = routes[url.pathname];
+        if (!next) return;
+        const ticket = ++navigationTicket;
+        const own = epoch;
+        const previous = pop ? committedUrl : location.pathname + location.search;
+        try {
+            let doc = documents.get(url.pathname);
+            if (!doc) {
+                const response = await fetch(url.pathname, { headers: { 'X-Hub-Navigation': '1' } });
+                if (!response.ok || new URL(response.url).origin !== location.origin) throw new Error('Navigation unavailable');
+                doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+                if (doc.querySelector<HTMLElement>('[data-workspace]')?.dataset.view !== next) throw new Error('Invalid workspace route');
+                documents.set(url.pathname, doc);
+            }
+            if (ticket !== navigationTicket || own !== epoch) return;
+            clearTimeout(captureTimer);
+            await queue;
+            if (dirty && storageReady && !locked) await persist();
+            if (ticket !== navigationTicket || own !== epoch) return;
+            if (editing && next !== 'home') {
+                recoveryDraft = clone(editing);
+                try { await store?.draft(editing); } catch { /* Keep the draft in memory if storage is unavailable. */ }
+                if (ticket !== navigationTicket || own !== epoch) return;
+                editing = null; layoutUndo = []; layoutRedo = [];
+            }
+            if (!pop) history.pushState(null, '', url.pathname + url.search);
+            view = next; root.dataset.view = next;
+            if (more.open) { moreNavigation = true; more.close(); }
+            dialog.close(); searchDialog.close(); account.close();
+            document.title = doc.title;
+            for (const selector of ['meta[name="description"]','meta[name="robots"]','link[rel="canonical"]','meta[property="og:title"]','meta[property="og:url"]','meta[property="og:description"]','script[type="application/ld+json"]']) {
+                document.head.querySelector(selector)?.remove();
+                const incoming = doc.head.querySelector(selector);
+                if (incoming) document.head.append(incoming.cloneNode(true));
+            }
+            $('[data-workspace-content]').innerHTML = next === 'apps' ? doc.querySelector('[data-workspace-content]')!.innerHTML : '';
+            $('[data-workspace-date]').textContent = next === 'apps' ? `${apps.length} apps for work, learning and everything in between` : '';
+            if (state) render();
+            else { $('#ws-title').textContent = next === 'apps' ? 'Apps' : 'Personal workspace'; $('[data-toolbar]').replaceChildren(); if (next !== 'apps') $('[data-workspace-content]').textContent = 'Your personal workspace is unavailable. Use recovery or retry opening local storage.'; }
+            committedUrl = location.pathname + location.search;
+            updateNavigation();
+            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) $('[data-workspace-content]').animate([{ transform: 'translateY(5px)' }, { transform: 'translateY(0)' }], { duration: 140, easing: 'ease-out' });
+            root.querySelectorAll<HTMLElement>('[data-hub-catalogue]').forEach(setupHubCatalogue);
+            $('#ws-title').tabIndex = -1; $('#ws-title').focus({ preventScroll: true });
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        } catch {
+            if (ticket !== navigationTicket || own !== epoch) return;
+            if (pop) history.replaceState(null, '', previous);
+            toast('Could not open that section. Your current view and drafts are preserved. Try again when connected.');
+        }
+    }
+    // The trusted reading bridge stays a full-document /home/ host.
+    if (!root.querySelector('[data-reading-shell]')) {
+        root.addEventListener('click', event => {
+            const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]');
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+            const url = new URL(link.href);
+            if (url.origin !== location.origin || !routes[url.pathname] || url.hash) return;
+            if (url.search && !(url.pathname === '/apps/' && url.searchParams.size === 1 && (url.searchParams.get('category') === 'all' || HUB_CATEGORIES.some(category => category === url.searchParams.get('category'))))) return;
+            event.preventDefault();
+            void navigateWorkspace(url);
+        });
+        window.addEventListener('popstate', () => {
+            if (routes[location.pathname]) void navigateWorkspace(new URL(location.href), true);
+        });
+    }
+    updateNavigation();
     function editTask(id = '') {
         const t = state!.tasks.find(x => x.id === id);
         openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? selected, 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
@@ -964,6 +1052,7 @@ async function setup(root: HTMLElement) {
             const theme = el.value;
             document.documentElement.dataset.themePreference = theme;
             document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : theme;
+            document.documentElement.style.colorScheme = document.documentElement.dataset.theme!;
             try {
                 localStorage.setItem('thiepn:index-theme', theme);
             }

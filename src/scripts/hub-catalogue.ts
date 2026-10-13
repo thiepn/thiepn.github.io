@@ -1,4 +1,7 @@
-function setupHubCatalogue(root: HTMLElement) {
+const catalogues = new WeakMap<HTMLElement, () => void>();
+export function setupHubCatalogue(root: HTMLElement) {
+  const existing = catalogues.get(root);
+  if (existing) { existing(); return; }
   const categoryButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-hub-category]'));
   const items = Array.from(root.querySelectorAll<HTMLElement>('[data-hub-item]'));
 
@@ -44,8 +47,10 @@ function setupHubCatalogue(root: HTMLElement) {
     });
   }
 
-  window.addEventListener('popstate', syncFromUrl);
+  catalogues.set(root, syncFromUrl);
   syncFromUrl();
 }
 
 document.querySelectorAll<HTMLElement>('[data-hub-catalogue]').forEach(setupHubCatalogue);
+
+window.addEventListener('popstate', () => document.querySelectorAll<HTMLElement>('[data-hub-catalogue]').forEach(setupHubCatalogue));
