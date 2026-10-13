@@ -226,7 +226,25 @@ async function setup(root: HTMLElement) {
         if (custom) custom.hidden = !task || form.querySelector<HTMLSelectElement>('[data-capture-due]')?.value !== 'date';
     }
     function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
-    function taskRows(tasks: Task[]) { return tasks.map(t => `<div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}"><input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/><button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : ''}${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}${t.time ? `<time>${esc(t.time)}</time>` : ''}${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}</div>`).join(''); }
+    function taskRows(tasks: Task[]) {
+        return tasks.map(t => {
+            const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Plan task ${esc(t.title)}">
+                ${!t.due ? button('task-plan-today', 'Today', t.id, 'ws-button') : button('task-plan-inbox', 'Inbox', t.id, 'ws-button')}
+                ${button('task-plan-tomorrow', 'Tomorrow', t.id, 'ws-button')}
+                ${button('task-plan-week', 'In 7 days', t.id, 'ws-button')}
+                ${t.priority !== 'high' ? button('task-plan-high', 'High priority', t.id, 'ws-button') : button('task-plan-normal', 'Normal priority', t.id, 'ws-button')}
+                ${button('edit-task', 'Edit details', t.id, 'ws-text-button')}
+              </div>` : '';
+            return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
+              <input type="checkbox" data-task-toggle="${esc(t.id)}" aria-label="Complete ${esc(t.title)}" ${t.completedAt ? 'checked' : ''}/>
+              <button class="ws-task-title" type="button" data-action="edit-task" data-id="${esc(t.id)}">${esc(t.title)}</button>
+              ${t.due && view === 'tasks' ? `<small class="ws-muted">${esc(t.due)}</small>` : view === 'tasks' && !t.completedAt ? '<small class="ws-muted">Inbox</small>' : ''}
+              ${t.priority !== 'none' ? `<small class="ws-muted">${esc(t.priority)}</small>` : ''}
+              ${t.time ? `<time>${esc(t.time)}</time>` : ''}
+              ${button('delete-task', icon('dots-three'), t.id, 'ws-icon-button')}
+            </div>${actions}</div>`;
+        }).join('');
+    }
     function calendarHTML() {
         const first = month;
         const offset = (new Date(first + 'T12:00:00Z').getUTCDay() + 6) % 7;
@@ -298,8 +316,23 @@ async function setup(root: HTMLElement) {
         if (view === 'settings')
             return settingsHTML();
         if (view === 'tasks') {
-            const tasks = state!.tasks.filter(t => taskFilter === 'all' || taskFilter === 'completed' ? taskFilter === 'all' || !!t.completedAt : !t.completedAt && (taskFilter === 'upcoming' ? t.due > today() : t.due <= today())).sort((a, b) => a.due.localeCompare(b.due) || a.time.localeCompare(b.time));
-            return `<div class="ws-content-toolbar"><select aria-label="Task filter" data-task-filter>${['today', 'upcoming', 'all', 'completed'].map(v => `<option value="${v}" ${taskFilter === v ? 'selected' : ''}>${v === 'today' ? 'Today and overdue' : v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select>${button('new-task', '+ Add task')}</div><section class="ws-surface">${tasks.length ? taskRows(tasks) : empty('Your next step starts here', 'Create a task, add a due date and check it off when you finish.', 'new-task', 'Add a task')}</section>`;
+            const counts = taskCounts(state!.tasks, today());
+            const tasks = state!.tasks.filter(t => taskMatchesFilter(t, taskFilter, today()))
+                .sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt)
+                  || (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')
+                  || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
+                  || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
+            return `<section class="ws-task-center" aria-labelledby="ws-task-center-title">
+              <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div>${button('capture', '+ Capture')}</header>
+              <div class="ws-task-filter-list" role="group" aria-label="Task views">
+                ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
+              </div>
+              <p class="ws-task-explainer">${taskFilter==='inbox'?'Unscheduled tasks waiting for a decision. Use the one-tap planning actions below.':taskFilter==='today'?'Due today and overdue. Unscheduled tasks are kept in Inbox.':taskFilter==='upcoming'?'Scheduled after today. Move dates or update details without copying tasks.':taskFilter==='completed'?'Completed task history stays in this local workspace.':'Every Hub task in this workspace.'}</p>
+            </section>
+            <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
+              <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture', '+ Capture to inbox')}</div>
+              ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', taskFilter==='inbox'?'Capture a task without a due date; plan it here when ready.':'Choose another filter or add a task.', 'capture', 'Quick capture')}
+            </section>`;
         }
         if (view === 'calendar')
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
@@ -742,6 +775,28 @@ async function setup(root: HTMLElement) {
             case 'new-task':
                 editTask();
                 break;
+            case 'task-show-inbox':
+                taskFilter = 'inbox';
+                render();
+                break;
+            case 'task-filter-set':
+                if ((TASK_FILTERS as readonly string[]).includes(id)) { taskFilter = id as TaskFilter; render(); }
+                break;
+            case 'task-plan-today':
+            case 'task-plan-tomorrow':
+            case 'task-plan-week':
+            case 'task-plan-inbox':
+            case 'task-plan-high':
+            case 'task-plan-normal': {
+                if (!state.tasks.some(t => t.id === id && !t.completedAt)) break;
+                const plan = action.slice('task-plan-'.length) as TaskPlanAction;
+                void mutate(s => {
+                    const task = s.tasks.find(t => t.id === id);
+                    if (!task) return;
+                    applyTaskPlan(task, plan, dayKey(s.preferences.timezone));
+                    activity(s, `Planned task: ${task.title}`, 'task');
+                }, 'Task plan updated');
+                break;
             case 'edit-task':
                 editTask(id);
                 break;
@@ -766,6 +821,13 @@ async function setup(root: HTMLElement) {
             case 'capture':
                 openCapture();
                 break;
+            case 'copy-capture': {
+                const draft = target.closest('form')?.querySelector<HTMLTextAreaElement>('[data-capture-draft]')?.value ?? state.captureDraft;
+                if (!draft) { toast('Enter a draft before copying.'); break; }
+                void navigator.clipboard.writeText(draft).then(() => toast('Draft copied. Paste it in the owner app to save there.'))
+                  .catch(() => toast('Clipboard unavailable. Select and copy your draft manually.'));
+                break;
+            }
             case 'edit-note':
                 editNote(id);
                 break;
