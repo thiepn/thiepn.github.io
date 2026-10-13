@@ -12,6 +12,8 @@ import { providerAction } from '../lib/providers/registry';
 import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
+import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
+import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -27,6 +29,7 @@ if (root)
 async function setup(root: HTMLElement) {
     const view = root.dataset.view ?? 'home';
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
+    const agendaModeFromUrl = view === 'calendar' ? new URLSearchParams(location.search).get('mode') : null;
     const openReading = location.hash === '#reading';
     if (view === 'apps') {
         // Catalogue filters are public. Keep them without retaining private search terms.
@@ -41,6 +44,7 @@ async function setup(root: HTMLElement) {
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
+    let agendaMode: AgendaMode = agendaModeFromUrl==='week'?'week':'day'; // View-only: never another calendar/scheduler store.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -371,7 +375,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const tasks = state.tasks.filter(t => t.due === selected || (!t.due && selected === today())).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || a.time.localeCompare(b.time));
-        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)}</p></section>`;
+        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${renderPlannerReviewSummary(state,selected)}${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)} · task deadlines do not book calendar time</p></section>`;
         el.querySelectorAll<HTMLElement>('[data-action=month-prev]').forEach(b => b.setAttribute('aria-label', 'Previous month'));
         el.querySelectorAll<HTMLElement>('[data-action=month-next]').forEach(b => b.setAttribute('aria-label', 'Next month'));
         el.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=new-event]').forEach(b => b.setAttribute('aria-label', 'Add event'));
@@ -447,7 +451,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
         return view === 'home' ? `<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>` + renderFocusPanel(state!, today(), focus) + renderHomeOverview(state!, apps, today()) + renderGrid() : renderGrid();
@@ -629,7 +633,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const zone=state!.preferences.timezone;
-        const html=`<div class="ws-context-summary">
+        const html=`<div class="ws-context-summary" data-task-calendar-review>
           <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
           <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
           <div class="ws-form-row">
@@ -639,6 +643,7 @@ async function setup(root: HTMLElement) {
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
           <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
           <p class="ws-muted">Duplicate identical local events are blocked. Existing H10 read-only calendar imports and StudyOS/Google calendars are not written.</p>
@@ -668,6 +673,30 @@ async function setup(root: HTMLElement) {
                 throw new Error('The calendar event was not created. Review the message and try again.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
+        paintTaskCalendarPreview(task,zone);
+    }
+    function paintTaskCalendarPreview(task:Task,zone:string) {
+        const el=dialog.querySelector<HTMLElement>('[data-task-calendar-preview]');
+        if(!el || !state)return;
+        try {
+            const data=new FormData(form);
+            const proposal={taskId:task.id,title:task.title,date:String(data.get('date')??''),
+                time:String(data.get('start')??''),duration:Number(data.get('duration')),
+                allDay:data.has('allDay'),confirmed:true};
+            const preview=prepareTaskCalendarEvent(
+                state.tasks.find(t=>t.id===task.id)??task,proposal,zone).event;
+            const duplicate=identicalLocalEvent(state.events,preview);
+            const overlaps=overlapsForEvent(state.events,preview);
+            const names=[...new Set(overlaps.map(p=>p.first===preview.id?p.second:p.first))]
+                .map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
+            el.innerHTML=`<strong>Proposed local calendar block · ${esc(preview.title)}</strong>
+                <p>${esc(preview.date)} · ${preview.allDay?'All day':esc(preview.start)+' → '+esc(preview.end)} (${esc(zone)})</p>
+                ${duplicate?'<p class="ws-plan-preview-warning">Identical event already exists. This proposal cannot be added again.</p>':''}
+                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}. No external calendars were checked.</p>`:
+                    '<p>No timed overlaps detected in local Hub events. All-day commitments and external sources are not checked for time conflicts.</p>'}`;
+        } catch(e) {
+            el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
+        }
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
@@ -688,6 +717,82 @@ async function setup(root: HTMLElement) {
                 activity(s, `${t ? 'Updated' : 'Added'} task: ${task.title}`, 'task');
             }, 'Task saved on this device');
         });
+    }
+
+    function movePreviewRequest(data:FormData,confirmed:boolean):MoveEventRequest {
+        return {date:String(data.get('date')??''),endDate:String(data.get('endDate')??''),
+            startTime:String(data.get('startTime')??''),endTime:String(data.get('endTime')??''),
+            allDay:data.has('allDay'),confirmed};
+    }
+    function paintEventMovePreview(source:CalendarEvent,zone:string) {
+        const el=dialog.querySelector<HTMLElement>('[data-event-move-preview]');
+        if(!el || !state)return;
+        try {
+            const candidate=reviewedEventMove(source,movePreviewRequest(new FormData(form),true),zone);
+            const same=JSON.stringify(candidate)===JSON.stringify(source);
+            const issues=overlapsForEvent(state.events,candidate);
+            const uniqueIds=new Set(issues.map(p=>p.first===source.id?p.second:p.first));
+            const otherTitles=[...uniqueIds].map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
+            const warning=issues.length
+              ? `<p class="ws-plan-preview-warning">${issues.length} possible overlap${issues.length===1?'':'s'} with existing timed Hub events: ${esc(otherTitles.join(', '))}. Review carefully; no event changes have been made.</p>`
+              : `<p>${candidate.allDay?'All-day events have no exact time to compare.':'No timed overlaps were detected among local Hub events.'} This does not check external calendars.</p>`;
+            el.innerHTML=`<strong>Proposed Hub event · ${esc(candidate.title)}</strong>
+              <p>${esc(candidate.date)}${candidate.endDate!==candidate.date?' through '+esc(candidate.endDate):''} · ${candidate.allDay?'All day':esc(candidate.start)+' → '+esc(candidate.end)}</p>
+              ${same?'<p>The proposed date and time are unchanged.</p>':''}${warning}`;
+        } catch(e) {
+            el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Choose a valid date and time.')}</p>`;
+        }
+    }
+    function reviewEventTime(id:string) {
+        if (!state || locked || privacyHeld || state.preferences.hidden) return;
+        const original=state.events.find(e=>e.id===id);
+        if(!original) { toast('This local event no longer exists.');return; }
+        if (dirty || conflict || !storageReady || !store) {
+            toast('Resolve unsaved changes or a storage conflict before reviewing this event. Export a backup if needed.');
+            return;
+        }
+        if(!startHandoff('event',id))return;
+        const zone=state.preferences.timezone;
+        const localClock=(iso:string)=>new Intl.DateTimeFormat('en-GB',
+          {timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
+        const request={
+            date:original.allDay?original.date:dayKey(zone,new Date(original.start)),
+            endDate:original.allDay?original.endDate:dayKey(zone,new Date(original.end)),
+            startTime:original.allDay?'09:00':localClock(original.start),
+            endTime:original.allDay?'10:00':localClock(original.end),
+        };
+        const html=`<div data-review-event-move class="ws-plan-review-form">
+           <p><strong>Hub local calendar · ${esc(original.title)}</strong></p>
+           <p class="ws-muted">This action will change only the existing local event. It does not change task due dates, external calendars or academic records.</p>
+           <div class="ws-form-row">${field('Start date','date',request.date,'date','required')}
+              ${field('End date','endDate',request.endDate,'date','required')}</div>
+           <div class="ws-form-row">${field('Start time','startTime',request.startTime,'time')}
+              ${field('End time','endTime',request.endTime,'time')}</div>
+           <label class="ws-choice"><input type="checkbox" name="allDay" ${original.allDay?'checked':''}/> All-day event</label>
+           <p class="ws-muted">Timezone: ${esc(zone)}. End time must follow start; timed midnight endings are exclusive. All-day end date is inclusive.</p>
+           <div data-event-move-preview class="ws-plan-preview" aria-live="polite"></div>
+           <label class="ws-choice ws-plan-confirm"><input type="checkbox" name="confirm" required/>
+             I reviewed the date, time, other local events and understand that saving changes this one Hub calendar event only.</label>
+           <p class="ws-muted">Possible overlaps are warnings, not automatic rescheduling. No imported or connected calendars are checked.</p>
+         </div>`;
+        const oldState=JSON.stringify(original),formEpoch=epoch;
+        openForm('Review local event time',html,async data=>{
+            if(epoch!==formEpoch||!state||locked||!storageReady||dirty||conflict||privacyHeld||state.preferences.hidden)
+                throw new Error('The workspace changed or is not writable. Export/recover before retrying.');
+            const candidate=reviewedEventMove(original,movePreviewRequest(data,data.has('confirm')),state.preferences.timezone);
+            if(JSON.stringify(candidate)===oldState)throw new Error('No event time or date was changed.');
+            await mutate(s=>{
+                const ix=s.events.findIndex(e=>e.id===id);
+                if(ix<0 || JSON.stringify(s.events[ix])!==oldState)
+                    throw new Error('The original event changed in another action. Reopen the time review.');
+                const next=reviewedEventMove(s.events[ix]!,movePreviewRequest(data,true),s.preferences.timezone);
+                s.events[ix]=next;
+                activity(s,`Reviewed local event time: ${next.title}`,'event');
+            },'Local event time updated');
+            if(dirty||conflict)
+                throw new Error('The event change is in memory but not confirmed saved. Export or retry without submitting twice.');
+        },'Save reviewed event time');
+        paintEventMovePreview(original,zone);
     }
     function editEvent(id = '') {
         const ev = state!.events.find(e => e.id === id);
@@ -1346,6 +1451,62 @@ async function setup(root: HTMLElement) {
             case 'delete-log':
                 void mutate(s => s.logs = s.logs.filter(l => l.id !== id), 'Log removed');
                 break;
+            case 'planning-day':
+                agendaMode='day';
+                render();
+                break;
+            case 'planning-week':
+                agendaMode='week';
+                render();
+                break;
+            case 'planning-prev':
+            case 'planning-next':
+            case 'planning-prev-day':
+            case 'planning-next-day': {
+                const magnitude=(view==='calendar' && agendaMode==='week' &&
+                    (action==='planning-prev'||action==='planning-next'))?7:1;
+                selected=addDays(selected,
+                    (action==='planning-prev'||action==='planning-prev-day'?-1:1)*magnitude);
+                month=selected.slice(0,7)+'-01';
+                render();
+                break;
+            }
+            case 'planning-today':
+            case 'planning-tomorrow':
+                selected=addDays(today(),action==='planning-tomorrow'?1:0);
+                month=selected.slice(0,7)+'-01';
+                if (view==='calendar') agendaMode='day';
+                render();
+                break;
+            case 'planning-jump-day':
+                if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+                    selected=id;
+                    month=selected.slice(0,7)+'-01';
+                    agendaMode='day';
+                    render();
+                }
+                break;
+            case 'planning-task-selected': {
+                if(!state.tasks.some(t=>t.id===id&&!t.completedAt)) {
+                    toast('This task was completed or no longer exists.');
+                    break;
+                }
+                if(conflict||dirty||!storageReady) {
+                    toast('Resolve unsaved storage changes before moving a due date. You can export a backup.');
+                    break;
+                }
+                const date=selected;
+                void mutate(s=>{
+                    const task=s.tasks.find(t=>t.id===id);
+                    if(!task || task.completedAt) throw new Error('The task is no longer open.');
+                    applyTaskPlan(task,'today',date);
+                    activity(s,`Moved task due date by explicit planning action: ${task.title} → ${date}`,'task');
+                },'Task due date changed on this device');
+                break;
+            }
+            case 'review-event-time':
+                reviewEventTime(id);
+                break;
             case 'select-date':
                 selected = id;
                 month = id.slice(0, 7) + '-01';
@@ -1637,6 +1798,18 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if (el.closest('[data-task-calendar-review]')) {
+            const source=handoffOrigin?.kind==='task'&&handoffOrigin.epoch===epoch
+                ? state.tasks.find(t=>t.id===handoffOrigin.id):undefined;
+            if(source)paintTaskCalendarPreview(source,state.preferences.timezone);
+            return;
+        }
+        if (el.closest('[data-review-event-move]')) {
+            const original=handoffOrigin?.kind==='event' && handoffOrigin.epoch===epoch
+                ? state.events.find(e=>e.id===handoffOrigin!.id) : undefined;
+            if(original)paintEventMovePreview(original,state.preferences.timezone);
+            return;
+        }
         if (el.hasAttribute('data-focus-duration')) {
             const duration=Number(el.value);
             if ([15,25,45].includes(duration)) {
@@ -1760,6 +1933,21 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        if (event.altKey && event.shiftKey && !event.repeat &&
+            !dialog.open && !searchDialog.open && !account.open && view==='calendar' &&
+            state && !locked && !privacyHeld && !state.preferences.hidden &&
+            !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) {
+            const key=event.key.toLowerCase();
+            if(['j','k','d','w'].includes(key)) {
+                event.preventDefault();
+                if(key==='d'||key==='w')agendaMode=key==='d'?'day':'week';
+                else selected=addDays(selected,(key==='j'?-1:1)*(agendaMode==='week'?7:1));
+                month=selected.slice(0,7)+'-01';
+                render();
+                root.querySelector<HTMLElement>('[data-planning-review]')?.scrollIntoView({block:'start'});
+                return;
+            }
+        }
         if (event.altKey && event.shiftKey && event.key.toLowerCase()==='r' && !event.repeat &&
             !dialog.open && !searchDialog.open && !account.open && view==='home' &&
             state && !locked && !privacyHeld && !state.preferences.hidden) {
