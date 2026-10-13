@@ -267,8 +267,10 @@ async function setup(root: HTMLElement) {
         root.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=configure-widget]').forEach(b => b.setAttribute('aria-label', 'Configure widget'));
         root.querySelectorAll<HTMLElement>('[data-action=delete-task]').forEach(b => b.setAttribute('aria-label', 'Task actions'));
         root.querySelectorAll<HTMLElement>('[data-action=edit-event]').forEach(b => b.setAttribute('aria-label', 'Edit event'));
-        if (recoveryDraft && !editing)
-            notice('An interrupted layout edit is available.', button('resume-draft', 'Resume edit') + button('discard-draft', 'Discard edit'));
+        if (recoveryDraft && !editing) {
+            const resume = view === 'home' ? button('resume-draft', 'Resume edit') : '<a class="ws-button" href="/">Open Home</a>';
+            notice(view === 'home' ? 'An interrupted layout edit is available.' : 'An interrupted layout edit is available on Home.', resume + button('discard-draft', 'Discard edit'));
+        }
         if (!dirty)
             saved();
         if (toggle)
