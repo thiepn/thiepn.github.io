@@ -1,4 +1,5 @@
 import { listenOwnerContinue, type ContinueMessage, type ContinueSourceStatus } from '../lib/workspace/owner-continuation';
+import { hubIdentity } from './portal-auth';
 import { libraryContinueUrl } from '../lib/hub-library-session';
 import { providerAction } from '../lib/providers/registry';
 import type { ProviderEnvelope, ProviderId, ContinueItem } from '../lib/providers/types';
@@ -33,7 +34,7 @@ function statusName(status:ContinueSourceStatus) {
 function start(desks:HTMLElement[]) {
   const selected = new Set<ProviderId>(sources);
   const current = new Map<ProviderId,OwnerState>();
-  let identity: string | null = null, deadline:ReturnType<typeof setTimeout>|undefined;
+  let identity: string | null = hubIdentity.status==='signed-in' ? hubIdentity.id : null, deadline:ReturnType<typeof setTimeout>|undefined;
   const privateOK = () => {
     const workspace = document.querySelector<HTMLElement>('[data-workspace]');
     return !document.hidden && (!workspace || workspace.dataset.calendarPrivate === 'false');
