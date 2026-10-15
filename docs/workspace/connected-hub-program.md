@@ -2,6 +2,8 @@
 
 Prepared 15 October 2026. Status: implementation-ready plan; no new application fixes are claimed by this document.
 
+Detailed execution: [implementation plan](connected-hub-implementation.md) and [dependency/coverage backlog](connected-hub-backlog.json).
+
 ## Outcome
 
 Make thiepn.dev the useful front door to the whole THIEPN ecosystem: current apps, real work to resume, one trustworthy account connection, useful tasks/agenda and personal tracking, arranged in a customizable workspace. Preserve the approved expandable left sidebar, persistent desktop planner, flexible center and existing Apps browsing behavior. Every approved available app must be discoverable; its actual supported integrations must be explicit.

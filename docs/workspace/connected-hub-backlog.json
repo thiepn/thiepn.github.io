@@ -1,0 +1,547 @@
+{
+  "schemaVersion": 1,
+  "preparedOn": "2026-10-15",
+  "program": "connected-hub",
+  "integrationBranch": "feat/connected-hub",
+  "repositoryAliases": {
+    "hub": "thiepn/thiepn.github.io",
+    "account": "thiepn/account",
+    "core": "thiepn/core",
+    "notes": "thiepn/notes",
+    "library": "thiepn/library",
+    "tms60": "thiepn/tms60"
+  },
+  "pathConvention": "Paths belong to the indicated owning repository; proposed files and CLI-generated migration names are targets, not claims that files already exist. Unresolved owner aliases are explicit contract-assignment tasks.",
+  "blockers": [
+    {
+      "id": "account-ci-capacity",
+      "affects": [
+        "IP04",
+        "IP05",
+        "IP18"
+      ],
+      "detail": "Required Account jobs cannot start because of reported payment/spending limits."
+    },
+    {
+      "id": "library-paired-visibility",
+      "affects": [
+        "IP00",
+        "IP04",
+        "IP18"
+      ],
+      "detail": "Hub PR 154 staged-paired Library suite expects data-private-library visible but receives hidden; reproduce and resolve contract/product/fixture mismatch without weakening privacy checks."
+    }
+  ],
+  "packages": [
+    {
+      "id": "IP00",
+      "title": "Baseline, contracts and branch reconciliation",
+      "status": "planned",
+      "dependsOn": [],
+      "covers": [
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "repositories": [
+        "hub",
+        "core",
+        "account"
+      ],
+      "touchPoints": [
+        "docs/workspace/connected-hub-release.json",
+        "tests/hub-library/session.spec.ts",
+        ".github/workflows/hub-library-browser.yml"
+      ],
+      "completionGate": "Exact heads and contract fixtures recorded; paired Library visibility failure reproduced and corrected without weakening privacy assertions."
+    },
+    {
+      "id": "IP01",
+      "title": "Canonical inventory and compatibility resolver",
+      "status": "planned",
+      "dependsOn": [
+        "IP00"
+      ],
+      "covers": [
+        "A1",
+        "A2"
+      ],
+      "repositories": [
+        "core",
+        "hub"
+      ],
+      "touchPoints": [
+        "registry/launches.v1.json",
+        "registry/launches.v1.schema.json",
+        "scripts/sync-launch-manifest.mjs",
+        "src/generated/launch-manifest.json",
+        "src/lib/launches/types.ts",
+        "src/lib/launches/resolver.ts",
+        "src/lib/hub.ts",
+        "src/lib/product-registry.ts"
+      ],
+      "completionGate": "All approved launch destinations accounted for across Apps, shortcuts and search; legacy aliases survive and staged/private destinations remain gated."
+    },
+    {
+      "id": "IP02",
+      "title": "Practical shortcut management",
+      "status": "planned",
+      "dependsOn": [
+        "IP01",
+        "IP03"
+      ],
+      "covers": [
+        "A3",
+        "A4",
+        "E2"
+      ],
+      "repositories": [
+        "hub"
+      ],
+      "touchPoints": [
+        "src/components/workspace/ShortcutEditor.astro",
+        "src/scripts/workspace-shortcuts.ts",
+        "src/components/hub/HubCard.astro",
+        "src/lib/workspace/commands/shortcuts.ts"
+      ],
+      "completionGate": "New apps can be pinned/reordered from Apps or a simple editor without starting a layout draft; safe external shortcuts and migration are verified."
+    },
+    {
+      "id": "IP03",
+      "title": "Command boundary, selectors and safe schema expansion",
+      "status": "planned",
+      "dependsOn": [
+        "IP00"
+      ],
+      "covers": [
+        "G1",
+        "G2"
+      ],
+      "repositories": [
+        "hub",
+        "account"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/commands.ts",
+        "src/lib/workspace/selectors.ts",
+        "src/lib/workspace/migrations.ts",
+        "src/lib/workspace/export.ts",
+        "src/lib/workspace/types.ts",
+        "src/lib/workspace/model.ts",
+        "src/lib/workspace/store.ts",
+        "supabase/migrations/<cli-generated-workspace-v2-migration>.sql"
+      ],
+      "completionGate": "Single writer preserved; v1 data, fields and IDs survive transactional migration; incompatible older writers stop safely; realistic document budgets checked."
+    },
+    {
+      "id": "IP04",
+      "title": "Account qualification and app session adoption",
+      "status": "planned",
+      "dependsOn": [
+        "IP00"
+      ],
+      "covers": [
+        "B1",
+        "B3"
+      ],
+      "repositories": [
+        "hub",
+        "account",
+        "native-app-owners"
+      ],
+      "touchPoints": [
+        "src/scripts/hub-account.ts",
+        "src/scripts/portal-auth.ts",
+        "src/pages/home/auth/callback/index.astro",
+        "vendor/account-session",
+        "packages/account-session",
+        ".github/workflows/deploy.yml"
+      ],
+      "completionGate": "Required CI and owner-authorized sign-in, refresh, two-device identity and opt-out checks pass before account capabilities are released."
+    },
+    {
+      "id": "IP05",
+      "title": "Durable sync, recovery and lifecycle completion",
+      "status": "planned",
+      "dependsOn": [
+        "IP03",
+        "IP04"
+      ],
+      "covers": [
+        "B4",
+        "G3"
+      ],
+      "repositories": [
+        "hub",
+        "account"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/cloud-sync.ts",
+        "src/lib/workspace/sync-merge.ts",
+        "src/lib/workspace/store.ts",
+        "scripts/generate-workspace-sw.mjs",
+        "supabase/migrations/<cli-generated-sync-lifecycle-migration>.sql"
+      ],
+      "completionGate": "Offline/retry/conflict/quota/retention and deletion tests preserve owner data and recoverability; upgrades and rollback remain schema compatible."
+    },
+    {
+      "id": "IP06",
+      "title": "One Hub shell and navigation lifecycle",
+      "status": "planned",
+      "dependsOn": [
+        "IP03"
+      ],
+      "covers": [
+        "E1"
+      ],
+      "repositories": [
+        "hub"
+      ],
+      "touchPoints": [
+        "src/components/workspace/WorkspaceShell.astro",
+        "src/scripts/workspace-home.ts",
+        "src/scripts/workspace-router.ts",
+        "src/styles/workspace.css",
+        "src/pages/search/index.astro",
+        "src/pages/inbox/index.astro",
+        "src/pages/home/connections/index.astro",
+        "src/pages/flows/index.astro"
+      ],
+      "completionGate": "Every Hub surface uses consistent shell/focus/history/privacy; trusted reading-host and necessary full-document boundaries remain intact."
+    },
+    {
+      "id": "IP07",
+      "title": "Connection center and safe diagnostics",
+      "status": "planned",
+      "dependsOn": [
+        "IP04",
+        "IP06",
+        "IP08"
+      ],
+      "covers": [
+        "B2",
+        "G4"
+      ],
+      "repositories": [
+        "hub",
+        "account"
+      ],
+      "touchPoints": [
+        "src/components/workspace/ConnectionCenter.astro",
+        "src/lib/providers/connection-state.ts",
+        "src/lib/diagnostics/redaction.ts",
+        "src/scripts/workspace-connections.ts"
+      ],
+      "completionGate": "All app capabilities, freshness and repair actions are truthful; diagnostics exclude secrets and private content; recovery controls work on mobile."
+    },
+    {
+      "id": "IP08",
+      "title": "Provider runtime and full app capability matrix",
+      "status": "planned",
+      "dependsOn": [
+        "IP01",
+        "IP03",
+        "IP04"
+      ],
+      "covers": [
+        "C1",
+        "C3"
+      ],
+      "repositories": [
+        "hub",
+        "core",
+        "account",
+        "native-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/providers/types.ts",
+        "src/lib/providers/runtime.ts",
+        "src/lib/providers/registry.ts",
+        "src/lib/providers/adapters",
+        "src/data/hub-providers.json",
+        "src/scripts/hub-connected-apps.ts",
+        "docs/workspace/app-capabilities.json"
+      ],
+      "completionGate": "Every app has an owner/capability/evidence decision; bounded provider results pass ownership, revocation, expiry, cancellation and partial-failure tests."
+    },
+    {
+      "id": "IP09",
+      "title": "Genuine continuation and cross-app activity",
+      "status": "planned",
+      "dependsOn": [
+        "IP08",
+        "IP06"
+      ],
+      "covers": [
+        "C2",
+        "C5"
+      ],
+      "repositories": [
+        "hub",
+        "notes",
+        "library",
+        "tms60",
+        "other-priority-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/providers/resume.ts",
+        "src/lib/providers/resources.ts",
+        "src/lib/workspace/activity-selectors.ts",
+        "src/components/workspace/ContinuationDesk.astro",
+        "src/scripts/workspace-continuation.ts"
+      ],
+      "completionGate": "Authorized native changes resume the exact supported resource/context, with correct return state, deduplicated activity and honest fallback."
+    },
+    {
+      "id": "IP10",
+      "title": "Unified capture and consistent task Inbox",
+      "status": "planned",
+      "dependsOn": [
+        "IP03",
+        "IP05",
+        "IP08"
+      ],
+      "covers": [
+        "C4",
+        "D1"
+      ],
+      "repositories": [
+        "hub",
+        "account",
+        "command-capable-native-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/commands/tasks.ts",
+        "src/lib/workspace/commands/capture.ts",
+        "src/lib/workspace/selectors/tasks.ts",
+        "src/scripts/workspace-capture.ts",
+        "src/pages/home/tasks/index.astro"
+      ],
+      "completionGate": "Capture destination is explicit; Inbox/Today/Upcoming counts agree; offline native commands use durable receipts without double submission."
+    },
+    {
+      "id": "IP11",
+      "title": "Scheduling, Focus and reviewed follow-through",
+      "status": "planned",
+      "dependsOn": [
+        "IP10",
+        "IP12"
+      ],
+      "covers": [
+        "D2",
+        "D4"
+      ],
+      "repositories": [
+        "hub"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/commands/scheduling.ts",
+        "src/lib/workspace/daily-focus.ts",
+        "src/lib/workspace/weekly-followthrough.ts",
+        "src/lib/workspace/unified-journey.ts",
+        "src/components/workspace/PlanningViews.astro"
+      ],
+      "completionGate": "Capture-to-schedule-to-focus-to-review uses the same records; undo and explicit carry-forward preserve task/event ownership."
+    },
+    {
+      "id": "IP12",
+      "title": "Native calendar and external read-only coverage",
+      "status": "planned",
+      "dependsOn": [
+        "IP03",
+        "IP05",
+        "IP08"
+      ],
+      "covers": [
+        "D3"
+      ],
+      "repositories": [
+        "hub",
+        "external-calendar-integration-owner"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/commands/calendar.ts",
+        "src/lib/workspace/selectors/calendar.ts",
+        "src/lib/workspace/recurrence.ts",
+        "src/lib/workspace/calendar-snapshot.ts",
+        "src/scripts/workspace-calendar.ts",
+        "src/pages/home/calendar/index.astro"
+      ],
+      "completionGate": "Day/week, recurrence, DST and ICS limits/deduplication work; native versus read-only source ownership and freshness are explicit."
+    },
+    {
+      "id": "IP13",
+      "title": "Useful widgets, approachable layout and mobile Today",
+      "status": "planned",
+      "dependsOn": [
+        "IP02",
+        "IP06",
+        "IP09",
+        "IP10",
+        "IP12"
+      ],
+      "covers": [
+        "E3",
+        "E4"
+      ],
+      "repositories": [
+        "hub"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/registry.ts",
+        "src/lib/workspace/presets.ts",
+        "src/lib/workspace/widget-views.ts",
+        "src/components/workspace/TodaySheet.astro",
+        "src/styles/workspace.css"
+      ],
+      "completionGate": "Dense/empty/populated layouts and mobile agenda are useful; existing keyboard/touch editing, named layouts, privacy and unknown widgets remain safe."
+    },
+    {
+      "id": "IP14",
+      "title": "Tracking, habits and source-backed progress",
+      "status": "planned",
+      "dependsOn": [
+        "IP03",
+        "IP05",
+        "IP08"
+      ],
+      "covers": [
+        "D5"
+      ],
+      "repositories": [
+        "hub",
+        "metric-capable-native-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/commands/trackers.ts",
+        "src/lib/workspace/selectors/trackers.ts",
+        "src/lib/providers/measurements.ts",
+        "src/pages/home/trackers/index.astro"
+      ],
+      "completionGate": "Habits, goal changes and imported/manual measurements preserve units, day boundaries and corrections without duplicated events."
+    },
+    {
+      "id": "IP15",
+      "title": "One search and action palette",
+      "status": "planned",
+      "dependsOn": [
+        "IP01",
+        "IP03",
+        "IP06",
+        "IP08",
+        "IP10"
+      ],
+      "covers": [
+        "F1"
+      ],
+      "repositories": [
+        "hub",
+        "search-capable-native-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/search-palette.ts",
+        "src/lib/search/actions.ts",
+        "src/lib/search/resources.ts",
+        "src/scripts/workspace-search.ts",
+        "src/pages/search/index.astro"
+      ],
+      "completionGate": "One accessible palette finds current apps and allowed records/actions; private queries stay private; offline local results and cancellation work."
+    },
+    {
+      "id": "IP16",
+      "title": "Attention Inbox with real outcomes",
+      "status": "planned",
+      "dependsOn": [
+        "IP06",
+        "IP08",
+        "IP10"
+      ],
+      "covers": [
+        "F2"
+      ],
+      "repositories": [
+        "hub",
+        "attention-capable-native-app-owners"
+      ],
+      "touchPoints": [
+        "src/lib/providers/inbox.ts",
+        "src/lib/workspace/commands/attention.ts",
+        "src/scripts/workspace-inbox.ts",
+        "src/pages/inbox/index.astro"
+      ],
+      "completionGate": "Real issues are grouped/deduplicated; supported dismiss/snooze/resolve has native read-back; unavailable data is never presented as zero issues."
+    },
+    {
+      "id": "IP17",
+      "title": "Reminder policy and optional notifications",
+      "status": "planned",
+      "dependsOn": [
+        "IP12",
+        "IP16",
+        "IP07"
+      ],
+      "covers": [
+        "F3"
+      ],
+      "repositories": [
+        "hub",
+        "notification-delivery-owner-if-selected"
+      ],
+      "touchPoints": [
+        "src/lib/workspace/reminders.ts",
+        "src/lib/notifications/policy.ts",
+        "src/lib/notifications/browser.ts",
+        "src/pages/home/settings/index.astro"
+      ],
+      "completionGate": "Due/quiet-hours/permission/duplicate-delivery behavior is tested; inactive-page or background limitations are stated honestly."
+    },
+    {
+      "id": "IP18",
+      "title": "Combined acceptance, release and operations",
+      "status": "planned",
+      "dependsOn": [
+        "IP00",
+        "IP01",
+        "IP02",
+        "IP03",
+        "IP04",
+        "IP05",
+        "IP06",
+        "IP07",
+        "IP08",
+        "IP09",
+        "IP10",
+        "IP11",
+        "IP12",
+        "IP13",
+        "IP14",
+        "IP15",
+        "IP16",
+        "IP17"
+      ],
+      "covers": [
+        "H2",
+        "H3",
+        "B4",
+        "G2",
+        "G3"
+      ],
+      "repositories": [
+        "hub",
+        "account",
+        "core",
+        "participating-native-app-owners"
+      ],
+      "touchPoints": [
+        "docs/workspace/connected-hub-release.json",
+        "tests/studio/connected-hub.spec.ts",
+        "tests/unit/workspace-migrations.test.ts",
+        "scripts/qualify-hub-release.mjs",
+        "scripts/smoke-hub-release.mjs",
+        ".github/workflows/quality.yml",
+        ".github/workflows/deploy.yml"
+      ],
+      "completionGate": "All ten acceptance journeys pass at the final exact head with distinct synthetic/owner evidence, truthful capabilities, safe rollback and production smoke."
+    }
+  ]
+}
