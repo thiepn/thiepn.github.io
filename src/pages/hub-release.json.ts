@@ -1,3 +1,4 @@
+import account from '../data/hub-account.json';
 import hub from '../data/hub.json';
 import registry from '../data/hub-providers.json';
 import { AUTOMATED_TRANSFERS_ENABLED } from '../lib/workflows/transfer';
@@ -9,7 +10,7 @@ export function GET() {
   const status: HubReleaseStatus = {
     schemaVersion: 1, releaseId: release.releaseId, profile: release.profile as HubReleaseStatus['profile'], appCount: hub.expectedCount,
     features: {
-      hubSignIn: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1',
+      hubSignIn: account.enabled || import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1',
       privateReads: READING_PILOT_ENABLED || (import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_CAPTURE_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_INBOX_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_NOTES_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_TMS60_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_LIBRARY_PRIVATE === 'staged-v1') || registry.providers.some(p => p.privateReadsEnabled || ['summary', 'continue', 'search'].some(op => p.operations[op as keyof typeof p.operations])),
       inlineWrites: import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_CAPTURE_PRIVATE === 'staged-v1' || import.meta.env.PUBLIC_HUB_INBOX_PRIVATE === 'staged-v1' || registry.providers.some(p => p.inlineWritesEnabled || p.operations.capture) || registry.attentionContract.inlineWritesEnabled,
       inboxReads: import.meta.env.PUBLIC_HUB_INBOX_PRIVATE === 'staged-v1' || registry.attentionContract.privateReadsEnabled || registry.providers.some(p => p.operations.inbox),

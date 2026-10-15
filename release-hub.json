@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "releaseId": "H23-device-reading-pilot-v1",
-  "profile": "device-reading-pilot",
+  "releaseId": "H24-account-sync-v1",
+  "profile": "account-sync",
   "expectedFeaturedProjects": 6,
   "socialBrand": "THIEPN.",
   "status": "review-candidate",
