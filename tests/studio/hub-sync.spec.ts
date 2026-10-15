@@ -69,3 +69,11 @@ test('an eligible Account session connects Hub automatically through tokenless S
 test('consented Notes, Library and TMS60 insights appear together and clear with privacy',async({browser})=>{
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
 });
+
+test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
+ const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
+ await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
+ await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
+ const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
+ expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
+});

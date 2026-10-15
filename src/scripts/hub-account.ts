@@ -99,14 +99,19 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     });
     async function verified(identity: ReturnType<ThiepnAccountSession['identity']>, ticket = verification) {
       if (ticket !== verification) return;
+      async function retainBefore(nextOwner: string | null) {
+        const currentOwner=activeIdentity.status==='signed-in'?activeIdentity.id:activeIdentity.status==='signed-out'?null:undefined;
+        if(currentOwner!==undefined && currentOwner!==nextOwner)await prepareAccountNavigation();
+        return ticket===verification;
+      }
       if (identity.status === 'signed-in') {
         const token = await accountSession!.getAccessToken();
         if (!token || !matchingToken(token, identity.id)) throw new Error('Account changed during verification.');
         const record = { id: identity.id, label: identity.email ?? 'THIEPN member', token: await fingerprint(token) };
-        if (ticket !== verification) return;
+        if (!await retainBefore(identity.id)) return;
         localStorage.setItem(VERIFIED, JSON.stringify(record));
         show({ status: 'signed-in', id: record.id, label: record.label });
-      } else if (identity.status === 'signed-out' && !localStorage.getItem(STORAGE + ':tokens')) { localStorage.removeItem(VERIFIED); show({ status: 'signed-out' }); }
+      } else if (identity.status === 'signed-out' && !localStorage.getItem(STORAGE + ':tokens')) { if(!await retainBefore(null))return;localStorage.removeItem(VERIFIED); show({ status: 'signed-out' }); }
       else {
         // A previously verified, unchanged credential permits offline local work.
         // RPCs still validate the real token and owner independently on every call.
@@ -115,7 +120,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         const tokens = JSON.parse(localStorage.getItem(STORAGE + ':tokens') ?? 'null') as { accessToken?: string } | null;
         if (ticket !== verification) return;
         if (cached && validAccountId(cached.id) && typeof cached.label === 'string' && tokens?.accessToken && matchingToken(tokens.accessToken, cached.id) && await fingerprint(tokens.accessToken) === cached.token) {
-          if (ticket !== verification) return;
+          if (!await retainBefore(cached.id)) return;
           show({ status: 'signed-in', id: cached.id, label: cached.label }, 'Offline or Account unavailable. Your device changes are kept and will sync when reconnected.');
         } else show({ status: 'unavailable' });
       }

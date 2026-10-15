@@ -29,7 +29,8 @@ function stable(value: unknown): string {
 }
 export const sameState = (a: WorkspaceState, b: WorkspaceState) => stable(cloudState(a)) === stable(cloudState(b));
 export function meaningfulState(state: WorkspaceState): boolean {
-  return !!(state.tasks.length || state.notes.length || state.events.length || state.trackers.length || state.logs.length || state.captureDraft || state.activity.length || state.workspaces.length > 1 || state.workspaces[0]?.title !== 'Personal workspace' || state.workspaces[0]?.revision);
+  const customizedPreferences = state.preferences.theme !== undefined || state.preferences.density !== 'compact' || state.preferences.timezone !== Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return !!(customizedPreferences || state.legacyBackup || state.tasks.length || state.notes.length || state.events.length || state.trackers.length || state.logs.length || state.captureDraft || state.activity.length || state.workspaces.length > 1 || state.workspaces[0]?.title !== 'Personal workspace' || state.workspaces[0]?.revision);
 }
 export interface MergeResult { state: WorkspaceState | null; conflicts: string[] }
 export function mergeStates(base: WorkspaceState, local: WorkspaceState, remote: WorkspaceState): MergeResult {
