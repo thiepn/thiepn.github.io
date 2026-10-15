@@ -24,9 +24,17 @@ export function parseNotesConsent(v: unknown, provider: 'notes'|'tms60' = 'notes
 }
 type Pending = { state: string; verifier: string; started: number; owner: string; revision: string; clientId: string };
 type Tokens = { bearer: string; refresh: string; expiresAt: number; owner: string; revision: string };
-export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string; provider?: 'notes'|'tms60'; translationId?: string; inbox?: boolean; capture?: boolean };
+export type NotesSessionConfig = { clientId: string; platformOrigin: string; publishableKey: string; coreOrigin?: string; provider?: 'notes'|'tms60'; translationId?: string; inbox?: boolean; capture?: boolean };
+export type CoreNotesSearchHit = { id: string; title: string; moduleRef: 'folio/notes' };
+function validExactHttpsOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.origin === value && url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash;
+  } catch { return false; }
+}
 export function validNotesConfig(config: NotesSessionConfig): boolean {
   try {
+    if (config.coreOrigin !== undefined && !validExactHttpsOrigin(config.coreOrigin)) return false;
     if (config.inbox && config.capture) return false;
     if ((config.inbox || config.capture) && config.provider==='tms60') return false;
     if(config.provider==='tms60')return uuid(config.clientId) && /^sb_publishable_[a-zA-Z0-9_-]+$/.test(config.publishableKey) && ['esv','niv','nlt','hfa','schlachter1951','klb1985','krv1961'].includes(config.translationId ?? '');
@@ -116,6 +124,39 @@ export class HubNotesSession {
     }
     if (!this.tokens || this.tokens.owner !== this.owner() || this.tokens.expiresAt <= this.now()) throw new Error('Unavailable');
     return this.tokens;
+  }
+  private async coreAgent(body: Record<string,unknown>, external: AbortSignal, bytes=131072): Promise<{raw:unknown;tokens:Tokens;epoch:number}> {
+    const epoch=this.epoch,tokens=await this.freshTokens();
+    if(!this.config.coreOrigin||external.aborted||epoch!==this.epoch||tokens.owner!==this.owner())throw new Error('Unavailable');
+    const raw=await this.json(this.config.coreOrigin+'/v1/agent/notes',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+tokens.bearer,'Content-Type':'application/json'},
+      body:JSON.stringify({...body,grantRevision:tokens.revision}),
+    },bytes,external);
+    if(epoch!==this.epoch||tokens.owner!==this.owner()||tokens.expiresAt<=this.now()||external.aborted)throw new Error('Unavailable');
+    return{raw,tokens,epoch};
+  }
+  async searchViaCore(query:string,external:AbortSignal):Promise<CoreNotesSearchHit[]>{
+    if(this.config.capture||this.config.inbox||this.config.provider==='tms60'||typeof query!=='string'||!query.trim()||query.length>256||/[\u0000-\u001f\u007f]/.test(query))throw new Error('Unavailable');
+    const {raw}=await this.coreAgent({schemaVersion:1,goal:'search my Notes for '+query,action:'search',query},external);
+    if(!object(raw)||raw.ok!==true||!object(raw.data)||raw.data.schemaVersion!==1||raw.data.status!=='completed'||raw.data.routedModule!=='folio/notes'||raw.data.action!=='search'||!object(raw.data.observation)||raw.data.observation.status!=='success'||raw.data.observation.toolId!=='folio.notes.search'||!object(raw.data.observation.value)||!Array.isArray(raw.data.observation.value.hits)||raw.data.observation.value.hits.length>20||!Array.isArray(raw.data.trace))throw new Error('Unavailable');
+    const hits:CoreNotesSearchHit[]=[];
+    for(const hit of raw.data.observation.value.hits){
+      if(!object(hit)||Object.keys(hit).sort().join(',')!=='id,moduleRef,title'||!uuid(hit.id)||hit.moduleRef!=='folio/notes'||typeof hit.title!=='string'||!hit.title.trim()||hit.title.length>500)throw new Error('Unavailable');
+      hits.push({id:hit.id,title:hit.title,moduleRef:'folio/notes'});
+    }
+    return hits;
+  }
+  async captureViaCore(command: import('./notes-capture').CaptureCommand, external: AbortSignal): Promise<import('./notes-capture').CaptureReceipt> {
+    if(!this.config.capture||command.accountId!==this.owner()||!uuid(command.requestId)||command.destination!=='notes:unfiled'||external.aborted)throw new Error('Unavailable');
+    const {raw,tokens}=await this.coreAgent({schemaVersion:1,goal:'create a note in Notes',action:'create',title:command.title,body:command.content,approved:true,idempotencyKey:command.requestId},external);
+    const data=object(raw)&&raw.ok===true&&object(raw.data)?raw.data:null;
+    const observation=data&&object(data.observation)?data.observation:null;
+    const value=observation&&object(observation.value)?observation.value:null;
+    const note=value&&object(value.note)?value.note:null;
+    const receipt=note&&object(note.receipt)?note.receipt:null;
+    if(!data||data.schemaVersion!==1||data.status!=='completed'||data.routedModule!=='folio/notes'||data.action!=='create'||!Array.isArray(data.trace)||!observation||observation.status!=='success'||observation.toolId!=='folio.notes.create'||!note||!uuid(note.id)||!receipt||Object.keys(receipt).sort().join(',')!=='accountId,createdAt,destination,grantRevision,noteId,requestId,schemaVersion,status'||receipt.schemaVersion!==1||receipt.accountId!==tokens.owner||receipt.grantRevision!==tokens.revision||receipt.requestId!==command.requestId||receipt.destination!==command.destination||receipt.status!=='confirmed'||receipt.noteId!==note.id||!uuid(receipt.noteId)||!Number.isSafeInteger(receipt.createdAt)||Number(receipt.createdAt)<0||external.aborted||tokens.owner!==this.owner())throw new Error('Unavailable');
+    return receipt as import('./notes-capture').CaptureReceipt;
   }
   async capture(command: import('./notes-capture').CaptureCommand, external: AbortSignal): Promise<import('./notes-capture').CaptureReceipt> {
     const epoch = this.epoch, tokens = await this.freshTokens();
