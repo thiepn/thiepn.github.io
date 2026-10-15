@@ -5,7 +5,7 @@ import { providerAction } from '../lib/providers/registry';
 import type { ProviderEnvelope, ProviderId, ContinueItem } from '../lib/providers/types';
 
 const desks = [...document.querySelectorAll<HTMLElement>('[data-owner-continue]')];
-if (desks.length) start(desks);
+
 
 const sources: ProviderId[] = ['notes', 'library', 'tms60'];
 const names: Record<ProviderId,string> = { notes:'Notes', library:'Library', tms60:'TMS60' };
@@ -210,3 +210,6 @@ function start(desks:HTMLElement[]) {
   if(workspaceContent)new MutationObserver(()=>renderWidgets()).observe(workspaceContent,{childList:true});
   render();
 }
+
+// Initialize after the rendering helpers and source metadata are defined.
+if (desks.length) start(desks);

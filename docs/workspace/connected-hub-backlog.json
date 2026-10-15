@@ -36,7 +36,7 @@
     {
       "id": "IP00",
       "title": "Baseline, contracts and branch reconciliation",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [],
       "covers": [
         "H1",
@@ -53,12 +53,13 @@
         "tests/hub-library/session.spec.ts",
         ".github/workflows/hub-library-browser.yml"
       ],
-      "completionGate": "Exact heads and contract fixtures recorded; paired Library visibility failure reproduced and corrected without weakening privacy assertions."
+      "completionGate": "Exact heads and contract fixtures recorded; paired Library visibility failure reproduced and corrected without weakening privacy assertions.",
+      "implementationNote": "Account/planning stack reconciled onto current main. Exact pinned Library owner: 35/36 Chromium/Firefox checks passed; isolated Firefox timeout passed on targeted rerun. WebKit needs unavailable system libraries; full CI certification remains required."
     },
     {
       "id": "IP01",
       "title": "Canonical inventory and compatibility resolver",
-      "status": "planned",
+      "status": "implemented",
       "dependsOn": [
         "IP00"
       ],
@@ -80,12 +81,13 @@
         "src/lib/hub.ts",
         "src/lib/product-registry.ts"
       ],
-      "completionGate": "All approved launch destinations accounted for across Apps, shortcuts and search; legacy aliases survive and staged/private destinations remain gated."
+      "completionGate": "All approved launch destinations accounted for across Apps, shortcuts and search; legacy aliases survive and staged/private destinations remain gated.",
+      "implementationNote": "Core PR 112; generated launch manifest with pinned source commit/hash, 31 unique destinations, preserved legacy IDs, product projection and validated aliases. Release counts derive from it."
     },
     {
       "id": "IP02",
       "title": "Practical shortcut management",
-      "status": "planned",
+      "status": "implemented",
       "dependsOn": [
         "IP01",
         "IP03"
@@ -104,12 +106,13 @@
         "src/components/hub/HubCard.astro",
         "src/lib/workspace/commands/shortcuts.ts"
       ],
-      "completionGate": "New apps can be pinned/reordered from Apps or a simple editor without starting a layout draft; safe external shortcuts and migration are verified."
+      "completionGate": "New apps can be pinned/reordered from Apps or a simple editor without starting a layout draft; safe external shortcuts and migration are verified.",
+      "implementationNote": "Direct Apps pin/unpin; simple title/order/source editor; private safe HTTPS shortcuts; recent-use pause/clear; repairable unavailable IDs. Geometry drafts are not opened."
     },
     {
       "id": "IP03",
       "title": "Command boundary, selectors and safe schema expansion",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP00"
       ],
@@ -131,12 +134,13 @@
         "src/lib/workspace/store.ts",
         "supabase/migrations/<cli-generated-workspace-v2-migration>.sql"
       ],
-      "completionGate": "Single writer preserved; v1 data, fields and IDs survive transactional migration; incompatible older writers stop safely; realistic document budgets checked."
+      "completionGate": "Single writer preserved; v1 data, fields and IDs survive transactional migration; incompatible older writers stop safely; realistic document budgets checked.",
+      "implementationNote": "Detached candidate validation protects the writer; shortcut commands/selectors extracted. Version negotiation, migration and the remaining controller extraction are outstanding."
     },
     {
       "id": "IP04",
       "title": "Account qualification and app session adoption",
-      "status": "planned",
+      "status": "blocked",
       "dependsOn": [
         "IP00"
       ],
@@ -157,12 +161,13 @@
         "packages/account-session",
         ".github/workflows/deploy.yml"
       ],
-      "completionGate": "Required CI and owner-authorized sign-in, refresh, two-device identity and opt-out checks pass before account capabilities are released."
+      "completionGate": "Required CI and owner-authorized sign-in, refresh, two-device identity and opt-out checks pass before account capabilities are released.",
+      "implementationNote": "Existing Hub/account-sync source integrated. Account PR 83 required CI remains failed; billing/capacity blockage was previously confirmed. Native adoption and real-owner qualification remain outstanding."
     },
     {
       "id": "IP05",
       "title": "Durable sync, recovery and lifecycle completion",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP03",
         "IP04"
@@ -182,12 +187,13 @@
         "scripts/generate-workspace-sw.mjs",
         "supabase/migrations/<cli-generated-sync-lifecycle-migration>.sql"
       ],
-      "completionGate": "Offline/retry/conflict/quota/retention and deletion tests preserve owner data and recoverability; upgrades and rollback remain schema compatible."
+      "completionGate": "Offline/retry/conflict/quota/retention and deletion tests preserve owner data and recoverability; upgrades and rollback remain schema compatible.",
+      "implementationNote": "Existing durable journal/CAS/conflict recovery integrated and synthetic device flows retained. Lifecycle/retention/deletion and final qualification remain outstanding."
     },
     {
       "id": "IP06",
       "title": "One Hub shell and navigation lifecycle",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP03"
       ],
@@ -207,12 +213,13 @@
         "src/pages/home/connections/index.astro",
         "src/pages/flows/index.astro"
       ],
-      "completionGate": "Every Hub surface uses consistent shell/focus/history/privacy; trusted reading-host and necessary full-document boundaries remain intact."
+      "completionGate": "Every Hub surface uses consistent shell/focus/history/privacy; trusted reading-host and necessary full-document boundaries remain intact.",
+      "implementationNote": "All Hub utility routes now share WorkspaceShell and palette. Core routes retain the document. Utility-route controller consolidation and final route/privacy acceptance remain."
     },
     {
       "id": "IP07",
       "title": "Connection center and safe diagnostics",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP04",
         "IP06",
@@ -232,12 +239,13 @@
         "src/lib/diagnostics/redaction.ts",
         "src/scripts/workspace-connections.ts"
       ],
-      "completionGate": "All app capabilities, freshness and repair actions are truthful; diagnostics exclude secrets and private content; recovery controls work on mobile."
+      "completionGate": "All app capabilities, freshness and repair actions are truthful; diagnostics exclude secrets and private content; recovery controls work on mobile.",
+      "implementationNote": "31-app support table, three source status readers and redacted diagnostic export implemented. Last-success tracking, typed repair/error codes and complete lifecycle coverage remain."
     },
     {
       "id": "IP08",
       "title": "Provider runtime and full app capability matrix",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP01",
         "IP03",
@@ -262,12 +270,13 @@
         "src/scripts/hub-connected-apps.ts",
         "docs/workspace/app-capabilities.json"
       ],
-      "completionGate": "Every app has an owner/capability/evidence decision; bounded provider results pass ownership, revocation, expiry, cancellation and partial-failure tests."
+      "completionGate": "Every app has an owner/capability/evidence decision; bounded provider results pass ownership, revocation, expiry, cancellation and partial-failure tests.",
+      "implementationNote": "Canonical destinations and three established summary readers integrated. One consolidated runtime and the new native app adapters remain."
     },
     {
       "id": "IP09",
       "title": "Genuine continuation and cross-app activity",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP08",
         "IP06"
@@ -290,12 +299,13 @@
         "src/components/workspace/ContinuationDesk.astro",
         "src/scripts/workspace-continuation.ts"
       ],
-      "completionGate": "Authorized native changes resume the exact supported resource/context, with correct return state, deduplicated activity and honest fallback."
+      "completionGate": "Authorized native changes resume the exact supported resource/context, with correct return state, deduplicated activity and honest fallback.",
+      "implementationNote": "Exact Notes launch intent and existing device Library resume supported. Full ResourceRef and unified native activity contracts remain."
     },
     {
       "id": "IP10",
       "title": "Unified capture and consistent task Inbox",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP03",
         "IP05",
@@ -317,12 +327,13 @@
         "src/scripts/workspace-capture.ts",
         "src/pages/home/tasks/index.astro"
       ],
-      "completionGate": "Capture destination is explicit; Inbox/Today/Upcoming counts agree; offline native commands use durable receipts without double submission."
+      "completionGate": "Capture destination is explicit; Inbox/Today/Upcoming counts agree; offline native commands use durable receipts without double submission.",
+      "implementationNote": "Local capture and shared task filters integrated; native durable capture qualification remains gated."
     },
     {
       "id": "IP11",
       "title": "Scheduling, Focus and reviewed follow-through",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP10",
         "IP12"
@@ -341,12 +352,13 @@
         "src/lib/workspace/unified-journey.ts",
         "src/components/workspace/PlanningViews.astro"
       ],
-      "completionGate": "Capture-to-schedule-to-focus-to-review uses the same records; undo and explicit carry-forward preserve task/event ownership."
+      "completionGate": "Capture-to-schedule-to-focus-to-review uses the same records; undo and explicit carry-forward preserve task/event ownership.",
+      "implementationNote": "Focus, reviewed scheduling and weekly carry-forward integrated over existing records. Persistent task/block relationships await schema negotiation."
     },
     {
       "id": "IP12",
       "title": "Native calendar and external read-only coverage",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP03",
         "IP05",
@@ -367,12 +379,13 @@
         "src/scripts/workspace-calendar.ts",
         "src/pages/home/calendar/index.astro"
       ],
-      "completionGate": "Day/week, recurrence, DST and ICS limits/deduplication work; native versus read-only source ownership and freshness are explicit."
+      "completionGate": "Day/week, recurrence, DST and ICS limits/deduplication work; native versus read-only source ownership and freshness are explicit.",
+      "implementationNote": "Day/week review and bounded session-only ICS preview integrated. Native recurrence and live external calendar adapters remain."
     },
     {
       "id": "IP13",
       "title": "Useful widgets, approachable layout and mobile Today",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP02",
         "IP06",
@@ -394,7 +407,8 @@
         "src/components/workspace/TodaySheet.astro",
         "src/styles/workspace.css"
       ],
-      "completionGate": "Dense/empty/populated layouts and mobile agenda are useful; existing keyboard/touch editing, named layouts, privacy and unknown widgets remain safe."
+      "completionGate": "Dense/empty/populated layouts and mobile agenda are useful; existing keyboard/touch editing, named layouts, privacy and unknown widgets remain safe.",
+      "implementationNote": "Optional utility widgets integrated; default customizable Home retained without stacked fixed overview panels. Remaining layout/mobile acceptance work is outstanding."
     },
     {
       "id": "IP14",
@@ -423,7 +437,7 @@
     {
       "id": "IP15",
       "title": "One search and action palette",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP01",
         "IP03",
@@ -445,12 +459,13 @@
         "src/scripts/workspace-search.ts",
         "src/pages/search/index.astro"
       ],
-      "completionGate": "One accessible palette finds current apps and allowed records/actions; private queries stay private; offline local results and cancellation work."
+      "completionGate": "One accessible palette finds current apps and allowed records/actions; private queries stay private; offline local results and cancellation work.",
+      "implementationNote": "Shared action palette and catalogue search use the current launch inventory; authorized federated search remains."
     },
     {
       "id": "IP16",
       "title": "Attention Inbox with real outcomes",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP06",
         "IP08",
@@ -469,12 +484,13 @@
         "src/scripts/workspace-inbox.ts",
         "src/pages/inbox/index.astro"
       ],
-      "completionGate": "Real issues are grouped/deduplicated; supported dismiss/snooze/resolve has native read-back; unavailable data is never presented as zero issues."
+      "completionGate": "Real issues are grouped/deduplicated; supported dismiss/snooze/resolve has native read-back; unavailable data is never presented as zero issues.",
+      "implementationNote": "Actual workspace recovery issues appear in shared-shell Attention Inbox; native attention persistence/actions remain gated."
     },
     {
       "id": "IP17",
       "title": "Reminder policy and optional notifications",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP12",
         "IP16",
@@ -493,12 +509,13 @@
         "src/lib/notifications/browser.ts",
         "src/pages/home/settings/index.astro"
       ],
-      "completionGate": "Due/quiet-hours/permission/duplicate-delivery behavior is tested; inactive-page or background limitations are stated honestly."
+      "completionGate": "Due/quiet-hours/permission/duplicate-delivery behavior is tested; inactive-page or background limitations are stated honestly.",
+      "implementationNote": "Reminder limits described accurately; no background delivery enabled. Permission/quiet-hour/delivery implementation remains."
     },
     {
       "id": "IP18",
       "title": "Combined acceptance, release and operations",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP00",
         "IP01",
@@ -541,7 +558,10 @@
         ".github/workflows/quality.yml",
         ".github/workflows/deploy.yml"
       ],
-      "completionGate": "All ten acceptance journeys pass at the final exact head with distinct synthetic/owner evidence, truthful capabilities, safe rollback and production smoke."
+      "completionGate": "All ten acceptance journeys pass at the final exact head with distinct synthetic/owner evidence, truthful capabilities, safe rollback and production smoke.",
+      "implementationNote": "Combined unit, browser, pinned-owner, accessibility and release-gate checks added/running. Production and real-owner release gates are not met."
     }
-  ]
+  ],
+  "implementationBranch": "feat/connected-hub",
+  "progressDocument": "docs/workspace/connected-hub-progress.md"
 }

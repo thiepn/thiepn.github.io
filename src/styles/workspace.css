@@ -265,3 +265,27 @@
 @container (max-width:580px){.ws-calendar-external-event{grid-template-columns:73px minmax(0,1fr);gap:8px;}.ws-calendar-readonly{grid-column:2;justify-self:start;}.ws-calendar-import>label{width:100%;}}
 @media (max-width:767px){.ws-calendar-export{padding:14px;gap:12px;}.ws-calendar-external-event{grid-template-columns:78px minmax(0,1fr);gap:8px;}.ws-calendar-readonly{grid-column:2;justify-self:start;}.ws-calendar-import>label{width:100%;}.ws-calendar-export-heading a{min-height:44px;}}
 @media (forced-colors:active){.ws-calendar-export,.ws-calendar-external-event,.ws-calendar-sources,.ws-calendar-import{border-color:CanvasText;}}
+
+.ws:not([data-view="calendar"]) .ws-calendar-details{display:none;}
+.ws-calendar-details{margin-bottom:20px;border:1px solid var(--ws-line);border-radius:16px;padding:14px;}
+.ws-calendar-details>summary{cursor:pointer;font-weight:600;}
+.ws-shortcut-choice{display:flex;align-items:center;gap:8px;}
+.ws-shortcut-choice .ws-choice{flex:1;min-width:0;}
+.ws-shortcut-choice[hidden]{display:none;}
+.ws-main>.portal-home,.ws-main [data-workspace-content]>.page-shell{max-width:none;width:auto;padding:0;}
+
+.ws-mode-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;font-size:13px;flex-wrap:wrap;}
+.ws-mode-bar>div{display:flex;gap:4px;background:var(--ws-line,#e8edf5);border-radius:12px;padding:4px;}
+.ws-mode-bar button{padding:8px 18px;border:0;background:transparent;color:var(--ws-muted);border-radius:9px;font:inherit;cursor:pointer;}
+.ws-mode-bar button[aria-pressed="true"]{background:var(--ws-surface,#fff);color:var(--ws-ink);box-shadow:0 1px 4px #17243b12;}
+
+.ws-connection-table{overflow:auto;}
+.ws-connection-table table{border-collapse:collapse;width:100%;font-size:13px;text-align:left;}
+.ws-connection-table td,.ws-connection-table th{padding:13px 10px;border-bottom:1px solid var(--ws-line);vertical-align:top;}
+/* Existing Hub surfaces inherit the workspace palette and control contrast. */
+.ws{--ink:var(--ws-ink);--ink-secondary:var(--ws-muted);--accent:var(--ws-accent);--accent-soft:var(--ws-accent-soft);--surface-1:var(--ws-surface);--line:var(--ws-line);--line-strong:var(--ws-line);--font-ui:'Instrument Sans Variable',system-ui,sans-serif;}
+.ws .portal-search-form button{background:var(--ws-accent);border-color:var(--ws-accent);color:var(--ws-surface);}
+[data-theme=dark] .ws .portal-search-form button{color:#11233d;}
+.ws .portal-button{border-radius:10px;border-color:var(--ws-line);background:var(--ws-surface);color:var(--ws-ink);}
+
+.ws textarea[data-compact-capture]{min-height:64px;height:64px;}

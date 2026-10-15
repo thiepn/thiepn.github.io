@@ -36,6 +36,7 @@ export function parseState(raw: string): WorkspaceState {
             throw new Error('Invalid widget or layout.');
     if (!v.workspaces.some(w => w.id === v.active) || !object(v.preferences) || typeof v.preferences.rail !== 'boolean' || typeof v.preferences.hidden !== 'boolean' || !['compact', 'comfortable'].includes(v.preferences.density) || !text(v.preferences.timezone, 100))
         throw new Error('Invalid workspace preferences.');
+    if(v.preferences.recordRecentLaunches!==undefined && typeof v.preferences.recordRecentLaunches!=='boolean')throw new Error('Invalid recent app preference.');
     new Intl.DateTimeFormat('en', { timeZone: v.preferences.timezone });
     if (v.preferences.theme !== undefined && !['system','light','dark'].includes(v.preferences.theme)) throw new Error('Invalid theme preference.');
     for (const key of ['tasks', 'events', 'notes', 'trackers', 'logs', 'activity'] as const) {

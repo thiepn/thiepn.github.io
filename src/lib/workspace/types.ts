@@ -86,6 +86,7 @@ export interface WorkspaceState {
         timezone: string;
         hidden: boolean;
         theme?: 'system' | 'light' | 'dark';
+        recordRecentLaunches?: boolean;
     };
     tasks: Task[];
     events: CalendarEvent[];

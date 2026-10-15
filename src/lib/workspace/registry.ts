@@ -1,3 +1,4 @@
+import {customLinks} from './commands';
 import type { Widget } from './types';
 export const WIDGETS = {
     'app-shortcuts': { title: 'App shortcuts', icon: 'squares-four', description: 'Your chosen apps, one click away.', views: ['tiles', 'list', 'compact'], width: 12, height: 20, minWidth: 4, minHeight: 16 },
@@ -32,6 +33,8 @@ export function validWidget(widget: Widget): boolean {
     if (widget.config.ownerSources !== undefined && (!Array.isArray(widget.config.ownerSources) || widget.config.ownerSources.length > 3 || new Set(widget.config.ownerSources).size !== widget.config.ownerSources.length || widget.config.ownerSources.some((id:unknown) => !['notes','library','tms60'].includes(String(id))))) return false;
     if (!(spec.views as readonly string[]).includes(widget.view) || r.w < spec.minWidth || r.h < spec.minHeight)
         return false;
+    try {const links=customLinks(widget);if(links.length>12||new Set(links.map(l=>l.id)).size!==links.length)return false;}catch{return false;}
+    if(widget.config.shortcutSource!==undefined&&!['pinned','recent','connected'].includes(String(widget.config.shortcutSource)))return false;
     const ids = widget.config.appIds ?? widget.config.trackerIds;
     return ids === undefined || (Array.isArray(ids) && ids.length <= (widget.type === 'app-shortcuts' ? 12 : 32) && ids.every(x => typeof x === 'string' && x.length < 128));
 }

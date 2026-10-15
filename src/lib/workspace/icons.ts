@@ -1,3 +1,5 @@
+import tray from '@phosphor-icons/core/assets/regular/tray.svg?raw';
+import plugs from '@phosphor-icons/core/assets/regular/plugs-connected.svg?raw';
 import home from '@phosphor-icons/core/assets/regular/house.svg?raw';
 import apps from '@phosphor-icons/core/assets/regular/squares-four.svg?raw';
 import tasks from '@phosphor-icons/core/assets/regular/check-square.svg?raw';
@@ -22,6 +24,6 @@ import left from '@phosphor-icons/core/assets/regular/caret-left.svg?raw';
 import right from '@phosphor-icons/core/assets/regular/caret-right.svg?raw';
 import device from '@phosphor-icons/core/assets/regular/desktop.svg?raw';
 import orbit from '@phosphor-icons/core/assets/regular/planet.svg?raw';
-const icons: Record<string, string> = { house: home, 'squares-four': apps, 'check-square': tasks, 'calendar-blank': calendar, 'chart-bar': chart, 'chart-line-up': line, 'gear-six': settings, 'magnifying-glass': search, plus, 'sidebar-simple': collapse, 'book-open': book, notebook: note, 'pencil-simple': pencil, 'clock-counter-clockwise': clock, 'user-circle': user, 'arrow-up-right': arrow, 'folder-simple': folder, 'dots-six-vertical': dots, 'dots-three': more, 'sliders-horizontal': sliders, 'caret-left': left, 'caret-right': right, desktop: device, planet: orbit };
+const icons: Record<string, string> = { house: home, 'squares-four': apps, 'check-square': tasks, 'calendar-blank': calendar, 'chart-bar': chart, 'chart-line-up': line, 'gear-six': settings, 'magnifying-glass': search, plus, 'sidebar-simple': collapse, 'book-open': book, notebook: note, 'pencil-simple': pencil, 'clock-counter-clockwise': clock, 'user-circle': user, 'arrow-up-right': arrow, 'folder-simple': folder, 'dots-six-vertical': dots, 'dots-three': more, 'sliders-horizontal': sliders, 'caret-left': left, 'caret-right': right, desktop: device, planet: orbit, tray, 'plugs-connected':plugs };
 export function icon(name: string) { return `<span class="ws-icon" aria-hidden="true">${Object.hasOwn(icons,name) ? icons[name] : apps}</span>`; }
 export function appIcon(id: string) { return /library|bible|french|greek/.test(id) ? 'book-open' : /notes|markdown|manuscript/.test(id) ? 'notebook' : /tms|clean|steady/.test(id) ? 'check-square' : /orrery|sky|earth/.test(id) ? 'planet' : 'squares-four'; }

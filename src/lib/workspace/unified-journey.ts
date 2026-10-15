@@ -43,18 +43,7 @@ export function renderUnifiedJourneyNav(mode:HomeJourneyMode,state:WorkspaceStat
   const warning=status.conflict?'Another tab changed saved records':status.dirty?'Unsaved changes in this tab':
     !status.storageReady?'Local storage unavailable':status.offline?'Offline · Hub records only':'Hub local records · no connected calendar queried';
   const alert=status.conflict||status.dirty||!status.storageReady;
-  return `<nav class="ws-unified-nav" aria-label="Hub work modes" data-unified-nav>
-      <div class="ws-unified-nav-heading"><div><strong>Work in Hub</strong><small>Choose a view; your original tasks, notes, calendar and layouts stay in place</small></div>
-      <a href="/home/calendar/?mode=week" class="ws-unified-week-link">Week plan →</a></div>
-      <div class="ws-unified-nav-modes" role="group" aria-label="Home presentation">
-        ${modes.map(item=>`<button type="button" data-action="unified-mode" data-id="${item.id}" aria-pressed="${item.id===mode}" class="ws-unified-mode">
-          <strong>${item.title}</strong><small>${esc(item.detail)}</small></button>`).join('')}
-      </div>
-      <div class="ws-unified-status" data-severity="${alert?'attention':'normal'}" aria-label="Local workspace state">
-        <span>${esc(warning)} · ${esc(status.accountLabel)}</span>
-        ${alert?`<span>${textButton('export','Export first')}${textButton('retry','Retry saved state')}</span>`:''}
-      </div>
-    </nav>`;
+  return `<nav class="ws-mode-bar" aria-label="Hub work modes"><div role="group" aria-label="Home presentation">${modes.map(item=>`<button type="button" data-action="unified-mode" data-id="${item.id}" aria-pressed="${item.id===mode}">${item.title}</button>`).join('')}</div><a href="/home/calendar/?mode=week">Plan the week →</a>${alert?`<span role="status">${esc(warning)}</span>`:''}</nav>`;
 }
 export function renderUnifiedToday(state:WorkspaceState,today:string,status:JourneyStatus) {
   const counts=taskCounts(state.tasks,today);
@@ -69,7 +58,6 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
     <header class="ws-unified-heading"><div><p class="ws-home-eyebrow">Today · ${esc(humanDate(today))}</p>
       <h2 id="ws-unified-title">What needs your attention?</h2><p>Actual Hub tasks and local events, not connected-app progress or guessed commitments.</p></div>
       <div class="ws-unified-head-actions">
-        ${textButton('capture','Capture')}
         ${textButton('capture-task','Inbox task')}
         <a href="/home/calendar/?mode=week" class="ws-unified-action">Plan the week</a>
       </div></header>

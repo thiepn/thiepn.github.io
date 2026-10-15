@@ -14,7 +14,7 @@ test('H8 built public profile stays gated despite a stale local identity', async
   await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-action=account]').first().click();
   await expect(page.getByRole('link', { name: 'Open Account', exact: true })).toHaveAttribute('href', 'https://account.thiepn.dev/');
-  await page.goto('/inbox/'); await expect(page.getByText('Inbox is not connected yet', { exact: true })).toBeVisible();
+  await page.goto('/inbox/'); await expect(page.getByText('App attention sources', { exact: true })).toBeVisible();
   await expect(page.locator('[data-inbox-items]')).toBeEmpty();
   expect(privateRequests).toEqual([]);
 });

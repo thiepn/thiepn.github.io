@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-const hub = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
+const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
 
 for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`H1 Home and app search reflow ${width} ${theme}`, async ({ page }) => {
@@ -16,9 +17,8 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
         await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
         if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       } else {
-        await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
-        await expect(page.locator('.site-brand')).toHaveText('THIEPN');
-        if (width < 640) await expect(page.getByRole('navigation', { name: 'Portal navigation' })).toBeVisible();
+        await expect(page.locator('.ws-brand')).toContainText('THIEPN HUB');
+        if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       }
     }
     expect(errors).toEqual([]);
@@ -32,7 +32,7 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
   await page.getByLabel('Widget title').fill('My tools');await page.locator('input[name=appIds][value=tiny-tools]').check();
-  await page.locator('[data-dialog-submit]').click();await page.getByRole('button',{name:'Done',exact:true}).click();
+  await page.locator('[data-dialog-submit]').click();
   await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(3);
   expect(await page.evaluate(()=>localStorage.getItem('notes:sentinel'))).toBe('keep');
   expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
@@ -43,7 +43,7 @@ test('invalid legacy preferences recover and intentionally empty shortcuts survi
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
- await page.locator('[data-dialog-submit]').click();await page.getByRole('button',{name:'Done',exact:true}).click();
+ await page.locator('[data-dialog-submit]').click();
  await page.reload();await expect(page.locator('[data-launch]')).toHaveCount(0);await expect(page.getByRole('heading',{name:'Your most useful apps'})).toBeVisible();
 });
 

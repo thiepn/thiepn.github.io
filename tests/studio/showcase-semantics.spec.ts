@@ -1,7 +1,7 @@
+import {hubFixture} from './launch-fixture';
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
 
-const hub: { expectedCount: number } = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+const hub=hubFixture;
 
 test('Hub app cards use native article/link semantics without ARIA-role violations', async ({ page }) => {
   await page.goto('/apps/');

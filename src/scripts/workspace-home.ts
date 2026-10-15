@@ -1,3 +1,8 @@
+import {workspaceAttention} from '../lib/workspace/attention';
+import {selectedShortcuts} from '../lib/workspace/selectors';
+import {clearSourceStates} from '../lib/providers/connection-state';
+import {customLinks, setShortcuts, toggleShortcut, shortcutIds} from '../lib/workspace/commands';
+import {resolveLaunch, safeCustomUrl} from '../lib/launches/resolver';
 import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
 import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
 import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
@@ -14,7 +19,7 @@ import { utilityWidget } from '../lib/workspace/widget-views';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
-import { renderHomeOverview, renderMobileToday, renderOwnerHandoffs } from '../lib/workspace/home-view';
+import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
@@ -39,6 +44,7 @@ if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
     let view = root.dataset.view ?? 'home';
+    const staticView=()=>['apps','connections','search','inbox','flows'].includes(view);
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
     let homeModeRestorePending=true;
@@ -55,7 +61,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -64,7 +70,7 @@ async function setup(root: HTMLElement) {
         if(agendaModeFromUrl==='week')query.set('mode','week');
         if(initialReturnWeek)query.set('return',initialReturnWeek);
         history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
-    } else if (location.search || location.hash) history.replaceState(null,'',location.pathname);
+    } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
@@ -83,18 +89,19 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
     let cloud: WorkspaceCloudSync | null = null, pendingCloudRender = false;
+    let cloudConflict=false;
     let insights: ConnectedInsight[] = [], insightController: AbortController | null = null;
     const inputFocused = () => document.activeElement instanceof Element && !!document.activeElement.closest('input,textarea,select,[contenteditable=true]');
     function connectedHTML() {
         return insights.filter(item => item.expiresAt > Date.now()).slice(0,8).map(item => {
             const app=apps.find(app=>app.id===item.appId);
-            return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(app.url)}" rel="noreferrer">Open ${esc(app.title)}</a></div>` : '';
+            return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(item.resumeUrl??app.url)}" rel="noreferrer">${item.resumeUrl?'Resume':'Open'} ${esc(app.title)}</a></div>` : '';
         }).join('');
     }
     function pruneInsights(all=false) {
@@ -104,7 +111,7 @@ async function setup(root: HTMLElement) {
     async function refreshInsights() {
         insightController?.abort(); insightController=null; insights=[];
         const identity=hubIdentity, own=epoch;
-        if (!managedAccountEnabled || identity.status!=='signed-in' || !state || privacyHeld || state.preferences.hidden || document.hidden) {pruneInsights(true);return;}
+        if (!managedAccountEnabled || identity.status!=='signed-in' || !state || privacyHeld || state.preferences.hidden || document.hidden) {pruneInsights(true);clearSourceStates();return;}
         const controller=new AbortController(); insightController=controller;
         try {
             const next=await readConnectedApps(identity.id,controller.signal);
@@ -188,7 +195,13 @@ async function setup(root: HTMLElement) {
     const timeLabel = (at: string) => new Date(at).toLocaleTimeString(undefined, { timeZone: state!.preferences.timezone, hour: '2-digit', minute: '2-digit' });
     function toast(message: string, undo = false) { clearTimeout(toastTimer); const el = $('[data-workspace-toast]'); el.innerHTML = `<span>${esc(message)}</span>${undo ? button('undo-content', 'Undo', '', '') : ''}`; el.hidden = false; toastTimer = setTimeout(() => { el.hidden = true; }, 8000); }
     function notice(message: string, actions = '') { const el = $('[data-workspace-notice]'); el.innerHTML = `${esc(message)}${actions}`; el.hidden = !message; }
-    function saved(label?: string) { $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable'); }
+    function renderAttention() {
+        const target=root.querySelector<HTMLElement>('[data-workspace-attention]');if(!target)return;
+        if(!state||privacyHeld||state.preferences.hidden){target.textContent='Personal attention is hidden.';return;}
+        const items=workspaceAttention({storageReady,dirty,conflict,cloudConflict,locked});
+        target.innerHTML=items.length?items.map(item=>`<article class="ws-row"><div><strong>${esc(item.title)}</strong><p>${esc(item.detail)}</p></div>${button(item.action,item.label)}</article>`).join(''):'<p>No workspace recovery issues. External app coverage is listed separately below.</p>';
+    }
+    function saved(label?: string) { renderAttention(); $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable'); }
     function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
     async function persist(backup = false) {
         if (!state || locked)
@@ -230,15 +243,17 @@ async function setup(root: HTMLElement) {
             if (own !== epoch || !state || locked)
                 return;
             const previous = clone(state);
-            change(state);
+            const candidate = clone(state);
+            change(candidate);
             changeVersion++;
             try {
-                parseState(JSON.stringify(state));
+                parseState(JSON.stringify(candidate));
             }
             catch (e) {
                 state = previous;
                 throw e;
             }
+            state = candidate;
             contentUndo = undo ? previous : null;
             render();
             await persist(backup);
@@ -275,7 +290,8 @@ async function setup(root: HTMLElement) {
     });
 
     /** Both the capture dialog and existing widget submit through the original mutation writer. */
-    function captureFields(id: string) {
+    function captureFields(id: string, compact=false) {
+        if(compact)return `<label class="ws-sr" for="capture-${esc(id)}">Capture a task or note</label><textarea id="capture-${esc(id)}" name="body" data-capture-draft data-compact-capture maxlength="10000" rows="2" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><select name="kind" data-capture-kind aria-label="Capture destination"><option value="note">Hub note</option><option value="task">Hub task · Inbox</option></select>`;
         const notes = providerAction('notes','capture-text') ?? '/apps/';
         return `<div class="ws-capture-routing">
             <label class="ws-field" for="capture-${esc(id)}">What do you want to capture?
@@ -468,17 +484,19 @@ async function setup(root: HTMLElement) {
         if (utility !== null) return utility;
         switch (w.type) {
             case 'app-shortcuts': {
-                const ids = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
-                const chosen = ids.map(id => apps.find(a => a.id === id)).filter((a): a is AppShortcut => !!a);
-                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
+                const ids = selectedShortcuts(state!,w,insights.filter(i=>i.expiresAt>Date.now()).map(i=>i.appId));
+                const options:AppShortcut[]=[...apps,...customLinks(w).map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
+                const missing=ids.filter(id=>!options.some(a=>a.id===(resolveLaunch(String(id))?.id??id)));
+                const chosen = ids.map(id => options.find(a => a.id === (resolveLaunch(String(id))?.id??id))).filter((a): a is AppShortcut => !!a);
+                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(a.category==='external'?'External link':w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${missing.map(id=>`<div class="ws-row"><span>Unavailable shortcut: ${esc(id)}</span>${button('configure-widget','Repair',w.id)}</div>`).join('')}${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
             }
             case 'continue': {
                 const recent = [...state!.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, w.view === 'detailed' ? 6 : 4);
                 const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}${button('context-note', 'Next', n.id, 'ws-text-button')}</div>`).join('')
                     : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
-                return connectedHTML() + `<p class="ws-home-source">Hub notes on this device</p>${local}<div class="ws-continue-owner"><h3>Continue in another app</h3><p class="ws-muted">Launch links here; approved owner metadata appears separately in the Continue desk on Home or App connections.</p>${renderOwnerHandoffs(apps, 2)}<a class="ws-text-button" href="/home/connections/">Check connected sources</a></div>`;
+                return connectedHTML() + `<p class="ws-home-source">Hub notes</p>${recent.length?local:empty('Pick up where you left off','Your Hub notes and approved app summaries appear here.')}<a class="ws-text-button" href="/home/connections/">Manage shared app summaries →</a>`;
             }
-            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Save in Hub</button></div><small class="ws-muted">${dirty ? 'Draft not saved yet' : 'Draft saved locally'} · not synced to Notes</small></form>`;
+            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Draft not saved yet' : 'Draft saved locally'} · not synced to Notes</small></form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
@@ -486,7 +504,7 @@ async function setup(root: HTMLElement) {
         }
     }
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
-    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Changes save on this device first. Connect your account to sync layouts, tasks, notes, events and trackers. Export a backup whenever you need one.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header><p>Keep a list of app shortcuts you open in Hub. No app contents or private addresses are recorded.</p>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Reminders</h2></header><p>Your agenda and due tasks are available while Hub is open. Hub does not promise background or cross-device notifications. Focus timers pause when you leave this tab.</p></section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Changes save on this device first. Connect your account to sync layouts, tasks, notes, events and trackers. Export a backup whenever you need one.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
     function fullContent() {
         if (view === 'settings')
             return settingsHTML();
@@ -498,7 +516,7 @@ async function setup(root: HTMLElement) {
                   || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
                   || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
             return `<section class="ws-task-center" aria-labelledby="ws-task-center-title">
-              <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div>${button('capture', '+ Capture')}</header>
+              <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div></header>
               <nav class="ws-unified-task-links" aria-label="Related Hub workflows"><a href="/">Today</a><a href="/?mode=focus">Focus</a><a href="/home/calendar/?mode=week">Week plan</a></nav>
               <div class="ws-task-filter-list" role="group" aria-label="Task views">
                 ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
@@ -519,8 +537,7 @@ async function setup(root: HTMLElement) {
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus());
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
-            return menu+`<div data-return-panel>${renderReturnJourney(state!, returnContext())}</div>`+
-                renderHomeOverview(state!, apps, today())+renderGrid();
+            return menu+renderGrid();
         }
         return renderGrid();
     }
@@ -580,7 +597,7 @@ async function setup(root: HTMLElement) {
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -588,21 +605,23 @@ async function setup(root: HTMLElement) {
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
-        if (view !== 'apps') $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = view === 'apps' ? 'Apps' : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
         $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
-        if (view !== 'apps') {
+        if (!staticView()) {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
                 $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
             else
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
+        root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
+        renderAttention();
         renderPlanner();
         if (searchDialog.open) renderSearch();
         const mobileToday = $('[data-workspace-today]');
-        if (view === 'apps' || view === 'settings' || (view==='home' && (editing?'workspace':homeMode)!=='workspace')) {
+        if (staticView() || view === 'settings' || (view==='home' && (editing?'workspace':homeMode)!=='workspace')) {
             mobileToday.hidden = true;
             mobileToday.innerHTML = '';
         }
@@ -656,11 +675,11 @@ async function setup(root: HTMLElement) {
     let committedUrl = location.pathname + location.search;
     function updateNavigation() {
         root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link').forEach(link => {
-            const active = routes[new URL(link.href).pathname] === view;
+            const active = (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
             link.classList.toggle('active', active);
             if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
         });
-        if (['calendar','trackers','settings'].includes(view)) moreTrigger.setAttribute('aria-current','page');
+        if (['calendar','trackers','settings','connections','inbox'].includes(view)) moreTrigger.setAttribute('aria-current','page');
         else moreTrigger.removeAttribute('aria-current');
     }
     async function navigateWorkspace(url: URL, pop = false) {
@@ -1246,6 +1265,34 @@ async function setup(root: HTMLElement) {
             render();
         }
     }
+    root.addEventListener('click',event=>{
+        const link=(event.target as Element).closest<HTMLAnchorElement>('a[href]');
+        if(!link||event.defaultPrevented||!state||locked||privacyHeld||state.preferences.hidden||state.preferences.recordRecentLaunches===false)return;
+        const app=apps.find(a=>new URL(a.url,location.href).href===link.href)||apps.find(a=>a.id===link.dataset.launch);
+        if(!app)return;
+        if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||link.target==='_blank'){void mutate(s=>activity(s,'Opened '+app.title,'launch:'+app.id),'',false);return;}
+        event.preventDefault();const destination=link.href;
+        void mutate(s=>activity(s,'Opened '+app.title,'launch:'+app.id),'',false).then(()=>location.assign(destination));
+    });
+    root.addEventListener('click',event=>{
+        const control=(event.target as Element).closest<HTMLButtonElement>('[data-shortcut-move]');
+        const row=control?.closest<HTMLElement>('[data-app-choice]');if(!control||!row)return;
+        const direction=Number(control.dataset.shortcutMove), other=direction<0?row.previousElementSibling:row.nextElementSibling;
+        if(other){if(direction<0)other.before(row);else other.after(row);control.focus();}
+    });
+    function editShortcuts(widget: Widget) {
+        const links=customLinks(widget), selected=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id);
+        const choices=[...apps,...links.map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
+        const rows=[...selected.map(id=>choices.find(a=>a.id===(resolveLaunch(id)?.id??id))??{id,title:'Unavailable shortcut: '+id,icon:'warning'}),...choices.filter(a=>!selected.some(id=>(resolveLaunch(id)?.id??id)===a.id))];
+        openForm('Choose app shortcuts', field('Widget title','title',String(widget.config.title??'App shortcuts'),'text','required maxlength="80"')+select('Show','shortcutSource',[['pinned','Pinned apps'],['recent','Recently opened apps'],['connected','Apps sharing fresh summaries']],String(widget.config.shortcutSource??'pinned'))+'<p>Choose up to 12 shortcuts. Move rows to set their order.</p><label class="ws-field">Find an app<input type="search" data-pin-search /></label><div data-shortcut-choices>'+rows.map(a=>`<div class="ws-shortcut-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><label class="ws-choice"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selected.includes(a.id)?'checked':''}/>${esc(a.title)}</label><button type="button" class="ws-button" data-shortcut-move="-1" aria-label="Move ${esc(a.title)} earlier">↑</button><button type="button" class="ws-button" data-shortcut-move="1" aria-label="Move ${esc(a.title)} later">↓</button></div>`).join('')+'</div><details><summary>Add an external shortcut</summary>'+field('Name','customTitle','','text','maxlength="80"')+field('HTTPS address','customUrl','','url','placeholder="https://…"')+'</details>',async data=>{
+            const widgetTitle=String(data.get('title')??'').trim();if(!widgetTitle)throw new Error('Enter a widget title.');
+            const ids=data.getAll('appIds').map(String), title=String(data.get('customTitle')??'').trim(), url=String(data.get('customUrl')??'').trim();
+            const nextLinks=[...links];
+            if(title||url){if(!title||!url)throw new Error('Enter a name and HTTPS address.');const link={id:'custom:'+uid(),title,url:safeCustomUrl(url)};nextLinks.push(link);ids.push(link.id);}
+            if(ids.length>12)throw new Error('Choose at most 12 shortcuts.');
+            await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,ids,nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
+        });
+    }
     function configureWidget(id: string) {
         let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
         if (!w)
@@ -1253,6 +1300,7 @@ async function setup(root: HTMLElement) {
         if (!specification(w.type) || w.typeVersion > 1) {
             openForm('Unavailable widget', '<p>This widget is preserved. You can remove it explicitly without deleting its underlying data.</p>' + button('remove-widget','Remove widget',id),()=>{}); $('[data-dialog-submit]').hidden=true; return;
         }
+        if (!editing && w.type==='app-shortcuts') { editShortcuts(w); return; }
         if (!editing) {
             beginEdit();
             w = editing!.workspace.widgets.find(w => w.id === id)!;
@@ -1972,6 +2020,14 @@ async function setup(root: HTMLElement) {
                 dialog.close();
                 break;
             }
+            case 'toggle-recents':
+                void mutate(s=>{s.preferences.recordRecentLaunches=s.preferences.recordRecentLaunches===false;},'Recent apps preference saved');break;
+            case 'clear-recents':
+                void mutate(s=>{s.activity=s.activity.filter(a=>!a.kind.startsWith('launch:'));},'Recent app history cleared');break;
+            case 'pin-app':
+                if(editing){toast('Finish or cancel layout editing first.');break;}
+                void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
+                break;
             case 'configure-widget':
                 configureWidget(id);
                 break;
@@ -2040,7 +2096,7 @@ async function setup(root: HTMLElement) {
                 }
                 break;
             case 'privacy':
-                insightController?.abort(); insights=[];
+                insightController?.abort(); insights=[];clearSourceStates();
                 void mutate(s => { s.preferences.hidden = !(privacyHeld || s.preferences.hidden); privacyHeld = s.preferences.hidden; }, '', false);
                 break;
             case 'timezone':
@@ -2488,16 +2544,16 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
             homeModeRestorePending=false;
-        } else homeMode='today';
+        } else homeMode='workspace';
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
         weekFilter='carry';
         const own = ++epoch;
-        cloud?.stop(); cloud = null; pendingCloudRender=false; insightController?.abort(); insights=[];
+        cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();
         root.querySelectorAll<HTMLElement>('[data-cloud-status]').forEach(el=>el.hidden=true);
         root.querySelectorAll<HTMLElement>('[data-action=cloud-retry]').forEach(el=>el.hidden=true);
         root.querySelectorAll<HTMLElement>('[data-action=cloud-review]').forEach(el=>el.hidden=true);
@@ -2524,12 +2580,12 @@ async function setup(root: HTMLElement) {
         $('[data-workspace-list]').innerHTML = '';
         $('[data-workspace-recovery]').hidden = true;
         $('[data-workspace-recovery]').replaceChildren();
-        if (view !== 'apps') $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
+        if (!staticView()) $('[data-workspace-content]').innerHTML = empty('Your workspace', 'Checking local identity…');
         $('[data-planner]').innerHTML = '';
         $('[data-workspace-today]').innerHTML = '';
         $('[data-workspace-today]').hidden = true;
         $('[data-toolbar]').innerHTML = '';
-        $('#ws-title').textContent = view === 'apps' ? 'Apps' : 'Personal workspace';
+        $('#ws-title').textContent = staticView() ? view[0]!.toUpperCase()+view.slice(1) : 'Personal workspace';
         $('[data-workspace-toast]').hidden = true;
         saved('Checking identity…');
         $('[data-profile-label]').textContent = identity.status === 'signed-in' ? identity.label : 'This device';
@@ -2564,7 +2620,7 @@ async function setup(root: HTMLElement) {
             if (rawRecovery) {
                 locked = true;
                 notice(e instanceof Error ? e.message : 'Saved workspace cannot be opened.', button('export', 'Export recovery file'));
-                if (view !== 'apps') $('[data-workspace-content]').innerHTML = '<section class="ws-recovery"><h2>Local workspace needs recovery</h2><p>The saved record could not be parsed or opened. It was not overwritten. Export its original recovery JSON before retrying. Do not clear site data or import over it before preserving the original.</p>' + button('export', 'Export original recovery JSON') + button('retry-locked','Recheck saved record') + '<p class="ws-muted">No tasks, notes or progress can be read safely until this record can be opened. Public app links remain usable.</p></section>';
+                if (!staticView()) $('[data-workspace-content]').innerHTML = '<section class="ws-recovery"><h2>Local workspace needs recovery</h2><p>The saved record could not be parsed or opened. It was not overwritten. Export its original recovery JSON before retrying. Do not clear site data or import over it before preserving the original.</p>' + button('export', 'Export original recovery JSON') + button('retry-locked','Recheck saved record') + '<p class="ws-muted">No tasks, notes or progress can be read safely until this record can be opened. Public app links remain usable.</p></section>';
                 saved('Saved record left untouched');
                 return;
             }
@@ -2618,6 +2674,7 @@ async function setup(root: HTMLElement) {
                 changed: async () => { if (own !== epoch) return; pendingCloudRender=true; await refreshCloudView(); },
                 status: (message, recovery = false) => {
                     if (own !== epoch) return;
+                    cloudConflict=recovery;renderAttention();
                     root.querySelectorAll<HTMLElement>('[data-cloud-status]').forEach(el=>{el.textContent=message;el.hidden=false;});
                     root.querySelectorAll<HTMLElement>('[data-action=cloud-retry]').forEach(el=>el.hidden=false);root.querySelectorAll<HTMLElement>('[data-action=cloud-review]').forEach(el=>el.hidden=!recovery);
                 },
