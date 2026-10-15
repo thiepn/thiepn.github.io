@@ -83,13 +83,17 @@ async function setup(root: HTMLElement) {
             const token = await readHubLanguageToken(owner);
             if (!token || controller.signal.aborted) throw new Error('Unavailable first-party session');
             const cards = await fetchHubLanguages(token, controller.signal);
-            if (capturedEpoch !== epoch || languageOwner !== owner || controller.signal.aborted ||
+            if (controller.signal.aborted) throw new Error('Language source timed out');
+            if (capturedEpoch !== epoch || languageOwner !== owner ||
                 document.hidden || privacyHeld || state?.preferences.hidden) return;
             languageCards = cards;
             languageCheckedAt = Date.now();
             languageStatus = 'ready';
         } catch {
-            if (capturedEpoch !== epoch || languageOwner !== owner || controller.signal.aborted) return;
+            // Timeout is a visible unavailable state. Deliberate cancellation on
+            // identity/privacy/background/another refresh must never repaint.
+            if (capturedEpoch !== epoch || languageOwner !== owner || languageAbort !== controller ||
+                document.hidden || privacyHeld || state?.preferences.hidden) return;
             languageStatus = 'unavailable';
         } finally {
             clearTimeout(timeout);
