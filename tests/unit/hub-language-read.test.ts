@@ -45,6 +45,9 @@ describe('Hub Core P9 read-only language projection', () => {
     expect(ownerLanguageLink(owner,'javascript:alert(1)')).toBe(owner);
   });
   it('uses a no-store authenticated GET and Core envelope validation', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW));
+    try {
     const fetcher=vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify({ok:true,data:snapshot()}),{status:200}));
     const cards=await fetchHubLanguages('test-account-token',new AbortController().signal,fetcher as typeof fetch);
@@ -55,5 +58,8 @@ describe('Hub Core P9 read-only language projection', () => {
       method:'GET',cache:'no-store',credentials:'omit',redirect:'error',
       headers:{Authorization:'Bearer test-account-token'},
     });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
