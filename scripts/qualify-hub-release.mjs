@@ -32,7 +32,18 @@ assert.equal(providers.attentionContract.privateReadsEnabled, false);
 assert.equal(providers.attentionContract.inlineWritesEnabled, false);
 assert.deepEqual(providers.budgets, { visible: 6, concurrency: 3, deadlineMs: 2000, summaryItems: 10, summaryBytes: 32768, searchItems: 20, searchBytes: 65536 });
 
+if(status.profile==='account-sync') {
+ const account=await json('hub-account.json');
+ assert.deepEqual(account,JSON.parse(await fs.readFile('src/data/hub-account.json','utf8')));
+ assert.equal(account.enabled,true);assert.equal(account.version,1);
+ assert.equal(account.clientId,'a4c1fca4-d8d1-410d-908c-7462db6e60df');
+ assert.equal(account.issuer,'https://hycegznamzjhwinegaai.supabase.co');
+ assert.equal(account.callback,'https://thiepn.dev/home/auth/callback/');
+ assert.equal(account.hubOrigin,'https://thiepn.dev');assert.equal(account.accountOrigin,'https://account.thiepn.dev');
+ assert.match(account.publishableKey,/^sb_publishable_/);
+}
 const files = new Set(['hub-release.json', 'hub-providers.json', 'hub-search.json', 'hub-provider-schema.json', 'hub-attention-schema.json', 'sitemap.xml', 'workspace-sw.js', 'home/workspace-sw.js']);
+if(status.profile==='account-sync')files.add('hub-account.json');
 const sitemap = (await read('sitemap.xml')).toString();
 for (const route of HUB_RELEASE_ROUTES) {
   const file = route === '/' ? 'index.html' : `${route.slice(1)}index.html`;
@@ -51,7 +62,7 @@ assert(root.includes('data-workspace') && !root.includes('data-hub-item'), 'Root
 assert(!root.includes('data-library-pilot'), 'Pinned reading bridge must stay on its trusted /home/ host');
 assert(root.includes('href="/apps/"'), 'Root must link to the Apps catalogue');
 const home = (await read('home/index.html')).toString();
-if (status.profile === 'device-reading-pilot') {
+if (['device-reading-pilot','account-sync'].includes(status.profile)) {
   const pilot = await json('reading-pilot.json');
   assert.deepEqual(pilot, JSON.parse(await fs.readFile('src/data/reading-pilot.json','utf8')));
   assert.equal(pilot.enabled, true); assert.equal(pilot.scope, 'device');
@@ -87,4 +98,4 @@ for (const file of [...files].sort()) {
 const report = { schemaVersion: 1, profile: status.profile, releaseId: status.releaseId, appCount: status.appCount, builtAssets: assets, scope: 'Built public Hub routes and directly referenced assets; no physical-device or authenticated certification' };
 await fs.mkdir('.cache', { recursive: true });
 await fs.writeFile('.cache/hub-release-qualification.json', JSON.stringify(report, null, 2) + '\n');
-console.log(`Hub ${status.profile} qualification passed: ${status.appCount} apps / ${HUB_RELEASE_ROUTES.length} routes / ${assets.length} hashed artifacts; ${status.profile === 'device-reading-pilot' ? 'explicit device reading only; managed features disabled' : 'private features disabled'}.`);
+console.log(`Hub ${status.profile} qualification passed: ${status.appCount} apps / ${HUB_RELEASE_ROUTES.length} routes / ${assets.length} hashed artifacts; ${status.profile === 'account-sync' ? 'account workspace sync and consented app metadata; native app writes disabled' : status.profile === 'device-reading-pilot' ? 'explicit device reading only; managed features disabled' : 'private features disabled'}.`);

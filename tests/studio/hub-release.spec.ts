@@ -6,9 +6,9 @@ test('H8 built public profile stays gated despite a stale local identity', async
   await page.addInitScript(() => localStorage.setItem('thiepn:hub-auth:v1', JSON.stringify({ access_token: 'fictional-expired-token', user: { id: '11111111-1111-4111-8111-111111111111', email: 'fictional@example.test' } })));
   const response = await page.request.get('/hub-release.json'); expect(response.status()).toBe(200);
   const status = validateHubReleaseStatus(await response.json());
-  for (const feature of HUB_DISABLED_FEATURES) expect(status.features[feature]).toBe(feature === 'privateReads' && status.profile === 'device-reading-pilot');
+  for (const feature of HUB_DISABLED_FEATURES) expect(status.features[feature]).toBe((feature === 'privateReads' && ['device-reading-pilot','account-sync'].includes(status.profile)) || (feature === 'hubSignIn' && status.profile === 'account-sync'));
   await page.goto('/home/');
-  await expect(page.locator('[data-auth-status]')).toHaveText('Hub sign-in is not enabled yet.');
+  await expect(page.locator('[data-auth-status]')).toHaveText(status.profile==='account-sync'?'Account sync is available on thiepn.dev. This preview keeps data on this device.':'Hub sign-in is not enabled yet.');
   await expect(page.locator('[data-auth-login]')).toBeHidden();
   await expect(page.locator('[data-auth-logout]')).toBeHidden();
   await expect(page.locator('[data-hub-item]')).toHaveCount(0);

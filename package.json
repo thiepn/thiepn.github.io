@@ -99,7 +99,8 @@
     "@phosphor-icons/core": "^2.1.1",
     "@supabase/supabase-js": "2.117.2",
     "astro": "7.1.6",
-    "motion": "12.43.0"
+    "motion": "12.43.0",
+    "@thiepn/account-session": "file:vendor/account-session"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

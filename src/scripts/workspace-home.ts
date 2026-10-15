@@ -1,3 +1,7 @@
+import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
+import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
+import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
+import { managedAccountEnabled, hubCloudTransport } from './hub-account';
 import { setupHubCatalogue } from './hub-catalogue';
 import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity } from './portal-auth';
@@ -38,6 +42,31 @@ async function setup(root: HTMLElement) {
     let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
+    let cloud: WorkspaceCloudSync | null = null, pendingCloudRender = false;
+    let insights: ConnectedInsight[] = [], insightController: AbortController | null = null;
+    const inputFocused = () => document.activeElement instanceof Element && !!document.activeElement.closest('input,textarea,select,[contenteditable=true]');
+    function connectedHTML() {
+        return insights.filter(item => item.expiresAt > Date.now()).slice(0,8).map(item => {
+            const app=apps.find(app=>app.id===item.appId);
+            return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(app.url)}" rel="noreferrer">Open ${esc(app.title)}</a></div>` : '';
+        }).join('');
+    }
+    function pruneInsights(all=false) {
+        root.querySelectorAll<HTMLElement>('[data-connected-insight]').forEach(row=>{if(all || Number(row.dataset.expires)<=Date.now())row.remove();});
+    }
+    setInterval(()=>pruneInsights(),1000);
+    async function refreshInsights() {
+        insightController?.abort(); insightController=null; insights=[];
+        const identity=hubIdentity, own=epoch;
+        if (!managedAccountEnabled || identity.status!=='signed-in' || !state || privacyHeld || state.preferences.hidden || document.hidden) {pruneInsights(true);return;}
+        const controller=new AbortController(); insightController=controller;
+        try {
+            const next=await readConnectedApps(identity.id,controller.signal);
+            if (own!==epoch || controller.signal.aborted || !state || privacyHeld || state.preferences.hidden || document.hidden) return;
+            insights=next;
+            if (!editing && !inputFocused()) root.querySelectorAll<HTMLElement>('[data-widget-type=continue] .ws-widget-body').forEach(body=> { if (!body.contains(document.activeElement)) { const w=current().widgets.find(w=>w.id===body.closest<HTMLElement>('[data-widget-id]')?.dataset.widgetId);if(w)body.innerHTML=widgetBody(w); } });
+        } catch { if(own===epoch)pruneInsights(true); /* Keep locally owned notes and tasks. */ }
+    }
     const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
     const form = $<HTMLFormElement>('[data-workspace-form]');
     const account = $<HTMLDialogElement>('[data-account-dialog]');
@@ -105,6 +134,7 @@ async function setup(root: HTMLElement) {
             conflict = false;
             saved();
             channel?.postMessage({ key: store.key, revision: state.revision });
+            cloud?.schedule();
         }
         catch (err) {
             if (own !== epoch)
@@ -218,7 +248,7 @@ async function setup(root: HTMLElement) {
                 const chosen = ids.map(id => apps.find(a => a.id === id)).filter((a): a is AppShortcut => !!a);
                 return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
             }
-            case 'continue': return state!.notes.length ? state!.notes.slice(0, 8).map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('') : empty('Pick up where you left off', 'Your captured notes will appear here. App resource connections are available separately.', 'capture', 'Capture a note');
+            case 'continue': return connectedHTML() + (state!.notes.length ? state!.notes.slice(0, 8).map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}</div>`).join('') : connectedHTML() ? '' : empty('Pick up where you left off', 'Your Hub notes and shared app progress appear here. Manage app sharing in Account.', 'capture', 'Capture a note'));
             case 'capture': return `<form class="ws-capture-form" data-capture-form><label class="ws-sr" for="capture-${esc(w.id)}">Capture a task or note</label><textarea id="capture-${esc(w.id)}" name="body" data-capture-draft maxlength="10000" placeholder="A thought, task or note…" required>${esc(state!.captureDraft)}</textarea><div class="ws-capture-bottom"><select name="kind" aria-label="Capture type"><option value="note">Note</option><option value="task">Task</option></select><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Unsaved changes' : 'Saved on this device'} · local capture</small></form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
@@ -227,7 +257,7 @@ async function setup(root: HTMLElement) {
         }
     }
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
-    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Your workspace is local to this browser. Back up layouts, tasks, notes, events and tracker history together.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Changes save on this device first. Connect your account to sync layouts, tasks, notes, events and trackers. Export a backup whenever you need one.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
     function fullContent() {
         if (view === 'settings')
             return settingsHTML();
@@ -939,6 +969,7 @@ async function setup(root: HTMLElement) {
                 }
                 break;
             case 'privacy':
+                insightController?.abort(); insights=[];
                 void mutate(s => { s.preferences.hidden = !(privacyHeld || s.preferences.hidden); privacyHeld = s.preferences.hidden; }, '', false);
                 break;
             case 'timezone':
@@ -1050,6 +1081,7 @@ async function setup(root: HTMLElement) {
             void mutate(s => s.preferences.density = el.value as 'compact' | 'comfortable', '', false);
         if (el.dataset.preference === 'theme') {
             const theme = el.value;
+            void mutate(s => s.preferences.theme = theme as 'system' | 'light' | 'dark', '', false);
             document.documentElement.dataset.themePreference = theme;
             document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : theme;
             document.documentElement.style.colorScheme = document.documentElement.dataset.theme!;
@@ -1235,6 +1267,12 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         const own = ++epoch;
+        cloud?.stop(); cloud = null; pendingCloudRender=false; insightController?.abort(); insights=[];
+        root.querySelectorAll<HTMLElement>('[data-cloud-status]').forEach(el=>el.hidden=true);
+        root.querySelectorAll<HTMLElement>('[data-action=cloud-retry]').forEach(el=>el.hidden=true);
+        root.querySelectorAll<HTMLElement>('[data-action=cloud-review]').forEach(el=>el.hidden=true);
+        root.querySelectorAll<HTMLElement>('[data-action=guest-import]').forEach(el=>el.hidden=!managedAccountEnabled || identity.status!=='signed-in');
+        $('[data-storage-label]').textContent = identity.status === 'signed-in' ? 'THIEPN Account' : 'This device';
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
@@ -1331,12 +1369,68 @@ async function setup(root: HTMLElement) {
             };
         }
         render();
+        if (managedAccountEnabled && identity.status === 'signed-in' && storageReady) {
+            const ownStore = nextStore;
+            cloud = new WorkspaceCloudSync({
+                owner: identity.id, store: ownStore, transport: hubCloudTransport(identity.id),
+                canApply: () => own === epoch && !dirty && !editing && !dialog.open && !searchDialog.open && !inputFocused(),
+                changed: async () => { if (own !== epoch) return; pendingCloudRender=true; await refreshCloudView(); },
+                status: (message, recovery = false) => {
+                    if (own !== epoch) return;
+                    root.querySelectorAll<HTMLElement>('[data-cloud-status]').forEach(el=>{el.textContent=message;el.hidden=false;});
+                    root.querySelectorAll<HTMLElement>('[data-action=cloud-retry]').forEach(el=>el.hidden=false);root.querySelectorAll<HTMLElement>('[data-action=cloud-review]').forEach(el=>el.hidden=!recovery);
+                },
+            });
+            cloud.schedule(0); void refreshInsights();
+        }
         if (!storageReady)
             saved();
         else if (!recoveryDraft)
             notice('');
     }
-    window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
+    function applyTheme(theme: 'system' | 'light' | 'dark') {
+        document.documentElement.dataset.themePreference = theme;
+        document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light') : theme;
+        document.documentElement.style.colorScheme = document.documentElement.dataset.theme!;
+        try { localStorage.setItem('thiepn:index-theme', theme); } catch { /* Session preference remains usable. */ }
+    }
+    window.addEventListener('hub:before-account-navigation', event => {
+        (event as CustomEvent<{ wait(promise: Promise<void>): void }>).detail.wait((async () => {
+            clearTimeout(captureTimer); await queue;
+            if (dirty) await persist();
+            if (dirty) throw new Error('Export unsaved data before connecting.');
+            if (editing) await store?.draft(editing);
+        })());
+    });
+    async function refreshCloudView() {
+        const own=epoch; await queue;
+        if (!pendingCloudRender || own!==epoch || dirty || editing || dialog.open || searchDialog.open || inputFocused()) return;
+        pendingCloudRender=false; await reloadSaved();if(state?.preferences.theme)applyTheme(state.preferences.theme);
+    }
+    root.addEventListener('focusout',()=>{setTimeout(()=>{void refreshCloudView();cloud?.schedule();},0);});
+    window.addEventListener('online', () => {cloud?.schedule(0);void refreshInsights();});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud?.schedule(0);void refreshInsights(); });
+    setInterval(()=>void refreshInsights(),30000);
+    setInterval(() => { if (!document.hidden) {void refreshCloudView();cloud?.schedule(0);} }, 15000);
+    root.addEventListener('click', event => {
+        const action = (event.target as Element).closest<HTMLElement>('[data-action]')?.dataset.action;
+        if (action === 'guest-import' && hubIdentity.status==='signed-in' && state && store) void (async()=>{
+            const own=epoch,guestStore=new WorkspaceStore('guest');
+            try {await guestStore.open();const guest=await guestStore.load();if(own!==epoch)return;
+                if(!guest || !meaningfulState(guest)){toast('No guest workspace data to add.');return;}
+                account.close();openForm('Add this device’s guest workspace','<p>This copies your guest layouts, tasks, calendar, notes and trackers into the connected account. The guest original stays on this device.</p>',async()=>{if(own!==epoch || !state)return;const combined=addGuestState(state,guest);state=combined;await persist(true);if(dirty)throw new Error('Could not save. Export a backup before retrying.');dialog.close();render();},'Add to my account');
+            }catch(error){toast(error instanceof Error?error.message:'Guest workspace unavailable.');}finally{guestStore.close();}
+        })();
+        if (action === 'export-cloud-recovery' && cloud) void cloud.recovery().then(recovery=>{if(recovery)download(JSON.stringify(recovery.remote),'thiepn-account-recovery.json');});
+        if (action === 'cloud-retry' && cloud) {root.querySelectorAll<HTMLElement>('[data-cloud-status]').forEach(el=>el.textContent='Checking account sync…');cloud.schedule(0);}
+        if (action === 'cloud-review' && cloud) void (async () => {
+            const own=epoch,engine=cloud!; const recovery = await engine.recovery();
+            if (!recovery || own!==epoch || engine!==cloud) return;
+            account.close();
+            openForm('Review sync changes', '<p>Both versions are preserved. Export a backup before choosing which version should be shared with your devices.</p>' + select('Use workspace', 'choice', [['local','Keep this device’s version'],['remote','Use the account version']], 'local') + button('export','Export this device’s backup') + button('export-cloud-recovery','Export the account backup'), async data => { dialog.close(); await cloud?.resolve(data.get('choice') === 'remote' ? 'remote' : 'local'); });
+        })();
+    });
+    window.addEventListener('hub:identity' , event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing)
             void reloadSaved();

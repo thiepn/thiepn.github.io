@@ -43,5 +43,22 @@ export class WorkspaceStore {
     else
         tx.objectStore('drafts').put(value, this.key); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); }); return null; }
     async backup() { const raw = await this.read('backups'); return raw === undefined ? null : parseState(String(raw)); }
+    // Account-scoped cloud journal uses a separate key in the existing database.
+    // No database upgrade or guest namespace migration is required.
+    async syncJournal(value?: unknown): Promise<unknown> {
+        if (!this.db) throw new Error('Storage unavailable');
+        const key = this.key + ':cloud-sync:v1';
+        if (value === undefined) return await new Promise((resolve, reject) => {
+            const request = this.db!.transaction('records').objectStore('records').get(key);
+            request.onsuccess = () => resolve(request.result ?? null);
+            request.onerror = () => reject(request.error);
+        });
+        await new Promise<void>((resolve, reject) => {
+            const tx = this.db!.transaction('records', 'readwrite');
+            tx.objectStore('records').put(value, key);
+            tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error);
+        });
+        return value;
+    }
     close() { this.db?.close(); this.db = null; }
 }

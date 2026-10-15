@@ -12,7 +12,7 @@ const entries=await getHubProjects();
 ---
 <BaseLayout title="Connections — THIEPN HUB" description="Existing THIEPN app connections and device reading pilot." portal noindex>
   <div class="portal-home page-shell">
-    <header class="portal-home-heading"><h1>App connections</h1><p>Existing connection features keep their current capability gates. Your new workspace saves locally.</p><a class="portal-button" href="/">Return to workspace</a></header>
+    <header class="portal-home-heading"><h1>App connections</h1><p>Manage your account, app sharing and reading connections. Your workspace saves on this device first and syncs when you connect Account.</p><a class="portal-button" href="/">Return to workspace</a></header>
     <PortalAccount/><DailyHome entries={entries}/><PrivateTms/><PrivateNotes/><PrivateCapture/><IntegratedWorkflows/><p><a class="portal-button" href="/home/#reading">Open reading connection</a></p>
   </div>
 </BaseLayout>
