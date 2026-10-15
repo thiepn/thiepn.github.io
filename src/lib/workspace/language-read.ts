@@ -5,6 +5,12 @@
  */
 export type HubLanguageId = 'japanese' | 'french' | 'chinese';
 export const HUB_LANGUAGE_IDS: readonly HubLanguageId[] = ['japanese', 'french', 'chinese'];
+// Independently verified against the Languages P10 catalog and Japanese native
+// producer. Chinese has no qualified owner route in that catalog.
+export const HUB_LANGUAGE_OWNER_ROUTES: Readonly<Partial<Record<HubLanguageId, string>>> = {
+  japanese: 'https://thiepn.dev/japanese/',
+  french: 'https://french.thiepn.dev/',
+};
 export type HubLanguageCard = {
   readonly appId: HubLanguageId;
   readonly name: string;
@@ -85,7 +91,9 @@ export function ownerLanguageLink(ownerUrl: string, route?: string): string {
   if (!route) return owner.href;
   try {
     const candidate = new URL(route, owner.href);
-    return candidate.protocol === 'https:' && candidate.origin === owner.origin && !candidate.username && !candidate.password
+    return candidate.protocol === 'https:' && candidate.origin === owner.origin &&
+      candidate.pathname.startsWith(owner.pathname.endsWith('/') ? owner.pathname : owner.pathname + '/') &&
+      !candidate.username && !candidate.password
       ? candidate.href : owner.href;
   } catch { return owner.href; }
 }

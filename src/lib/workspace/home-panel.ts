@@ -1,5 +1,5 @@
 import { integratedLocalDay } from './integrated-overview';
-import { HUB_LANGUAGE_IDS, ownerLanguageLink, type HubLanguageCard } from './language-read';
+import { HUB_LANGUAGE_IDS, HUB_LANGUAGE_OWNER_ROUTES, ownerLanguageLink, type HubLanguageCard } from './language-read';
 import type { WorkspaceState, AppShortcut } from './types';
 
 export type LanguageLoadStatus = 'signed-out' | 'loading' | 'ready' | 'unavailable';
@@ -43,10 +43,11 @@ export function renderIntegratedHome(
     const card = cards.find(value => value.appId === id);
     const app = apps.find(value => value.id === id);
     const title = id[0]!.toUpperCase() + id.slice(1);
-    const link = app ? ownerLanguageLink(app.url, card?.action.route) : null;
+    const sourceUrl = app?.url ?? HUB_LANGUAGE_OWNER_ROUTES[id];
+    const link = sourceUrl ? ownerLanguageLink(sourceUrl, card?.action.route) : null;
     if (!card) return '<div class="ws-language-row"><div><strong>' + title +
-      '</strong><small>Not shared or no publisher snapshot</small></div>' +
-      (app ? '<a href="' + esc(app.url) + '" rel="noreferrer">Study in app ↗</a>' : '') + '</div>';
+      '</strong><small>' + (status === 'unavailable' ? 'Source unavailable' : status === 'loading' ? 'Checking published snapshot' : 'Not shared or no publisher snapshot') + '</small></div>' +
+      (sourceUrl ? '<a href="' + esc(sourceUrl) + '" rel="noreferrer">Study in app ↗</a>' : '') + '</div>';
     const snapshot = viewDate(card.generatedAt);
     const freshness = status === 'unavailable' || card.stale ? 'Outdated source snapshot' : 'Source snapshot';
     const metrics = card.metrics.map(metric => esc(metric.label) + ': ' + esc(metric.current) +
