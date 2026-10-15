@@ -1,6 +1,8 @@
 import { setupHubCatalogue } from './hub-catalogue';
 import { HUB_CATEGORIES } from '../data/taxonomy';
-import { hubIdentity } from './portal-auth';
+import { hubIdentity, readHubLanguageToken } from './portal-auth';
+import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
+import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
@@ -35,6 +37,66 @@ async function setup(root: HTMLElement) {
     let selected = dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone), month = selected.slice(0, 7) + '-01';
     let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
+    let languageOwner: string | null = null;
+    let languageCards: readonly HubLanguageCard[] = [];
+    let languageStatus: LanguageLoadStatus = 'signed-out';
+    let languageCheckedAt: number | null = null;
+    let languageLastAttempt = 0;
+    let languageAbort: AbortController | null = null;
+    function resetLanguages() {
+        languageAbort?.abort();
+        languageAbort = null;
+        languageCards = [];
+        languageStatus = 'signed-out';
+        languageCheckedAt = null;
+        languageLastAttempt = 0;
+        languageOwner = null;
+    }
+    function repaintOverview() {
+        const panel = root.querySelector<HTMLElement>('[data-native-overview]');
+        if (panel && state && !privacyHeld && !state.preferences.hidden) {
+            panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps);
+        }
+    }
+    async function refreshLanguages(force = false) {
+        const owner = hubIdentity.status === 'signed-in' ? hubIdentity.id : null;
+        if (view !== 'home' || !owner || owner !== languageOwner || !state ||
+            privacyHeld || state.preferences.hidden || document.hidden || !navigator.onLine) {
+            if (owner && owner === languageOwner && !navigator.onLine) {
+                languageStatus = 'unavailable';
+                repaintOverview();
+            }
+            return;
+        }
+        const now = Date.now();
+        if (!force && now - languageLastAttempt < 60_000) return;
+        languageLastAttempt = now;
+        languageAbort?.abort();
+        const controller = new AbortController();
+        languageAbort = controller;
+        const capturedEpoch = epoch;
+        languageStatus = languageCards.length ? 'ready' : 'loading';
+        repaintOverview();
+        const timeout = setTimeout(() => controller.abort(), 6500);
+        try {
+            const token = await readHubLanguageToken(owner);
+            if (!token || controller.signal.aborted) throw new Error('Unavailable first-party session');
+            const cards = await fetchHubLanguages(token, controller.signal);
+            if (capturedEpoch !== epoch || languageOwner !== owner || controller.signal.aborted ||
+                document.hidden || privacyHeld || state?.preferences.hidden) return;
+            languageCards = cards;
+            languageCheckedAt = Date.now();
+            languageStatus = 'ready';
+        } catch {
+            if (capturedEpoch !== epoch || languageOwner !== owner || controller.signal.aborted) return;
+            languageStatus = 'unavailable';
+        } finally {
+            clearTimeout(timeout);
+            if (languageAbort === controller) languageAbort = null;
+        }
+        repaintOverview();
+    }
     let contentUndo: WorkspaceState | null = null, searchQuery = '', rawRecovery = '';
     let changeVersion = 0;
     let queue = Promise.resolve();
@@ -239,7 +301,9 @@ async function setup(root: HTMLElement) {
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return renderGrid();
+        return view === 'home'
+            ? '<div data-native-overview>' + renderIntegratedHome(state!, languageStatus, languageCards, languageCheckedAt, apps) + '</div>' + renderGrid()
+            : renderGrid();
     }
     function render() {
         observer?.disconnect();
@@ -731,6 +795,10 @@ async function setup(root: HTMLElement) {
             exportWorkspace();
             return;
         }
+        if (action === 'refresh-languages') {
+            void refreshLanguages(true);
+            return;
+        }
         if (!state || locked) {
             toast('Your saved workspace is not available. App links remain usable.');
             return;
@@ -938,9 +1006,20 @@ async function setup(root: HTMLElement) {
                     void mutate(s => { const revision = s.revision; Object.assign(s, prior, { revision }); }, 'Change undone', false);
                 }
                 break;
-            case 'privacy':
-                void mutate(s => { s.preferences.hidden = !(privacyHeld || s.preferences.hidden); privacyHeld = s.preferences.hidden; }, '', false);
+            case 'privacy': {
+                const hiding = !(privacyHeld || state.preferences.hidden);
+                if (hiding) resetLanguages();
+                void mutate(s => {
+                    s.preferences.hidden = hiding;
+                    privacyHeld = hiding;
+                }, '', false).then(() => {
+                    if (!hiding && hubIdentity.status === 'signed-in') {
+                        languageOwner = hubIdentity.id;
+                        void refreshLanguages(true);
+                    }
+                });
                 break;
+            }
             case 'timezone':
                 openForm('Planner timezone', field('IANA timezone', 'zone', state.preferences.timezone, 'text', 'required') + '<p class="ws-muted">For example Europe/Berlin, America/New_York or Asia/Seoul.</p>', async (data) => {
                     const zone = String(data.get('zone'));
@@ -1235,6 +1314,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         const own = ++epoch;
+        resetLanguages();
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
@@ -1330,7 +1410,9 @@ async function setup(root: HTMLElement) {
                     void reloadSaved().catch(() => notice('Could not refresh changes from another tab.'));
             };
         }
+        languageOwner = owner;
         render();
+        if (owner && view === 'home') void refreshLanguages(true);
         if (!storageReady)
             saved();
         else if (!recoveryDraft)
@@ -1338,9 +1420,26 @@ async function setup(root: HTMLElement) {
     }
     window.addEventListener('hub:identity', event => void loadIdentity((event as CustomEvent<HubIdentity>).detail));
     window.addEventListener('pageshow', event => {
-        if (state && !dirty && !editing)
-            void reloadSaved();
+        if (state && !dirty && !editing) void reloadSaved();
+        if (event.persisted) void refreshLanguages(true);
     });
+    window.addEventListener('focus', () => {
+        if (state && !dirty && !editing) void reloadSaved();
+        void refreshLanguages();
+    });
+    window.addEventListener('online', () => void refreshLanguages(true));
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            resetLanguages();
+            repaintOverview();
+        } else {
+            if (hubIdentity.status === 'signed-in') languageOwner = hubIdentity.id;
+            void refreshLanguages(true);
+        }
+    });
+    window.addEventListener('pagehide', resetLanguages);
+    // No background polling; while the visible Hub is open, revalidate periodically.
+    setInterval(() => { if (!document.hidden) void refreshLanguages(); }, 15 * 60_000);
     window.addEventListener('beforeunload', event => {
         if (dirty) {
             event.preventDefault();
