@@ -2981,7 +2981,7 @@ async function setup(root: HTMLElement) {
     }
     window.addEventListener('hub:before-account-navigation', event => {
         (event as CustomEvent<{ wait(promise: Promise<void>): void }>).detail.wait((async () => {
-            clearTimeout(captureTimer); await queue;
+            await flushCaptureDraft(); await queue;
             if (dirty) await persist();
             if (dirty) throw new Error('Export unsaved data before connecting.');
             if (editing) await store?.draft(editing);

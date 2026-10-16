@@ -107,6 +107,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     accountSession = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first' });
     const sso = createThiepnBrowserSso(accountSession, {
       accountOrigin: configuration.accountOrigin,
+      probeTimeoutMs: 8000,
       navigate: url => { sessionStorage.setItem(RETURN, returnTo()); location.assign(url); },
     });
     async function verified(identity: ReturnType<ThiepnAccountSession['identity']>, ticket = verification) {
@@ -137,7 +138,25 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         } else show({ status: 'unavailable' });
       }
     }
-    async function check() { const ticket=++verification;try { await verified(await sso.verify(),ticket); } catch { if(ticket===verification)show({ status: 'unavailable' }); } }
+    let discovery: Promise<void> | null = null;
+    async function check(): Promise<void> {
+      if (busy || document.hidden) return;
+      if (discovery) return discovery;
+      const ticket=++verification;
+      const work=(async()=>{
+        try {
+          await prepareAccountNavigation();
+          if(ticket!==verification || busy)return;
+          // Re-discover Account when Hub has no session, rather than only
+          // verifying an absent Hub token. The SDK retains sign-out/revocation
+          // guards, origin checks, cooldown and a single PKCE redirect.
+          const result=await sso.initialize();
+          if(result.status==='ready')await verified(result.identity,ticket);
+        } catch {if(ticket===verification)show({status:'unavailable'});}
+      })();
+      discovery=work;
+      try {await work;}finally{if(discovery===work)discovery=null;}
+    }
     async function connect(changing = false) {
       if (busy) return;
       busy = true; ++verification;
@@ -154,6 +173,12 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     retry.addEventListener('click', () => { if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); });
     window.addEventListener('storage', event => { if (event.key === STORAGE + ':tokens') void check(); });
     window.addEventListener('online', () => void check());
+    window.addEventListener('focus', () => void check());
+    let discoveryTimer: ReturnType<typeof setInterval> | undefined;
+    const startDiscovery=()=>{if(!discoveryTimer)discoveryTimer=setInterval(()=>void check(),60_000);};
+    startDiscovery();
+    window.addEventListener('pagehide',()=>{clearInterval(discoveryTimer);discoveryTimer=undefined;});
+    window.addEventListener('pageshow',event=>{if(event.persisted){startDiscovery();void check();}});
     document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) void check(); });
     if (location.pathname === new URL(configuration.callback).pathname) {
       const original = { href: location.href, hash: location.hash };
@@ -167,9 +192,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         location.replace(['/', '/apps/', '/home/', '/home/tasks/', '/home/calendar/', '/home/trackers/', '/home/settings/'].includes(target) ? target : '/');
       }
     } else {
-      await prepareAccountNavigation();
-      const result = await sso.initialize();
-      if (result.status === 'ready') await verified(result.identity);
+      await check();
     }
   } catch { busy = false; show({ status: 'unavailable' }, 'Account connection needs working browser storage. Your local workspace remains available.'); }
 }
