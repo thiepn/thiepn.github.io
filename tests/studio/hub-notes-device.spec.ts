@@ -7,6 +7,10 @@ test('native Notes owner-consent summary is private, source-bound and mobile rea
   }));
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  // Home preserves legacy Workspace as the initial mode in existing sessions.
+  // Enter the native H20 Today view explicitly rather than assuming its mode.
+  await page.locator('[data-action=unified-mode][data-id=today]').click();
+  await expect(page.locator('[data-unified-today]')).toBeVisible();
   await expect(page.locator('[data-source-today-notes]')).toContainText('Share from Notes');
   const opening=page.waitForEvent('popup');
   await page.locator('[data-source-today-notes] [data-action=connect-notes-source]').click();
