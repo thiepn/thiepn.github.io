@@ -116,3 +116,66 @@ test('encrypted KEEP B3 vault header fails closed in Hub',async({page})=>{
  await expect(page.locator('.ws-keep-owner-empty')).toContainText('KEEP encryption is enabled');
  await expect(page.locator('[data-keep-owner-form]')).toHaveCount(0);
 });
+
+test('original KEEP creation retains native schema and existing owner DB',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>{
+  await new Promise<void>((resolve,reject)=>{
+   const o=indexedDB.open('KeepNotesDB',1);
+   o.onupgradeneeded=()=>o.result.createObjectStore('notes',{keyPath:'id'});
+   o.onsuccess=()=>{o.result.close();resolve();};o.onerror=()=>reject(o.error);
+  });
+ });
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await page.locator('[data-action=knowledge-keep-new]').click();
+ await page.locator('[data-keep-owner-form] [name=title]').fill('My native KEEP note');
+ await page.locator('[data-keep-owner-form] [name=content]').fill('# Theorem');
+ await page.locator('[data-keep-owner-form] [type=submit]').click();
+ await expect(page.locator('[data-keep-owner]')).toContainText('My native KEEP note');
+ const notes=await page.evaluate(async()=>{
+  return await new Promise<any[]>((resolve,reject)=>{
+   const o=indexedDB.open('KeepNotesDB');o.onerror=()=>reject(o.error);
+   o.onsuccess=()=>{
+    const db=o.result,r=db.transaction('notes').objectStore('notes').getAll();
+    r.onsuccess=()=>{db.close();resolve(r.result);};r.onerror=()=>reject(r.error);
+   };
+  });
+ });
+ expect(notes).toHaveLength(1);
+ expect(notes[0]).toMatchObject({title:'My native KEEP note',content:'# Theorem',type:'text',pinned:false,archived:false,trashed:false});
+ expect(notes[0].id.length).toBeGreaterThan(8);
+});
+test('native KEEP original checklist completion retains original item ID',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>{
+  await new Promise<void>((resolve,reject)=>{
+   const o=indexedDB.open('KeepNotesDB',1);
+   o.onupgradeneeded=()=>o.result.createObjectStore('notes',{keyPath:'id'});
+   o.onsuccess=()=>{
+    const db=o.result,tx=db.transaction('notes','readwrite');
+    tx.objectStore('notes').put({id:'checklist-original',title:'Source checklist',content:'Original body',type:'checklist',
+     checklist:[{id:'item-original',text:'Read notes',completed:false}],color:'green',tags:['study'],folderId:null,
+     pinned:false,archived:false,trashed:false,createdAt:'2026-10-16T12:00:00Z',
+     updatedAt:'2026-10-16T12:00:01Z',reminderDate:null,images:[]});
+    tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+   };o.onerror=()=>reject(o.error);
+  });
+ });
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await expect(page.locator('[data-keep-owner]')).toContainText('Read notes');
+ await page.locator('[data-action=knowledge-keep-checklist][data-id=item-original]').click();
+ await expect(page.locator('[data-keep-owner]')).toContainText('✓ Read notes');
+ const record=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
+  const o=indexedDB.open('KeepNotesDB');o.onsuccess=()=>{
+    const db=o.result,r=db.transaction('notes').objectStore('notes').get('checklist-original');
+    r.onsuccess=()=>{db.close();resolve(r.result);};r.onerror=()=>reject(r.error);
+  };o.onerror=()=>reject(o.error);
+ }));
+ expect(record.checklist).toEqual([{id:'item-original',text:'Read notes',completed:true}]);
+ expect(record.content).toBe('Original body');
+ expect(record.tags).toEqual(['study']);
+});
