@@ -8,8 +8,18 @@ function backend(options={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
  let challenge='',exchanges=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
- return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false) {
+ return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
+  if(storageMode!=='normal')await context.addInitScript(mode=>{
+   if(location.origin!=='https://thiepn.dev')return;
+   if(mode==='session-blocked'){
+    if(localStorage.getItem('fixture:session-recovered')!=='1')Object.defineProperty(window,'sessionStorage',{configurable:true,get(){throw new DOMException('Fixture blocks session storage','SecurityError');}});
+    return;
+   }
+   if(sessionStorage.getItem('fixture:quota-filled'))return;
+   sessionStorage.setItem('fixture:quota-filled','1');
+   let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
+  },storageMode);
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
   let probeRequests=0;
@@ -40,7 +50,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    } else {await route.fulfill({status:404,json:{message:'unexpected RPC'}});return;}
    await route.fulfill({json:result});
   });
-  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');try {
+  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');if(storageMode==='session-blocked'){await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','SecurityError');return {page,context};}try {
    // Cold SSO includes the bounded eight-second Account probe plus PKCE
    // navigation and verification. Local-token/guest assertions stay at 5s.
    await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device',{timeout:owner===null&&options.probeEligible?15_000:5_000});
@@ -79,6 +89,21 @@ test('the shared SDK completes explicit PKCE sign-in and consumes the callback o
 });
 test('an eligible Account session connects Hub automatically through tokenless SSO and PKCE',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);expect(api.exchanges()).toBe(1);await sync(a.page);await a.context.close();
+});
+test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
+ const preserved=()=>a.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('fixture:app-data:')).reduce((size,key)=>size+localStorage.getItem(key)!.length,0));
+ const before=await preserved();expect(before).toBeGreaterThan(4_000_000);expect(api.exchanges()).toBe(1);await sync(a.page);
+ await a.page.reload();await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');expect(api.exchanges()).toBe(1);expect(await preserved()).toBe(before);
+ const other=await a.context.newPage();await other.goto('https://thiepn.dev/');await expect(other.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
+ await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(other.locator('[data-storage-label]')).toHaveText('This device');
+ await a.page.reload();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');expect(await preserved()).toBe(before);await a.context.close();
+});
+test('Try again restarts Account initialization after session storage recovers',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'session-blocked');
+ await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-auth-status]')).toContainText('session storage');
+ await a.page.evaluate(()=>localStorage.setItem('fixture:session-recovered','1'));await a.page.locator('[data-auth-retry]').click();
+ await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});expect(api.exchanges()).toBe(1);await a.context.close();
 });
 test('consented Notes, Library and TMS60 insights appear together and clear with privacy',async({browser})=>{
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();

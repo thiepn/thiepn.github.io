@@ -3,6 +3,7 @@ import { createThiepnAccountSession, createThiepnBrowserSso, type ThiepnAccountS
 import configuration from '../data/hub-account.json';
 import { validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { readBoundedJson } from '../lib/providers/runtime';
+import { createHubAccountStorage } from '../lib/hub-account-storage';
 import type { CloudMutation, CloudTransport } from '../lib/workspace/cloud-sync';
 
 const STORAGE = 'thiepn:hub-sso:v1';
@@ -90,6 +91,10 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
   const logout = root.querySelector<HTMLButtonElement>('[data-auth-logout]')!;
   const retry = root.querySelector<HTMLButtonElement>('[data-auth-retry]')!;
   let busy = false, verification = 0;
+  // Initialization can fail before the session's event handlers exist.
+  // Retry must still restart it once browser storage becomes available.
+  let retryConnection = () => location.reload();
+  retry.addEventListener('click', () => retryConnection());
   function show(identity: HubIdentity, message?: string) {
     const previous = activeIdentity;
     activeIdentity = identity;
@@ -103,8 +108,10 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
   }
   if (location.origin !== configuration.hubOrigin) { show({ status: 'signed-out' }, 'Account sync is available on thiepn.dev. This preview keeps data on this device.'); login.hidden = true; return; }
   try {
-    localStorage.setItem(STORAGE + ':probe','1'); localStorage.removeItem(STORAGE + ':probe');
-    accountSession = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first' });
+    let persistent: Storage | null = null;
+    try { persistent = localStorage; } catch { /* Account credentials may still use tab storage. */ }
+    const storage = createHubAccountStorage(persistent, sessionStorage, [STORAGE+':tokens', VERIFIED, `thiepn:sso:${configuration.clientId}:manual-signout`]);
+    accountSession = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first', localStorage: storage });
     let pendingNavigation: string | null = null;
     let navigating: Promise<void> | null = null;
     function continueNavigation(url:string):Promise<void> {
@@ -129,9 +136,24 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     const createSso = () => createThiepnBrowserSso(accountSession!, {
       accountOrigin: configuration.accountOrigin,
       probeTimeoutMs: 8000,
+      optOutStorage: storage,
       navigate: url => {void continueNavigation(url);},
     });
     let sso=createSso();
+    let signOutChannel: BroadcastChannel | null = null;
+    try { if(typeof BroadcastChannel !== 'undefined')signOutChannel = new BroadcastChannel('thiepn:hub-account-signout'); } catch { /* Storage events remain available where supported. */ }
+    async function signOut(notify: boolean) {
+      try {
+        await prepareAccountNavigation();
+        ++verification;
+        sso.signOutLocal(); storage.removeItem(VERIFIED);
+        show({status:'signed-out'});
+        if(notify)signOutChannel?.postMessage('signed-out');
+      } catch { show(activeIdentity,'Save or export your changes before signing out.'); }
+    }
+    // Tab-backed credentials are intentionally not shared. Sign-out still
+    // reaches other Hub tabs through a tokenless same-origin message.
+    if(signOutChannel)signOutChannel.onmessage = event => {if(event.data==='signed-out')void signOut(false);};
     async function verified(identity: ReturnType<ThiepnAccountSession['identity']>, ticket = verification) {
       if (ticket !== verification) return;
       async function retainBefore(nextOwner: string | null) {
@@ -144,15 +166,15 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         if (!token || !matchingToken(token, identity.id)) throw new Error('Account changed during verification.');
         const record = { id: identity.id, label: identity.email ?? 'THIEPN member', token: await fingerprint(token) };
         if (!await retainBefore(identity.id)) return;
-        localStorage.setItem(VERIFIED, JSON.stringify(record));
+        storage.setItem(VERIFIED, JSON.stringify(record));
         show({ status: 'signed-in', id: record.id, label: record.label });
-      } else if (identity.status === 'signed-out' && !localStorage.getItem(STORAGE + ':tokens')) { if(!await retainBefore(null))return;localStorage.removeItem(VERIFIED); show({ status: 'signed-out' }); }
+      } else if (identity.status === 'signed-out' && !storage.getItem(STORAGE + ':tokens')) { if(!await retainBefore(null))return;storage.removeItem(VERIFIED); show({ status: 'signed-out' }); }
       else {
         // A previously verified, unchanged credential permits offline local work.
         // RPCs still validate the real token and owner independently on every call.
         let cached: { id: string; label: string; token: string } | null = null;
-        try { cached = JSON.parse(localStorage.getItem(VERIFIED) ?? 'null'); } catch { /* Keep storage untouched. */ }
-        const tokens = JSON.parse(localStorage.getItem(STORAGE + ':tokens') ?? 'null') as { accessToken?: string } | null;
+        try { cached = JSON.parse(storage.getItem(VERIFIED) ?? 'null'); } catch { /* Keep storage untouched. */ }
+        const tokens = JSON.parse(storage.getItem(STORAGE + ':tokens') ?? 'null') as { accessToken?: string } | null;
         if (ticket !== verification) return;
         if (cached && validAccountId(cached.id) && typeof cached.label === 'string' && tokens?.accessToken && matchingToken(tokens.accessToken, cached.id) && await fingerprint(tokens.accessToken) === cached.token) {
           if (!await retainBefore(cached.id)) return;
@@ -184,22 +206,28 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
       busy = true; ++verification;
       try {
         await prepareAccountNavigation();
-        if (changing) { sso.signOutLocal(); localStorage.removeItem(VERIFIED); }
+        if (changing) { sso.signOutLocal(); storage.removeItem(VERIFIED); }
         show({ status: 'checking' });
         await sso.connect();
       } catch { busy = false; show({ status: 'unavailable' }, 'Connection could not start. Your changes are preserved; try again.'); }
     }
     login.addEventListener('click', () => void connect());
     switcher.addEventListener('click', () => void connect(true));
-    logout.addEventListener('click', () => { void (async()=>{try {await prepareAccountNavigation();++verification;++epoch;sso.signOutLocal();localStorage.removeItem(VERIFIED);show({status:'signed-out'});}catch{show(activeIdentity,'Save or export your changes before signing out.');}})(); });
-    retry.addEventListener('click', () => { if(pendingNavigation){void continueNavigation(pendingNavigation);return;} if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); });
-    window.addEventListener('storage', event => { if (event.key === STORAGE + ':tokens') void check(); });
+    logout.addEventListener('click', () => { void signOut(true); });
+    retryConnection = () => { if(pendingNavigation){void continueNavigation(pendingNavigation);return;} if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); };
+    window.addEventListener('storage', event => {
+      if (event.key === STORAGE + ':tokens') {
+        storage.reconcilePersistentChange(STORAGE+':tokens');
+        storage.reconcilePersistentChange(VERIFIED);
+        void check();
+      }
+    });
     window.addEventListener('online', () => void check());
     window.addEventListener('focus', () => void check());
     let discoveryTimer: ReturnType<typeof setInterval> | undefined;
     const startDiscovery=()=>{if(!discoveryTimer)discoveryTimer=setInterval(()=>void check(),60_000);};
     startDiscovery();
-    window.addEventListener('pagehide',()=>{clearInterval(discoveryTimer);discoveryTimer=undefined;});
+    window.addEventListener('pagehide',event=>{clearInterval(discoveryTimer);discoveryTimer=undefined;if(!event.persisted)signOutChannel?.close();});
     window.addEventListener('pageshow',event=>{if(event.persisted){sso=createSso();pendingNavigation=null;navigating=null;startDiscovery();void check();}});
     document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) void check(); });
     if (location.pathname === new URL(configuration.callback).pathname) {
@@ -216,8 +244,15 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     } else {
       // Guest-first: Account discovery runs in the background; private owner
       // records still require a verified app credential before they can load.
-      if(!localStorage.getItem(STORAGE+':tokens'))show({status:'signed-out'});
+      if(!storage.getItem(STORAGE+':tokens'))show({status:'signed-out'});
       await check();
     }
-  } catch { busy = false; show({ status: 'unavailable' }, 'Account connection needs working browser storage. Your local workspace remains available.'); }
+  } catch (error) {
+    busy = false;
+    const storageError = error instanceof DOMException && ['QuotaExceededError','SecurityError'].includes(error.name);
+    root.dataset.accountFailure = storageError ? error.name : 'initialization';
+    show({ status: 'unavailable' }, storageError
+      ? 'Hub could not access browser session storage for the Account connection. Your saved workspace is preserved. Try again to restart the connection.'
+      : 'Hub could not initialize the Account connection. Your saved workspace is preserved. Try again to restart the connection.');
+  }
 }
