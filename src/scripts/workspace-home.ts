@@ -2540,7 +2540,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepConnectTicket++; }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
