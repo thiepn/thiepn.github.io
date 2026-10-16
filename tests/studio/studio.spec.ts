@@ -1,21 +1,10 @@
+import {hubFixture} from './launch-fixture';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 
 const routes: { routes: string[] } = JSON.parse(fs.readFileSync('src/generated/route-manifest.json', 'utf8'));
 const showcase: { hero: string; work: string[]; projects: Record<string, { media: string }> } = JSON.parse(fs.readFileSync('src/data/showcase.json', 'utf8'));
-const hub: {
-  expectedCount: number;
-  expectedCategoryCounts: {
-    tools: number;
-    create: number;
-    learn: number;
-    faith: number;
-    explore: number;
-    games: number;
-  };
-  excluded: string[];
-  projects: { slug: string; order: number; category: string; description: string; badge: string | null }[];
-} = JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+const hub=hubFixture;
 
 const orderedHub = [...hub.projects].sort((a, b) => a.order - b.order);
 const categories = hub.expectedCategoryCounts;
@@ -60,13 +49,15 @@ test('Hub renders the locked app membership, order, direct launch and details li
   expect(titles[2]).toBe('Tiny Tools');
   expect(titles[7]).toBe('Scan');
   expect(titles[8]).toBe('Signal Earth');
-  expect(titles.at(-1)).toBe('Skyspire');
+  expect(titles[26]).toBe('Skyspire');
+  expect(titles.at(-1)).toBe(hub.projects.at(-1)!.title);
 
   for (const entry of orderedHub) {
     const card = cards.nth(entry.order - 1);
     await expect(card).toHaveAttribute('data-hub-item-category', entry.category);
     await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
-    await expect(card.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('href', `/project/${entry.slug}/`);
+    if(entry.hasDetails)await expect(card.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('href', `/project/${entry.slug}/`);
+    else await expect(card.getByRole('link', {name:'Details',exact:true})).toHaveCount(0);
   }
 
   for (const slug of hub.excluded) {

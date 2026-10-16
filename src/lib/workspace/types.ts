@@ -85,6 +85,8 @@ export interface WorkspaceState {
         density: 'compact' | 'comfortable';
         timezone: string;
         hidden: boolean;
+        theme?: 'system' | 'light' | 'dark';
+        recordRecentLaunches?: boolean;
     };
     tasks: Task[];
     events: CalendarEvent[];

@@ -1,0 +1,33 @@
+---
+import { providerAction } from '../../lib/providers/registry';
+interface Props { compact?: boolean; }
+const compact = Astro.props.compact ?? false;
+---
+<section id={compact ? 'ws-owner-continue' : undefined} class:list={['ws-owner-continue', {'ws-owner-continue-compact':compact}]} data-owner-continue data-compact={compact ? 'true' : 'false'} aria-label="Continue from connected apps">
+  <header class="ws-owner-continue-heading">
+    <div>
+      <h2>Continue from your apps</h2>
+      <p>Read-only recent activity, only after the owner app grants access. Nothing is copied into Hub's saved workspace.</p>
+    </div>
+    <a href="/home/connections/" class="ws-owner-continue-manage">App connections</a>
+  </header>
+  <fieldset data-owner-selection class="ws-owner-selection">
+    <legend>Visible sources</legend>
+    <label><input type="checkbox" data-owner-select="notes" checked/>Notes</label>
+    <label><input type="checkbox" data-owner-select="library" checked/>Library</label>
+    <label><input type="checkbox" data-owner-select="tms60" checked/>TMS60</label>
+  </fieldset>
+  <div class="ws-owner-continue-controls">
+    <button type="button" class="ws-button" data-owner-refresh>Refresh connected sources</button>
+    <span role="status" data-owner-overview-status>Checking available owner connections…</span>
+  </div>
+  <div data-owner-continue-results aria-live="polite" aria-atomic="false">
+    <p class="ws-home-empty">Owner resources are not loaded automatically. Connect an app using its existing sharing controls.</p>
+  </div>
+  <footer class="ws-owner-continue-foot">
+    <a href={providerAction('notes','open')!}>Notes</a>
+    <a href={providerAction('library','continue-in-app')!}>My Library</a>
+    <a href={providerAction('tms60','open')!}>TMS60</a>
+    <span>StudyOS · no approved Hub read transport or verified direct launch URL</span>
+  </footer>
+</section>

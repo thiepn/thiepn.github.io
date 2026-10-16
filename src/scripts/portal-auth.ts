@@ -1,5 +1,6 @@
 import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, readHubCallback, type HubIdentity } from '../lib/hub-auth';
 import { parseNotesConsent, type NotesConsent } from '../lib/hub-notes-session';
+import { managedAccountEnabled, setupHubAccount, hubConnections, readVerifiedHubToken } from './hub-account';
 export let readHubTmsConsent:(owner:string,translation:string)=>Promise<NotesConsent>=async()=>{throw new Error('Unavailable');};
 export let readHubNotesConsent: (owner:string)=>Promise<NotesConsent> = async()=>{throw new Error('Unavailable');};
 // Only the Hub's verified first-party Account session can authorize an existing
@@ -8,7 +9,7 @@ export let readHubLanguageToken: (owner:string)=>Promise<string|null> = async()=
 
 const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSearchParams(location.search) : null;
 const callbackFragment = callbackQuery ? location.hash : '';
-if (callbackQuery) history.replaceState(null, '', '/home/auth/callback/');
+if (callbackQuery && !managedAccountEnabled) history.replaceState(null, '', '/home/auth/callback/');
 const root = document.querySelector<HTMLElement>('[data-hub-account]');
 const config = { url: import.meta.env.PUBLIC_THIEPN_SUPABASE_URL, key: import.meta.env.PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY, origin: import.meta.env.PUBLIC_HUB_AUTH_ORIGIN, enabled: import.meta.env.PUBLIC_HUB_ACCOUNT_ENTRY === 'v1' };
 export let hubIdentity: HubIdentity = { status: 'checking' };
@@ -16,7 +17,15 @@ export function publishIdentity(identity: HubIdentity) {
   hubIdentity = identity;
   window.dispatchEvent(new CustomEvent('hub:identity', { detail: identity }));
 }
-if (root) {
+if (root && managedAccountEnabled) {
+  readHubLanguageToken = readVerifiedHubToken;
+  readHubNotesConsent = async owner => parseNotesConsent((await hubConnections(owner)).notes);
+  readHubTmsConsent = async (owner, translation) => {
+    const match = (await hubConnections(owner)).tms60.find(value => value.translation === translation);
+    return parseNotesConsent(match ? { permissions: match.permissions, revision: match.revision } : { permissions: [], revision: null }, 'tms60');
+  };
+  void setupHubAccount(root, publishIdentity);
+} else if (root) {
   const status = root.querySelector<HTMLElement>('[data-auth-status]')!;
   const login = root.querySelector<HTMLButtonElement>('[data-auth-login]')!;
   const change = root.querySelector<HTMLButtonElement>('[data-auth-switch]')!;

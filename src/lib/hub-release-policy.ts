@@ -1,12 +1,13 @@
 export const HUB_RELEASE_ID = 'H8-public-handoffs-v1';
 export const HUB_READING_PILOT_RELEASE_ID = 'H23-device-reading-pilot-v1';
+export const HUB_ACCOUNT_SYNC_RELEASE_ID = 'H24-account-sync-v1';
 export const HUB_WORKSPACE_ROUTES = ['/', '/apps/', '/home/', '/home/tasks/', '/home/calendar/', '/home/trackers/', '/home/settings/'] as const;
 export const HUB_RELEASE_ROUTES = [...HUB_WORKSPACE_ROUTES, '/home/connections/', '/search/', '/inbox/', '/flows/', '/home/auth/callback/'] as const;
 export const HUB_DISABLED_FEATURES = ['hubSignIn', 'privateReads', 'inlineWrites', 'inboxReads', 'automatedTransfers'] as const;
 export interface HubReleaseStatus {
   schemaVersion: 1;
   releaseId: string;
-  profile: 'public-handoffs' | 'device-reading-pilot';
+  profile: 'public-handoffs' | 'device-reading-pilot' | 'account-sync';
   appCount: number;
   features: Record<typeof HUB_DISABLED_FEATURES[number], boolean>;
 }
@@ -15,10 +16,10 @@ export function validateHubReleaseStatus(value: unknown): HubReleaseStatus {
   const obj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
   if (!obj(value) || Object.keys(value).sort().join(',') !== 'appCount,features,profile,releaseId,schemaVersion'
     || value.schemaVersion !== 1
-    || !((value.releaseId === HUB_RELEASE_ID && value.profile === 'public-handoffs') || (value.releaseId === HUB_READING_PILOT_RELEASE_ID && value.profile === 'device-reading-pilot'))
+    || !((value.releaseId === HUB_RELEASE_ID && value.profile === 'public-handoffs') || (value.releaseId === HUB_READING_PILOT_RELEASE_ID && value.profile === 'device-reading-pilot') || (value.releaseId === HUB_ACCOUNT_SYNC_RELEASE_ID && value.profile === 'account-sync'))
     || typeof value.appCount !== 'number' || !Number.isInteger(value.appCount) || value.appCount < 27 || value.appCount > 250
     || !obj(value.features) || Object.keys(value.features).sort().join(',') !== [...HUB_DISABLED_FEATURES].sort().join(',')
-    || HUB_DISABLED_FEATURES.some(feature => (value.features as Record<string, unknown>)[feature] !== (feature === 'privateReads' && value.profile === 'device-reading-pilot'))) {
+    || HUB_DISABLED_FEATURES.some(feature => (value.features as Record<string, unknown>)[feature] !== ((feature === 'privateReads' && ['device-reading-pilot','account-sync'].includes(String(value.profile))) || (feature === 'hubSignIn' && value.profile === 'account-sync')))) {
     throw new Error('Hub public-handoffs release profile rejected');
   }
   return structuredClone(value) as unknown as HubReleaseStatus;

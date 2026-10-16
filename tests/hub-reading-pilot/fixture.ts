@@ -2,6 +2,7 @@ import {expect, type Page} from '@playwright/test';
 import fs from 'node:fs'; import path from 'node:path';
 export const HUB='https://thiepn.dev';
 const OWNER=path.resolve(process.env.H21_LIBRARY_DIST??'../library/dist/library');
+const account=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8'));
 const KEY='thiepn:library:hub-consent:v1', INDEX='thiepn:library:hub-personal-index:v1';
 const catalogue=JSON.parse(fs.readFileSync(path.join(OWNER,'hub/bridge/index.html'),'utf8').match(/data-books="([^\"]+)"/)![1]!.replaceAll('&quot;','"').replaceAll('&#39;',"'").replaceAll('&amp;','&').replaceAll('&lt;','<').replaceAll('&gt;','>'));
 export const book=catalogue.find((b:any)=>b.format==='epub');
@@ -9,6 +10,9 @@ const grant={schemaVersion:1,deviceId:'11111111-1111-4111-8111-111111111111',rev
 const mime=(p:string)=>p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.json')?'application/json':p.endsWith('.html')?'text/html':'application/octet-stream';
 export async function fixture(page:Page){
  const calls:{url:string;method:string}[]=[];let paused=false,fail=false,hold=false,release=()=>{};
+ // This device-only suite represents a guest who explicitly signed out.
+ // Automatic account discovery is covered separately by hub-sync.spec.ts.
+ await page.addInitScript((clientId:string)=>{localStorage.setItem(`thiepn:sso:${clientId}:manual-signout`,'1');},account.clientId);
  await page.addInitScript(()=>{(window as any).__opens=[];(window as any).__results=[];if(location.pathname.startsWith('/home')){const open=indexedDB.open.bind(indexedDB);indexedDB.open=(...args:Parameters<IDBFactory['open']>)=>{(window as any).__opens.push(args[0]);return open(...args);};window.addEventListener('message',e=>{if(e.data?.kind==='result')(window as any).__results.push(e.data.envelope);});}});
  await page.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url());calls.push({url:u.href,method:req.method()});
@@ -22,7 +26,7 @@ export async function fixture(page:Page){
   if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,'index.html');
   if(fs.existsSync(f))return route.fulfill({path:f,contentType:mime(f)});return route.fulfill({status:404});
  });
- await page.goto(HUB+'/home/');await page.locator('.ws-topbar [data-action=account]').click();return{calls,pause:()=>{paused=true;},fail:()=>{fail=true;},hold:()=>{hold=true;},release:()=>{hold=false;release();}};
+ await page.goto(HUB+'/home/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');await page.locator('.ws-topbar [data-action=account]').click();return{calls,pause:()=>{paused=true;},fail:()=>{fail=true;},hold:()=>{hold=true;},release:()=>{hold=false;release();}};
 }
 export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
 export async function connect(page:Page){await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-items]')).toContainText(book.title);}

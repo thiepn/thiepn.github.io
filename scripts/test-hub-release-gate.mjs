@@ -6,10 +6,11 @@ const fixture = await fs.mkdtemp(path.resolve('.cache/h8-release-gate-'));
 const files = report.builtAssets.map(asset => asset.file);
 const run = dist => execFileSync(process.execPath, ['--experimental-strip-types', 'scripts/qualify-hub-release.mjs', '--dist', dist], { stdio: 'pipe' });
 const faults = [
+ ...(report.profile==='account-sync'?[['account callback drift','hub-account.json',text=>{const value=JSON.parse(text);value.callback='https://example.com/';return JSON.stringify(value);}]]:[]),
   ['managed panel leakage', 'home/index.html', text => text + '<section data-private-tms></section>'],
   ['connection managed panel leakage', 'home/connections/index.html', text => text + '<section data-private-notes></section>'],
   ['pilot scope drift', 'reading-pilot.json', text => { const value=JSON.parse(text);value.cloudAccess=true;return JSON.stringify(value); }],
-  ['auth enablement', 'hub-release.json', text => { const value = JSON.parse(text); value.features.hubSignIn = true; return JSON.stringify(value); }],
+  ['auth enablement', 'hub-release.json', text => { const value = JSON.parse(text); value.features.hubSignIn = !value.features.hubSignIn; return JSON.stringify(value); }],
   ['provider operation drift', 'hub-providers.json', text => { const value = JSON.parse(text); value.providers[0].operations.summary = true; return JSON.stringify(value); }],
   ['Root indexing', 'index.html', text => text.replace('noindex,nofollow', 'index,follow')],
   ['Root managed panel leakage', 'index.html', text => text + '<section data-private-tms></section>'],

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "enabled": true,
+  "issuer": "https://hycegznamzjhwinegaai.supabase.co",
+  "accountOrigin": "https://account.thiepn.dev",
+  "hubOrigin": "https://thiepn.dev",
+  "callback": "https://thiepn.dev/home/auth/callback/",
+  "clientId": "a4c1fca4-d8d1-410d-908c-7462db6e60df",
+  "publishableKey": "sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR"
+}

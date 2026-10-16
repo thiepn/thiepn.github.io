@@ -17,8 +17,10 @@ describe('product registry v2', () => {
       'games',
       'study',
       'diet',
+  'finance',
       'languages',
       'recipe',
+  'bikes',
       'pdf',
       'orrery',
     ]);

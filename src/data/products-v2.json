@@ -378,6 +378,39 @@
       "state": "active"
     },
     {
+      "id": "finance",
+      "name": "Finance",
+      "ownerRepos": [
+        "thiepn/finance"
+      ],
+      "launchUrl": "https://finance.thiepn.dev/",
+      "capabilities": [
+        "personal-finance",
+        "ledger",
+        "spending",
+        "planning",
+        "wealth"
+      ],
+      "modules": [
+        {
+          "id": "home",
+          "name": "Finance",
+          "repo": "thiepn/finance",
+          "launchUrl": "https://finance.thiepn.dev/",
+          "capabilities": [
+            "personal-finance",
+            "ledger",
+            "spending",
+            "planning",
+            "wealth"
+          ],
+          "state": "staged"
+        }
+      ],
+      "defaultModule": "home",
+      "state": "staged"
+    },
+    {
       "id": "languages",
       "name": "Languages",
       "ownerRepos": [
@@ -466,6 +499,39 @@
       "state": "active"
     },
     {
+      "id": "bikes",
+      "name": "Bike Atlas",
+      "ownerRepos": [
+        "thiepn/bikes"
+      ],
+      "launchUrl": "https://thiepn.dev/bikes/",
+      "capabilities": [
+        "bicycle-learning",
+        "bicycle-3d-exploration",
+        "maintenance-learning",
+        "build-optimization",
+        "portfolio-sync"
+      ],
+      "modules": [
+        {
+          "id": "atlas",
+          "name": "Bike Atlas",
+          "repo": "thiepn/bikes",
+          "launchUrl": "https://thiepn.dev/bikes/",
+          "capabilities": [
+            "bicycle-learning",
+            "bicycle-3d-exploration",
+            "maintenance-learning",
+            "build-optimization",
+            "portfolio-sync"
+          ],
+          "state": "active"
+        }
+      ],
+      "defaultModule": "atlas",
+      "state": "active"
+    },
+    {
       "id": "pdf",
       "name": "PDF",
       "ownerRepos": [
@@ -544,7 +610,10 @@
     "tuner": "study/tuner",
     "diet": "diet/copilot",
     "health": "diet/health",
+    "finance": "finance/home",
     "recipe": "recipe/book",
+    "bikes": "bikes/atlas",
+    "bike": "bikes/atlas",
     "games": "games/home",
     "tools": "hub/tools",
     "pdf": "pdf/studio",

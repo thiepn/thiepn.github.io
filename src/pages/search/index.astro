@@ -1,5 +1,5 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkspaceShell from '../../components/workspace/WorkspaceShell.astro';
 import { getHubProjects } from '../../lib/hub';
 import { hubSearchProjects } from '../../lib/hub-search';
 import { HUB_ACTIONS } from '../../lib/hub-actions';
@@ -7,9 +7,9 @@ import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
 const projects = hubSearchProjects(await getHubProjects());
 const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
 ---
-<BaseLayout title="Search apps — THIEPN" description="Find THIEPN apps by name, topic or task and open them directly." portal>
+<WorkspaceShell view="search">
   <div class="portal-search-page page-shell" data-portal-search-page>
-    <header class="portal-home-heading"><div><p class="portal-muted">Find the right app</p><h1>Search</h1></div></header>
+    <header class="portal-home-heading"><div><p class="portal-muted">Find the right app</p><h2>Search</h2></div></header>
     <div class="portal-search-scopes" role="tablist" aria-label="Search scope" data-search-scopes hidden>{[['apps', 'Apps'], ['actions', 'Actions'], ['resources', 'My resources']].map(([scope, label]) => <button type="button" role="tab" id={`scope-${scope}`} aria-controls={`search-${scope}`} aria-selected={scope === 'apps' ? 'true' : 'false'} tabindex={scope === 'apps' ? 0 : -1} data-search-scope-choice={scope}>{label}</button>)}</div>
     <form class="portal-search-form" role="search" action="/search/" method="get" data-public-search-form>
       <label for="app-query" data-public-query-label>App name or task</label>
@@ -21,7 +21,7 @@ const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
     <div class="portal-search-results" data-portal-search-results>
       {projects.map(project => <article class="portal-search-row" data-portal-search-slug={project.slug}>
         <div><h2><a href={project.liveUrl!}>{project.title}</a></h2><p>{project.subtitle}</p><small>{project.category === 'faith' ? 'Faith' : project.category[0]!.toUpperCase() + project.category.slice(1)}{project.slug === 'scan' && ' · Android download'}</small></div>
-        <div class="portal-search-actions"><a href={project.liveUrl!}>Open app <span aria-hidden="true">↗</span></a><a href={`/project/${project.slug}/`}>Details</a></div>
+        <div class="portal-search-actions"><a href={project.liveUrl!}>Open app <span aria-hidden="true">↗</span></a></div>
       </article>)}
     </div>
     <p class="portal-search-empty" data-portal-search-empty hidden>No apps match. Try another name or task, or <a href="/apps/#apps">browse all apps</a>.</p>
@@ -41,5 +41,5 @@ const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
     <script is:inline type="application/json" data-portal-app-index set:html={payload}></script>
     <script is:inline type="application/json" data-portal-action-index set:html={JSON.stringify(HUB_ACTIONS).replaceAll('<', '\\u003c')}></script>
   </div>
-</BaseLayout>
+</WorkspaceShell>
 <script>import '../../scripts/portal-search';</script>

@@ -1,10 +1,10 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkspaceShell from '../../components/workspace/WorkspaceShell.astro';
 import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/catalogue';
 ---
-<BaseLayout title="Workflows — THIEPN" description="Follow supported handoffs between Scan, PDF Studio, Library, Notes and Manuscript." portal>
+<WorkspaceShell view="flows">
   <div class="portal-flows page-shell" data-portal-flows>
-    <header class="portal-home-heading"><p class="portal-muted">Across your apps</p><h1>Workflows</h1><p>Choose a guide. Each app handles its own files and saving.</p></header>
+    <header class="portal-home-heading"><p class="portal-muted">Across your apps</p><h2>Workflows</h2><p>Choose a guide. Each app handles its own files and saving.</p></header>
     <nav class="portal-flow-choices" aria-label="Workflow guides">{WORKFLOWS.map(flow => <a href={workflowLocation(flow.id)} data-flow-choice={flow.id}>{flow.title}</a>)}</nav>
     <p class="portal-muted" role="status" data-flow-status>Manual handoffs. Hub does not transfer files or confirm app outcomes.</p>
     {WORKFLOWS.map(flow => <section class="portal-flow-guide" data-flow-guide={flow.id} aria-labelledby={`flow-${flow.id}`}>
@@ -20,5 +20,5 @@ import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/
     <p><a href="/">Home</a> · <a href="/search/?scope=actions">Search actions</a></p>
     <noscript><p>All guides and app links are available without JavaScript.</p></noscript>
   </div>
-</BaseLayout>
+</WorkspaceShell>
 <script>import '../../scripts/portal-flows';</script>
