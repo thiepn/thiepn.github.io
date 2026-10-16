@@ -1,4 +1,7 @@
 import type {KeepDeviceResult,KeepOwnerNote} from './keep-b3-device';
+import {classifyKeepPlanningNote,deriveKeepProjectProgress,keepTasksFromHubNote} from './keep-b3-source';
+import {resolveWiki} from './knowledge-spine';
+import type {Note} from './types';
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const act=(action:string,text:string,id='')=>'<button type="button" class="ws-button" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(text)+'</button>';
 export interface KeepOwnerEditor {
@@ -20,6 +23,25 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
   const draft=view.draft?.id===selected?.id?view.draft:null;
   const title=selected?.title??'',content=selected?.content??'';
   const tags=selected?.tags.join(', ')??'';
+  const proxy=(n:KeepOwnerNote):Note=>({id:n.id,title:n.title,body:n.content,updatedAt:n.updatedAt});
+  const views=notes.map(proxy),own=selected?proxy(selected):null;
+  const planning=own?classifyKeepPlanningNote(own):null;
+  const progress=planning==='project'&&own?deriveKeepProjectProgress(own):null;
+  const tasks=own?keepTasksFromHubNote(own):[];
+  const outgoing=own?resolveWiki(own,views):[];
+  const backlinks=own?views.filter(n=>n.id!==own.id&&resolveWiki(n,views).some(l=>l.targetId===own.id)):[];
+  const ownLinks=selected?.linkedNoteIds?.filter(id=>notes.some(n=>n.id===id))??[];
+  const context='<div class="ws-knowledge-relations">'+
+    (planning?'<p class="ws-muted">KEEP original planning type: '+esc(planning)+'</p>':'')+
+    (progress?'<p>Source progress: '+(progress.percent===null?'Unconfigured':progress.percent+'%')+
+       ' · '+progress.completed+' / '+progress.total+' tasks complete</p>':'')+
+    '<h3>Original Markdown tasks</h3><ul>'+ (tasks.map(t=>'<li><span>'+esc(t.text)+'</span>'+
+       act('knowledge-keep-task',t.completed?'Mark incomplete':'Complete',t.id)+'</li>').join('')||'<li>No source tasks</li>')+
+    '</ul><h3>Outgoing KEEP links</h3><ul>'+
+      (outgoing.map(l=>'<li>'+(l.targetId?act('knowledge-keep-open',l.title,l.targetId):'<span>'+esc(l.raw)+' · '+esc(l.status)+'</span>')+'</li>').join('')||'<li>No links</li>')+
+    '</ul><h3>Backlinks</h3><ul>'+
+      (backlinks.map(n=>'<li>'+act('knowledge-keep-open',n.title,n.id)+'</li>').join('')||'<li>No backlinks</li>')+
+    '</ul><p class="ws-muted">Original linkedNoteIds: '+ownLinks.length+' resolved links. Original records were not copied.</p></div>';
   return '<div class="ws-keep-owner" data-keep-owner>'+
     '<section class="ws-surface ws-keep-list"><h2>Original KEEP · '+notes.length+' notes</h2>'+
     '<p class="ws-muted">Original IDs · no Hub record copies · this device only</p>'+
@@ -38,7 +60,7 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
       '<p class="ws-muted">Tags: '+esc(tags)+(selected.type==='checklist'?' · Original checklist items remain unchanged.':'')+
       (selected.images.length?' · Original image attachments remain unchanged.':'')+'</p>'+
       '<p class="ws-muted">KEEP vault encryption is not active. Hub changes only title, Markdown body and pinned state with source revision checks.</p>'+
-      '<div class="ws-knowledge-controls"><button type="submit" class="ws-primary">Save to original KEEP</button><span data-keep-dirty class="ws-muted">'+(draft?'Unsaved draft':'')+'</span></div></form>':
+      '<div class="ws-knowledge-controls"><button type="submit" class="ws-primary">Save to original KEEP</button><span data-keep-dirty class="ws-muted">'+(draft?'Unsaved draft':'')+'</span></div></form>'+context:
       '<p>There are no unencrypted, unlocked KEEP notes available on this device.</p>')+
     '</section></div>';
 }
