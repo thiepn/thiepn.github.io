@@ -34,7 +34,7 @@ const apps=entries.map(({project,hub})=>{
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
 });
-const navigation=[['home','Home','/','house'],['knowledge','Knowledge','/home/knowledge/','notebook'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['apps','Apps','/apps/','squares-four']];
+const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['knowledge','Knowledge','/home/knowledge/','notebook'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar']];
 const mobilePrimary=navigation.filter(([key])=>['home','tasks','apps'].includes(key));
 const mobileSecondary=navigation.filter(([key])=>!['home','tasks','apps'].includes(key));
 ---
