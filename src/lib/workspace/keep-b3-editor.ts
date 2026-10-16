@@ -28,6 +28,10 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
     '<section class="ws-surface ws-knowledge-editor">'+(selected?
       '<header><h2>'+esc(title)+'</h2><p class="ws-muted">KEEP note ID '+esc(selected.id)+' · source record</p></header>'+
       '<form data-keep-owner-form><label>KEEP title<input name="title" required maxlength="1000" value="'+esc(draft?.title??title)+'"></label>'+
+      '<div class="ws-keep-markdown-tools" role="toolbar" aria-label="KEEP Markdown formatting">'+
+        act('knowledge-keep-format','Bold','bold')+act('knowledge-keep-format','Italic','italic')+
+        act('knowledge-keep-format','Heading','heading')+act('knowledge-keep-format','Task','task')+
+        act('knowledge-keep-format','Link','link')+act('knowledge-keep-format','Code','code')+'</div>'+
       '<label>KEEP Markdown<input name="kind" type="hidden" value="'+esc(selected.type)+'">'+
       '<textarea name="content" maxlength="500000">'+esc(draft?.content??content)+'</textarea></label>'+
       '<label><input type="checkbox" name="pinned" '+((draft?.pinned??selected.pinned)?'checked':'')+'> Pinned in KEEP</label>'+
