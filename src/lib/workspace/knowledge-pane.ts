@@ -41,6 +41,7 @@ export function renderKnowledge(notes:readonly Note[],tasks:readonly Task[],view
   return '<div class="ws-knowledge" data-knowledge><section class="ws-surface" aria-label="Hub knowledge navigation"><header><h2>Knowledge</h2><p class="ws-muted">Native Hub notes · KEEP-style linked navigation · no vault synchronization</p></header>'+
     '<label class="ws-field">Search notes<input data-knowledge-search type="search" maxlength="150" value="'+esc(view.query)+'" placeholder="Title or content"></label>'+
     '<p class="ws-muted">'+desk.matches.length+' of '+notes.length+' Hub notes</p>'+act('knowledge-new','+ New note')+
-    '<div class="ws-knowledge-list" data-knowledge-list>'+(list||'<p>No notes match.</p>')+'</div></section>'+
+    '<div class="ws-knowledge-list" data-knowledge-list>'+(list||'<p>No notes match.</p>')+'</div>'+ 
+    '<div class="ws-knowledge-projects"><h3>KEEP P49 projects</h3><ul>'+(projectList||'<li>No project notes yet</li>')+'</ul>'+act('knowledge-new-project','+ New project')+'</div></section>'+
     '<section class="ws-surface ws-knowledge-editor" aria-label="Hub knowledge editor">'+detail+'</section></div>';
 }
