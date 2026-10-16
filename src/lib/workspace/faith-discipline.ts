@@ -17,7 +17,7 @@ export function renderFaithDiscipline(
 ): string {
   const mdd = apps.find(app => /^(my-daily-devotion|daily-devotion|mdd)$/.test(app.id));
   const mddLink = mdd ? `<a href="${esc(mdd.url)}">Open original devotional journal</a>
-    <button type="button" data-fd1-mdd-connect>Request an explicitly approved one-time MDD summary</button>` :
+    <button type="button" data-fd1-mdd-connect data-fd1-mdd-url="${esc(mdd.url)}">Request an explicitly approved one-time MDD summary</button>` :
     '<span>Devotional journal: no reviewed Hub launch available</span>';
   const tms=getFaithTmsDue();
   const rhythms = folio?.habits.slice(0, 6) ?? [];
