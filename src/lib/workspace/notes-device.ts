@@ -11,7 +11,8 @@ export interface NotesDeviceSummary {
   reminders: readonly { id: string; noteId: string; title: string; dueAt: string }[];
 }
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
-const text=(v:unknown,max=160)=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[<>\u0000-\u001f]/.test(v);
+const text=(v:unknown,max=160)=>typeof v==='string'&&v.length>0&&v.length<=max&&
+  [...v].every(char=>{const code=char.codePointAt(0)??0;return code>=32&&code!==127;});
 const datetime=(v:unknown)=>typeof v==='string'&&Number.isFinite(Date.parse(v));
 export function parseNotesDeviceSummary(input:unknown,now=Date.now()):NotesDeviceSummary{
   if(!record(input)||input.schema!=='thiepn:notes-hub-local'||input.version!==1||

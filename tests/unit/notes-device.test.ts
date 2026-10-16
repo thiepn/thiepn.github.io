@@ -11,7 +11,7 @@ it('accepts only the genuine source schema, nonce and bounded titles',()=>{
   expect(parseNotesDeviceSummary(fixture(),now).activeCount).toBe(1);
   expect(acceptNotesReply({type:NOTES_DEVICE_MESSAGE,nonce:'a',snapshot:fixture()},'a',now).notes).toHaveLength(1);
   expect(()=>acceptNotesReply({type:NOTES_DEVICE_MESSAGE,nonce:'b',snapshot:fixture()},'a',now)).toThrow();
-  expect(()=>parseNotesDeviceSummary({...fixture(),notes:[{id:'n',title:'<script>',updatedAt:'2026-10-15T11:00:00Z',pinned:false}]},now)).toThrow();
+  expect(()=>parseNotesDeviceSummary({...fixture(),notes:[{id:'n',title:'control\ntext',updatedAt:'2026-10-15T11:00:00Z',pinned:false}]},now)).toThrow();
   expect(()=>parseNotesDeviceSummary({...fixture(),notes:Array(9).fill(fixture().notes[0])},now)).toThrow();
   expect(()=>parseNotesDeviceSummary(fixture(),now+6*60_000)).toThrow();
 });
