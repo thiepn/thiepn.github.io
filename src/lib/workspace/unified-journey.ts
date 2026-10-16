@@ -27,7 +27,7 @@ function taskRow(task:Task,today:string) {
 const humanDate=(day:string)=>new Date(day+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
 function eventRow(e:CalendarEvent,zone:string) {
   const hour=e.allDay?'All day':new Date(e.start).toLocaleTimeString(undefined,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
-  return `<li class="ws-unified-event"><div><strong>${esc(e.title)}</strong><small>Hub local event · ${esc(hour)}</small></div>
+  return `<li class="ws-unified-event"><div><strong>${esc(e.title)}</strong><small>${esc(hour)}</small></div>
     ${textButton('context-event','Next',e.id)}</li>`;
 }
 function nextTask(state:WorkspaceState,today:string) {
@@ -56,37 +56,37 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
   const pending=state.captureDraft.trim().length>0;
   return `<section class="ws-unified-today" id="ws-unified-today" aria-labelledby="ws-unified-title" data-unified-today>
     <header class="ws-unified-heading"><div><p class="ws-home-eyebrow">Today · ${esc(humanDate(today))}</p>
-      <h2 id="ws-unified-title">What needs your attention?</h2><p>Actual Hub tasks and local events, not connected-app progress or guessed commitments.</p></div>
+      <h2 id="ws-unified-title">What needs your attention?</h2></div>
       <div class="ws-unified-head-actions">
         ${textButton('capture-task','Inbox task')}
         <a href="/home/calendar/?mode=week" class="ws-unified-action">Plan the week</a>
       </div></header>
-    ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters in your existing Hub draft. Nothing was sent to owner Notes.</span>${textButton('capture','Resume draft')}</div>`:''}
+    ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters</span>${textButton('capture','Resume draft')}</div>`:''}
     ${status.hasLayoutDraft?`<div class="ws-unified-draft"><strong>Interrupted layout draft</strong><span>Review the original saved layout before replacing anything.</span>${textButton('review-return','Review recovery')}</div>`:''}
     <div class="ws-unified-metrics" aria-label="Actual Hub work">
       <a href="/home/tasks/?filter=today"><strong>${counts.today}</strong><span>Due or overdue</span></a>
       <a href="/home/tasks/?filter=inbox"><strong>${counts.inbox}</strong><span>Unscheduled</span></a>
-      <a href="/home/calendar/"><strong>${plan.events.length}</strong><span>Local event occurrences today</span></a>
+      <a href="/home/calendar/"><strong>${plan.events.length}</strong><span>Events today</span></a>
     </div>
     <div class="ws-unified-columns">
       <section class="ws-unified-group"><header><h3>Due now</h3><a href="/home/tasks/?filter=today">All tasks</a></header>
         ${due.length?`<ul>${due.map(t=>taskRow(t,today)).join('')}</ul>`:
-          `<p class="ws-unified-empty">No unfinished tasks due today or earlier. Check Inbox or plan the week.</p>`}
+          `<p class="ws-unified-empty">No tasks due.</p>`}
         ${counts.today>due.length?`<small>Showing ${due.length} of ${counts.today} due or overdue tasks.</small>`:''}
       </section>
       <section class="ws-unified-group"><header><h3>Inbox decisions</h3><a href="/home/tasks/?filter=inbox">Open Inbox</a></header>
         ${inbox.length?`<ul>${inbox.map(t=>taskRow(t,today)).join('')}</ul>`:
-          `<p class="ws-unified-empty">No unscheduled Hub tasks. You can capture a new one.</p>`}
+          `<p class="ws-unified-empty">Inbox is clear.</p>`}
         ${counts.inbox>inbox.length?`<small>Showing ${inbox.length} of ${counts.inbox} unscheduled tasks.</small>`:''}
       </section>
     </div>
     <section class="ws-unified-group ws-unified-events"><header><h3>Calendar today</h3><a href="/home/calendar/">Open day</a></header>
       ${events.length?`<ul>${events.map(e=>eventRow(e,state.preferences.timezone)).join('')}</ul>`:
-        `<p class="ws-unified-empty">No Hub-local events today. No external calendar has been checked.</p>`}
+        `<p class="ws-unified-empty">No events today.</p>`}
       ${plan.overlaps.length?`<p class="ws-unified-overlap">${plan.overlaps.length} possible local timed overlap${plan.overlaps.length===1?'':'s'} · <a href="/home/calendar/">Review event times</a></p>`:''}
     </section>
-    ${lastNote?`<section class="ws-unified-last-note"><span><strong>Continue local note: ${esc(lastNote.title)}</strong><small>Original Hub note · last edited ${esc(new Date(lastNote.updatedAt).toLocaleDateString())} · no owner Notes data read</small></span><div>${textButton('edit-note','Open note',lastNote.id)}${textButton('context-note','Next',lastNote.id)}</div></section>`:''}
-    <footer><span>Suggested next step is based only on real Hub task dates and priorities${first?' · '+esc(first.title):''}.</span>
+    ${lastNote?`<section class="ws-unified-last-note"><span><strong>Continue note: ${esc(lastNote.title)}</strong><small>Edited ${esc(new Date(lastNote.updatedAt).toLocaleDateString())}</small></span><div>${textButton('edit-note','Open note',lastNote.id)}${textButton('context-note','Next',lastNote.id)}</div></section>`:''}
+    <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
   </section>`;

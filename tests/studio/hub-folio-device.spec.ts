@@ -8,7 +8,7 @@ test('opt-in Folio summary accepts only its popup and clears on command', async 
  const request=page.waitForEvent('popup');
  await page.locator('[data-folio-device] [data-action=connect-folio]').click();
  const popup=await request;
- await expect(page.locator('[data-folio-device]')).toContainText('Confirm sharing in the Folio tab');
+ await expect(page.locator('[data-folio-device]')).toContainText('Confirm sharing in Folio.');
  await page.evaluate(() => window.postMessage({type:'thiepn:folio-hub-daily:v1',nonce:'fake',snapshot:{}},location.origin));
  await expect(page.locator('[data-folio-device]')).not.toContainText('Source-owned task');
  await page.evaluate(() => window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'checking'}})));
@@ -18,7 +18,7 @@ test('opt-in Folio summary accepts only its popup and clears on command', async 
  await expect(page.locator('[data-folio-device]')).toContainText('Source-owned task');
  await expect(page.locator('[data-folio-device]')).toContainText('Private Folio note title');
  await expect(page.locator('[data-folio-device]')).toContainText('Reading habit');
- await expect(page.locator('[data-folio-device]')).toContainText('Not synchronized automatically');
+ await expect(page.locator('[data-folio-device]')).toContainText('snapshot');
  await page.locator('[data-folio-device] [data-action=disconnect-folio]').click();
  await expect(page.locator('[data-folio-device]')).not.toContainText('Source-owned task');
  await popup.close();

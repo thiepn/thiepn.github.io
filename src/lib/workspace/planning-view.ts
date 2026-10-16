@@ -12,7 +12,6 @@ function overlapWarning(plan:DayPlan,events:readonly CalendarEvent[]):string {
     if(!plan.overlaps.length)return '';
     return `<section class="ws-plan-overlap" aria-label="Possible local event overlaps">
       <strong>${plan.overlaps.length} possible timed overlap${plan.overlaps.length===1?'':'s'} on ${esc(label(plan.date))}</strong>
-      <p>These are Hub-local timed events whose actual intervals overlap. All-day events and task deadlines are not treated as booked times.</p>
       <ul>${plan.overlaps.slice(0,6).map(pair=>{
         const a=events.find(x=>x.id===pair.first),b=events.find(x=>x.id===pair.second);
         return `<li>${esc(a?.title??'Event')} + ${esc(b?.title??'Event')} · ${pair.minutes} min
@@ -24,31 +23,31 @@ function overlapWarning(plan:DayPlan,events:readonly CalendarEvent[]):string {
 function eventRow(e:CalendarEvent,zone:string):string {
     const detail=e.allDay?`All day · ${esc(e.date)}${e.endDate!==e.date?' – '+esc(e.endDate):''}`:
       `${esc(clock(e.start,zone))} – ${esc(clock(e.end,zone))} · ${esc(zone)}`;
-    return `<li class="ws-plan-record"><span><strong>${esc(e.title)}</strong><small>Hub local calendar block · ${detail}</small></span>
+    return `<li class="ws-plan-record"><span><strong>${esc(e.title)}</strong><small>${detail}</small></span>
       <div>${navButton('review-event-time','Review time',e.id)}${navButton('context-event','Next actions',e.id)}</div></li>`;
 }
 function deadlineRow(t:Task,selected:string):string {
-    return `<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Task due ${esc(t.due)} · ${esc(t.priority)} priority · not reserved on calendar${t.time?' · task clock '+esc(t.time):''}</small></span>
+    return `<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Task due ${esc(t.due)} · ${esc(t.priority)} priority${t.time?' · task clock '+esc(t.time):''}</small></span>
       <div>${navButton('context-task','Next actions',t.id)}${navButton('plan-task-event','Review calendar block',t.id)}${t.due!==selected?navButton('planning-task-selected','Move due to selected day',t.id):''}</div></li>`;
 }
-function section(name:string,source:string,rows:string,count:number,empty:string):string {
-    return `<section class="ws-plan-group"><header><h3>${esc(name)} <span>${count}</span></h3><small>${esc(source)}</small></header>
+function section(name:string,rows:string,count:number,empty:string):string {
+    return `<section class="ws-plan-group"><header><h3>${esc(name)} <span>${count}</span></h3></header>
       ${rows?`<ul class="ws-plan-records">${rows}</ul>`:`<p class="ws-plan-empty">${esc(empty)}</p>`}</section>`;
 }
 function dayBody(state:WorkspaceState,selected:string,today:string):string {
     const plan=reviewDay(state,selected),zone=state.preferences.timezone;
     const overdue=selected===today?plan.overdue.slice(0,4):[];
     const inbox=selected===today?state.tasks.filter(t=>!t.completedAt&&!t.due).slice(0,4):[];
-    const overdueRows=overdue.map(t=>`<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Overdue since ${esc(t.due)} · task only, no reserved time</small></span><div>${navButton('context-task','Next',t.id)}${navButton('planning-task-selected','Due today',t.id)}</div></li>`).join('');
-    const inboxRows=inbox.map(t=>`<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Unscheduled Hub task · no deadline</small></span><div>${navButton('planning-task-selected','Due today',t.id)}${navButton('context-task','Next',t.id)}</div></li>`).join('');
+    const overdueRows=overdue.map(t=>`<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Overdue since ${esc(t.due)}</small></span><div>${navButton('context-task','Next',t.id)}${navButton('planning-task-selected','Due today',t.id)}</div></li>`).join('');
+    const inboxRows=inbox.map(t=>`<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>No due date</small></span><div>${navButton('planning-task-selected','Due today',t.id)}${navButton('context-task','Next',t.id)}</div></li>`).join('');
     return `<div class="ws-plan-day">
       ${overlapWarning(plan,plan.events)}
-      ${section('Timed calendar blocks','Hub local events · actual start and end',plan.timed.map(e=>eventRow(e,zone)).join(''),plan.timed.length,'No timed Hub events on this day.')}
-      ${section('All-day commitments','Hub local events · no exact time slots inferred',plan.allDay.map(e=>eventRow(e,zone)).join(''),plan.allDay.length,'No all-day Hub events on this day.')}
-      ${section('Task deadlines','Hub tasks · a deadline does not book calendar time',plan.deadlines.map(t=>deadlineRow(t,selected)).join(''),plan.deadlines.length,'No incomplete Hub tasks are due on this day.')}
+      ${section('Timed calendar blocks',plan.timed.map(e=>eventRow(e,zone)).join(''),plan.timed.length,'No timed events.')}
+      ${section('All-day commitments',plan.allDay.map(e=>eventRow(e,zone)).join(''),plan.allDay.length,'No all-day events.')}
+      ${section('Task deadlines',plan.deadlines.map(t=>deadlineRow(t,selected)).join(''),plan.deadlines.length,'No tasks due.')}
       ${selected===today?`<div class="ws-plan-extras">
-        ${section('Overdue','Outstanding task deadlines before today',overdueRows,plan.overdue.length,'No overdue Hub tasks.')}
-        ${section('Unscheduled Inbox','Tasks without a due date, not calendar events',inboxRows,plan.inboxCount,'Your task Inbox is clear.')}
+        ${section('Overdue',overdueRows,plan.overdue.length,'No overdue tasks.')}
+        ${section('Unscheduled Inbox',inboxRows,plan.inboxCount,'Your task Inbox is clear.')}
       </div>`:''}
     </div>`;
 }
@@ -76,7 +75,7 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
     const totals=range.reduce((sum,p)=>({event:sum.event+p.events.length,due:sum.due+p.deadlines.length,overlap:sum.overlap+p.overlaps.length}),{event:0,due:0,overlap:0});
     return `<section class="ws-planning-review" data-planning-review aria-label="Hub local planning review">
       <header class="ws-plan-header">
-        <div><p class="ws-home-eyebrow">Local Hub planning</p><h2>${mode==='day'?esc(label(selected)):esc(label(range[0]!.date))+' – '+esc(label(range[6]!.date))}</h2>
+        <div><h2>${mode==='day'?esc(label(selected)):esc(label(range[0]!.date))+' – '+esc(label(range[6]!.date))}</h2>
           <p>${totals.event} event occurrence${totals.event===1?'':'s'} · ${totals.due} task deadline${totals.due===1?'':'s'} · ${totals.overlap} possible timed overlap${totals.overlap===1?'':'s'}</p></div>
         <div class="ws-plan-nav">
           <div role="group" aria-label="Agenda display"><button type="button" class="ws-plan-button" data-action="planning-day" aria-pressed="${mode==='day'}">Day</button><button type="button" class="ws-plan-button" data-action="planning-week" aria-pressed="${mode==='week'}">Week</button></div>
@@ -90,15 +89,14 @@ export function renderPlanningReview(state:WorkspaceState,selected:string,mode:A
           </div>
         </div>
       </header>
-      <p class="ws-plan-provenance">Source: Hub local events and native Hub task due dates only. A deadline is not a booked interval. No Google, StudyOS, ILIAS, owner Notes, or connected calendars have been queried.</p>
       ${mode==='week'?weekBody(state,selected,today)+renderWeeklyFollowThrough(state,selected,today,selectedTaskIds,taskFilter):dayBody(state,selected,today)}
-      <footer>${navButton('new-event','Add local event')} ${navButton('new-task','Add Hub task')} <a href="/home/tasks/?filter=inbox">Task Inbox</a></footer>
+      <footer>${navButton('new-event','Add event')} ${navButton('new-task','Add task')} <a href="/home/tasks/?filter=inbox">Task Inbox</a></footer>
     </section>`;
 }
 export function renderPlannerReviewSummary(state:WorkspaceState,selected:string):string {
     const p=reviewDay(state,selected);
-    return `<div class="ws-plan-sidebar"><p>Hub-local review: ${p.timed.length} timed, ${p.allDay.length} all-day; ${p.deadlines.length} task deadline${p.deadlines.length===1?'':'s'}.</p>
-      ${p.overlaps.length?`<strong>${p.overlaps.length} possible timed overlap${p.overlaps.length===1?'':'s'}</strong><p>Use Calendar to review event times. No changes have been made.</p>`:''}
+    return `<div class="ws-plan-sidebar">
+      ${p.overlaps.length?`<strong>${p.overlaps.length} possible timed overlap${p.overlaps.length===1?'':'s'}</strong>`:''}
       <div>${navButton('planning-prev-day','← Day')}${navButton('planning-today','Today')}${navButton('planning-next-day','Day →')}</div>
       <a href="/home/calendar/">Open full day/week review →</a>
     </div>`;

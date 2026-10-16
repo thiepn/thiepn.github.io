@@ -16,7 +16,7 @@ if (root) {
   let scope: SearchScope = 'apps';
   function apply(updateUrl = true) {
     if (scope === 'resources') {
-      status.textContent = 'Private sources are not connected. No private search was performed.';
+      status.textContent = 'No connected sources.';
       if (updateUrl) history.replaceState(null, '', publicSearchLocation(scope, ''));
       return;
     }
@@ -39,9 +39,6 @@ if (root) {
     tabs.forEach(tab => { const active = tab.dataset.searchScopeChoice === scope; tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; });
     root!.querySelectorAll<HTMLElement>('[data-search-panel]').forEach(panel => { panel.hidden = panel.dataset.searchPanel !== scope; panel.setAttribute('role', 'tabpanel'); });
     root!.querySelector<HTMLElement>('[data-public-search-form]')!.hidden = scope === 'resources';
-    const description = root!.querySelector<HTMLElement>('[data-public-search-description]')!;
-    description.hidden = scope === 'resources';
-    description.textContent = scope === 'actions' ? 'Find an explicit action in its app. Private app contents are not searched.' : 'Search the public app directory. Your private notes, reading history and other app data are not searched.';
     root!.querySelector<HTMLElement>('[data-public-query-label]')!.textContent = scope === 'actions' ? 'Action or task' : 'App name or task';
     apply(updateUrl);
   }

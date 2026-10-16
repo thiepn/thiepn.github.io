@@ -43,17 +43,15 @@ export function renderReturnJourney(state:WorkspaceState, context:ReturnContext)
   const last=state.activity.find(a=>validInstant(a.at));
   const savedDraft=state.captureDraft.trim().length>0;
   const recover=context.recoveryDraft;
-  const workspace=state.workspaces.find(w=>w.id===state.active);
   const diverged=!!recover && state.workspaces.find(w=>w.id===recover.workspaceId)?.revision!==recover.baseRevision;
   const blocked=context.dirty||context.conflict||!context.storageReady;
   const surface = blocked?'attention':savedDraft||recover||context.editing?'resume':'ready';
   return `<section class="ws-return" data-return-status="${surface}" aria-labelledby="ws-return-title">
     <header class="ws-return-heading">
-      <div><p class="ws-home-eyebrow">Return to Hub · this browser</p>
+      <div>
         <h2 id="ws-return-title">${blocked?'Review this session before leaving':savedDraft||recover?'You have something to continue':'Continue where you left off'}</h2>
-        <p>${last?'Last recorded Hub action: '+esc(last.title)+' · '+esc(localTime(last.at)): 'No saved activity yet. Your tasks, notes and calendar stay on this device.'}</p>
+        <p>${last?'Last recorded Hub action: '+esc(last.title)+' · '+esc(localTime(last.at)): 'No recent activity.'}</p>
       </div>
-      <div class="ws-return-source"><span>${context.account?'Account-scoped local workspace':'Guest workspace · this device'}</span><small>${context.offline?'Offline · no external sources checked':'Hub records only · no owner-app data fetched'}</small></div>
     </header>
     <div class="ws-return-stats" aria-label="Current Hub tasks">
       <a href="/home/tasks/?filter=today"><strong>${counts.today}</strong><span>Due + overdue</span></a>
@@ -61,19 +59,19 @@ export function renderReturnJourney(state:WorkspaceState, context:ReturnContext)
       <a href="/home/calendar/"><strong>${summary.upcomingEvents.length}</strong><span>Upcoming local events shown</span></a>
     </div>
     <div class="ws-return-rows">
-      ${savedDraft?`<section class="ws-return-row"><div><strong>Unfinished Hub capture</strong><p>${state.captureDraft.length} characters saved in the original capture field · not sent to Notes</p></div><div>${button('capture','Resume draft')}${button('save-capture-draft','Save now')}</div></section>`:''}
+      ${savedDraft?`<section class="ws-return-row"><div><strong>Unfinished Hub capture</strong><p>${state.captureDraft.length} characters</p></div><div>${button('capture','Resume draft')}${button('save-capture-draft','Save now')}</div></section>`:''}
       ${recover?`<section class="ws-return-row"><div><strong>Interrupted layout edit</strong><p>Workspace: ${esc(state.workspaces.find(w=>w.id===recover.workspaceId)?.title??'Unavailable')} · ${diverged?'Saved layout changed since this draft; review before replacing.':'Draft still belongs to the original saved layout.'}</p></div><div>${!diverged?button('resume-draft','Resume layout'):button('recover-draft-as-new','Save draft as new layout')}${button('review-return','Review recovery')}</div></section>`:''}
       ${context.conflict?`<section class="ws-return-row"><div><strong>Another tab changed your saved workspace</strong><p>Current in-memory edits are not automatically merged into another tab's version.</p></div><div>${button('review-return','Compare saved')}${button('export','Export first')}</div></section>`:''}
       ${!context.storageReady?`<section class="ws-return-row"><div><strong>Local storage is unavailable</strong><p>Changes may exist only in this tab. Back them up before reloading or closing.</p></div><div>${button('export','Download backup')}${button('retry','Retry storage')}</div></section>`:''}
       ${context.dirty&&context.storageReady&&!context.conflict?`<section class="ws-return-row"><div><strong>Local edits not yet confirmed saved</strong><p>Export this session or retry the original storage writer. Do not assume another tab has these changes.</p></div><div>${button('retry','Retry save')}${button('export','Export')}</div></section>`:''}
-      ${task?`<section class="ws-return-row"><div><strong>Next actual task</strong><p>${esc(task.title)} · ${task.due?'Due '+esc(dayLabel(task.due)):'No deadline'} · ${esc(task.priority)} priority</p></div><div>${button('edit-task','Open task',task.id)}${button('context-task','Next actions',task.id)}${button('return-focus','Focus')}</div></section>`:''}
-      ${note?`<section class="ws-return-row"><div><strong>Last edited local note</strong><p>${esc(note.title)} · ${esc(localTime(note.updatedAt))}</p></div><div>${button('edit-note','Open note',note.id)}${button('context-note','Next actions',note.id)}</div></section>`:''}
-      ${!savedDraft&&!recover&&!task&&!note?`<section class="ws-return-row"><div><strong>Your local workspace is ready</strong><p>Capture a first thought, add a task, or open your own apps to continue there.</p></div><div>${button('capture','Quick capture')}${button('capture-task','Inbox task')}</div></section>`:''}
+      ${task?`<section class="ws-return-row"><div><strong>Next task</strong><p>${esc(task.title)} · ${task.due?'Due '+esc(dayLabel(task.due)):'No deadline'} · ${esc(task.priority)} priority</p></div><div>${button('edit-task','Open task',task.id)}${button('context-task','Next actions',task.id)}${button('return-focus','Focus')}</div></section>`:''}
+      ${note?`<section class="ws-return-row"><div><strong>Last edited note</strong><p>${esc(note.title)} · ${esc(localTime(note.updatedAt))}</p></div><div>${button('edit-note','Open note',note.id)}${button('context-note','Next actions',note.id)}</div></section>`:''}
+      ${!savedDraft&&!recover&&!task&&!note?`<section class="ws-return-row"><div><strong>Ready</strong></div><div>${button('capture','Quick capture')}${button('capture-task','Inbox task')}</div></section>`:''}
     </div>
     <footer class="ws-return-footer">
-      <span>Hub: ${esc(workspace?.title??'Local workspace')} · ${context.storageReady?(context.dirty?'unsaved changes':'local storage connected'):'storage not connected'}</span>
-      <a href="#ws-owner-continue">Check owner source freshness ↓</a><a href="/home/connections/">Owner-app connections ↗</a>
-      <span>External progress is not inferred from app links.</span>
+
+      <a href="#ws-owner-continue">Connected activity ↓</a><a href="/home/connections/">Connections ↗</a>
+
     </footer>
   </section>`;
 }

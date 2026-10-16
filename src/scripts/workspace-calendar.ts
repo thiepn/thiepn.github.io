@@ -65,10 +65,10 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             loading:'Reading selected files…',
             error:'Import needs attention',
             expired:'Imported snapshot expired; select a new export',
-            disconnected:'Not connected · no private calendar has been read',
+            disconnected:'No files selected',
             empty:'No selected events in the next 7 days',
             stale:'Imported snapshot may be outdated',
-            ready:'Read-only imported snapshot',
+            ready:'Imported snapshot',
         }[status];
         const controls = sources.length ? `<fieldset class="ws-calendar-sources"><legend>Selected calendars</legend>
             ${sources.map(s => `<div class="ws-calendar-source"><label><input type="checkbox" data-calendar-include="${esc(s.id)}" ${s.included?'checked':''}/>
@@ -91,8 +91,8 @@ function initialize(root: HTMLElement, workspace: HTMLElement) {
             ${message ? `<p class="ws-calendar-message">${esc(message)}</p>` : ''}
             ${controls}
             ${warnings.length ? `<details class="ws-calendar-warnings"><summary>Import notes (${warnings.length})</summary><ul>${warnings.slice(0,6).map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
-            ${events.length ? `<p class="ws-calendar-source-note">${events.length} event(s) in the next 7 days · showing ${Math.min(30,events.length)} · timezone ${esc(displayZone())}. Export time is not live Google sync time.</p>` : ''}
-            ${rows ? `<ul class="ws-calendar-external-list">${rows}</ul>` : empty('No events to show', sources.length ? 'Choose another calendar or import a newer export. This is not proof that Google Calendar is empty.' : 'Select an .ics export from Google Calendar or another calendar to preview it here.')}
+            ${events.length ? `<p class="ws-calendar-source-note">${events.length} event(s) in the next 7 days · showing ${Math.min(30,events.length)} · timezone ${esc(displayZone())}</p>` : ''}
+            ${rows ? `<ul class="ws-calendar-external-list">${rows}</ul>` : empty('No events to show', sources.length ? 'Choose another calendar or a newer export.' : 'Select an .ics file.')}
             ${sources.length ? `<button type="button" class="ws-text-button" data-calendar-clear>Clear all imported calendars</button>` : ''}
         `;
         if (focusedInclude) content.querySelectorAll<HTMLInputElement>('[data-calendar-include]')

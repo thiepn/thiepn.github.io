@@ -4,7 +4,6 @@ import type { AppShortcut, Task, Widget, WorkspaceState } from './types';
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const action = (name:string,label:string,id='') => `<button type="button" class="ws-widget-action" data-action="${esc(name)}"${id ? ` data-id="${esc(id)}"` : ''}>${esc(label)}</button>`;
-const source = (copy: string) => `<small class="ws-widget-source">${esc(copy)}</small>`;
 const blank = (message:string,name:string,label:string) => `<div class="ws-widget-blank"><p>${esc(message)}</p>${action(name,label)}</div>`;
 const limit = (w:Widget) => typeof w.config.itemLimit === 'number' && Number.isInteger(w.config.itemLimit) ? Math.max(2,Math.min(12,w.config.itemLimit)) : w.view === 'compact' ? 3 : 6;
 const dateLabel = (date:string) => new Date(date+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',month:'short',day:'numeric',weekday:'short'});
@@ -25,7 +24,7 @@ function inbox(w:Widget,state:WorkspaceState):string {
       <div class="ws-widget-metrics"><strong>${total}</strong><span>unscheduled tasks</span><a href="/home/tasks/?filter=inbox">Open Inbox</a></div>
       ${items.length ? items.map(t=>`<div class="ws-widget-plan-row">${rowTask(t,'Not scheduled')}<div class="ws-widget-plan-actions">${action('task-plan-today','Today',t.id)}${action('task-plan-tomorrow','Tomorrow',t.id)}${action('task-plan-week','In 7 days',t.id)}</div></div>`).join('') : blank('All unscheduled tasks are processed.','capture-task','Capture a task')}
       ${total>items.length?`<a class="ws-widget-more" href="/home/tasks/?filter=inbox">${total-items.length} more in Inbox →</a>`:''}
-      ${source('Hub tasks on this device · no external inbox data')}</div>`;
+      </div>`;
 }
 function priorities(w:Widget,state:WorkspaceState,today:string):string {
     const counts=taskCounts(state.tasks,today);
@@ -36,9 +35,9 @@ function priorities(w:Widget,state:WorkspaceState,today:string):string {
     const times=(t:Task)=>t.due<today?'Overdue · '+dateLabel(t.due):t.due===today?'Due today':dateLabel(t.due);
     return `<div class="ws-widget-utility">
       <div class="ws-widget-metrics"><strong>${counts.today}</strong><span>due or overdue</span><a href="/home/tasks/">All tasks</a></div>
-      ${items.length?items.map(t=>rowTask(t,times(t))).join(''):blank('No scheduled priorities in the next two weeks.','new-task','Add local task')}
+      ${items.length?items.map(t=>rowTask(t,times(t))).join(''):blank('No scheduled priorities in the next two weeks.','new-task','Add task')}
       ${active.length>items.length?`<a class="ws-widget-more" href="/home/tasks/">${active.length-items.length} more tasks →</a>`:''}
-      ${source('Hub tasks · high priority is user-assigned, not AI-ranked')}</div>`;
+      </div>`;
 }
 type Commitment = { id:string; kind:'event'|'task'; title:string; startDay:string; time:string; allDay:boolean; duration:string };
 function commitments(w:Widget,state:WorkspaceState,today:string):string {
@@ -65,10 +64,10 @@ function commitments(w:Widget,state:WorkspaceState,today:string):string {
       ${items.length?items.map(item=>`<div class="ws-widget-record ws-widget-agenda">
         <span class="ws-widget-date">${esc(dateLabel(item.startDay))}</span>
         <div class="ws-widget-record-main"><button type="button" class="ws-widget-record-title" data-action="${item.kind==='task'?'edit-task':'edit-event'}" data-id="${esc(item.id)}">${esc(item.title)}</button>
-           <small>${item.kind==='task'?'Task':'Event'} · ${esc(item.time||item.duration)} ${item.kind==='event'?'· Hub local':''}</small></div>
+           <small>${item.kind==='task'?'Task':'Event'} · ${esc(item.time||item.duration)} </small></div>
         <button type="button" class="ws-handoff-inline" data-action="${item.kind==='task'?'context-task':'context-event'}" data-id="${esc(item.id)}">Next</button></div>`).join(''):blank('No Hub events or task deadlines within this range.','new-event','Add event')}
       ${agenda.length>items.length?`<a class="ws-widget-more" href="/home/calendar/">${agenda.length-items.length} more in calendar →</a>`:''}
-      ${source('Local Hub events + tasks only · Google and StudyOS are not read')}</div>`;
+      </div>`;
 }
 function captures(w:Widget,state:WorkspaceState):string {
     const kind=w.config.sourceKind==='notes'||w.config.sourceKind==='tasks'?w.config.sourceKind:'both';
@@ -82,10 +81,10 @@ function captures(w:Widget,state:WorkspaceState):string {
     return `<div class="ws-widget-utility">
       ${shown.length?shown.map(item=>`<div class="ws-widget-record ws-widget-capture"><div class="ws-widget-record-main">
          ${item.kind==='note'?`<button class="ws-widget-record-title" type="button" data-action="edit-note" data-id="${esc(item.id)}">${esc(item.title)}</button>`:`<strong class="ws-widget-record-title">${esc(item.title)}</strong>`}
-         <small>${item.kind==='note'?'Hub local note':'Historical task capture'} · ${esc(new Date(item.at).toLocaleDateString())}</small>
-         </div>${item.kind==='note'?`<button type="button" class="ws-handoff-inline" data-action="context-note" data-id="${esc(item.id)}">Next</button>`:''}</div>`).join(''):blank('Nothing captured in this Hub workspace yet.','capture','Capture locally')}
-      ${state.captureDraft?`<p class="ws-widget-draft">Unfinished local capture draft available. ${action('capture','Resume draft')}</p>`:''}
-      ${source('Hub notes and task capture history · never owner Notes')}</div>`;
+         <small>${item.kind==='note'?'Note':'Task captured'} · ${esc(new Date(item.at).toLocaleDateString())}</small>
+         </div>${item.kind==='note'?`<button type="button" class="ws-handoff-inline" data-action="context-note" data-id="${esc(item.id)}">Next</button>`:''}</div>`).join(''):blank('No captures yet.','capture','Capture')}
+      ${state.captureDraft?`<p class="ws-widget-draft">Draft available. ${action('capture','Resume draft')}</p>`:''}
+      </div>`;
 }
 function quickPlan(w:Widget,state:WorkspaceState):string {
     const tasks=cleanTasks(state.tasks).filter(t=>!t.due).sort((a,b)=>priorityOrder[a.priority]-priorityOrder[b.priority]||a.title.localeCompare(b.title));
@@ -94,7 +93,7 @@ function quickPlan(w:Widget,state:WorkspaceState):string {
       <div class="ws-widget-shortcuts">${action('capture-task','Capture task')}${action('new-task','Dated task')}<a href="/home/tasks/?filter=inbox">Full Inbox</a></div>
       ${items.length?items.map(t=>`<div class="ws-widget-plan-row">${rowTask(t,'Choose a day')}
         <div class="ws-widget-plan-actions">${action('task-plan-today','Today',t.id)}${action('task-plan-tomorrow','Tomorrow',t.id)}${action('task-plan-week','7 days',t.id)}</div></div>`).join(''):blank('No tasks await planning.','capture-task','Capture to Inbox')}
-      ${source('Rescheduling writes the same Hub task · never creates external events')}</div>`;
+      </div>`;
 }
 function ownerHandoffs(w:Widget,apps:readonly AppShortcut[]):string {
     const ids=Array.isArray(w.config.ownerSources)?w.config.ownerSources:['notes','library','tms60'];
@@ -103,12 +102,12 @@ function ownerHandoffs(w:Widget,apps:readonly AppShortcut[]):string {
         {id:'tms60',slug:'tms60',label:'TMS60',route:'/home/connections/',detail:'Translation-specific consent for references'}];
     const shown=choices.filter(c=>ids.includes(c.id));
     return `<div class="ws-widget-utility ws-widget-owner">
-      <p class="ws-widget-ownership">App links stay available. If you approve an owner read in this tab, the existing H11 Continue desk supplies a temporary read-only snapshot below.</p>
-      ${shown.map(c=>{const app=apps.find(a=>a.id===c.slug);return app?`<a class="ws-widget-handoff" href="${esc(app.action?.url??app.url)}" rel="noreferrer"><strong>${c.label} ↗</strong><small>${esc(c.detail)}</small></a><a class="ws-widget-connection" href="${c.route}">Review ${c.label} access →</a>`:''}).join('')}
-      ${!shown.length?'<p class="ws-widget-ownership">All owner handoffs are hidden in widget settings.</p>':''}
-      <div data-owner-widget-live data-owner-widget-sources="${esc(shown.map(c=>c.id).join(','))}" class="ws-widget-owner-live"><p class="ws-widget-ownership">No authorized owner snapshot loaded in this tab. Grant access through the original connection panel.</p></div>
-      <p class="ws-widget-ownership">StudyOS: no approved Hub read contract. Nothing has been synchronized.</p>
-      ${source('Read-only metadata only when owner authorized · expires with owner session')}</div>`;
+
+      ${shown.map(c=>{const app=apps.find(a=>a.id===c.slug);return app?`<a class="ws-widget-handoff" href="${esc(app.action?.url??app.url)}" rel="noreferrer"><strong>${c.label} ↗</strong></a><a class="ws-widget-connection" href="${c.route}">Review ${c.label} access →</a>`:''}).join('')}
+      ${!shown.length?'<p class="ws-widget-ownership">No apps selected.</p>':''}
+      <div data-owner-widget-live data-owner-widget-sources="${esc(shown.map(c=>c.id).join(','))}" class="ws-widget-owner-live"><p class="ws-widget-ownership">No shared activity. <a href="/home/connections/">Manage connections</a></p></div>
+
+      </div>`;
 }
 /** Pure view over the existing workspace; actions delegate to workspace-home's sole writer. */
 export function utilityWidget(w:Widget,state:WorkspaceState,apps:readonly AppShortcut[],today:string):string|null {

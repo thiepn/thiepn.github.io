@@ -8,7 +8,7 @@ it('offers source-only consent when no owner-approved snapshots exist',()=>{
     languages:{status:'signed-out',cards:[]},apps:[]});
   expect(html).toContain('Share from Folio');
   expect(html).toContain('Share from Notes');
-  expect(html).toContain('No cross-app grades');
+  expect(html).not.toContain('ws-source-today-stat');
   expect(html).not.toContain('Notes < confidential >');
 });
 it('renders approved Notes titles escaped, with no forged local data',()=>{
