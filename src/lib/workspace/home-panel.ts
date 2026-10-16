@@ -28,6 +28,23 @@ export function renderIntegratedHome(
     '</span><button type="button" data-action="edit-event" data-id="' + esc(event.id) +
     '">' + esc(event.title) + '</button></div>'
   ).join('');
+  const upcoming = day.upcoming.slice(0, 3).map(event => {
+    const when = event.allDay ? event.date : new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date(event.start));
+    return '<div class="ws-brief-item"><small class="ws-brief-time">' + esc(when.slice(5)) +
+      '</small><button type="button" data-action="edit-event" data-id="' + esc(event.id) + '">' +
+      esc(event.title) + '</button></div>';
+  }).join('');
+  const trackers = day.trackerProgress.slice(0, 4).map(tracker => {
+    const progress = Math.min(tracker.total, tracker.goal);
+    return '<div class="ws-brief-tracker"><div><strong>' + esc(tracker.title) + '</strong>' +
+      '<small>' + esc(tracker.total) + ' / ' + esc(tracker.goal) + ' ' +
+      esc(tracker.unit) + ' · ' + esc(tracker.cadence === 'daily' ? 'today' : 'this week') + '</small></div>' +
+      '<progress value="' + progress + '" max="' + tracker.goal + '" aria-label="' + esc(tracker.title) +
+      ' progress"></progress><button type="button" class="ws-text-button" data-action="brief-log-tracker" data-id="' +
+      esc(tracker.id) + '">Log</button></div>';
+  }).join('');
   const notes = day.recentNotes.map(note =>
     '<div class="ws-brief-item"><span aria-hidden="true">·</span>' +
     '<button type="button" data-action="edit-note" data-id="' + esc(note.id) + '">' +
@@ -72,12 +89,18 @@ export function renderIntegratedHome(
     '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-task">Add task</button><a href="/home/tasks/">All local tasks</a></div></section>' +
     '<section class="ws-brief-card"><header><h3>Agenda</h3>' + localSource + '</header>' +
     (agenda || '<p class="ws-muted">No local events today.</p>') +
+    (upcoming ? '<details class="ws-brief-upcoming"><summary>Next 7 days · ' + day.upcoming.length +
+      ' upcoming</summary>' + upcoming + '</details>' : '') +
     '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-event">Add event</button><a href="/home/calendar/">Local calendar</a></div>' +
     '<p class="ws-muted ws-brief-boundary">Google Calendar and university calendars are not connected here.</p></section>' +
     '<section class="ws-brief-card"><header><h3>Latest notes</h3>' + localSource + '</header>' +
     (notes || '<p class="ws-muted">No Hub-local notes yet.</p>') +
     '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button></div>' +
     '<p class="ws-muted ws-brief-boundary">Folio and Notes cloud content are not merged into this list.</p></section>' +
+    '<section class="ws-brief-card"><header><h3>Habits &amp; trackers</h3>' + localSource + '</header>' +
+    (trackers || '<p class="ws-muted">No locally configured trackers.</p>') +
+    '<div class="ws-brief-actions"><a href="/home/trackers/">All local trackers</a></div>' +
+    '<p class="ws-muted ws-brief-boundary">Folio habit entries are separate until its owner permits a summary.</p></section>' +
     '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
     '<span class="ws-source">Core · published P8 read models</span></header>' +
     (languageMessage ? '<p class="ws-muted" role="status">' + esc(languageMessage) + '</p>' : '') +

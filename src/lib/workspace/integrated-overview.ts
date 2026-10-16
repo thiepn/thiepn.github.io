@@ -32,7 +32,7 @@ export function integratedLocalDay(state: WorkspaceState, now = new Date()): Int
   const upcoming = state.events.filter(event => {
     const first = event.allDay ? event.date : dayKey(zone, new Date(event.start));
     const last = event.allDay ? event.endDate : dayKey(zone, new Date(Date.parse(event.end) - 1));
-    return first <= lastDay && last > date;
+    return first > date && first <= lastDay && last >= first;
   }).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 5);
   const trackerProgress = state.trackers.slice(0, 6).map(tracker => ({
     id: tracker.id, title: tracker.title, total: trackerTotal(state, tracker.id, date),

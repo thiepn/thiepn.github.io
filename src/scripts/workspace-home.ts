@@ -880,6 +880,7 @@ async function setup(root: HTMLElement) {
                 break;
             }
             case 'log-tracker':
+            case 'brief-log-tracker':
                 logTracker(id);
                 break;
             case 'edit-log': {
