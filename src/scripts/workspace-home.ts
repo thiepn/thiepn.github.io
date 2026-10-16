@@ -15,6 +15,7 @@ import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/langua
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
+import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -240,6 +241,14 @@ async function setup(root: HTMLElement) {
             panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps, {
                 status: folioStatus, snapshot: folioSnapshot,
             }, {status: notesSourceStatus, snapshot: notesSource});
+        }
+        const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
+        if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
+            todayPanel.outerHTML = renderSourceToday({
+                folio: {status: folioStatus, snapshot: folioSnapshot},
+                notes: {status: notesSourceStatus, snapshot: notesSource},
+                languages: {status: languageStatus, cards: languageCards}, apps
+            });
         }
     }
     async function refreshLanguages(force = false) {
@@ -728,7 +737,12 @@ async function setup(root: HTMLElement) {
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus());
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+                renderSourceToday({
+                    folio: {status: folioStatus, snapshot: folioSnapshot},
+                    notes: {status: notesSourceStatus, snapshot: notesSource},
+                    languages: {status: languageStatus, cards: languageCards}, apps
+                });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
