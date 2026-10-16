@@ -1,4 +1,6 @@
 import { integratedLocalDay } from './integrated-overview';
+import { renderFolioDevice, type FolioDeviceStatus } from './folio-panel';
+import type { FolioDeviceSnapshot } from './folio-device';
 import { dayKey } from './model';
 import { HUB_LANGUAGE_IDS, HUB_LANGUAGE_OWNER_ROUTES, ownerLanguageLink, type HubLanguageCard } from './language-read';
 import type { WorkspaceState, AppShortcut } from './types';
@@ -14,6 +16,8 @@ const viewDate = (date: string) => new Date(date).toLocaleDateString(undefined, 
 export function renderIntegratedHome(
   state: WorkspaceState, status: LanguageLoadStatus, cards: readonly HubLanguageCard[],
   checkedAt: number | null, apps: readonly AppShortcut[],
+  folio: { status: FolioDeviceStatus; snapshot: FolioDeviceSnapshot | null } =
+      { status: 'disconnected', snapshot: null },
 ): string {
   const day = integratedLocalDay(state);
   const zone = state.preferences.timezone;
@@ -100,6 +104,7 @@ export function renderIntegratedHome(
     (trackers || '<p class="ws-muted">No locally configured trackers.</p>') +
     '<div class="ws-brief-actions"><a href="/home/trackers/">All local trackers</a></div>' +
     '<p class="ws-muted ws-brief-boundary">Folio habit entries are separate until its owner permits a summary.</p></section>' +
+    renderFolioDevice(folio.status, folio.snapshot) +
     '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
     '<span class="ws-source">Core · published P8 read models</span></header>' +
     (languageMessage ? '<p class="ws-muted" role="status">' + esc(languageMessage) + '</p>' : '') +

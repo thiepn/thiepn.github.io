@@ -3,6 +3,8 @@ import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity, readHubLanguageToken } from './portal-auth';
 import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
+import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
+import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
@@ -38,6 +40,60 @@ async function setup(root: HTMLElement) {
     let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
+    let folioSnapshot: FolioDeviceSnapshot | null = null;
+    let folioStatus: FolioDeviceStatus = 'disconnected';
+    let folioNonce: string | null = null;
+    let folioPopup: Window | null = null;
+    let folioTimeout: ReturnType<typeof setTimeout> | null = null;
+    function resetFolio() {
+        folioNonce = null;
+        folioPopup = null;
+        if (folioTimeout) clearTimeout(folioTimeout);
+        folioTimeout = null;
+        folioSnapshot = null;
+        folioStatus = 'disconnected';
+    }
+    function openFolioBridge() {
+        if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        if (folioTimeout) clearTimeout(folioTimeout);
+        folioNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
+        folioSnapshot = null;
+        folioStatus = 'awaiting';
+        const url = new URL('/folio/', location.origin);
+        url.searchParams.set('hubBridge', folioNonce);
+        folioPopup = window.open(url.href, '_blank');
+        if (!folioPopup) {
+            folioNonce = null;
+            folioStatus = 'unavailable';
+        } else {
+            folioTimeout = setTimeout(() => {
+                if (folioStatus === 'awaiting') {
+                    folioNonce = null;
+                    folioPopup = null;
+                    folioStatus = 'unavailable';
+                    repaintOverview();
+                }
+            }, 3 * 60_000);
+        }
+        repaintOverview();
+    }
+    window.addEventListener('message', event => {
+        if (!folioNonce || event.origin !== location.origin || event.source !== folioPopup ||
+            !state || privacyHeld || state.preferences.hidden) return;
+        try {
+            const snapshot = safeFolioBridgeReply(event.data, folioNonce);
+            folioSnapshot = snapshot;
+            folioStatus = 'ready';
+            folioNonce = null;
+            folioPopup = null;
+            if (folioTimeout) clearTimeout(folioTimeout);
+            folioTimeout = null;
+        } catch {
+            // Ignore unrelated messages: no echo, fallback data or weakened validation.
+            return;
+        }
+        repaintOverview();
+    });
     let languageOwner: string | null = null;
     let languageCards: readonly HubLanguageCard[] = [];
     let languageStatus: LanguageLoadStatus = 'signed-out';
@@ -56,7 +112,9 @@ async function setup(root: HTMLElement) {
     function repaintOverview() {
         const panel = root.querySelector<HTMLElement>('[data-native-overview]');
         if (panel && state && !privacyHeld && !state.preferences.hidden) {
-            panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps);
+            panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps, {
+                status: folioStatus, snapshot: folioSnapshot,
+            });
         }
     }
     async function refreshLanguages(force = false) {
@@ -306,7 +364,9 @@ async function setup(root: HTMLElement) {
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
         return view === 'home' && !editing
-            ? '<div data-native-overview>' + renderIntegratedHome(state!, languageStatus, languageCards, languageCheckedAt, apps) + '</div>' + renderGrid()
+            ? '<div data-native-overview>' + renderIntegratedHome(state!, languageStatus, languageCards, languageCheckedAt, apps, {
+                status: folioStatus, snapshot: folioSnapshot,
+            }) + '</div>' + renderGrid()
             : renderGrid();
     }
     function render() {
@@ -803,6 +863,15 @@ async function setup(root: HTMLElement) {
             void refreshLanguages(true);
             return;
         }
+        if (action === 'connect-folio') {
+            openFolioBridge();
+            return;
+        }
+        if (action === 'disconnect-folio') {
+            resetFolio();
+            repaintOverview();
+            return;
+        }
         if (!state || locked) {
             toast('Your saved workspace is not available. App links remain usable.');
             return;
@@ -1025,7 +1094,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'privacy': {
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) resetLanguages();
+                if (hiding) { resetLanguages(); resetFolio(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -1332,6 +1401,7 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         const own = ++epoch;
         resetLanguages();
+        resetFolio();
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
@@ -1455,6 +1525,15 @@ async function setup(root: HTMLElement) {
         }
     });
     window.addEventListener('pagehide', resetLanguages);
+    window.addEventListener('pagehide', resetFolio);
+    document.addEventListener('visibilitychange', () => {
+        // A pending consent window may hide the Hub until its user-approved reply.
+        // Completed snapshots are one-tab-only and cleared on later backgrounding.
+        if (document.hidden && folioStatus === 'ready') {
+            resetFolio();
+            repaintOverview();
+        }
+    });
     // No background polling; while the visible Hub is open, revalidate periodically.
     setInterval(() => { if (!document.hidden) void refreshLanguages(); }, 15 * 60_000);
     window.addEventListener('beforeunload', event => {

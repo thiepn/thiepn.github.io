@@ -192,3 +192,12 @@
 .ws-brief-upcoming summary{font-size:12px;color:var(--ws-accent);cursor:pointer;}
 .ws-brief-upcoming .ws-brief-time{min-width:50px;}
 @media(max-width:380px){.ws-brief-tracker{grid-template-columns:minmax(0,1fr) 65px auto;}}
+
+/* Folio remains an independent, opt-in local-owner snapshot, not a Hub workspace record. */
+.ws-brief-folio{grid-column:1/-1;}
+.ws-folio-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.ws-folio-summary>div{min-width:0;}
+.ws-folio-summary h4{font-size:13px;margin:12px 0 7px;}
+.ws-folio-summary strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-folio-summary a{display:inline-block;color:var(--ws-accent);font-size:12px;margin-top:10px;}
+@media(max-width:650px){.ws-folio-summary{grid-template-columns:minmax(0,1fr);gap:8px;}}
