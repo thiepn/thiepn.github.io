@@ -7,3 +7,13 @@
 - Folio/Vault/Notes retain original ownership and no records are copied, no encryption is bypassed, and no migrations or provider writes are attempted.
 - Later batch requires the KEEP repository/package and real owner-authorized adapters before full KEEP note editing in Hub.
 - User input saved by existing Hub writer and validated by original parseState; encrypted KEEP records, cross-app provider records and remote calendar writes are not writable from this route.
+
+## K1b — Real KEEP B3 source integration (2026-10-16)
+- `src/lib/workspace/keep-b3-source.ts` adapts KEEP B3 original `src/pkm/tasks/taskParser.ts`, `src/pkm/planning/planningNoteClassifier.ts`, `src/pkm/planning/projectTaskEngine.ts` to the canonical Hub `Note.body` shape; original Hub record IDs and existing CAS persistence stay authoritative. Markdown task extraction, explicit due dates, priority, heading, anchors, and frontmatter project classification are genuine source-derived behavior.
+- Project list, progress (only when `progress: tasks`), deterministic next action, note-local checkboxes, and a reviewed project note template are available in native Hub Knowledge. Checkbox changes require exact source note/line/revision and use the original Hub writer; no task record is created for a Markdown checkbox. Stale/ambiguous lines reject modification.
+- `src/lib/workspace/keep-b3-owner-refs.ts` ports KEEP B3's original `src/pkm/integration/ownerResourceRefs.ts` identity contract. Valid owner URI references are visible inside the note but never grant provider read/write access or copy external records.
+- Old Home/Apps/Tasks mobile navigation restored after the original exact-head Quality regression. Knowledge is reachable from the original persistent sidebar / More navigation.
+- Tests: `hub-keep-b3-source.test.ts`, `hub-keep-owner-refs.test.ts`, expanded `hub-keep-native.spec.ts` desktop/mobile. Qualification requires the exact new commit build/CI and browser results; no historic successful CI is counted as exact-head success.
+
+## Still missing
+The actual KEEP B3 React editor, attachments, encrypted KeepNotesDB, rich view engines, real Folio/Vault/Notes adapters, and source-owned calendar/habits integration are **not** imported. Moving or binding those records requires the original KEEP runtime/package, original encryption unlock controls, backup/recovery and owner approval. This PR does not claim final unified KEEP functionality or external synchronization.
