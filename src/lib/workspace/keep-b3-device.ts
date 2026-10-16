@@ -135,3 +135,30 @@ export async function updateKeepDevice(
     });
   }finally{db.close();}
 }
+
+/** Toggle one original KEEP checklist entry without translating it to a Hub task. */
+export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string):Promise<void>{
+  const db=await connectExisting();
+  try {
+    await new Promise<void>((resolve,reject)=>{
+      const tx=db.transaction(KEEP_NOTES_STORE,'readwrite'),store=tx.objectStore(KEEP_NOTES_STORE);
+      let cause:Error|null=null;
+      const abort=(e:Error)=>{cause=e;tx.abort();};
+      const get=store.get(noteId);
+      get.onsuccess=()=>{
+        const raw=get.result;
+        if(!vaultAllowed()||!eligibleKeepNote(raw)||raw.archived||raw.trashed||raw.updatedAt!==revision)
+          return abort(new KeepDeviceConflict());
+        const matches=raw.checklist.filter(item=>item.id===itemId);
+        if(matches.length!==1)return abort(new Error('Original KEEP checklist item changed.'));
+        const next={...raw,updatedAt:new Date().toISOString(),
+          checklist:raw.checklist.map(item=>item.id===itemId?{...item,completed:!item.completed}:item)};
+        store.put(next);
+      };
+      get.onerror=()=>abort(new Error('Original KEEP note is unavailable.'));
+      tx.oncomplete=()=>resolve();
+      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP checklist update was refused.'));
+      tx.onerror=()=>{};
+    });
+  }finally{db.close();}
+}
