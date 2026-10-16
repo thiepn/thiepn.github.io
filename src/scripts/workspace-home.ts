@@ -1980,6 +1980,22 @@ async function setup(root: HTMLElement) {
                 editor.dispatchEvent(new Event('input',{bubbles:true}));
                 editor.focus();return;
             }
+            if(action==='knowledge-keep-task'){
+                if(keepDeviceDraft){toast('Save or discard the original KEEP editing draft before completing a task.');return;}
+                if(keepDevice?.status!=='ready')return;
+                const note=keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0];
+                if(!note)return;
+                const original:Note={id:note.id,title:note.title,body:note.content,updatedAt:note.updatedAt};
+                const task=keepTasksFromHubNote(original).find(t=>t.id===id);
+                if(!task){toast('The original KEEP task changed. Refresh the source.');return;}
+                const updated=toggleKeepTaskLine(original,task);
+                if(updated===null)return;
+                const own=epoch;
+                void updateKeepDevice(note.id,note.updatedAt,{title:note.title,content:updated,pinned:note.pinned})
+                  .then(async()=>{if(own!==epoch)return;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP Markdown task updated.');})
+                  .catch(e=>toast(e instanceof Error?e.message:'KEEP task could not be changed.'));
+                return;
+            }
             if(action==='knowledge-keep-open'){
                 if(keepDevice?.status!=='ready'||!keepDevice.notes.some(n=>n.id===id)||!discardKnowledgeDraft())return;
                 keepDeviceSelected=id;render();return;
