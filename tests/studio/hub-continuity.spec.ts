@@ -60,8 +60,8 @@ test('blocked storage retains in-memory work when switching core tabs',async({pa
 test.describe('network failure without the offline cache',()=>{
  test.use({serviceWorkers:'block'});
 test('delayed and failed route loads preserve the current view and newer navigation wins',async({page})=>{
- await ready(page);let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);await page.route('**/apps/',async route=>{await gate;await route.continue();});
- await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();await expect(page.locator('[data-widget-id]')).toHaveCount(6);await expect(page.locator('h1')).toHaveText('Personal workspace');
+ await ready(page);const currentTitle=await page.locator('h1').innerText();let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);await page.route('**/apps/',async route=>{await gate;await route.continue();});
+ await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();await expect(page.locator('[data-widget-id]')).toHaveCount(6);await expect(page.locator('h1')).toHaveText(currentTitle);
  await page.locator('.ws-nav').getByRole('link',{name:'Tasks',exact:true}).click();await expect(page.locator('h1')).toHaveText('Tasks');const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/apps/');release();await response;await expect(page.locator('h1')).toHaveText('Tasks');await page.unroute('**/apps/');
  await page.route('**/home/calendar/',route=>route.abort());await page.locator('.ws-nav').getByRole('link',{name:'Calendar',exact:true}).click();await expect(page.locator('[data-workspace-toast]')).toContainText('current view and drafts are preserved');await expect(page.locator('h1')).toHaveText('Tasks');await expect(page).toHaveURL(/\/home\/tasks\/$/);
 });
