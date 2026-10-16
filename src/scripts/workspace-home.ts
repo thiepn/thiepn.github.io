@@ -105,6 +105,20 @@ async function setup(root: HTMLElement) {
     let keepDevice:KeepDeviceResult|null=null,keepDeviceSelected:string|null=null,keepOwnerCreating=false;
     let keepDeviceDraft:{id:string;revision:string;title:string;content:string;pinned:boolean}|null=null;
     let keepConnectTicket=0;
+    function revokeKeepOwnerSession(){
+        keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;
+        if(view==='knowledge'&&keepKnowledgeMode==='keep'&&state)render();
+    }
+    window.addEventListener('storage',e=>{
+        if(e.key==='keepnotes_vault_enc_header'||e.key==='keepnotes_vault_enc_config')
+            revokeKeepOwnerSession();
+    });
+    document.addEventListener('visibilitychange',()=>{
+        if(document.visibilityState!=='visible'||!keepDevice)return;
+        try {if(localStorage.getItem('keepnotes_vault_enc_header')!==null)revokeKeepOwnerSession();}
+        catch {revokeKeepOwnerSession();}
+    });
+
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
