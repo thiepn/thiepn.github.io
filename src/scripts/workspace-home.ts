@@ -409,7 +409,12 @@ async function setup(root: HTMLElement) {
         const items=workspaceAttention({storageReady,dirty,conflict,cloudConflict,locked});
         target.innerHTML=items.length?items.map(item=>`<article class="ws-row"><div><strong>${esc(item.title)}</strong><p>${esc(item.detail)}</p></div>${button(item.action,item.label)}</article>`).join(''):'<p>No workspace recovery issues. External app coverage is listed separately below.</p>';
     }
-    function saved(label?: string) { renderAttention(); $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable'); }
+    function saved(label?: string) {
+        renderAttention();
+        const status = $('[data-workspace-status]');
+        status.textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable');
+        status.hidden = !dirty && storageReady && !label;
+    }
     function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
     function persist(backup = false): Promise<void> {
         const own = epoch;
@@ -424,7 +429,7 @@ async function setup(root: HTMLElement) {
         if (!state || locked)
             return;
         dirty = true;
-        saved('Saving on this device…');
+        saved('Saving…');
         if (!storageReady || !store) {
             saved();
             return;
@@ -527,13 +532,13 @@ async function setup(root: HTMLElement) {
                 </label>
               </div>
               <label class="ws-field" data-capture-custom-date hidden>Custom due date<input name="customDate" type="date" value="${esc(today())}"/></label>
-              <p class="ws-muted">A task is saved only to Hub. A date is optional; Inbox tasks stay visible until planned.</p>
+
             </div>
             <div class="ws-capture-handoff"><span>Prefer the Notes app? Text is never transferred automatically.</span>
               <button type="button" class="ws-text-button" data-action="save-capture-draft">Save draft now</button>
               <button type="button" class="ws-text-button" data-action="copy-capture">Copy draft</button>
               <a href="${esc(notes)}" rel="noreferrer">Open Notes ↗</a></div>
-            <small class="ws-muted">Draft autosaves in this account's existing local Hub workspace. Esc closes without losing it.</small>
+
           </div>`;
     }
     async function saveCaptureData(data: FormData) {
@@ -566,7 +571,7 @@ async function setup(root: HTMLElement) {
         focusEndsAt=0;
         clearInterval(focusTick);
         focusTick=undefined;
-        paintFocusTime('Paused on this device. No work session or completed task has been recorded.');
+        paintFocusTime('Paused');
     }
     function resetFocusSelection() {
         pauseFocusSession();
@@ -633,7 +638,7 @@ async function setup(root: HTMLElement) {
         const custom = form.querySelector<HTMLElement>('[data-capture-custom-date]');
         if (custom) custom.hidden = !task || form.querySelector<HTMLSelectElement>('[data-capture-due]')?.value !== 'date';
     }
-    function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3><p>${detail}</p>${action ? button(action, label) : ''}</div>`; }
+    function empty(title: string, detail: string, action = '', label = '') { return `<div class="ws-empty"><h3>${title}</h3>${detail ? `<p>${detail}</p>` : ''}${action ? button(action, label) : ''}</div>`; }
     function taskRows(tasks: Task[]) {
         return tasks.map(t => {
             const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Review task ${esc(t.title)}">
@@ -659,7 +664,7 @@ async function setup(root: HTMLElement) {
         return `<div class="ws-calendar-heading"><strong>${new Date(first + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', year: 'numeric' })}</strong><div>${button('month-prev', icon('caret-left'), '', 'ws-icon-button')}${button('month-next', icon('caret-right'), '', 'ws-icon-button')}</div></div><div class="ws-month">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}${dates.map(d => `<button type="button" data-action="select-date" data-id="${d}" aria-label="${esc(dateLabel(d, true))}" aria-pressed="${d === selected}" class="${d === selected ? 'selected' : ''} ${d === today() ? 'today' : ''} ${d.slice(0, 7) !== first.slice(0, 7) ? 'outside' : ''} ${state!.events.some(e => eventRange(e)[0]! <= d && eventRange(e)[1]! >= d) || state!.tasks.some(t => t.due === d) ? 'has-event' : ''}">${Number(d.slice(8))}</button>`).join('')}</div>`;
     }
     function eventRange(e: CalendarEvent) { return e.allDay ? [e.date,e.endDate] : [dayKey(state!.preferences.timezone,new Date(e.start)),dayKey(state!.preferences.timezone,new Date(e.end))]; }
-    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? 'Local event' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('context-event', 'Next', e.id, 'ws-text-button')}${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('Room for your plans', 'No events on this day.', 'new-event', 'Add an event'); }
+    function agendaHTML() { const events = state!.events.filter(e => eventRange(e)[0]! <= selected && eventRange(e)[1]! >= selected).sort((a, b) => a.start.localeCompare(b.start)); return events.length ? events.map(e => `<div class="ws-agenda"><time>${e.allDay ? 'All day' : esc(timeLabel(e.start))}</time><div><strong>${esc(e.title)}</strong><small>${e.allDay ? '' : `${esc(timeLabel(e.end))} · ${esc(e.zone)}`}</small></div>${button('context-event', 'Next', e.id, 'ws-text-button')}${button('edit-event', icon('dots-three'), e.id, 'ws-icon-button')}</div>`).join('') : empty('No events', '', 'new-event', 'Add an event'); }
     function renderPlanner() {
         const el = $('[data-planner]');
         if (!state || (privacyHeld || state.preferences.hidden)) {
@@ -667,7 +672,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const tasks = state.tasks.filter(t => t.due === selected || (!t.due && selected === today())).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || a.time.localeCompare(b.time));
-        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('A fresh start', 'Add a task to make your next step clear.')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${renderPlannerReviewSummary(state,selected)}${agendaHTML()}<p class="ws-muted">Local calendar · ${esc(state.preferences.timezone)} · task deadlines do not book calendar time</p></section>`;
+        el.innerHTML = `<div class="ws-planner-heading"><div><h2>${selected === today() ? 'Today' : esc(dateLabel(selected))}</h2><small class="ws-muted">${esc(dateLabel(selected))}</small></div>${button('new-task', '+ Add')}</div>${calendarHTML()}<section class="ws-planner-section"><header><h2>${selected === today() ? "Today's tasks" : 'Tasks for this day'}</h2><small>${tasks.filter(t => !t.completedAt).length} remaining</small></header>${tasks.length ? taskRows(tasks) : empty('No tasks', '')}${button('new-task', icon('plus') + ' Add a task', '', 'ws-text-button')}${selected !== today() ? button('today', 'Back to today', '', 'ws-text-button') : ''}</section><section class="ws-planner-section"><header><h2>Agenda</h2>${button('new-event', icon('plus'), '', 'ws-icon-button')}</header>${renderPlannerReviewSummary(state,selected)}${agendaHTML()}</section>`;
         el.querySelectorAll<HTMLElement>('[data-action=month-prev]').forEach(b => b.setAttribute('aria-label', 'Previous month'));
         el.querySelectorAll<HTMLElement>('[data-action=month-next]').forEach(b => b.setAttribute('aria-label', 'Next month'));
         el.querySelectorAll<HTMLElement>('.ws-icon-button[data-action=new-event]').forEach(b => b.setAttribute('aria-label', 'Add event'));
@@ -676,7 +681,7 @@ async function setup(root: HTMLElement) {
     function trackersHTML(w: Widget) {
         const trackers = selectedTrackers(w);
         if (!trackers.length)
-            return empty('Make progress visible', 'Create a tracker for reading, focus, exercise or anything you want to measure.', 'new-tracker', 'Create a tracker');
+            return empty('No trackers', '', 'new-tracker', 'Create a tracker');
         const date = today();
         if (w.view === 'table')
             return `<table class="ws-tracker-table"><thead><tr><th>Tracker</th><th>Progress / goal</th><th><span class="ws-sr">Actions</span></th></tr></thead><tbody>${trackers.map(t => { const total = trackerTotal(state!, t.id, date); return `<tr><td>${esc(t.title)}<small class="ws-muted"> · ${t.cadence === 'daily' ? 'today' : 'this week'}</small></td><td>${formatTrackerValue(t,total)} / ${formatTrackerValue(t,t.goal)} ${t.kind==='duration'&&['min','minutes','minute'].includes(t.unit.toLowerCase())?'':esc(t.unit)}</td><td>${button('log-tracker', '+ Log', t.id, 'ws-text-button')}</td></tr>`; }).join('')}</tbody></table>`;
@@ -685,7 +690,7 @@ async function setup(root: HTMLElement) {
     function historyHTML(w: Widget) {
         const trackers = selectedTrackers(w);
         if (!trackers.length)
-            return empty('Your week, at a glance', 'Log a tracker to build a picture of your week.', 'new-tracker', 'Create a tracker');
+            return empty('No tracker history', '', 'new-tracker', 'Create a tracker');
         const days = weekDays(today());
         if (w.view === 'matrix')
             return `<table class="ws-matrix"><caption class="ws-sr">Tracker logs for the week beginning ${days[0]}</caption><thead><tr><th>Tracker</th>${days.map(d => `<th>${new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short' })}<br/>${Number(d.slice(8))}</th>`).join('')}</tr></thead><tbody>${trackers.map(t => `<tr><td>${esc(t.title)}</td>${days.map(d => { const value = state!.logs.filter(l => l.trackerId === t.id && l.date === d).reduce((n, l) => n + l.value, 0); return `<td class="${value ? 'logged' : ''}">${d > today() ? '—' : value || '0'}</td>`; }).join('')}</tr>`).join('')}</tbody></table>`;
@@ -705,23 +710,23 @@ async function setup(root: HTMLElement) {
                 const options:AppShortcut[]=[...apps,...customLinks(w).map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
                 const missing=ids.filter(id=>!options.some(a=>a.id===(resolveLaunch(String(id))?.id??id)));
                 const chosen = ids.map(id => options.find(a => a.id === (resolveLaunch(String(id))?.id??id))).filter((a): a is AppShortcut => !!a);
-                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(a.category==='external'?'External link':w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${missing.map(id=>`<div class="ws-row"><span>Unavailable shortcut: ${esc(id)}</span>${button('configure-widget','Repair',w.id)}</div>`).join('')}${!chosen.length ? empty('Your most useful apps', 'Choose shortcuts in this widget’s settings.') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
+                return `<div class="ws-shortcuts" data-variant="${esc(w.view)}">${chosen.map((a, i) => `<a href="${esc(w.config.useActions === false ? a.url : a.action?.url ?? a.url)}" rel="noreferrer" class="ws-app" data-launch="${esc(a.id)}"><span class="ws-app-icon" data-color="${i % 4}">${icon(a.icon)}</span><div><strong>${esc(a.title)}</strong><small>${esc(a.category==='external'?'External link':w.config.useActions === false ? 'Open app' : a.action?.label ?? 'Open app')}</small></div></a>`).join('')}</div>${missing.map(id=>`<div class="ws-row"><span>Unavailable shortcut: ${esc(id)}</span>${button('configure-widget','Repair',w.id)}</div>`).join('')}${!chosen.length ? empty('No shortcuts', '') + button('configure-widget', 'Choose shortcuts', w.id) : ''}`;
             }
             case 'continue': {
                 const recent = [...state!.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, w.view === 'detailed' ? 6 : 4);
-                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>Hub local note · ${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}${button('context-note', 'Next', n.id, 'ws-text-button')}</div>`).join('')
-                    : empty('No Hub notes yet', 'Capture a local note here, or open an owner app to continue work there.', 'capture', 'Capture locally');
-                return connectedHTML() + `<p class="ws-home-source">Hub notes</p>${recent.length?local:empty('Pick up where you left off','Your Hub notes and approved app summaries appear here.')}<a class="ws-text-button" href="/home/connections/">Manage shared app summaries →</a>`;
+                const local = recent.length ? recent.map(n => `<div class="ws-row"><span class="ws-app-icon">${icon('notebook')}</span><div><strong>${esc(n.title)}</strong><small>${esc(new Date(n.updatedAt).toLocaleDateString())}</small>${w.view === 'detailed' ? `<small>${esc(n.body.slice(0, 90))}</small>` : ''}</div>${button('edit-note', 'Open', n.id)}${button('context-note', 'Next', n.id, 'ws-text-button')}</div>`).join('')
+                    : empty('No recent notes', '', 'capture', 'New note');
+                return connectedHTML() + `${local}<a class="ws-text-button" href="/home/connections/">Connections →</a>`;
             }
-            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div><small class="ws-muted">${dirty ? 'Draft not saved yet' : 'Draft saved locally'} · not synced to Notes</small></form>`;
+            case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div>${dirty ? '<small class="ws-error">Draft not saved yet</small>' : ''}</form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
-            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())} · this device</small></div></div>`).join('') : empty('A useful trail', 'Tasks, captures and tracker logs you create here will appear in this list.');
+            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
     }
-    function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
-    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header><p>Keep a list of app shortcuts you open in Hub. No app contents or private addresses are recorded.</p>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Reminders</h2></header><p>Your agenda and due tasks are available while Hub is open. Hub does not promise background or cross-device notifications. Focus timers pause when you leave this tab.</p></section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Changes save on this device first. Connect your account to sync layouts, tasks, notes, events and trackers. Export a backup whenever you need one.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('No widgets', '', 'add-widget', 'Add widget') : ''}`; }
+    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
     function fullContent() {
         if (view === 'settings')
             return settingsHTML();
@@ -732,23 +737,21 @@ async function setup(root: HTMLElement) {
                   || (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')
                   || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
                   || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
-            return `<section class="ws-task-center" aria-labelledby="ws-task-center-title">
-              <header><div><h2 id="ws-task-center-title">Local tasks & next actions</h2><p>Hub tasks on this device. Dates do not create calendar events or StudyOS assignments.</p></div></header>
+            return `<section class="ws-task-center" aria-label="Task views">
               <nav class="ws-unified-task-links" aria-label="Related Hub workflows"><a href="/">Today</a><a href="/?mode=focus">Focus</a><a href="/home/calendar/?mode=week">Week plan</a></nav>
               <div class="ws-task-filter-list" role="group" aria-label="Task views">
                 ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
               </div>
-              <p class="ws-task-explainer">${taskFilter==='inbox'?'Unscheduled tasks waiting for a decision. Use the one-tap planning actions below.':taskFilter==='today'?'Due today and overdue. Unscheduled tasks are kept in Inbox.':taskFilter==='upcoming'?'Scheduled after today. Move dates or update details without copying tasks.':taskFilter==='completed'?'Completed task history stays in this local workspace.':'Every Hub task in this workspace.'}</p>
             </section>
             <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
               <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
-              ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', taskFilter==='inbox'?'Capture a task without a due date; plan it here when ready.':'Choose another filter or add a task.', 'capture', 'Quick capture')}
+              ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
             </section>`;
         }
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
@@ -834,14 +837,14 @@ async function setup(root: HTMLElement) {
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
             $('#ws-title').textContent='THIEPN Hub';
-            $('[data-workspace-date]').textContent='Explore the apps. Make this space your own.';
+            $('[data-workspace-date]').textContent='';
         }
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
         $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (!staticView()) {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
-                $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', 'Your saved records are still on this device.', 'privacy', 'Show content');
+                $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', '', 'privacy', 'Show content');
             else
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
@@ -857,7 +860,7 @@ async function setup(root: HTMLElement) {
         else {
             mobileToday.hidden = false;
             mobileToday.innerHTML = privacyHeld || state.preferences.hidden
-                ? '<section class="ws-mobile-today"><strong>Today is hidden</strong><p>Personal information is masked on this device.</p></section>'
+                ? '<section class="ws-mobile-today"><strong>Today is hidden</strong></section>'
                 : renderMobileToday(state, today());
         }
         syncReadingPanels();
@@ -994,10 +997,9 @@ async function setup(root: HTMLElement) {
         if(!record || privacyHeld || state?.preferences.hidden || locked) {
             node.hidden=true;node.replaceChildren();return;
         }
-        const kind=handoffOrigin!.kind;
         node.hidden=false;
         node.innerHTML=`<div class="ws-handoff-origin"><div><strong>Return to source: ${esc(record.title)}</strong>
-            <small>${kind==='task'?'Hub local task':kind==='note'?'Hub local note':'Hub local event'} · current tab only · no linked records created</small></div>
+            </div>
             <div>${button('handoff-return','Open original')}${button('handoff-dismiss','Dismiss')}</div></div>`;
     }
     function startHandoff(kind:WorkOrigin['kind'],id:string):boolean {
@@ -1016,14 +1018,14 @@ async function setup(root: HTMLElement) {
         const task=state!.tasks.find(t=>t.id===id)!;
         const details=`<div class="ws-context-summary">
             <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
-            <p>These actions use only this device's Hub task, notes and calendar. No external owner app receives private text.</p>
+
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
               ${button('create-note-from-task','Draft a local note',id)}
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
               <a class="ws-button" href="/home/connections/">Owner app permissions</a>
-            </div><p class="ws-muted">Calendar planning creates a separate local event only after you explicitly review and confirm it. The task itself is not changed.</p>
+            </div>
           </div>`;
         openForm('Next actions · Hub task',details,()=>{});
         $('[data-dialog-submit]').hidden=true;
@@ -1039,7 +1041,7 @@ async function setup(root: HTMLElement) {
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
-          </div><p class="ws-muted">Drafting a task copies editable text into a new Hub form only. Nothing is created until you save, and no Notes cloud record is written.</p></div>`;
+          </div></div>`;
         openForm('Next actions · Hub note',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -1052,7 +1054,7 @@ async function setup(root: HTMLElement) {
             ${button('edit-event','Edit original event',id)}
             ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
             <a class="ws-button" href="/home/calendar/">Open Calendar</a>
-          </div><p class="ws-muted">This event is independent from all tasks and external calendars. New task details must be reviewed before saving.</p></div>`;
+          </div></div>`;
         openForm('Next actions · Hub event',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -1074,11 +1076,11 @@ async function setup(root: HTMLElement) {
           </div>
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
-          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <p class="ws-muted">${esc(zone)} · event must finish before midnight</p>
           <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
-          <p class="ws-muted">Duplicate identical local events are blocked. Existing H10 read-only calendar imports and StudyOS/Google calendars are not written.</p>
+
         </div>`;
         const sourceTitle=task.title;
         openForm('Review task → local calendar',html,async data=>{
@@ -1166,12 +1168,12 @@ async function setup(root: HTMLElement) {
         const defaultTarget=suggested<today()?today():suggested;
         const details=`<div class="ws-week-review-form" data-week-review-form>
           <p><strong>Source: ${snapshots.length} selected Hub-local tasks</strong></p>
-          <p>The original tasks retain their IDs, titles, priority and completion state. The proposed due date is editable. Existing task clock times will be cleared by the original H12 planner.</p>
+          <p>Changing the due date clears task times.</p>
           ${field('New due date','target',defaultTarget,'date',`required min="${today()}"`)}
           <div class="ws-week-preview" data-week-shift-preview aria-live="polite"></div>
           <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the selected unfinished tasks and target date. Change their Hub due dates only; do not add appointments or complete tasks.</label>
-          <p class="ws-muted">This is one owner-scoped Hub workspace mutation, with its original undo and CAS handling. Imported calendars and other apps are untouched.</p>
+
           <p class="ws-muted">If the original record changes in another tab, export/review instead of forcing a merge.</p>
         </div>`;
         const own=epoch,source=store;
@@ -1230,7 +1232,7 @@ async function setup(root: HTMLElement) {
           <div class="ws-unified-review-preview" data-unified-review-preview aria-live="polite"></div>
           <label class="ws-unified-choice ws-unified-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed this Hub task and approve only its due-date/priority change. No calendar appointment is created and nothing is marked completed.</label>
-          <p class="ws-muted">The original H12 planning writer clears an existing task clock when its due day changes. Nothing is sent to Google, StudyOS, ILIAS or owner Notes.</p>
+          <p class="ws-muted">Changing the due date clears the task’s time.</p>
         </div>`;
         openForm('Review task plan · Hub local',html,async data=>{
             if(epoch!==own || store!==source || !state || dirty || conflict || !storageReady || locked ||
@@ -1274,12 +1276,12 @@ async function setup(root: HTMLElement) {
         const valid=inbox||safeNavigationDay(date)&&date>=today();
         el.innerHTML=valid?`<p><strong>Before:</strong> ${esc(original.due||'Inbox')} · ${esc(original.priority)} priority</p>
             <p><strong>After review:</strong> ${esc(day)} · ${esc(prio)} priority${(inbox?'':date)!==original.due&&original.time?' · original task clock will be cleared':''}</p>
-            <p>Hub task only. No event is created, moved or completed.</p>`:
+            `:
             '<p class="ws-unified-review-error">Choose a valid present/future due date or select Inbox.</p>';
     }
     function editTask(id = '', seed?: {title:string;notes:string}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div><p class="ws-muted">These change only the Hub task. Calendar events and StudyOS commitments are not created.</p>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -1294,7 +1296,7 @@ async function setup(root: HTMLElement) {
                 else
                     s.tasks.push(task);
                 activity(s, `${t ? 'Updated' : 'Added'} task: ${task.title}`, 'task');
-            }, 'Task saved on this device');
+            }, 'Task saved');
         });
     }
 
@@ -1342,7 +1344,7 @@ async function setup(root: HTMLElement) {
         };
         const html=`<div data-review-event-move class="ws-plan-review-form">
            <p><strong>Hub local calendar · ${esc(original.title)}</strong></p>
-           <p class="ws-muted">This action will change only the existing local event. It does not change task due dates, external calendars or academic records.</p>
+
            <div class="ws-form-row">${field('Start date','date',request.date,'date','required')}
               ${field('End date','endDate',request.endDate,'date','required')}</div>
            <div class="ws-form-row">${field('Start time','startTime',request.startTime,'time')}
@@ -1352,7 +1354,7 @@ async function setup(root: HTMLElement) {
            <div data-event-move-preview class="ws-plan-preview" aria-live="polite"></div>
            <label class="ws-choice ws-plan-confirm"><input type="checkbox" name="confirm" required/>
              I reviewed the date, time, other local events and understand that saving changes this one Hub calendar event only.</label>
-           <p class="ws-muted">Possible overlaps are warnings, not automatic rescheduling. No imported or connected calendars are checked.</p>
+
          </div>`;
         const oldState=JSON.stringify(original),formEpoch=epoch;
         openForm('Review local event time',html,async data=>{
@@ -1406,7 +1408,7 @@ async function setup(root: HTMLElement) {
                     s.notes.unshift(next);
                 if (!note) s.captureDraft = '';
                 activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
-            }, 'Note saved on this device');
+            }, 'Note saved');
         });
     }
     function editTracker(id = '') {
@@ -1531,7 +1533,7 @@ async function setup(root: HTMLElement) {
         let config = '';
         if (w.type === 'app-shortcuts') {
             const selectedIds = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
-            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="App name…"/></label><p class="ws-muted">Choose up to 12 useful shortcuts. The full catalogue stays in Apps.</p>${apps.map(a => `<label class="ws-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''}/>${icon(a.icon)} ${esc(a.title)}</label>`).join('')}`;
+            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="App name…"/></label>${apps.map(a => `<label class="ws-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''}/>${icon(a.icon)} ${esc(a.title)}</label>`).join('')}`;
         }
         else if (w.type.startsWith('tracker')) {
             const ids = w.config.trackerIds;
@@ -1547,7 +1549,7 @@ async function setup(root: HTMLElement) {
         }
         else if (w.type === 'owner-handoffs') {
             const ids = Array.isArray(w.config.ownerSources) ? w.config.ownerSources : ['notes','library','tms60'];
-            config = '<p class="ws-muted">Select owner-app links. Approved metadata is only displayed in the original connection/reading interface.</p>' +
+            config = '' +
               [['notes','Notes'],['library','Library'],['tms60','TMS60']].map(([id,label]) =>
                 `<label class="ws-choice"><input type="checkbox" name="ownerSources" value="${id}" ${ids.includes(id)?'checked':''}/> ${label}</label>`).join('');
         }
@@ -1600,7 +1602,7 @@ async function setup(root: HTMLElement) {
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
             {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
         ];
-        openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><p class="ws-muted">${group.description}</p><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong><small>${spec.description}</small></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div><p class="ws-muted">Adding a widget changes only your layout. Select Done to save; no tasks, notes or external records are created.</p>`, () => { });
+        openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div>`, () => { });
         $('[data-dialog-submit]').hidden = true;
     }
     function createWorkspace(duplicateId = '') {
@@ -2083,7 +2085,7 @@ async function setup(root: HTMLElement) {
                 openCapture('task');
                 break;
             case 'save-capture-draft':
-                void flushCaptureDraft().then(() => toast(dirty ? 'Draft is still unsaved. Export a backup or retry.' : 'Draft saved locally on this device.'));
+                void flushCaptureDraft().then(() => toast(dirty ? 'Draft is still unsaved. Export a backup or retry.' : 'Draft saved.'));
                 break;
             case 'copy-capture': {
                 const draft = target.closest('form')?.querySelector<HTMLTextAreaElement>('[data-capture-draft]')?.value ?? state.captureDraft;
@@ -2223,7 +2225,7 @@ async function setup(root: HTMLElement) {
                     if(!task || task.completedAt) throw new Error('The task is no longer open.');
                     applyTaskPlan(task,'today',date);
                     activity(s,`Moved task due date by explicit planning action: ${task.title} → ${date}`,'task');
-                },'Task due date changed on this device');
+                },'Due date changed');
                 break;
             }
             case 'review-event-time':

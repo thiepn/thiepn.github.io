@@ -37,7 +37,7 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       button('connect-folio','Refresh Folio')+button('disconnect-folio','Clear');
   } else {
     folioBody=info(folio.status==='awaiting'?'Confirm the one-time share in Folio.':
-      'Folio is not connected to this tab. Hub does not read its local database.')+
+      'Not connected')+
       button('connect-folio',folio.status==='awaiting'?'Reopen Folio':'Share from Folio');
   }
   let notesBody='';
@@ -53,10 +53,10 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       button('connect-notes-source','Refresh Notes')+button('clear-notes-source','Clear');
   } else {
     notesBody=info(notes.status==='awaiting'?'Confirm the one-time share inside unlocked Notes.':
-      'Notes stays private until you approve sharing titles and reminders.')+
+      'Not connected')+
       button('connect-notes-source',notes.status==='awaiting'?'Reopen Notes':'Share from Notes');
   }
-  const languageRows=languages.status==='signed-out'?info('Sign in to Hub to read authorized published learning summaries.'):
+  const languageRows=languages.status==='signed-out'?info('Connect Account to view progress.'):
     HUB_LANGUAGE_IDS.map(id=>{
       const item=languages.cards.find(x=>x.appId===id),app=apps.find(x=>x.id===id);
       const title=item?.name??id[0]!.toUpperCase()+id.slice(1);
@@ -71,7 +71,7 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
     }).join('');
   return '<section class="ws-source-today" data-source-today aria-labelledby="source-today-heading">'+
     '<header><h2 id="source-today-heading">Continue across your apps</h2>'+
-    '<p>Real app-owned summaries only. No cross-app grades, inferred progress or copied private records.</p></header>'+
+    '</header>'+
     '<div class="ws-source-today-grid">'+
       '<section data-source-today-folio aria-label="Folio owner"><h3>Folio plans</h3><a href="/folio/">Go to Folio</a>'+
       folioBody+'</section>'+

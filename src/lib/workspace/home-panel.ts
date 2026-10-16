@@ -25,7 +25,7 @@ export function renderIntegratedHome(
 ): string {
   const day = integratedLocalDay(state);
   const zone = state.preferences.timezone;
-  const localSource = '<span class="ws-source">Hub · this browser</span>';
+
   const tasks = day.tasks.slice(0, 4).map(task =>
     '<div class="ws-brief-item"><button type="button" data-action="edit-task" data-id="' + esc(task.id) + '">' + esc(task.title) +
     '</button><small>' + (task.due < day.date ? 'Overdue' : task.time ? esc(task.time) : '') + '</small>' +
@@ -84,37 +84,34 @@ export function renderIntegratedHome(
       (link ? '<a href="' + esc(link) + '" rel="noreferrer">' + esc(card.action.label || 'Continue in app') + ' ↗</a>' : '') + '</div>';
   }).join('');
   return '<section class="ws-daily-brief" aria-label="Daily information without opening other apps">' +
-    '<header class="ws-brief-heading"><div><h2>Today at a glance</h2><p>Live local records and authorized source summaries, kept separate.</p></div>' +
+    '<header class="ws-brief-heading"><div><h2>Today at a glance</h2></div>' +
     (status === 'signed-out' ? '' :
       '<button type="button" class="ws-text-button" data-action="refresh-languages">Refresh languages</button>') +
     '</header><div class="ws-brief-grid">' +
-    '<section class="ws-brief-card"><header><h3>Tasks</h3>' + localSource + '</header>' +
+    '<section class="ws-brief-card"><header><h3>Tasks</h3>' + '</header>' +
     '<p class="ws-brief-stat">' + day.remaining + ' remaining' +
     (day.overdue ? ' · ' + day.overdue + ' overdue' : '') + '</p>' +
     (tasks || '<p class="ws-muted">No tasks due or overdue in this workspace.</p>') +
-    (day.unscheduled ? '<small class="ws-muted">' + day.unscheduled + ' unscheduled local tasks</small>' : '') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-task">Add task</button><a href="/home/tasks/">All local tasks</a></div></section>' +
-    '<section class="ws-brief-card"><header><h3>Agenda</h3>' + localSource + '</header>' +
-    (agenda || '<p class="ws-muted">No local events today.</p>') +
+    (day.unscheduled ? '<small class="ws-muted">' + day.unscheduled + ' unscheduled tasks</small>' : '') +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-task">Add task</button><a href="/home/tasks/">All tasks</a></div></section>' +
+    '<section class="ws-brief-card"><header><h3>Agenda</h3>' + '</header>' +
+    (agenda || '<p class="ws-muted">No events today.</p>') +
     (upcoming ? '<details class="ws-brief-upcoming"><summary>Next 7 days · ' + day.upcoming.length +
       ' upcoming</summary>' + upcoming + '</details>' : '') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-event">Add event</button><a href="/home/calendar/">Local calendar</a></div>' +
-    '<p class="ws-muted ws-brief-boundary">Google Calendar and university calendars are not connected here.</p></section>' +
-    '<section class="ws-brief-card"><header><h3>Latest notes</h3>' + localSource + '</header>' +
-    (notes || '<p class="ws-muted">No Hub-local notes yet.</p>') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button></div>' +
-    '<p class="ws-muted ws-brief-boundary">Folio and Notes cloud content are not merged into this list.</p></section>' +
-    '<section class="ws-brief-card"><header><h3>Habits &amp; trackers</h3>' + localSource + '</header>' +
-    (trackers || '<p class="ws-muted">No locally configured trackers.</p>') +
-    '<div class="ws-brief-actions"><a href="/home/trackers/">All local trackers</a></div>' +
-    '<p class="ws-muted ws-brief-boundary">Folio habit entries are separate until its owner permits a summary.</p></section>' +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-event">Add event</button><a href="/home/calendar/">Calendar</a></div>' +'</section>' +
+    '<section class="ws-brief-card"><header><h3>Latest notes</h3>' + '</header>' +
+    (notes || '<p class="ws-muted">No notes yet.</p>') +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button></div>' +'</section>' +
+    '<section class="ws-brief-card"><header><h3>Habits &amp; trackers</h3>' + '</header>' +
+    (trackers || '<p class="ws-muted">No trackers yet.</p>') +
+    '<div class="ws-brief-actions"><a href="/home/trackers/">All trackers</a></div>' +'</section>' +
     renderFolioDevice(folio.status, folio.snapshot) +
     renderNotesDevice(notesSource.status, notesSource.snapshot) +
     '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
-    '<span class="ws-source">Core · published P8 read models</span></header>' +
+    '</header>' +
     (languageMessage ? '<p class="ws-muted" role="status">' + esc(languageMessage) + '</p>' : '') +
     languageRows + (checkedAt && status !== 'signed-out' ?
     '<small class="ws-muted">Last checked this tab: ' + esc(new Date(checkedAt).toLocaleTimeString()) +
-    ' · Learning apps own progress and review grading.</small>' : '') +
+    '</small>' : '') +
     '</section></div></section>';
 }

@@ -7,7 +7,7 @@ const compact = Astro.props.compact ?? false;
   <header class="ws-owner-continue-heading">
     <div>
       <h2>Continue from your apps</h2>
-      <p>Read-only recent activity, only after the owner app grants access. Nothing is copied into Hub's saved workspace.</p>
+
     </div>
     <a href="/home/connections/" class="ws-owner-continue-manage">App connections</a>
   </header>
@@ -22,7 +22,7 @@ const compact = Astro.props.compact ?? false;
     <span role="status" data-owner-overview-status>Checking available owner connections…</span>
   </div>
   <div data-owner-continue-results aria-live="polite" aria-atomic="false">
-    <p class="ws-home-empty">Owner resources are not loaded automatically. Connect an app using its existing sharing controls.</p>
+    <p class="ws-home-empty">No shared activity.</p>
   </div>
   <footer class="ws-owner-continue-foot">
     <a href={providerAction('notes','open')!}>Notes</a>

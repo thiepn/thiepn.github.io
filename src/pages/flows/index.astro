@@ -4,9 +4,8 @@ import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/
 ---
 <WorkspaceShell view="flows">
   <div class="portal-flows page-shell" data-portal-flows>
-    <header class="portal-home-heading"><p class="portal-muted">Across your apps</p><h2>Workflows</h2><p>Choose a guide. Each app handles its own files and saving.</p></header>
     <nav class="portal-flow-choices" aria-label="Workflow guides">{WORKFLOWS.map(flow => <a href={workflowLocation(flow.id)} data-flow-choice={flow.id}>{flow.title}</a>)}</nav>
-    <p class="portal-muted" role="status" data-flow-status>Manual handoffs. Hub does not transfer files or confirm app outcomes.</p>
+    <p class="portal-muted" role="status" data-flow-status>Manual workflows</p>
     {WORKFLOWS.map(flow => <section class="portal-flow-guide" data-flow-guide={flow.id} aria-labelledby={`flow-${flow.id}`}>
       <h2 id={`flow-${flow.id}`}>{flow.title}</h2><p>{flow.description}</p>
       <ol class="portal-flow-steps">{flow.steps.map((step, index) => <li data-flow-step={index}>
@@ -16,7 +15,7 @@ import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/
         <div class="portal-flow-actions"><a class="portal-button" href={WORKFLOW_APPS[step.owner].href} target="_blank" rel="noopener noreferrer">{step.owner === 'scan' ? 'Open Scan product page' : `Open ${WORKFLOW_APPS[step.owner].label}`} <span class="sr-only">(new tab)</span></a><a href={workflowLocation(flow.id, index)} data-flow-position={index}>View step {index + 1}</a></div>
       </li>)}</ol>
     </section>)}
-    <p class="portal-muted">App links open a new tab so this guide stays available. Choosing a step changes only your place in the guide. Keep originals and check the destination before repeating an import.</p>
+
     <p><a href="/">Home</a> · <a href="/search/?scope=actions">Search actions</a></p>
     <noscript><p>All guides and app links are available without JavaScript.</p></noscript>
   </div>

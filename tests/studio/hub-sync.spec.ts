@@ -107,7 +107,7 @@ test('Try again restarts Account initialization after session storage recovers',
 });
 test('visitors get an introduction and can choose their local workspace without signing in',async({browser})=>{
  const api=backend(),a=await api.device(browser,null);
- await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome]')).toContainText('No account needed.');
+ await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
  await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
  await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
@@ -118,7 +118,7 @@ test('Account initialization failure leaves local tasks usable and persistent',a
  await a.page.locator('[data-planner] [data-action=new-task]').first().click();await a.page.getByLabel('Task',{exact:true}).fill('Works without Account');await a.page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('.ws-task-title')).toContainText('Works without Account');await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');
- await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-auth-status]')).toContainText('keep using Hub locally');expect(api.exchanges()).toBe(0);expect(api.writes).toHaveLength(0);await a.context.close();
+ await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-auth-status]')).toContainText('session storage is blocked');expect(api.exchanges()).toBe(0);expect(api.writes).toHaveLength(0);await a.context.close();
 });
 test('consented Notes, Library and TMS60 insights appear together and clear with privacy',async({browser})=>{
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();

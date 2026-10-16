@@ -57,7 +57,7 @@ export class WorkspaceCloudSync {
     const run = async () => {
       if (this.stopped) return;
       try { await this.reconcile(); }
-      catch (error) { if (!this.stopped) this.options.status(error instanceof Error ? error.message : 'Saved on this device · waiting to sync'); }
+      catch (error) { if (!this.stopped) this.options.status(error instanceof Error ? error.message : 'Waiting to sync'); }
     };
     const lock = this.options.lock ?? (async (work: () => Promise<void>) => {
       if (!navigator.locks) throw new Error('Saved on this device · automatic sync needs browser storage coordination.');
@@ -77,7 +77,7 @@ export class WorkspaceCloudSync {
     if (meta.recovery) { status('Sync needs review · both versions are saved', true); return; }
     let local = await store.load();
     if (!local || this.stopped) return;
-    status('Saved on this device · syncing…');
+    status('Syncing…');
     if (meta.pending) {
       const result = await transport.push(meta.pending, meta.device, this.controller.signal);
       if (this.stopped) return;
@@ -132,7 +132,7 @@ export class WorkspaceCloudSync {
     } else { await this.save(meta); }
     const latest = await store.load();
     if (this.stopped) return;
-    if (latest && meta.baseline && !sameState(latest, meta.baseline.state)) { this.schedule(); status('Saved on this device · syncing newer changes…'); }
+    if (latest && meta.baseline && !sameState(latest, meta.baseline.state)) { this.schedule(); status('Syncing newer changes…'); }
     else status('Synced with your account');
   }
   async recovery(): Promise<CloudJournal['recovery']> { return journal(await this.options.store.syncJournal(), this.options.owner).recovery; }
