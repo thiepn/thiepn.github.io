@@ -734,7 +734,7 @@ async function setup(root: HTMLElement) {
         if(view!=='knowledge'||!state||locked||privacyHeld||state.preferences.hidden)return;
         const fd=new FormData(form),title=String(fd.get('title')??'').trim(),body=String(fd.get('body')??'');
         if(!title||title.length>240||body.length>10000)throw new Error('Invalid title or note length.');
-        const existing=knowledgeCreating?null:state.notes.find(n=>n.id===knowledgeSelectedId);
+        const existing=knowledgeCreating?null:(state.notes.find(n=>n.id===knowledgeSelectedId)??state.notes.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]);
         if(!knowledgeCreating&&!existing)throw new Error('Note is no longer available.');
         if(existing&&knowledgeDraft&&knowledgeDraft.revision!==existing.updatedAt)throw new Error('Note changed. Reopen the source before saving.');
         const next:Note={id:existing?.id??uid(),title,body,updatedAt:stamp()};
@@ -939,7 +939,7 @@ async function setup(root: HTMLElement) {
     async function navigateWorkspace(url: URL, pop = false) {
         const next = routes[url.pathname];
         if (!next) return;
-        if(view==='knowledge'&&next!=='knowledge'&&!discardKnowledgeDraft())return;
+        if(view==='knowledge'&&next!=='knowledge'&&!discardKnowledgeDraft()){if(pop)history.replaceState(null,'',committedUrl);return;}
         const ticket = ++navigationTicket;
         const own = epoch;
         const previous = pop ? committedUrl : location.pathname + location.search;
@@ -3179,7 +3179,7 @@ async function setup(root: HTMLElement) {
     setInterval(() => { if (!document.hidden) void refreshLanguages(); }, 15 * 60_000);
 
     window.addEventListener('beforeunload', event => {
-        if (dirty) {
+        if (dirty || knowledgeDraft) {
             event.preventDefault();
         }
     });
