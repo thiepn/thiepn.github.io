@@ -19,7 +19,7 @@ function text(v: unknown, max = 10000) { return typeof v === 'string' && v.lengt
 function unique(items: {
     id: string;
 }[]) { return new Set(items.map(x => x.id)).size === items.length; }
-export function validDate(s: string) { return /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(s + 'T12:00:00Z').toISOString().slice(0, 10) === s; }
+export function validDate(s: string) { if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(s + 'T12:00:00Z'); return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === s; }
 export function parseState(raw: string): WorkspaceState {
     if (new TextEncoder().encode(raw).length > MAX_EXPORT_BYTES)
         throw new Error('Workspace exceeds the 5 MB import limit.');
