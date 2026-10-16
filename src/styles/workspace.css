@@ -342,3 +342,31 @@
 .ws-folio-summary strong{font-size:12px;overflow-wrap:anywhere;}
 .ws-folio-summary a{display:inline-block;color:var(--ws-accent);font-size:12px;margin-top:10px;}
 @media(max-width:650px){.ws-folio-summary{grid-template-columns:minmax(0,1fr);gap:8px;}}
+
+/* Separate Notes source: owner-generated, user-consented titles/reminders only. */
+.ws-brief-notes-source{grid-column:1/-1;}
+.ws-notes-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.ws-notes-source-grid>div{min-width:0;}
+.ws-notes-source-grid h4{font-size:13px;margin:12px 0 7px;}
+.ws-notes-source-grid strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-source-deep-link{display:inline-block;margin-left:12px;font-size:12px;color:var(--ws-accent);}
+@media(max-width:650px){.ws-notes-source-grid{grid-template-columns:minmax(0,1fr);}}
+
+/* Real cross-source continuation in default Today; no duplicate durable task engine. */
+.ws-source-today{padding:24px 0;min-width:0;}
+.ws-source-today>header{margin:0 0 16px;}
+.ws-source-today h2{font-size:clamp(19px,3vw,24px);margin:0 0 5px;}
+.ws-source-today>header p{font-size:13px;line-height:1.5;margin:0;color:var(--ws-muted,#657184);}
+.ws-source-today-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.ws-source-today-grid>section{min-width:0;border:1px solid var(--ws-line,#cdd4da);border-radius:9px;padding:16px;}
+.ws-source-today-grid h3{font-size:15px;margin:0 0 5px;}
+.ws-source-today-grid section>a{font-size:12px;color:var(--ws-accent,#2955a6);}
+.ws-source-today-grid ul{list-style:none;padding:0;margin:12px 0;}
+.ws-source-today-grid li{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:8px 0;border-top:1px solid var(--ws-line,#cdd4da);overflow-wrap:anywhere;}
+.ws-source-today-grid li strong{font-size:13px;line-height:1.4;min-width:0;}
+.ws-source-today-grid li small{font-size:11px;line-height:1.4;color:var(--ws-muted,#657184);}
+.ws-source-today-stat{font-size:13px;font-weight:650;margin:12px 0;}
+.ws-source-today-empty,.ws-source-today-time{font-size:12px;line-height:1.5;color:var(--ws-muted,#657184);margin:12px 0;}
+.ws-source-today .ws-unified-action{margin:6px 7px 0 0;min-height:36px;}
+@media(max-width:1100px){.ws-source-today-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:680px){.ws-source-today{padding:16px 0;}.ws-source-today-grid{grid-template-columns:minmax(0,1fr);}}
