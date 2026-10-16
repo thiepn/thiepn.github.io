@@ -14,6 +14,11 @@ describe('native Hub knowledge: no duplicate owner records',()=>{
  it('skips Markdown code examples',()=>{
   expect(wikiTargets('`[[Inline]]`\n```md\n[[Fence]]\n```\n[[Actual]]')).toEqual(['Actual']);
  });
+ it('supports KEEP heading and alias targets without new resource IDs',()=>{
+  const a=note('a','Root','[[Essay#Introduction|Start]] and [[note:b#Source|Ref]]');
+  const b=note('b','Essay');
+  expect(resolveWiki(a,[a,b]).map(x=>x.targetId)).toEqual(['b','b']);
+ });
  it('keeps missing targets unresolved',()=>expect(resolveWiki(note('a','A','[[Nope]]'),[])[0]?.targetId).toBeNull());
  it('shows explicit linked tasks and backlinks only',()=>{
   const list=[note('a','A','[[note:b]]'),note('b','B'),note('c','C')];
