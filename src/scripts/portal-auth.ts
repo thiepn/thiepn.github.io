@@ -1,8 +1,11 @@
 import { ACCOUNT_ORIGIN, HUB_AUTH_KEY, HUB_LOGIN_KEY, validAccountId, readPendingLogin, readHubCallback, type HubIdentity } from '../lib/hub-auth';
 import { parseNotesConsent, type NotesConsent } from '../lib/hub-notes-session';
-import { managedAccountEnabled, setupHubAccount, hubConnections } from './hub-account';
+import { managedAccountEnabled, setupHubAccount, hubConnections, readVerifiedHubToken } from './hub-account';
 export let readHubTmsConsent:(owner:string,translation:string)=>Promise<NotesConsent>=async()=>{throw new Error('Unavailable');};
 export let readHubNotesConsent: (owner:string)=>Promise<NotesConsent> = async()=>{throw new Error('Unavailable');};
+// Only the Hub's verified first-party Account session can authorize an existing
+// Core P9 language dashboard GET. This is NOT a managed Notes/TMS token or grant.
+export let readHubLanguageToken: (owner:string)=>Promise<string|null> = async()=>null;
 
 const callbackQuery = location.pathname === '/home/auth/callback/' ? new URLSearchParams(location.search) : null;
 const callbackFragment = callbackQuery ? location.hash : '';
@@ -15,6 +18,7 @@ export function publishIdentity(identity: HubIdentity) {
   window.dispatchEvent(new CustomEvent('hub:identity', { detail: identity }));
 }
 if (root && managedAccountEnabled) {
+  readHubLanguageToken = readVerifiedHubToken;
   readHubNotesConsent = async owner => parseNotesConsent((await hubConnections(owner)).notes);
   readHubTmsConsent = async (owner, translation) => {
     const match = (await hubConnections(owner)).tms60.find(value => value.translation === translation);
@@ -46,6 +50,16 @@ if (root && managedAccountEnabled) {
     void (async () => {
       const { createClient } = await import('@supabase/supabase-js');
       const client = createClient(config.url!, config.key!, { global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), AbortSignal.timeout(8000)]) }) }, auth: { storageKey: HUB_AUTH_KEY, flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } });
+      readHubLanguageToken = async(owner) => {
+        const ownGeneration = generation;
+        if (hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner) return null;
+        const { data: session, error: sessionError } = await client.auth.getSession();
+        if (sessionError || !session.session || session.session.user.id !== owner) return null;
+        const { data: user, error: userError } = await client.auth.getUser();
+        if (userError || user.user?.id !== owner || generation !== ownGeneration ||
+            hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner) return null;
+        return session.session.access_token;
+      };
       readHubNotesConsent = async(owner) => {
         const epoch = generation;
         if(hubIdentity.status !== 'signed-in' || hubIdentity.id !== owner)throw new Error('Unavailable');

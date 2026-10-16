@@ -12,7 +12,8 @@
     "accountPR": "https://github.com/thiepn/account/pull/83",
     "corePR": "https://github.com/thiepn/core/pull/112",
     "libraryPinnedOwner": "b84930b991f4819c9c22fc1d63e23b12a5c6ff4d",
-    "readingPilotPinnedOwner": "77058023894f4d7935c79e291a5dba7daacb8666"
+    "readingPilotPinnedOwner": "77058023894f4d7935c79e291a5dba7daacb8666",
+    "integrationMain": "5e9bf71ed36ec58749ff9e8295782781c750d319"
   },
   "capabilities": {
     "publicDestinations": 31,
@@ -37,7 +38,7 @@
   },
   "verification": {
     "status": "review-candidate-with-explicit-release-blockers",
-    "unit": "318 tests passed in 41 files, including connection health, cancellation, partial results and tracker measurement history.",
+    "unit": "325 tests passed in 44 files after reconciling current main, including native daily overview, languages and Folio.",
     "workspace": "89/90 passed in the full run; the guide-scoped file-input assertion was corrected and passed in the 10-test targeted rerun. Latest capture/editor/core regression run: 17/17 passed.",
     "libraryPinned": "Hosted staged-paired CI passed at cb243cc against immutable owner b84930b in Chromium, Firefox and WebKit. Latest-head qualification remains required.",
     "typecheck": "0 errors, 0 warnings; existing hints only",
@@ -60,7 +61,9 @@
     },
     "connectionHealth": "16/16 account/sync tests passed in Chromium/Firefox, including safe diagnostics, revoked sharing, focus preservation and sign-out clearing. 12/12 Connections handoff/accessibility tests passed across 320/1440px light/dark, Chromium/Firefox after increasing action targets to 44px.",
     "readingPilot": "28/28 passed locally against immutable owner 7705802: Chromium desktop, Firefox desktop and Android preview. WebKit and iPad require hosted CI.",
-    "trackerHistory": "Nine command checks and 4/4 Chromium/Firefox browser checks passed, including rejected unit changes, goal updates, stable-ID corrections and reload persistence."
+    "trackerHistory": "Nine command checks and 4/4 Chromium/Firefox browser checks passed, including rejected unit changes, goal updates, stable-ID corrections and reload persistence.",
+    "qualifiedPRHead": "652bab416c9497bda6674e1f708c4316353edaaa: all required hosted Hub checks passed before integrating newer main.",
+    "reconciledMain": "Main PRs 156/157 preserved, including language summaries and opt-in Folio. Shared-session language read and all 30 targeted Chromium/Firefox integration checks passed; 325 unit checks, build, typecheck, release gate and performance budgets pass. Exact-main hosted Quality and production smoke are still required."
   },
   "releaseBlockers": [
     {
@@ -82,6 +85,11 @@
       "id": "final-head-browser-ci",
       "state": "outstanding",
       "detail": "Rerun Quality and reading pilot at the latest integrated head; previous-head failures and fixture corrections are recorded separately."
+    },
+    {
+      "id": "core-ci-capacity",
+      "state": "blocked-companion-only",
+      "detail": "Core PR 112 was marked ready but its verify job could not start: GitHub reported failed account payments or spending limit. Hub retains its pinned inventory; no Core merge/deployment bypass."
     }
   ]
 }

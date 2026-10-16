@@ -24,6 +24,15 @@ function matchingToken(token: string, owner: string) {
   const value = claims(token);
   return value.sub === owner && value.client_id === configuration.clientId && value.iss === configuration.issuer + '/auth/v1' && value.aud === 'authenticated';
 }
+/** Reverify the current owner before an existing first-party read-only handoff. */
+export async function readVerifiedHubToken(owner:string):Promise<string|null> {
+  if(!accountSession||activeIdentity.status!=='signed-in'||activeIdentity.id!==owner)return null;
+  const own=epoch,session=accountSession;
+  const identity=await session.verify();
+  if(identity.status!=='signed-in'||identity.id!==owner||own!==epoch)return null;
+  const token=await session.getAccessToken();
+  return own===epoch&&activeIdentity.status==='signed-in'&&activeIdentity.id===owner&&token&&matchingToken(token,owner)?token:null;
+}
 export async function hubRpc(owner: string, name: string, data: Record<string, unknown> = {}, signal?: AbortSignal): Promise<unknown> {
   if (!accountSession || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new ConnectionFailure('session-required','Connect your THIEPN Account to sync.');
   const own = epoch;

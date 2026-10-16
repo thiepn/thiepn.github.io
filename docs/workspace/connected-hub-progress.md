@@ -37,3 +37,7 @@ The immutable-owner Library paired suite passed in all required hosted engines a
 WebKit cannot launch locally because required system libraries are unavailable. Hosted CI must qualify the final head. Real-owner OAuth/device evidence, Account qualification and production smoke remain outstanding; this candidate is not live.
 
 Tracker qualification adds nine command-level checks for measurement integrity, stale edits, duplicate IDs, checklist values and timezone boundaries. Shared shell/account path changes now trigger the reading-pilot browser workflow.
+
+## Release reconciliation, 16 October 2026
+
+All hosted Hub checks passed at `652bab4`. Main then advanced through PRs 156 and 157. The release candidate reconciles those native daily/language and Folio additions, preserving privacy clearing, original commands and the default canvas/shortcut position. The language reader now uses the verified shared Account session rather than the superseded session path, and core navigation refreshes/cancels it appropriately. Unit qualification after reconciliation: 325 tests in 44 files. Production requires successful exact-main Quality and the existing owner-only Pages dispatch; merging source does not itself prove deployment. Core PR 112 CI remains blocked before start by GitHub billing/capacity; Hub uses its pinned projection and does not bypass that check.

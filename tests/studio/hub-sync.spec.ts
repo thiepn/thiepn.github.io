@@ -13,6 +13,10 @@ function backend(options={sharing:false,probeEligible:false}) {
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
   await context.route('https://account.thiepn.dev/**',async route=>{await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
+  await context.route('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard',async route=>{
+   const request=route.request();expect(request.method()).toBe('GET');const bearer=request.headers().authorization;expect(bearer).toMatch(/^Bearer fixture\./);const token=JSON.parse(Buffer.from(bearer.split('.')[1]!,'base64url').toString());expect(token.client_id).toBe(configuration.clientId);expect([OWNER,OTHER]).toContain(token.sub);
+   await route.fulfill({json:{ok:true,data:{schema:'thiepn-language-dashboard',schemaVersion:1,contractVersion:'p9-dashboard-v1',generatedAt:new Date().toISOString(),enrollments:[],snapshots:[]}}});
+  });
   await context.route(configuration.issuer+'/**',async route=>{
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
@@ -103,5 +107,14 @@ test('Connections preserves last success, distinguishes revoked access and expor
   const repair=a.page.locator('[data-source-repair=notes] a');await repair.focus();await expect(repair).toBeFocused();await a.page.waitForTimeout(1100);await expect(repair).toBeFocused();
   await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();
   await expect(notes).toHaveText('Account not connected');await expect(detail).toHaveText('No successful read in this tab');
+ }finally{await a.context.close();}
+});
+
+test('the shared verified Account session also supplies the existing language summary read',async({browser})=>{
+ const api=backend(),a=await api.device(browser);
+ try{
+  const response=a.page.waitForResponse('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard');
+  await a.page.locator('[data-action=refresh-languages]').click();await response;
+  await expect(a.page.locator('[data-native-overview]')).toContainText('No visible language snapshots have been published');
  }finally{await a.context.close();}
 });

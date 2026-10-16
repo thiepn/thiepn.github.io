@@ -293,3 +293,52 @@
 .ws-source-detail{display:block;color:var(--ws-muted);margin-top:5px;max-width:30ch;}
 
 .ws-connection-table td:last-child>a,.ws-connection-table [data-source-repair]>.ws-text-button{display:inline-flex;align-items:center;min-height:44px;}
+/* Integrated native morning overview: source labels must remain visible, especially offline. */
+.ws-daily-brief{margin:0 0 26px;}
+.ws-brief-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.ws-brief-heading h2{font-size:21px;letter-spacing:-.5px;margin:0 0 3px;}
+.ws-brief-heading p{color:var(--ws-muted);font-size:12px;margin:0;}
+.ws-brief-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.ws-brief-card{background:var(--ws-surface);border:1px solid var(--ws-line);border-radius:12px;padding:16px;min-width:0;}
+.ws-brief-card>header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;margin-bottom:10px;}
+.ws-brief-card h3{font-size:15px;margin:0;}
+.ws-source{font-size:10px;color:var(--ws-muted);font-weight:500;}
+.ws-brief-stat{font-size:14px;font-weight:650;margin:5px 0;}
+.ws-brief-item{display:flex;align-items:center;gap:9px;min-height:36px;padding:6px 0;border-bottom:1px solid var(--ws-line);font-size:12px;}
+.ws-brief-item button{border:0;background:none;min-width:0;flex:1;text-align:left;color:inherit;overflow-wrap:anywhere;padding:3px;cursor:pointer;}
+.ws-brief-item button:hover{text-decoration:underline;}
+.ws-brief-item small{font-size:10px;color:var(--ws-muted);}
+.ws-brief-time{font-size:11px;color:var(--ws-accent);min-width:47px;}
+.ws-brief-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:9px;font-size:12px;}
+.ws-brief-actions a{color:var(--ws-accent);}
+.ws-brief-boundary{font-size:11px;margin-top:10px;}
+.ws-brief-languages{grid-column:1/-1;}
+.ws-language-row{display:flex;align-items:center;justify-content:space-between;gap:18px;min-width:0;padding:11px 0;border-top:1px solid var(--ws-line);}
+.ws-language-row>div{display:grid;gap:3px;min-width:0;}
+.ws-language-row strong{font-size:13px;}
+.ws-language-row small,.ws-language-numbers{font-size:11px;color:var(--ws-muted);}
+.ws-language-row a{font-size:12px;color:var(--ws-accent);max-width:38%;text-align:right;}
+@media (max-width:650px){.ws-brief-grid{grid-template-columns:minmax(0,1fr);}
+.ws-brief-languages{grid-column:auto;}.ws-brief-heading{flex-wrap:wrap;}
+.ws-language-row{align-items:flex-start;}.ws-language-row a{max-width:40%;}}
+@media(forced-colors:active){.ws-brief-card{border:1px solid CanvasText;}}
+
+.ws-brief-done{flex:0 0 auto!important;width:auto;min-width:40px!important;border:1px solid var(--ws-line)!important;border-radius:6px!important;padding:4px 8px!important;color:var(--ws-accent)!important;text-align:center!important;}
+.ws-brief-tracker{display:grid;grid-template-columns:minmax(0,1fr) minmax(60px,100px) auto;gap:8px;align-items:center;margin:10px 0;}
+.ws-brief-tracker>div{display:grid;min-width:0;gap:3px;}
+.ws-brief-tracker strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-brief-tracker small{font-size:11px;color:var(--ws-muted);}
+.ws-brief-tracker progress{width:100%;height:7px;accent-color:var(--ws-accent);}
+.ws-brief-upcoming{margin-top:12px;border-top:1px solid var(--ws-line);padding-top:9px;}
+.ws-brief-upcoming summary{font-size:12px;color:var(--ws-accent);cursor:pointer;}
+.ws-brief-upcoming .ws-brief-time{min-width:50px;}
+@media(max-width:380px){.ws-brief-tracker{grid-template-columns:minmax(0,1fr) 65px auto;}}
+
+/* Folio remains an independent, opt-in local-owner snapshot, not a Hub workspace record. */
+.ws-brief-folio{grid-column:1/-1;}
+.ws-folio-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.ws-folio-summary>div{min-width:0;}
+.ws-folio-summary h4{font-size:13px;margin:12px 0 7px;}
+.ws-folio-summary strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-folio-summary a{display:inline-block;color:var(--ws-accent);font-size:12px;margin-top:10px;}
+@media(max-width:650px){.ws-folio-summary{grid-template-columns:minmax(0,1fr);gap:8px;}}
