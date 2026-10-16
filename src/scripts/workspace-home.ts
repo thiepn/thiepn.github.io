@@ -1,3 +1,4 @@
+import { renderKnowledge } from '../lib/workspace/knowledge-pane';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
 import {selectedShortcuts} from '../lib/workspace/selectors';
@@ -96,6 +97,7 @@ async function setup(root: HTMLElement) {
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
+    let knowledgeSelectedId:string|null=null,knowledgeCreating=false,knowledgeSearch='',knowledgeDraft:{id:string|null;title:string;body:string;revision:string}|null=null;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
@@ -722,9 +724,31 @@ async function setup(root: HTMLElement) {
     }
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('A workspace that fits you', 'Add the first widget to make this space yours.', 'add-widget', 'Add widget') : ''}`; }
     function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong><p>Independent from your workspace layout.</p></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong><p>Choose how much space your content uses.</p></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong><p>Date-only tasks retain their dates when this changes.</p></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong><p>Mask notes, tasks, trackers and workspace names.</p></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header><p>Keep a list of app shortcuts you open in Hub. No app contents or private addresses are recorded.</p>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Reminders</h2></header><p>Your agenda and due tasks are available while Hub is open. Hub does not promise background or cross-device notifications. Focus timers pause when you leave this tab.</p></section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><p class="ws-muted">Changes save on this device first. Connect your account to sync layouts, tasks, notes, events and trackers. Export a backup whenever you need one.</p><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function discardKnowledgeDraft():boolean{
+        if(!knowledgeDraft)return true;
+        if(!window.confirm('Discard your unsaved knowledge draft?'))return false;
+        knowledgeDraft=null;return true;
+    }
+    async function saveKnowledge(form:HTMLFormElement){
+        if(view!=='knowledge'||!state||locked||privacyHeld||state.preferences.hidden)return;
+        const fd=new FormData(form),title=String(fd.get('title')??'').trim(),body=String(fd.get('body')??'');
+        if(!title||title.length>240||body.length>10000)throw new Error('Invalid title or note length.');
+        const existing=knowledgeCreating?null:state.notes.find(n=>n.id===knowledgeSelectedId);
+        if(!knowledgeCreating&&!existing)throw new Error('Note is no longer available.');
+        if(existing&&knowledgeDraft&&knowledgeDraft.revision!==existing.updatedAt)throw new Error('Note changed. Reopen the source before saving.');
+        const next:Note={id:existing?.id??uid(),title,body,updatedAt:stamp()};
+        await mutate(s=>{
+            const ix=s.notes.findIndex(n=>n.id===next.id);
+            if(existing&&(ix<0||s.notes[ix]!.updatedAt!==existing.updatedAt))throw new Error('Source note changed.');
+            if(ix<0)s.notes.unshift(next);else s.notes[ix]=next;
+            activity(s,(existing?'Updated':'Created')+' Hub knowledge note: '+next.title,'note');
+        },'Hub note saved');
+        knowledgeSelectedId=next.id;knowledgeCreating=false;knowledgeDraft=null;render();
+    }
     function fullContent() {
         if (view === 'settings')
             return settingsHTML();
+        if(view==='knowledge')return renderKnowledge(state!.notes,state!.tasks,{selectedId:knowledgeSelectedId,create:knowledgeCreating,query:knowledgeSearch,draft:knowledgeDraft});
         if (view === 'tasks') {
             const counts = taskCounts(state!.tasks, today());
             const tasks = state!.tasks.filter(t => taskMatchesFilter(t, taskFilter, today()))
@@ -898,7 +922,7 @@ async function setup(root: HTMLElement) {
     $('[data-more-close]').addEventListener('click', () => more.close());
     let moreNavigation = false;
     more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
-    const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
+    const routes: Record<string, string> = { '/': 'home', '/home/knowledge/':'knowledge', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
     const documents = new Map<string, Document>();
     let navigationTicket = 0;
     let committedUrl = location.pathname + location.search;
@@ -914,6 +938,7 @@ async function setup(root: HTMLElement) {
     async function navigateWorkspace(url: URL, pop = false) {
         const next = routes[url.pathname];
         if (!next) return;
+        if(view==='knowledge'&&next!=='knowledge'&&!discardKnowledgeDraft())return;
         const ticket = ++navigationTicket;
         const own = epoch;
         const previous = pop ? committedUrl : location.pathname + location.search;
@@ -1887,6 +1912,20 @@ async function setup(root: HTMLElement) {
             void switchWorkspace(target.dataset.workspaceId!);
             return;
         }
+        if(action.startsWith('knowledge-')){
+            if(view!=='knowledge'||privacyHeld||state.preferences.hidden||locked)return;
+            if(action==='knowledge-open'){
+                if(!state.notes.some(n=>n.id===id)||!discardKnowledgeDraft())return;
+                knowledgeSelectedId=id;knowledgeCreating=false;render();return;
+            }
+            if(action==='knowledge-new'){if(!discardKnowledgeDraft())return;knowledgeSelectedId=null;knowledgeCreating=true;render();return;}
+            if(action==='knowledge-cancel'){if(!discardKnowledgeDraft())return;knowledgeCreating=false;render();return;}
+            if(action==='knowledge-linked-task'){
+                const note=state.notes.find(n=>n.id===id);
+                if(note)editTask('',{title:'',notes:'[[note:'+note.id+']]'});
+                return;
+            }
+        }
         switch (action) {
             case 'unified-mode':
                 if(view==='home' && (HOME_JOURNEY_MODES as readonly string[]).includes(id)) {
@@ -2642,6 +2681,23 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(view==='knowledge'&&el.matches('[data-knowledge-search]')){
+            knowledgeSearch=el.value.slice(0,150);
+            root.querySelectorAll<HTMLElement>('[data-knowledge-list] [data-action=knowledge-open]').forEach(row=>{
+               const note=state?.notes.find(n=>n.id===row.dataset.id);
+               const q=knowledgeSearch.toLocaleLowerCase();
+               row.hidden=!note||!(note.title+' '+note.body).toLocaleLowerCase().includes(q);
+            });
+            return;
+        }
+        if(view==='knowledge'&&el.closest('[data-knowledge-form]')&&state){
+            const note=knowledgeCreating?null:state.notes.find(n=>n.id===knowledgeSelectedId);
+            const form=el.closest<HTMLFormElement>('[data-knowledge-form]')!;
+            knowledgeDraft={id:note?.id??null,revision:knowledgeDraft?.id===(note?.id??null)?knowledgeDraft.revision:note?.updatedAt??'',title:form.querySelector<HTMLInputElement>('[name=title]')?.value??'',body:form.querySelector<HTMLTextAreaElement>('[name=body]')?.value??''};
+            const label=form.querySelector<HTMLElement>('[data-knowledge-dirty]');
+            if(label)label.textContent='Unsaved draft';
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
@@ -2664,6 +2720,15 @@ async function setup(root: HTMLElement) {
         }
     });
     root.addEventListener('submit', event => {
+        const knowledge=(event.target as HTMLElement).closest<HTMLFormElement>('[data-knowledge-form]');
+        if(knowledge){
+            event.preventDefault();
+            const submit=knowledge.querySelector<HTMLButtonElement>('[type=submit]');
+            if(submit)submit.disabled=true;
+            void saveKnowledge(knowledge).catch(e=>toast(e instanceof Error?e.message:'Save failed.'))
+                .finally(()=>{if(submit?.isConnected)submit.disabled=false;});
+            return;
+        }
         const capture = (event.target as HTMLElement).closest<HTMLFormElement>('[data-capture-form]');
         if (!capture || !state)
             return;
@@ -2871,6 +2936,7 @@ async function setup(root: HTMLElement) {
         store = null;
         channel = null;
         state = null;
+        knowledgeDraft=null;knowledgeSelectedId=null;knowledgeCreating=false;knowledgeSearch='';
         dirty = false;
         locked = false;
         conflict = false;

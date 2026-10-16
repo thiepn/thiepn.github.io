@@ -20,8 +20,10 @@ import '../../styles/workspace-handoffs-h17.css';
 import '../../styles/workspace-planning-h18.css';
 import '../../styles/workspace-weekly-h19.css';
 import '../../styles/workspace-unified-h20.css';
+import '../../styles/workspace-knowledge-keep.css';
+import '../../styles/workspace-faith-discipline.css';
 import '@fontsource-variable/instrument-sans';
-interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows' }
+interface Props { view?: 'home'|'knowledge'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows' }
 const {view='home'}=Astro.props;
 const staticView=['apps','connections','search','inbox','flows'].includes(view);
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
@@ -32,7 +34,7 @@ const apps=entries.map(({project,hub})=>{
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
 });
-const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar']];
+const navigation=[['home','Home','/','house'],['knowledge','Knowledge','/home/knowledge/','notebook'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['apps','Apps','/apps/','squares-four']];
 ---
 <BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
