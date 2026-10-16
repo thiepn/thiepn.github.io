@@ -1963,6 +1963,23 @@ async function setup(root: HTMLElement) {
                 void connectKeepOwner().catch(e=>toast(e instanceof Error?e.message:'KEEP connection failed.'));
                 return;
             }
+            if(action==='knowledge-keep-format'){
+                const form=root.querySelector<HTMLFormElement>('[data-keep-owner-form]');
+                const editor=form?.querySelector<HTMLTextAreaElement>('[name=content]');
+                if(!editor||keepDevice?.status!=='ready')return;
+                const start=editor.selectionStart,end=editor.selectionEnd,value=editor.value,sel=value.slice(start,end);
+                const chosen=(v:string)=>v||'text';
+                const insert=id==='bold'?'**'+chosen(sel)+'**':
+                    id==='italic'?'*'+chosen(sel)+'*':
+                    id==='heading'?'## '+chosen(sel):
+                    id==='task'?'- [ ] '+chosen(sel):
+                    id==='link'?'[['+chosen(sel)+']]':
+                    id==='code'?'\`'+chosen(sel)+'\`':null;
+                if(insert===null)return;
+                editor.setRangeText(insert,start,end,'end');
+                editor.dispatchEvent(new Event('input',{bubbles:true}));
+                editor.focus();return;
+            }
             if(action==='knowledge-keep-open'){
                 if(keepDevice?.status!=='ready'||!keepDevice.notes.some(n=>n.id===id)||!discardKnowledgeDraft())return;
                 keepDeviceSelected=id;render();return;
