@@ -110,3 +110,11 @@
 .ws-unified-last-note small{font-size:11px;color:var(--ws-muted);line-height:1.55;}
 .ws-unified-last-note>div{display:flex;flex-wrap:wrap;gap:6px;}
 @media(max-width:767px){.ws-unified-last-note>div{width:100%;}.ws-unified-last-note .ws-unified-action{min-height:44px;flex:1 1 110px;}}
+
+/* Cross-owner time comparison is a volatile view of an explicitly shared Folio snapshot. */
+.ws-source-time-review{display:grid;gap:6px;padding:10px;margin:8px 0;border-left:3px solid var(--ws-warning,#af7334);background:var(--ws-soft);min-width:0;}
+.ws-source-time-review strong{font-size:12px;}
+.ws-source-time-review p,.ws-source-time-review li{font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--ws-muted);}
+.ws-source-time-review ul{display:grid;gap:7px;list-style:none;padding:0;margin:0;}
+.ws-source-time-review li strong{display:block;color:var(--ws-ink);}
+@media(max-width:767px){.ws-source-time-review{padding:9px;}}

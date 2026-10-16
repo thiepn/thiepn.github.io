@@ -251,7 +251,8 @@ async function setup(root: HTMLElement) {
             todayPanel.outerHTML = renderSourceToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
-                languages: {status: languageStatus, cards: languageCards}, apps
+                languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state.events
             });
         }
     }
@@ -756,7 +757,8 @@ async function setup(root: HTMLElement) {
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
+                    languages: {status: languageStatus, cards: languageCards}, apps,
+                    hubEvents: state!.events
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
