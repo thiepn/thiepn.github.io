@@ -1,8 +1,9 @@
 import { dayKey } from './model';
+import type { ApprovedSourceRow } from './approved-source-search';
 import type { AppShortcut, WorkspaceState, Task } from './types';
 
-export type PaletteScope = 'all'|'actions'|'apps'|'tasks'|'notes'|'calendar';
-export const PALETTE_SCOPES: readonly PaletteScope[] = ['all','actions','apps','tasks','notes','calendar'];
+export type PaletteScope = 'all'|'actions'|'apps'|'tasks'|'notes'|'calendar'|'sources';
+export const PALETTE_SCOPES: readonly PaletteScope[] = ['all','actions','apps','tasks','notes','calendar','sources'];
 export type PaletteGroup = Exclude<PaletteScope,'all'>;
 export interface PaletteAction { label:string; command:string; id?:string }
 export interface PaletteResult {
@@ -19,6 +20,7 @@ export interface PaletteResult {
 }
 export interface PaletteOptions {
   apps: readonly AppShortcut[];
+  sources?: readonly ApprovedSourceRow[];
   state: WorkspaceState | null;
   query: string;
   scope: PaletteScope;
@@ -33,7 +35,7 @@ export interface PaletteResults {
   query: string;
 }
 export const GROUP_NAMES: Record<PaletteGroup,string> = {
-  actions:'Actions',apps:'Apps',tasks:'Hub tasks',notes:'Hub local notes',calendar:'Hub local calendar'
+  actions:'Actions',apps:'Apps',tasks:'Hub tasks',notes:'Hub local notes',calendar:'Hub local calendar',sources:'Approved source snapshots'
 };
 const MAX_QUERY = 100;
 const MAX_PER_GROUP = 8;
@@ -68,6 +70,7 @@ export function findPalette(options:PaletteOptions):PaletteResults {
   if(raw.startsWith('>')){scope='actions';query=raw.slice(1).trim();}
   else if(raw.startsWith('@')){scope='apps';query=raw.slice(1).trim();}
   else if(raw.startsWith('#')){scope='tasks';query=raw.slice(1).trim();}
+  else if(raw.startsWith('~')){scope='sources';query=raw.slice(1).trim();}
   query=fold(query);
   const state=options.state;
   const restricted=!state;
@@ -138,7 +141,15 @@ export function findPalette(options:PaletteOptions):PaletteResults {
         command:'edit-event',resourceId:event.id,icon:'calendar-blank',score:score+(day>=options.today?8:0)});
     }
   }
-  const order:PaletteGroup[]=['actions','tasks','calendar','notes','apps'];
+  if(state && (scope==='all'||scope==='sources')) {
+    for(const source of options.sources ?? []) {
+      const score=relevance(query,source.title,source.searchHint+' '+source.detail);
+      if(!score)continue;
+      rows.push({id:'source:'+source.id,group:'sources',title:source.title,
+        detail:source.detail,href:source.href,icon:source.icon,score:score+4});
+    }
+  }
+  const order:PaletteGroup[]=['actions','tasks','calendar','notes','sources','apps'];
   const weighted=rows.sort((a,b)=>b.score-a.score||order.indexOf(a.group)-order.indexOf(b.group)||a.title.localeCompare(b.title));
   const limits=new Map<PaletteGroup,number>(),result:PaletteResult[]=[];
   for(const item of weighted) {

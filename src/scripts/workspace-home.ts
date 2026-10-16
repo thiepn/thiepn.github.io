@@ -25,6 +25,7 @@ import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/st
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
+import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
 import { providerAction } from '../lib/providers/registry';
 import { renderMobileToday } from '../lib/workspace/home-view';
@@ -1705,7 +1706,18 @@ async function setup(root: HTMLElement) {
     function renderSearch() {
         const rows = $('[data-search-results]');
         const canRead = !!state && !locked && !privacyHeld && !state.preferences.hidden;
-        const result = findPalette({apps, state:canRead ? state : null, query:searchQuery, scope:searchScope, route:location.pathname, today:state ? today() : dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone)});
+        const ownerScope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+            hubIdentity.status === 'signed-out' ? 'guest' : null;
+        const sourceRows = canRead && ownerScope ? approvedSourceRows({
+            folio: folioStatus === 'ready' && folioOwner === ownerScope ? folioSnapshot : null,
+            notes: notesSourceStatus === 'ready' && notesSourceOwner === ownerScope ? notesSource : null,
+            languages: hubIdentity.status === 'signed-in' && languageOwner === hubIdentity.id &&
+                languageStatus === 'ready' ? languageCards : [],
+            apps,
+        }) : [];
+        const result = findPalette({apps, state:canRead ? state : null, sources:sourceRows,
+            query:searchQuery, scope:searchScope, route:location.pathname,
+            today:state ? today() : dayKey(Intl.DateTimeFormat().resolvedOptions().timeZone)});
         const scopes = $('[data-palette-scopes]');
         scopes.innerHTML = PALETTE_SCOPES.map(scope => `<button type="button" data-action="palette-scope" data-id="${scope}" class="ws-palette-chip" aria-pressed="${scope === result.actualScope}">${scope === 'all' ? 'All' : scope === 'actions' ? 'Commands' : scope === 'calendar' ? 'Calendar' : scope[0]!.toUpperCase()+scope.slice(1)}</button>`).join('');
         const summary = $('[data-palette-summary]');
@@ -1713,13 +1725,14 @@ async function setup(root: HTMLElement) {
             ? (hubIdentity.status==='checking' || !state ? 'Checking your Hub identity and local workspace · reviewed app links remain searchable.'
               : locked ? 'Local workspace storage is unavailable. Only public app links and navigation are searchable.'
               : 'Personal records are hidden. Reviewed app links and public navigation remain searchable.')
-            : !navigator.onLine ? 'Offline · local records and saved app links only; connected app contents are not searched.'
-            : 'Hub local + reviewed app catalogue · external app records are never queried.';
-        const groupOrder = ['actions','tasks','calendar','notes','apps'] as const;
+            : !navigator.onLine && !sourceRows.length ? 'Offline · Hub local records and reviewed app links only. No external app data was queried.'
+            : sourceRows.length ? 'Hub local plus ' + sourceRows.length + ' already approved app snapshot item(s) · temporary metadata, not full owner searches.'
+            : 'Hub local + reviewed app catalogue · explicitly share from Folio or Notes to include their temporary titles. No external records were queried.';
+        const groupOrder = ['actions','tasks','calendar','notes','sources','apps'] as const;
         rows.innerHTML = groupOrder.map(group => {
             const items = result.results.filter(item=>item.group===group);
             return items.length ? `<section class="ws-palette-group" aria-label="${GROUP_NAMES[group]}"><header><h3>${GROUP_NAMES[group]}</h3><span>${items.length}</span></header><div>${items.map(paletteEntry).join('')}</div></section>` : '';
-        }).join('') || `<div class="ws-palette-empty"><strong>No matching ${esc(result.actualScope==='all'?'results':result.actualScope)}.</strong><p>Search Hub apps, task titles, local notes, or calendar events. Try <code>&gt;</code> for commands, <code>@</code> for apps, or <code>#</code> for tasks.</p>${result.restricted?'<p>Private results require an available, unmasked local workspace.</p>':''}</div>`;
+        }).join('') || `<div class="ws-palette-empty"><strong>No matching ${esc(result.actualScope==='all'?'results':result.actualScope)}.</strong><p>Search Hub apps, tasks, notes, calendar, or explicitly shared owner snapshots. Try <code>&gt;</code> for commands, <code>@</code> for apps, <code>#</code> for tasks, or <code>~</code> for approved source metadata.</p>${result.restricted?'<p>Private results require an available, unmasked local workspace.</p>':''}</div>`;
         if (result.truncated) rows.insertAdjacentHTML('beforeend','<p class="ws-palette-truncated">Showing the most relevant matches. Narrow your search to see more.</p>');
         const count = result.results.length;
         $('#workspace-search').setAttribute('aria-label', `Search Hub · ${count} result${count===1?'':'s'}`);
