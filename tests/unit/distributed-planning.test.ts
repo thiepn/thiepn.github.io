@@ -75,8 +75,11 @@ describe('reviewed Hub planning and private source overlays',()=>{
     expect(compareApprovedFolioTime([allDay],source)).toEqual([]);
   });
   it('escapes owner note titles, keeps native source disclosure and never exposes data without consent',()=>{
-    const original=folio();
-    original.events[0]={...original.events[0]!,title:'<script>untrusted</script>'};
+    const raw=folio();
+    const original: FolioDeviceSnapshot={...raw,events:[
+      {...raw.events[0]!,title:'<script>untrusted</script>'},
+      ...raw.events.slice(1),
+    ]};
     const inputs={folio:{status:'ready' as const,snapshot:original},
       notes:{status:'disconnected' as const,snapshot:null},
       languages:{status:'signed-out' as const,cards:[]},
