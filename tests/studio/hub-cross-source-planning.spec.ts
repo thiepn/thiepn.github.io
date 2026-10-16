@@ -31,9 +31,13 @@ test('mobile reviewed week distribution updates native Hub tasks only and surviv
   await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await page.goto('/home/tasks/?filter=all');
-  await expect(page.locator('.ws-task-entry')).toHaveCount(3);
-  for(const title of ['First real task','Second real task','Third real task'])
-    await expect(page.locator('.ws-task-entry').filter({hasText:title})).not.toContainText('Inbox');
+  // Local-first fixtures may already contain other Hub tasks. The three selected
+  // source records must each remain unique and gain reviewed due dates.
+  for(const title of ['First real task','Second real task','Third real task']) {
+    const original=page.locator('.ws-task-entry').filter({hasText:title});
+    await expect(original).toHaveCount(1);
+    await expect(original).not.toContainText('Inbox');
+  }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 test('task-owned reviewed calendar block can atomically align original task due date',async({page})=>{
