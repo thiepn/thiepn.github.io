@@ -12,3 +12,16 @@
 .ws-knowledge-relations{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border,#aaa)}
 .ws-knowledge-relations li{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
 @media(max-width:760px){.ws-knowledge{grid-template-columns:1fr}.ws-knowledge-list{max-height:200px}.ws-knowledge-editor textarea{min-height:240px}}
+
+/* Native original KEEP B3 source mode — same shell, distinct source authority. */
+.ws-knowledge-switch{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.25rem}
+.ws-knowledge-switch button{border:1px solid var(--border,#aaa);border-radius:3px;padding:.6rem .85rem;background:transparent;color:inherit;cursor:pointer}
+.ws-knowledge-switch button[aria-pressed=true]{font-weight:700;background:var(--surface-hover,#eae9e7);text-decoration:underline}
+.ws-keep-owner{display:grid;grid-template-columns:minmax(220px,.32fr) minmax(0,1fr);gap:1rem;align-items:start}
+.ws-keep-owner-empty{border:1px solid var(--border,#999);padding:1.25rem;max-width:650px}
+.ws-keep-owner-empty p{line-height:1.5}
+.ws-keep-markdown-tools{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.ws-keep-owner .ws-knowledge-relations ul,.ws-knowledge-projects ul{padding:0;list-style:none}
+.ws-keep-owner .ws-knowledge-relations li{display:flex;justify-content:space-between;align-items:center;gap:.75rem}
+.ws-keep-owner input[type=checkbox]{width:auto;height:auto}
+@media(max-width:760px){.ws-keep-owner{grid-template-columns:1fr}.ws-keep-owner .ws-knowledge-list{max-height:180px}}
