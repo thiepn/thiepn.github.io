@@ -3,14 +3,26 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PortalAccount from '../hub/PortalAccount.astro';
 import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
+import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
 import '../../styles/hub.css';
+import '../../styles/continuation.css';
+import '../../styles/capture-tasks.css';
+import '../../styles/workspace-widgets-h13.css';
+import '../../styles/workspace-palette-h14.css';
+import '../../styles/workspace-focus-h15.css';
+import '../../styles/workspace-return-h16.css';
+import '../../styles/workspace-handoffs-h17.css';
+import '../../styles/workspace-planning-h18.css';
+import '../../styles/workspace-weekly-h19.css';
+import '../../styles/workspace-unified-h20.css';
 import '@fontsource-variable/instrument-sans';
-interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps' }
+interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows' }
 const {view='home'}=Astro.props;
+const staticView=['apps','connections','search','inbox','flows'].includes(view);
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
 const readingHost = Astro.url.pathname === '/home/' || Astro.url.pathname === '/home';
 const entries=await getHubProjects();
@@ -22,32 +34,56 @@ const apps=entries.map(({project,hub})=>{
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar']];
 ---
 <BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
-  <div class="ws" data-workspace data-view={view} data-rail="expanded">
+  <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
       <nav class="ws-nav">{navigation.map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
       <div class="ws-workspace-list"><p class="ws-label">Workspaces</p><div data-workspace-list></div><button type="button" class="ws-text-button" data-action="new-workspace"><Fragment set:html={icon('plus')}/><span>New workspace</span></button></div>
-      <div class="ws-nav-bottom"><a href="/flows/" title="Workflow guides" class="ws-nav-link"><Fragment set:html={icon('book-open')}/><span>Workflow guides</span></a><a href="/home/settings/" title="Settings" class="ws-nav-link"><Fragment set:html={icon('gear-six')}/><span>Settings</span></a><button type="button" class="ws-nav-link" data-action="account" title="Account"><Fragment set:html={icon('user-circle')}/><span data-profile-label>This device</span></button></div>
+      <div class="ws-nav-bottom"><a href="/inbox/" title="Attention Inbox" class="ws-nav-link"><Fragment set:html={icon('tray')}/><span>Inbox</span></a><a href="/home/connections/" title="App connections" class="ws-nav-link"><Fragment set:html={icon('plugs-connected')}/><span>Connections</span></a><a href="/flows/" title="Workflow guides" class="ws-nav-link"><Fragment set:html={icon('book-open')}/><span>Workflow guides</span></a><a href="/home/settings/" title="Settings" class="ws-nav-link"><Fragment set:html={icon('gear-six')}/><span>Settings</span></a><button type="button" class="ws-nav-link" data-action="account" title="Account"><Fragment set:html={icon('user-circle')}/><span data-profile-label>This device</span></button></div>
     </aside>
     <div class="ws-body">
-      <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search apps, tasks and notes</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
+      <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
           <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps for work, learning and everything in between`: 'Your day, your way'}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
-          <div data-workspace-content>{view==='apps' ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
+          <div data-workspace-recovery aria-live="polite" hidden></div>
+          <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
+          <div data-workspace-today hidden></div>
+
+          {<details class="ws-calendar-details"><summary>Preview an external calendar</summary><section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
+            <header class="ws-calendar-export-heading"><div><h2 id="ws-external-calendar-title">External calendar · read only</h2><p>Preview selected calendar exports alongside your independent Hub calendar.</p></div><a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" rel="noopener noreferrer">Open Google Calendar ↗</a></header>
+            <p class="ws-calendar-limits">Live Google/StudyOS access is <strong>not connected</strong>. StudyOS owns its separate Google Calendar authorization. Hub does not reuse your Google sign-in, access token or StudyOS data. Export an <code>.ics</code> file from the chosen calendar and select it below for a temporary read-only view. Imported ILIAS/KLIPS appointments appear only if included in that export.</p>
+            <div class="ws-calendar-import">
+              <label for="ws-calendar-file" class="ws-button">Choose .ics calendar files</label>
+              <input type="file" accept=".ics,text/calendar" multiple id="ws-calendar-file" data-calendar-ics aria-describedby="ws-calendar-import-detail"/>
+              <p id="ws-calendar-import-detail">Up to six exports, 2 MB each. Files are processed in this tab, never uploaded or written into Hub events. Reimport to refresh; leaving this page clears the preview.</p>
+            </div>
+            <p class="ws-calendar-state" role="status" aria-live="polite" data-calendar-status>Not connected · no private calendar has been read</p>
+            <div data-calendar-preview><p>Choose an .ics export to preview upcoming events.</p></div>
+            <noscript><p>Calendar file preview requires JavaScript. Your local Hub calendar and the Google Calendar link remain available.</p></noscript>
+          </section></details>}
+          <div data-workspace-content>{staticView ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
           <noscript><p class="ws-notice">App links work without JavaScript. Tasks, calendar, trackers and layout customization require JavaScript.</p></noscript>
         </section>
-        <aside class="ws-planner" aria-label="Tasks and agenda"><div data-planner><h2>Today</h2><p class="ws-muted">Your local calendar and tasks will appear here.</p></div><footer><span set:html={icon('desktop')}/><div><strong>This device</strong><p data-workspace-status role="status">Opening local storage…</p><button class="ws-text-button" type="button" data-action="export">Export backup</button></div></footer></aside>
+        <aside class="ws-planner" aria-label="Tasks and agenda"><div data-planner><h2>Today</h2><p class="ws-muted">Your calendar and tasks will appear here.</p></div><footer><span set:html={icon('desktop')}/><div><strong data-storage-label>This device</strong><p data-workspace-status role="status">Opening local storage…</p><p data-cloud-status role="status" hidden></p><button class="ws-text-button" type="button" data-action="export">Export backup</button><button class="ws-text-button" type="button" data-action="cloud-retry" hidden>Sync now</button><button class="ws-text-button" type="button" data-action="cloud-review" hidden>Review sync changes</button></div></footer></aside>
       </div>
     </div>
     <nav class="ws-mobile-nav" aria-label="Mobile workspace navigation">{navigation.slice(0,3).map(([key,label,url,ic])=><a href={url} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}<button type="button" data-more-trigger aria-haspopup="dialog" aria-controls="ws-more"><Fragment set:html={icon('dots-three')}/><span>More</span></button></nav>
-    <dialog id="ws-more" class="ws-dialog ws-more-dialog" data-more-dialog aria-labelledby="ws-more-title"><header><h2 id="ws-more-title">Your workspace</h2><button type="button" class="ws-button" data-more-close>Close</button></header><nav aria-label="More workspace sections">{[...navigation.slice(3),['settings','Settings','/home/settings/','gear-six']].map(([key,label,url,ic])=><a href={url} class="ws-more-link" aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span><Fragment set:html={icon('caret-right')}/></a>)}</nav></dialog>
+    <dialog id="ws-more" class="ws-dialog ws-more-dialog" data-more-dialog aria-labelledby="ws-more-title"><header><h2 id="ws-more-title">Your workspace</h2><button type="button" class="ws-button" data-more-close>Close</button></header><nav aria-label="More workspace sections">{[...navigation.slice(3),['inbox','Inbox','/inbox/','tray'],['connections','Connections','/home/connections/','plugs-connected'],['settings','Settings','/home/settings/','gear-six']].map(([key,label,url,ic])=><a href={url} class="ws-more-link" aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span><Fragment set:html={icon('caret-right')}/></a>)}</nav></dialog>
     <div class="ws-toast" data-workspace-toast role="status" hidden></div>
     <dialog class="ws-dialog" data-workspace-dialog aria-labelledby="ws-dialog-title"><form data-workspace-form><header><h2 id="ws-dialog-title"></h2><button type="button" class="ws-button" data-action="close-dialog" aria-label="Close dialog">Close</button></header><div data-dialog-fields></div><p class="ws-error" data-dialog-error role="alert"></p><footer><button type="button" class="ws-button" data-action="close-dialog">Cancel</button><button type="submit" class="ws-primary" data-dialog-submit>Save</button></footer></form></dialog>
-    <dialog class="ws-dialog ws-search-dialog" data-search-dialog aria-labelledby="ws-search-title"><header><h2 id="ws-search-title">Search your workspace</h2><button type="button" class="ws-button" data-action="close-search">Close</button></header><label class="ws-sr" for="workspace-search">Search apps, tasks and notes</label><input id="workspace-search" type="search" placeholder="Search apps, tasks and notes…" autocomplete="off"/><div data-search-results></div></dialog>
-    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/>{readingHost ? <><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">This workspace saves on this device. Connecting an account does not enable cloud sync.</p><a href="/home/connections/" class="ws-button">Existing app connections</a></dialog>
+    <dialog class="ws-dialog ws-search-dialog ws-action-palette" data-search-dialog aria-labelledby="ws-search-title">
+      <header><div><h2 id="ws-search-title">Search & actions</h2><p class="ws-palette-caption">Apps and local Hub data only · other app records require owner consent</p></div><button type="button" class="ws-button" data-action="close-search" aria-label="Close search and actions">Close</button></header>
+      <label class="ws-sr" for="workspace-search">Search apps, local tasks, notes and calendar, or enter an action</label>
+      <div class="ws-palette-input-row"><span set:html={icon('magnifying-glass')} /><input id="workspace-search" type="search" role="searchbox" aria-controls="ws-palette-results" placeholder="Search or type > actions · @ apps · # tasks" autocomplete="off" enterkeyhint="search"/></div>
+      <nav class="ws-palette-scopes" data-palette-scopes aria-label="Search categories"></nav>
+      <div class="ws-palette-summary" data-palette-summary role="status" aria-live="polite"></div>
+      <div data-search-results id="ws-palette-results" class="ws-palette-results" role="group" aria-label="Search matches and commands"></div>
+      <footer class="ws-palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>Enter</kbd> Open</span><span><kbd>Esc</kbd> Close</span><span>Only Hub records are searched · no external provider query</span></footer>
+    </dialog>
+    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div>{readingHost ? <><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/><ContinuationDesk/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p class="ws-muted">Your workspace saves on this device first. Connect THIEPN Account to sync it across devices. Apps share only the data you allow.</p><p data-cloud-status role="status" hidden></p><button class="ws-button" type="button" data-action="cloud-retry" hidden>Sync now</button><button class="ws-button" type="button" data-action="cloud-review" hidden>Review sync changes</button><button class="ws-button" type="button" data-action="guest-import" hidden>Add this device’s guest workspace</button><a href="https://account.thiepn.dev/hub/connections" class="ws-button" rel="noreferrer">Manage Notes sharing</a><a href="https://account.thiepn.dev/hub/tms60" class="ws-button" rel="noreferrer">Manage TMS60 sharing</a><a href="/home/connections/" class="ws-button">Existing app connections</a></dialog>
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';</script>

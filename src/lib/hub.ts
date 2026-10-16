@@ -1,4 +1,5 @@
-import hubData from '../data/hub.json';
+import manifest from '../generated/launch-manifest.json';
+const hubData = {schemaVersion:1,expectedCount:manifest.entries.length,categories:manifest.categories,excluded:manifest.excluded,projects:manifest.entries.map((entry,index)=>({slug:entry.id,order:index+1,category:entry.category,description:entry.description,badge:entry.badge}))};
 import { HUB_BADGES, HUB_CATEGORIES, type HubBadge, type HubCategory } from '../data/taxonomy';
 import { getAllProjects, type ProjectEntry } from './catalogue';
 
@@ -59,8 +60,15 @@ export async function getHubProjects(): Promise<HubProjectEntry[]> {
 
   return HUB_PROJECT_CONFIG
     .map((hub) => {
-      const project = bySlug.get(hub.slug);
-      if (!project) throw new Error(`Hub references unknown project: ${hub.slug}.`);
+      const launch = manifest.entries.find(entry=>entry.id===hub.slug)!;
+      const content = bySlug.get(launch.contentSlug ?? '');
+      if (launch.contentSlug && !content) throw new Error(`Launch references unknown project: ${launch.contentSlug}.`);
+      // Launch-only entries share the card/search contract, without inventing a project page or screenshot.
+      const template = projects[0]!;
+      const project: ProjectEntry = content ? {...content,data:{...content.data,title:launch.title,liveUrl:launch.url,aliases:[...content.data.aliases,...launch.aliases]}} : {
+        ...template, id:launch.id,
+        data:{...template.data,slug:launch.id,code:launch.id.toUpperCase(),title:launch.title,subtitle:launch.description,summary:launch.description,aliases:[...launch.aliases,...launch.keywords],liveUrl:launch.url,status:'live',visibility:'listed',unavailable:false,tags:[],repo:launch.ownerRepo,accent:{light:'#356142',dark:'#D6E6AB'},preview:{tier:'P0',type:'auto',provenance:'static'},actions:{primaryLabel:'Open',source:true}}
+      };
       if (project.data.visibility !== 'listed') throw new Error(`Hub project ${hub.slug} must be listed.`);
       if (project.data.unavailable || !project.data.liveUrl) throw new Error(`Hub project ${hub.slug} must have an available live URL.`);
       return { project, hub };

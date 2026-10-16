@@ -1,5 +1,6 @@
+import {hubFixture} from './launch-fixture';
 import { readFileSync } from 'node:fs';
-const hubCount = JSON.parse(readFileSync(new URL('../../src/data/hub.json', import.meta.url), 'utf8')).expectedCount;
+const hubCount=hubFixture.expectedCount;
 import { test, expect } from '@playwright/test';
 test('H5 scopes filter reviewed actions and preserve keyboard and reload state', async ({ page }) => {
   await page.goto('/search/');
@@ -32,8 +33,8 @@ test('H5 resource URLs are scrubbed without collecting or sending private querie
 test('H5 Inbox is reachable without badges, distinguishes unavailable coverage and masks by keyboard', async ({ page }) => {
   const requests: string[] = []; page.on('request', r => requests.push(r.url()));
   await page.goto('/inbox/');
-  await expect(page.getByRole('heading', { name: 'Inbox is not connected yet' })).toBeVisible();
-  await expect(page.locator('[data-inbox-content]')).toContainText('This does not mean');
+  await expect(page.getByRole('heading', { name: 'App attention sources' })).toBeVisible();
+  await expect(page.locator('[data-inbox-content]')).toContainText('External attention feeds have not been connected');
   await expect(page.locator('[data-inbox-items]')).toBeEmpty();
   await expect(page.locator('.portal-inbox-footer')).toContainText('No unread total is available');
   await expect(page.getByRole('link', { name: 'Inbox', exact: true }).filter({ visible: true })).toHaveAttribute('aria-current', 'page');

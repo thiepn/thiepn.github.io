@@ -1,19 +1,18 @@
 ---
-import DailyHome from '../../../components/hub/DailyHome.astro';
-import { getHubProjects } from '../../../lib/hub';
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import PortalAccount from '../../../components/hub/PortalAccount.astro';
+import ConnectionCenter from '../../../components/workspace/ConnectionCenter.astro';
+import WorkspaceShell from '../../../components/workspace/WorkspaceShell.astro';
 import PrivateTms from '../../../components/hub/PrivateTms.astro';
 import PrivateNotes from '../../../components/hub/PrivateNotes.astro';
 import PrivateCapture from '../../../components/hub/PrivateCapture.astro';
 import IntegratedWorkflows from '../../../components/hub/IntegratedWorkflows.astro';
+import ContinuationDesk from '../../../components/workspace/ContinuationDesk.astro';
 import '../../../styles/hub.css';
-const entries=await getHubProjects();
+import '../../../styles/continuation.css';
 ---
-<BaseLayout title="Connections — THIEPN HUB" description="Existing THIEPN app connections and device reading pilot." portal noindex>
+<WorkspaceShell view="connections">
   <div class="portal-home page-shell">
-    <header class="portal-home-heading"><h1>App connections</h1><p>Existing connection features keep their current capability gates. Your new workspace saves locally.</p><a class="portal-button" href="/">Return to workspace</a></header>
-    <PortalAccount/><DailyHome entries={entries}/><PrivateTms/><PrivateNotes/><PrivateCapture/><IntegratedWorkflows/><p><a class="portal-button" href="/home/#reading">Open reading connection</a></p>
+    <header class="portal-home-heading"><h2>App connections</h2><p>Manage your account, app sharing and reading connections. Your workspace saves on this device first and syncs when you connect Account.</p><a class="portal-button" href="/">Return to workspace</a></header>
+    <ConnectionCenter/><ContinuationDesk/><PrivateTms/><PrivateNotes/><PrivateCapture/><IntegratedWorkflows/><p><a class="portal-button" href="/home/#reading">Open reading connection</a></p>
   </div>
-</BaseLayout>
-<script>import '../../../scripts/portal-auth';import '../../../scripts/portal-notes';import '../../../scripts/portal-tms60';import '../../../scripts/portal-library';import '../../../scripts/portal-capture';import '../../../scripts/portal-integrated-workflows';</script>
+</WorkspaceShell>
+<script>import '../../../scripts/workspace-connections';import '../../../scripts/portal-auth';import '../../../scripts/portal-notes';import '../../../scripts/portal-tms60';import '../../../scripts/portal-library';import '../../../scripts/portal-capture';import '../../../scripts/portal-integrated-workflows';import '../../../scripts/workspace-continuation';</script>

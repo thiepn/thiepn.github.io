@@ -1,8 +1,7 @@
+import {hubFixture} from './launch-fixture';
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
 
-const hub: { expectedCount: number; expectedCategoryCounts: Record<string, number> } =
-  JSON.parse(fs.readFileSync('src/data/hub.json', 'utf8'));
+const hub=hubFixture;
 const expectedCounts = hub.expectedCategoryCounts;
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {

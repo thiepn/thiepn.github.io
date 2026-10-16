@@ -95,8 +95,10 @@ const expectedProducts = [
   'games',
   'study',
   'diet',
+  'finance',
   'languages',
   'recipe',
+  'bikes',
   'pdf',
   'orrery',
 ];

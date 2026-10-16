@@ -1,6 +1,7 @@
 import { hubIdentity, readHubNotesConsent } from './portal-auth';
 import { HubNotesSession, NOTES_PENDING_KEY } from '../lib/hub-notes-session';
 import type { Operation } from '../lib/providers/types';
+import { notifyOwnerContinue, publishOwnerContinue } from '../lib/workspace/owner-continuation';
 
 import {managedQuery as query,managedFragment as fragment,managedCallback,managedTarget} from '../lib/hub-managed-return';
 const callback=managedCallback && (managedTarget===null || managedTarget===NOTES_PENDING_KEY);
@@ -24,6 +25,7 @@ if(root){
   function erase(message='Connect Notes to show your synced titles.'){
     ++generation;controller?.abort();controller=null;clearTimeout(timer);list.replaceChildren();freshness.textContent='';panel.hidden=true;form.reset();
     refresh.hidden=disconnect.hidden=true;status.textContent=message;
+    notifyOwnerContinue('notes', message.startsWith('Checking') ? 'loading' : 'unconnected');
   }
   function clear(message?:string,removePending=true){session?.clear(removePending);permissions.clear();configureOperations();erase(message);}
   function controls(){connect.disabled=Boolean(!owner() || !session || root!.hidden || document.hidden);}
@@ -40,6 +42,7 @@ if(root){
       const envelope=await session.read(operation,abort.signal,search);
       if(epoch!==generation || root!.hidden || document.hidden)return;
       if(!['ready','empty'].includes(envelope.status) || !envelope.data)throw new Error('Unavailable');
+      publishOwnerContinue(envelope);
       for(const item of envelope.data.items){
         const li=document.createElement('li'),a=document.createElement('a');
         // Notes has no qualified resource deep link yet. Open its real workspace.
@@ -50,8 +53,8 @@ if(root){
       panel.hidden=false;refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;
       status.textContent=envelope.status==='empty'?'No matching synced notes.':'Synced Notes titles';
       freshness.textContent=`Cloud snapshot checked ${new Date(envelope.observedAt).toLocaleTimeString()}. Open Notes for current local changes.`;
-      timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check Notes again.');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
-    }catch{if(epoch===generation)clear('Notes could not be checked. Your sharing may have changed; reconnect or open Notes.');}
+      timer=setTimeout(()=>{erase('This snapshot expired. Search or refresh to check Notes again.');notifyOwnerContinue('notes','stale');panel.hidden=!operationAllowed('search');refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;controls();},Math.max(0,Date.parse(envelope.expiresAt)-Date.now()));
+    }catch{if(epoch===generation){clear('Notes could not be checked. Your sharing may have changed; reconnect or open Notes.');notifyOwnerContinue('notes',navigator.onLine ? 'error' : 'offline');}}
     finally{if(epoch===generation)controller=null;controls();}
   }
   connect.addEventListener('click',()=>void(async()=>{

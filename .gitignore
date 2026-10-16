@@ -26,3 +26,18 @@ Thumbs.db
 
 # Build-time copies of the existing real project captures
 src/assets/showcase/
+test-results-library/
+test-results-core/
+test-results-firefox/
+test-results-webkit/
+test-results-library-pinned/
+test-results-library-pinned-retry/
+test-results-final-targeted/
+test-results-utility/
+test-results-utility-recheck/
+test-results-polish/
+test-results-ci-regression/
+test-results-connection-health/
+test-results-reading-pilot/
+test-results-tracker-history/
+test-results-release-merge/

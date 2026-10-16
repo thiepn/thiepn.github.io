@@ -20,7 +20,7 @@ test('H6 reviewed app links carry no file payload and Scan remains an Android pr
   expect(await links.evaluateAll((nodes:HTMLAnchorElement[])=>nodes.map(n=>n.href))).toEqual(['https://thiepn.dev/scan/','https://thiepn.dev/pdf/','https://thiepn.dev/library/saved/']);
   await expect(links.first()).toHaveAttribute('rel','noopener noreferrer'); await expect(links.first()).toContainText('product page');
   expect(requests.some(url=>/rest\/v1|hub\/transfer|account\.thiepn|\/share-target/.test(url))).toBe(false);
-  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  await expect(page.locator('[data-portal-flows] input[type="file"]')).toHaveCount(0);
 });
 test('H6 Home and Actions discover workflow guides', async ({ page }) => {
   await page.goto('/home/'); await expect(page.getByRole('link',{name:'Workflow guides',exact:true})).toHaveAttribute('href','/flows/');

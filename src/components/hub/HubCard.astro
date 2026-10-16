@@ -1,4 +1,5 @@
 ---
+import {resolveLaunch} from '../../lib/launches/resolver';
 import {icon} from '../../lib/workspace/icons';
 import HubMedia from './HubMedia.astro';
 import { presentation } from '../../lib/showcase';
@@ -25,9 +26,9 @@ const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : h
   data-hub-title={p.title}
   style={`--hub-accent-light:${p.accent.light};--hub-accent-dark:${p.accent.dark};`}
 >
-  <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>
+  {resolveLaunch(p.slug)?.contentSlug && <a class="hub-card__media" href={liveUrl} aria-label={`Open ${p.title}`}>
     <HubMedia slug={p.slug} fallback={view.media} alt={`${p.title} app interface`} priority={priority} />
-  </a>
+  </a>}
   <div class="hub-card__body">
     <div class="hub-card__meta">
       <span>{categoryLabel}</span>
@@ -37,7 +38,8 @@ const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : h
     <p>{hub.description}</p>
     <div class="hub-card__actions">
       <a class="hub-card__open ws-primary" href={liveUrl}>Open app <Fragment set:html={icon('arrow-up-right')}/></a>
-      <a class="hub-card__details ws-button" href={details}>Details</a>
+      {resolveLaunch(p.slug)?.contentSlug && <a class="hub-card__details ws-button" href={details}>Details</a>}
+      <button type="button" class="ws-button" data-action="pin-app" data-id={p.slug} aria-pressed="false">Pin shortcut</button>
     </div>
   </div>
 </article>

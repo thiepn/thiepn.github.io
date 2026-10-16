@@ -31,7 +31,10 @@ async function fixture(page: Page) {
     if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: mime(file) });
     return route.fulfill({ status: 404, body: 'Fictional fixture: unavailable' });
   });
-  await page.goto(HUB+'/home/');await page.locator('.ws-topbar [data-action=account]').click();
+  await page.goto(HUB+'/home/');
+  // Account discovery changes identity once; wait before opening a private dialog.
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.locator('.ws-topbar [data-action=account]').click();
   await expect(page.locator('[data-private-library]')).toBeVisible();
   return { calls, hold: () => { hold = true; }, release: () => { hold = false; release(); } };
 }

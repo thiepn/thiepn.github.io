@@ -1,0 +1,828 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "thiepn/core",
+    "commit": "9b1b378f644c3b9950583707afe7853994376966",
+    "sha256": "778a4f5f55a664c57ec302d4eb5ff063efea709793153a08273867da2dde4904"
+  },
+  "categories": [
+    {
+      "id": "tools",
+      "label": "Tools"
+    },
+    {
+      "id": "create",
+      "label": "Create"
+    },
+    {
+      "id": "learn",
+      "label": "Learn"
+    },
+    {
+      "id": "faith",
+      "label": "Faith"
+    },
+    {
+      "id": "explore",
+      "label": "Explore"
+    },
+    {
+      "id": "games",
+      "label": "Games"
+    }
+  ],
+  "excluded": [
+    "pflegelern",
+    "wordfall",
+    "curio",
+    "nebula-foundry"
+  ],
+  "entries": [
+    {
+      "id": "notes",
+      "title": "Notes",
+      "url": "https://thiepn.dev/notes/",
+      "description": "Fast, local-first notes with checklists, search, reminders, attachments, drawings, voice and offline support.",
+      "category": "tools",
+      "badge": null,
+      "aliases": [
+        "folio/notes"
+      ],
+      "moduleRef": "folio/notes",
+      "ownerRepo": "thiepn/notes",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "notes",
+      "keywords": [
+        "thiepn notes",
+        "notes app",
+        "folio/notes"
+      ]
+    },
+    {
+      "id": "canvas",
+      "title": "Canvas",
+      "url": "https://thiepn.dev/canvas/",
+      "description": "A shared infinite canvas for drawing, writing, diagramming and realtime collaboration.",
+      "category": "create",
+      "badge": null,
+      "aliases": [
+        "folio/canvas"
+      ],
+      "moduleRef": "folio/canvas",
+      "ownerRepo": "thiepn/canvas",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "canvas",
+      "keywords": [
+        "whiteboard",
+        "infinite canvas",
+        "folio/canvas"
+      ]
+    },
+    {
+      "id": "tiny-tools",
+      "title": "Tiny Tools",
+      "url": "https://thiepn.dev/tools/",
+      "description": "Hundreds of browser utilities for documents, media, data, code, calculations and everyday tasks.",
+      "category": "tools",
+      "badge": null,
+      "aliases": [
+        "hub/tools"
+      ],
+      "moduleRef": "hub/tools",
+      "ownerRepo": "thiepn/tools",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "tiny-tools",
+      "keywords": [
+        "tools",
+        "utility suite",
+        "text cleaner",
+        "image converter",
+        "JSON formatter",
+        "hub/tools"
+      ]
+    },
+    {
+      "id": "thiepn-library",
+      "title": "THIEPN Library",
+      "url": "https://thiepn.dev/library",
+      "description": "Browse, search and read books and research editions in a native web library.",
+      "category": "faith",
+      "badge": null,
+      "aliases": [
+        "folio/library"
+      ],
+      "moduleRef": "folio/library",
+      "ownerRepo": "thiepn/library",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "thiepn-library",
+      "keywords": [
+        "thiepn library",
+        "library",
+        "ebook reader",
+        "publishing library",
+        "folio/library"
+      ]
+    },
+    {
+      "id": "atelier",
+      "title": "Atelier",
+      "url": "https://thiepn.dev/atelier/",
+      "description": "A local-first space-planning studio for designing and arranging rooms and environments.",
+      "category": "create",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/atelier",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "atelier",
+      "keywords": [
+        "room planner",
+        "space planner"
+      ]
+    },
+    {
+      "id": "manuscript",
+      "title": "Manuscript",
+      "url": "https://thiepn.dev/manuscript/",
+      "description": "Write in Markdown and turn structured source into polished documents.",
+      "category": "create",
+      "badge": null,
+      "aliases": [
+        "folio/write"
+      ],
+      "moduleRef": "folio/write",
+      "ownerRepo": "thiepn/manuscript",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "manuscript",
+      "keywords": [
+        "markdown",
+        "markdown editor",
+        "writing",
+        "publishing",
+        "folio/write"
+      ]
+    },
+    {
+      "id": "pdf-studio",
+      "title": "PDF Studio",
+      "url": "https://thiepn.dev/pdf/",
+      "description": "Edit, organize, annotate and transform PDFs directly in the browser.",
+      "category": "tools",
+      "badge": null,
+      "aliases": [
+        "pdf/studio"
+      ],
+      "moduleRef": "pdf/studio",
+      "ownerRepo": "thiepn/pdf",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "pdf-studio",
+      "keywords": [
+        "pdf",
+        "pdf editor",
+        "browser pdf editor",
+        "pdf/studio"
+      ]
+    },
+    {
+      "id": "scan",
+      "title": "Scan",
+      "url": "https://thiepn.dev/scan/",
+      "description": "Scan paper and PDFs into a private searchable Android library with OCR, editing, organization and secure export.",
+      "category": "tools",
+      "badge": "rc",
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/scan",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "mobile"
+      ],
+      "contentSlug": "scan",
+      "keywords": [
+        "document scanner",
+        "android scanner",
+        "pdf scanner",
+        "receipt scanner",
+        "OCR scanner"
+      ]
+    },
+    {
+      "id": "signal-earth",
+      "title": "Signal Earth",
+      "url": "https://thiepn.dev/signal-earth/",
+      "description": "Explore Earth events, satellites, space weather and the planet through an interactive 3D observatory.",
+      "category": "explore",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/signal-earth",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "signal-earth",
+      "keywords": [
+        "earth observatory",
+        "satellites",
+        "space weather"
+      ]
+    },
+    {
+      "id": "steadybar",
+      "title": "Steadybar",
+      "url": "https://thiepn.dev/steadybar/",
+      "description": "Plan, practice and track drums, guitar, bass, piano, voice and other instruments.",
+      "category": "learn",
+      "badge": null,
+      "aliases": [
+        "study/music"
+      ],
+      "moduleRef": "study/music",
+      "ownerRepo": "thiepn/steadybar",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "steadybar",
+      "keywords": [
+        "music practice",
+        "instrument practice",
+        "study/music"
+      ]
+    },
+    {
+      "id": "wordstrike",
+      "title": "WORDSTRIKE",
+      "url": "https://thiepn.dev/wordstrike/",
+      "description": "An arcade typing game where speed and accuracy keep you alive.",
+      "category": "games",
+      "badge": null,
+      "aliases": [
+        "games/wordstrike"
+      ],
+      "moduleRef": "games/wordstrike",
+      "ownerRepo": "thiepn/wordstrike",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop"
+      ],
+      "contentSlug": "wordstrike",
+      "keywords": [
+        "word strike",
+        "typing arcade",
+        "typing game",
+        "games/wordstrike"
+      ]
+    },
+    {
+      "id": "mathlab",
+      "title": "MathLab",
+      "url": "https://thiepn.dev/mathlab/",
+      "description": "An interactive workbench for university mathematics, calculation, visualization and practice.",
+      "category": "learn",
+      "badge": "beta",
+      "aliases": [
+        "study/math"
+      ],
+      "moduleRef": "study/math",
+      "ownerRepo": "thiepn/mathlab",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "mathlab",
+      "keywords": [
+        "math lab",
+        "mathematics workbench",
+        "study/math"
+      ]
+    },
+    {
+      "id": "the-bible-challenge",
+      "title": "The Bible Challenge",
+      "url": "https://thiepn.dev/tbc/",
+      "description": "Test Bible knowledge across collections, modes and replayable challenges.",
+      "category": "faith",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/tbc",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "the-bible-challenge",
+      "keywords": [
+        "tbc",
+        "bible quiz",
+        "bible challenge"
+      ]
+    },
+    {
+      "id": "duel",
+      "title": "DUEL",
+      "url": "https://thiepn.dev/duel/",
+      "description": "25 local two-player arcade games for keyboard and touch on one screen.",
+      "category": "games",
+      "badge": "rc",
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/duel",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "duel",
+      "keywords": [
+        "local multiplayer",
+        "two player games"
+      ]
+    },
+    {
+      "id": "biblical-greek",
+      "title": "Koinē Path",
+      "url": "https://thiepn.dev/greek/",
+      "description": "Learn Biblical Greek through grammar, vocabulary, parsing and guided New Testament reading.",
+      "category": "learn",
+      "badge": "beta",
+      "aliases": [
+        "bible/greek"
+      ],
+      "moduleRef": "bible/greek",
+      "ownerRepo": "thiepn/greek",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "biblical-greek",
+      "keywords": [
+        "biblical greek",
+        "koine greek",
+        "greek new testament",
+        "koine path",
+        "bible/greek"
+      ]
+    },
+    {
+      "id": "tms60",
+      "title": "TMS60",
+      "url": "https://tms60.thiepn.dev/",
+      "description": "Memorize and review a structured collection of Bible verses.",
+      "category": "faith",
+      "badge": null,
+      "aliases": [
+        "bible/tms60"
+      ],
+      "moduleRef": "bible/tms60",
+      "ownerRepo": "thiepn/tms60",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "tms60",
+      "keywords": [
+        "bible memorization",
+        "verse memory",
+        "topical memory system",
+        "tms",
+        "bible/tms60"
+      ]
+    },
+    {
+      "id": "unreached",
+      "title": "Unreached",
+      "url": "https://thiepn.dev/unreached/",
+      "description": "Explore unreached peoples, languages, Scripture access and global mission context.",
+      "category": "explore",
+      "badge": "beta",
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/unreached",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "unreached",
+      "keywords": [
+        "unreached peoples",
+        "mission atlas",
+        "people groups"
+      ]
+    },
+    {
+      "id": "clean30",
+      "title": "Clean30",
+      "url": "https://thiepn.dev/clean30/",
+      "description": "Turn household cleaning into clear, timed sequences with visible progress.",
+      "category": "tools",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/clean30",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "clean30",
+      "keywords": [
+        "cleaning",
+        "cleaning app",
+        "30 minute clean"
+      ]
+    },
+    {
+      "id": "markdown-guide",
+      "title": "Markdown: Final Form",
+      "url": "https://thiepn.dev/markdown/",
+      "description": "An extensive interactive showcase and reference for modern Markdown and GitHub rendering.",
+      "category": "create",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/markdown",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "markdown-guide",
+      "keywords": [
+        "markdown",
+        "gfm",
+        "markdown tutorial",
+        "markdown final form"
+      ]
+    },
+    {
+      "id": "gomoku",
+      "title": "Gomoku",
+      "url": "https://thiepn.dev/gomoku/",
+      "description": "Play Gomoku in the browser with a focused board-game interface.",
+      "category": "games",
+      "badge": null,
+      "aliases": [
+        "games/gomoku"
+      ],
+      "moduleRef": "games/gomoku",
+      "ownerRepo": "thiepn/gomoku",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "gomoku",
+      "keywords": [
+        "five in a row",
+        "gomoku game",
+        "games/gomoku"
+      ]
+    },
+    {
+      "id": "artikelwerk",
+      "title": "Artikelwerk",
+      "url": "https://thiepn.dev/artikelwerk/",
+      "description": "Train German noun genders through fast article recall and repeated practice.",
+      "category": "learn",
+      "badge": "beta",
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/artikelwerk",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "artikelwerk",
+      "keywords": [
+        "artikel werk",
+        "german article trainer",
+        "noun gender trainer"
+      ]
+    },
+    {
+      "id": "le-carnet-francais",
+      "title": "Le Carnet Français",
+      "url": "https://thiepn.dev/french-a1-a2/",
+      "description": "Learn French through structured grammar, vocabulary and course-oriented practice.",
+      "category": "learn",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/french-a1-a2",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "le-carnet-francais",
+      "keywords": [
+        "french-a1-a2",
+        "french companion",
+        "french course"
+      ]
+    },
+    {
+      "id": "french-3000",
+      "title": "French 3000",
+      "url": "https://french.thiepn.dev/",
+      "description": "Build practical French vocabulary with focused flashcards and review.",
+      "category": "learn",
+      "badge": null,
+      "aliases": [
+        "languages/french"
+      ],
+      "moduleRef": "languages/french",
+      "ownerRepo": "thiepn/french",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "french-3000",
+      "keywords": [
+        "french vocabulary",
+        "vocab",
+        "flashcards",
+        "srs",
+        "languages/french"
+      ]
+    },
+    {
+      "id": "micro-arcade",
+      "title": "Micro Arcade",
+      "url": "https://thiepn.dev/arcade/",
+      "description": "A collection of small browser games built for immediate play.",
+      "category": "games",
+      "badge": null,
+      "aliases": [
+        "games/arcade",
+        "games",
+        "games/home"
+      ],
+      "moduleRef": "games/arcade",
+      "ownerRepo": "thiepn/arcade",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "micro-arcade",
+      "keywords": [
+        "micro arcade",
+        "arcade",
+        "mini game collection",
+        "games/arcade"
+      ]
+    },
+    {
+      "id": "voidcut",
+      "title": "VOIDCUT",
+      "url": "https://thiepn.dev/voidcut/",
+      "description": "A precision arcade game about cutting space while protecting moving nodes.",
+      "category": "games",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/voidcut",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": "voidcut",
+      "keywords": [
+        "void cut"
+      ]
+    },
+    {
+      "id": "impossible-transit",
+      "title": "Impossible Transit",
+      "url": "https://thiepn.dev/impossible-transit/",
+      "description": "Navigate a surreal first-person transit system where space and architecture stop behaving normally.",
+      "category": "games",
+      "badge": null,
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/impossible-transit",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop"
+      ],
+      "contentSlug": "impossible-transit",
+      "keywords": [
+        "service 00",
+        "surreal transit"
+      ]
+    },
+    {
+      "id": "skyspire",
+      "title": "Skyspire",
+      "url": "https://thiepn.dev/skyspire/",
+      "description": "Climb through a vertical precision-platforming challenge where mistakes cost height.",
+      "category": "games",
+      "badge": "beta",
+      "aliases": [],
+      "moduleRef": null,
+      "ownerRepo": "thiepn/skyspire",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "mobile"
+      ],
+      "contentSlug": "skyspire",
+      "keywords": [
+        "sky spire",
+        "platformer",
+        "vertical game"
+      ]
+    },
+    {
+      "id": "diet",
+      "title": "Diet Copilot",
+      "url": "https://thiepn.dev/diet/",
+      "description": "Plan meals and track nutrition in Diet.",
+      "category": "tools",
+      "badge": "new",
+      "aliases": [
+        "diet/copilot",
+        "diet/health"
+      ],
+      "moduleRef": "diet/copilot",
+      "ownerRepo": "thiepn/diet",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": null,
+      "keywords": [
+        "diet",
+        "diet/copilot"
+      ]
+    },
+    {
+      "id": "recipe",
+      "title": "Recipe Book",
+      "url": "https://recipe.thiepn.dev/",
+      "description": "Keep and explore your recipes in Recipe Book.",
+      "category": "tools",
+      "badge": "new",
+      "aliases": [
+        "recipe/book"
+      ],
+      "moduleRef": "recipe/book",
+      "ownerRepo": "thiepn/recipe",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": null,
+      "keywords": [
+        "recipe",
+        "recipe/book"
+      ]
+    },
+    {
+      "id": "bikes",
+      "title": "Bike Atlas",
+      "url": "https://thiepn.dev/bikes/",
+      "description": "Explore bicycles and compare specifications in Bike Atlas.",
+      "category": "tools",
+      "badge": "new",
+      "aliases": [
+        "bikes/atlas"
+      ],
+      "moduleRef": "bikes/atlas",
+      "ownerRepo": "thiepn/bikes",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": null,
+      "keywords": [
+        "bikes",
+        "bikes/atlas"
+      ]
+    },
+    {
+      "id": "orrery",
+      "title": "Orrery",
+      "url": "https://thiepn.dev/orrery/",
+      "description": "Explore the Solar System in an interactive observatory.",
+      "category": "explore",
+      "badge": "new",
+      "aliases": [
+        "orrery/observatory"
+      ],
+      "moduleRef": "orrery/observatory",
+      "ownerRepo": "thiepn/thiepn.github.io",
+      "visibility": "public",
+      "state": "active",
+      "platforms": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "contentSlug": null,
+      "keywords": [
+        "orrery",
+        "orrery/observatory"
+      ]
+    }
+  ]
+}

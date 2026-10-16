@@ -8,7 +8,6 @@ const root = document.querySelector<HTMLElement>('[data-portal-inbox]');
 if (root) {
   const hide = root.querySelector<HTMLButtonElement>('[data-inbox-hide]')!;
   const content = root.querySelector<HTMLElement>('[data-inbox-content]')!;
-  const account = root.querySelector<HTMLElement>('[data-hub-account]')!;
   const hidden = root.querySelector<HTMLElement>('[data-inbox-hidden]')!;
   const status = root.querySelector<HTMLElement>('[data-inbox-status]')!;
   const connect = root.querySelector<HTMLButtonElement>('[data-inbox-connect]');
@@ -31,7 +30,7 @@ if (root) {
   const clear = (removePending = true) => { ++generation; inbox.clear(); session?.clear(removePending); if (disconnect) disconnect.hidden = true; controls(); };
   hide.hidden = false;
   hide.addEventListener('click', () => {
-    masked = !masked; content.hidden = account.hidden = masked; hidden.hidden = !masked; hide.textContent = masked ? 'Show Inbox' : 'Hide Inbox';
+    masked = !masked; content.hidden = masked; hidden.hidden = !masked; hide.textContent = masked ? 'Show Inbox' : 'Hide Inbox';
     if (masked) clear(); controls();
   });
   connect?.addEventListener('click', () => void (async () => {
