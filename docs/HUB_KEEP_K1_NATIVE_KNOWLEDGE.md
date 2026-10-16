@@ -17,3 +17,19 @@
 
 ## Still missing
 The actual KEEP B3 React editor, attachments, encrypted KeepNotesDB, rich view engines, real Folio/Vault/Notes adapters, and source-owned calendar/habits integration are **not** imported. Moving or binding those records requires the original KEEP runtime/package, original encryption unlock controls, backup/recovery and owner approval. This PR does not claim final unified KEEP functionality or external synchronization.
+
+
+## K3: Original editor/runtime dependency gate and reversible KEEP write receipts
+
+Audit of the immutable local KEEP B3 source archive `KEEP_B3_updated_source.zip`:
+- Original `src/pkm/workspace/NoteWorkspaceView.tsx`: 2,670 lines, 101,150 bytes; SHA-256 starts `becbf970ce957bf3c645e2e4`. It has 33 direct relative imports and a broad reachable dependency graph across the full PKM codebase, media, export, editor, workspace provider and UI. Copying just this TSX into Hub would be an inoperable imitation.
+- Original vault engine `src/pkm/encryption/vaultEncryptionService.ts` (SHA-256 starts `5433c877c1ba650b3669d7e8`) imports `kdf.ts`, `aesGcm.ts`, `cryptoTypes.ts` and vault purge logic; Argon2id requires `hash-wasm` and the React editor requires `react`, `react-dom`, `lucide-react` and transitive UI dependencies. Hub is Astro without a qualified React integration/dependency lock.
+- Original `src/services/storage.ts` confirms `KeepNotesDB` version 1 and `notes` store and encryption gate. The current same-origin unencrypted-only adapter keeps its own K2 explicit source consent. It **does not** mount the original React component or unlock encrypted records.
+
+Implemented in the K3 incremental recovery batch:
+- Source-backed one-step undo receipts returned from original-KEEP note edit and checklist operations, retained **only in RAM**. Undo uses the full unmodified previous note, rejects any intervening source revision and writes back to the original KEEP store; no duplicated backup store, migration or invented task IDs.
+- Hub owner-mode switch, route leave, privacy hide, identity reset and vault header changes clear in-memory KEEP source snapshots and undo receipts. A returning user must explicitly reconnect.
+- The original `NoteWorkspaceView` mounting remains blocked until an **upstream versioned KEEP source package** can bring its dependency closure and the original passphrase/auto-lock lifecycle into a buildable Hub React island, with original `vaultEncryptionService` wired to storage, and independent browser recovery/lock tests.
+
+### Required qualification (not yet passed on K3)
+A full exact-head `npm ci`, `astro check`, `vite`/Astro build, focused Vitest and actual Chromium desktop/mobile tests must pass before this source path is qualified. Earlier green specialized workflows and the previous `Quality` failure are evidence from **older commits**, never from this final SHA. Keep this PR draft and unmerged.
