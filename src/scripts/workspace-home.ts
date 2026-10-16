@@ -54,6 +54,10 @@ if (root)
 async function setup(root: HTMLElement) {
     let view = root.dataset.view ?? 'home';
     const staticView=()=>['apps','connections','search','inbox','flows'].includes(view);
+    const welcomeKey='thiepn:hub:welcome-dismissed';
+    let welcomeDismissed=false;
+    try { welcomeDismissed=localStorage.getItem(welcomeKey)==='1'; } catch { /* A UI preference must not block local work. */ }
+    try { welcomeDismissed ||= sessionStorage.getItem(welcomeKey)==='1'; } catch { /* Session storage may be restricted. */ }
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
     let homeModeRestorePending=true;
@@ -826,6 +830,12 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
         $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        const welcome=$<HTMLElement>('[data-visitor-welcome]');
+        welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
+        if(!welcome.hidden) {
+            $('#ws-title').textContent='THIEPN Hub';
+            $('[data-workspace-date]').textContent='Explore the apps. Make this space your own.';
+        }
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
         $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
@@ -3009,6 +3019,12 @@ async function setup(root: HTMLElement) {
     setInterval(() => { if (!document.hidden) {void refreshCloudView();cloud?.schedule(0);} }, 15000);
     root.addEventListener('click', event => {
         const action = (event.target as Element).closest<HTMLElement>('[data-action]')?.dataset.action;
+        if(action==='welcome-start') {
+            welcomeDismissed=true;
+            try {localStorage.setItem(welcomeKey,'1');}catch{try{sessionStorage.setItem(welcomeKey,'1');}catch{/* Keep the preference for this visit. */}}
+            render();root.querySelector<HTMLButtonElement>('.ws-topbar [data-action=capture]')?.focus();
+            return;
+        }
         if (action === 'guest-import' && hubIdentity.status==='signed-in' && state && store) void (async()=>{
             const own=epoch,guestStore=new WorkspaceStore('guest');
             try {await guestStore.open();const guest=await guestStore.load();if(own!==epoch)return;

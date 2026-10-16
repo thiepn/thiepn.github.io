@@ -100,7 +100,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     activeIdentity = identity;
     const changed = previous.status !== identity.status || (previous.status === 'signed-in' && identity.status === 'signed-in' && previous.id !== identity.id);
     if (changed) { ++epoch; publish(identity); }
-    status.textContent = message ?? (identity.status === 'signed-in' ? `Connected as ${identity.label}. Your Hub workspace syncs with your account.` : identity.status === 'signed-out' ? 'Sign in to sync your Hub workspace and use your connected apps.' : identity.status === 'checking' ? 'Connecting your THIEPN Account…' : 'Account connection is unavailable. Your device data is preserved.');
+    status.textContent = message ?? (identity.status === 'signed-in' ? `Connected as ${identity.label}. Your Hub workspace syncs with your account.` : identity.status === 'signed-out' ? 'You’re using Hub locally. Your workspace saves in this browser. THIEPN Account is optional for cloud backup and sync.' : identity.status === 'checking' ? 'Connecting optional cloud sync…' : 'Cloud sync is unavailable. Your device data is preserved.');
     login.hidden = identity.status !== 'signed-out';
     logout.hidden = switcher.hidden = identity.status !== 'signed-in';
     retry.hidden = identity.status !== 'unavailable';
@@ -179,7 +179,10 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         if (cached && validAccountId(cached.id) && typeof cached.label === 'string' && tokens?.accessToken && matchingToken(tokens.accessToken, cached.id) && await fingerprint(tokens.accessToken) === cached.token) {
           if (!await retainBefore(cached.id)) return;
           show({ status: 'signed-in', id: cached.id, label: cached.label }, 'Offline or Account unavailable. Your device changes are kept and will sync when reconnected.');
-        } else show({ status: 'unavailable' });
+        } else if(await retainBefore(null)) {
+          show({ status: 'signed-out' }, 'Cloud sync could not be verified. You can keep using your local workspace in this browser.');
+          retry.hidden = false;
+        }
       }
     }
     let discovery: Promise<void> | null = null;
@@ -196,20 +199,25 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
           // guards, origin checks, cooldown and a single PKCE redirect.
           const result=await sso.initialize();
           if(result.status==='ready')await verified(result.identity,ticket);
-        } catch {if(ticket===verification)show({status:'unavailable'});}
+        } catch {if(ticket===verification){
+          // An unavailable cloud service must not lock a visitor's device workspace.
+          show(activeIdentity.status==='signed-in'?{status:'unavailable'}:{status:'signed-out'},'Cloud sync is unavailable. Your existing browser data is preserved.');
+          retry.hidden=false;
+        }}
       })();
       discovery=work;
       try {await work;}finally{if(discovery===work)discovery=null;}
     }
     async function connect(changing = false) {
       if (busy) return;
+      const previousIdentity=activeIdentity;
       busy = true; ++verification;
       try {
         await prepareAccountNavigation();
         if (changing) { sso.signOutLocal(); storage.removeItem(VERIFIED); }
         show({ status: 'checking' });
         await sso.connect();
-      } catch { busy = false; show({ status: 'unavailable' }, 'Connection could not start. Your changes are preserved; try again.'); }
+      } catch { busy = false; show(previousIdentity.status==='signed-out'?{status:'signed-out'}:{status:'unavailable'}, 'Cloud sync could not start. Your local workspace is preserved.');retry.hidden=false; }
     }
     login.addEventListener('click', () => void connect());
     switcher.addEventListener('click', () => void connect(true));
@@ -251,8 +259,9 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     busy = false;
     const storageError = error instanceof DOMException && ['QuotaExceededError','SecurityError'].includes(error.name);
     root.dataset.accountFailure = storageError ? error.name : 'initialization';
-    show({ status: 'unavailable' }, storageError
-      ? 'Hub could not access browser session storage for the Account connection. Your saved workspace is preserved. Try again to restart the connection.'
-      : 'Hub could not initialize the Account connection. Your saved workspace is preserved. Try again to restart the connection.');
+    show({ status: 'signed-out' }, storageError
+      ? 'Cloud sync could not access browser session storage. You can keep using Hub locally. Try again to restart cloud sync.'
+      : 'Cloud sync could not initialize. You can keep using Hub locally. Try again to restart cloud sync.');
+    retry.hidden=false;
   }
 }

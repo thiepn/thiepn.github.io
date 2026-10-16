@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PortalAccount from '../hub/PortalAccount.astro';
+import VisitorWelcome from './VisitorWelcome.astro';
 import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
 import ContinuationDesk from './ContinuationDesk.astro';
@@ -49,6 +50,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
+          <VisitorWelcome hidden={view !== 'home'}/>
           <div data-workspace-today hidden></div>
 
           {<details class="ws-calendar-details"><summary>Preview an external calendar</summary><section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
