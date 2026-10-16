@@ -107,7 +107,7 @@ test('Try again restarts Account initialization after session storage recovers',
 });
 test('visitors get an introduction and can choose their local workspace without signing in',async({browser})=>{
  const api=backend(),a=await api.device(browser,null);
- await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.locator('[data-visitor-welcome]')).toContainText('No account needed.');
+ await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome]')).toContainText('No account needed.');
  await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
  await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
