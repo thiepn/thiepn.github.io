@@ -32,6 +32,8 @@ import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
+import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
+import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
@@ -90,6 +92,7 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
@@ -381,6 +384,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeSpreadReview=null;
         activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
@@ -1055,6 +1059,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const zone=state!.preferences.timezone;
+        const originalTask=taskSnapshot(task);
         const html=`<div class="ws-context-summary" data-task-calendar-review>
           <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
           <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
@@ -1064,7 +1069,8 @@ async function setup(root: HTMLElement) {
           </div>
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
-          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Other commitments are not moved or checked automatically.</p>
+          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Only shared Folio blocks can be compared with Hub blocks; neither source is comprehensive availability.</p>
+          <label class="ws-choice"><input type="checkbox" name="alignDue"/> Also set this original Hub task's due date to the reviewed block date (clears its task clock). This does not create a permanent task-event link.</label>
           <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
@@ -1078,21 +1084,30 @@ async function setup(root: HTMLElement) {
                 time:String(data.get('start')),duration:Number(data.get('duration')),
                 allDay:data.has('allDay'),confirmed:data.has('confirm')};
             // Validate before mutation; validate again inside the native queued writer.
-            const preview=prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            const currentTask=state.tasks.find(t=>t.id===id);
+            if(!currentTask || JSON.stringify(taskSnapshot(currentTask))!==JSON.stringify(originalTask))
+                throw new Error('The original task changed. Reopen scheduling and review the latest record.');
+            const alignDue=data.has('alignDue');
+            const preview=prepareTaskCalendarEvent(currentTask,proposal,state.preferences.timezone);
             if (identicalLocalEvent(state.events,preview.event))
                 throw new Error('An identical local calendar event already exists. No duplicate was created.');
             await mutate(s=>{
                 const source=s.tasks.find(t=>t.id===id);
-                if(!source)throw new Error('The source task was deleted. No calendar event was created.');
+                if(!source || JSON.stringify(taskSnapshot(source))!==JSON.stringify(originalTask))
+                    throw new Error('The source task changed during review. Reopen scheduling.');
                 const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
                 if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
+                // One detached candidate: event and optional task due-date change commit together.
+                if(alignDue && source.due!==proposal.date)applyTaskPlan(source,'today',proposal.date);
                 s.events.push(event);
-                activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
+                activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}`,'event');
             },'Reviewed Hub calendar event created');
             if (!state.events.some(event=>event.title===preview.event.title &&
                 event.start===preview.event.start && event.end===preview.event.end &&
                 event.date===preview.event.date && event.allDay===preview.event.allDay))
                 throw new Error('The calendar event was not created. Review the message and try again.');
+            if(alignDue && state.tasks.find(t=>t.id===id)?.due!==proposal.date)
+                throw new Error('The task due-date change was not applied. Review your original Hub task.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
         paintTaskCalendarPreview(task,zone);
@@ -1109,13 +1124,18 @@ async function setup(root: HTMLElement) {
                 state.tasks.find(t=>t.id===task.id)??task,proposal,zone).event;
             const duplicate=identicalLocalEvent(state.events,preview);
             const overlaps=overlapsForEvent(state.events,preview);
+            const shared=folioWarningsForProposedEvent(preview,folioSnapshot,zone);
             const names=[...new Set(overlaps.map(p=>p.first===preview.id?p.second:p.first))]
                 .map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
             el.innerHTML=`<strong>Proposed local calendar block · ${esc(preview.title)}</strong>
                 <p>${esc(preview.date)} · ${preview.allDay?'All day':esc(preview.start)+' → '+esc(preview.end)} (${esc(zone)})</p>
                 ${duplicate?'<p class="ws-plan-preview-warning">Identical event already exists. This proposal cannot be added again.</p>':''}
-                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}. No external calendars were checked.</p>`:
-                    '<p>No timed overlaps detected in local Hub events. All-day commitments and external sources are not checked for time conflicts.</p>'}`;
+                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}.</p>`:
+                    '<p>No timed overlap detected in original local Hub events.</p>'}
+                ${folioSnapshot?`<p>Approved Folio snapshot: ${shared.timed.length} timed overlap${shared.timed.length===1?'':'s'}${shared.timed.length?' · '+esc(shared.timed.map(c=>c.folioTitle).join(', ')):''}. ${shared.allDayTitles.length?'All-day Folio commitments: '+esc(shared.allDayTitles.join(', '))+'.':''} This is a partial, one-time source summary, not complete availability.</p>`:
+                    '<p>Folio and other calendar owners have not shared schedules with this tab; no cross-app availability is assumed.</p>'}
+                ${data.has('alignDue')?`<p>Confirming will also move this task due date to ${esc(proposal.date)} without creating a persistent task-event link.</p>`:
+                    '<p>The original task due date remains unchanged.</p>'}`;
         } catch(e) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }
@@ -2830,6 +2850,7 @@ async function setup(root: HTMLElement) {
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
+        activeSpreadReview=null;
         weekFilter='carry';
         const own = ++epoch;
         cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();
