@@ -58,3 +58,61 @@ for(const width of [1440,390]){
   expect(errors).toEqual([]);
  });
 }
+
+for(const width of [1440,390]){
+ test('original KEEP B3 source record edits without migration '+width,async({page})=>{
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.evaluate(async()=>{
+    await new Promise<void>((resolve,reject)=>{
+      const open=indexedDB.open('KeepNotesDB',1);
+      open.onupgradeneeded=()=>{if(!open.result.objectStoreNames.contains('notes'))open.result.createObjectStore('notes',{keyPath:'id'});};
+      open.onerror=()=>reject(open.error);
+      open.onsuccess=()=>{
+       const db=open.result,tx=db.transaction('notes','readwrite');
+       tx.objectStore('notes').put({
+         id:'keep-source-17',title:'University research',content:'---\ntype: project\nprogress: tasks\n---\n- [ ] Review chapter ^review',
+         type:'text',checklist:[],color:'yellow',tags:['study'],folderId:null,pinned:true,
+         archived:false,trashed:false,createdAt:'2026-10-16T18:00:00Z',updatedAt:'2026-10-16T18:01:00Z',
+         reminderDate:null,images:[],linkedNoteIds:[]
+       });
+       tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+      };
+    });
+  });
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  await page.locator('[data-action=knowledge-keep-connect]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('University research');
+  await expect(page.locator('[data-keep-owner]')).toContainText('0%');
+  await page.locator('[data-action=knowledge-keep-task]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('100%');
+  await page.locator('[data-keep-owner-form] [name=title]').fill('Renamed research');
+  await page.locator('[data-keep-owner-form] [type=submit]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('Renamed research');
+  const source=await page.evaluate(async()=>{
+    return await new Promise<any>((resolve,reject)=>{
+      const req=indexedDB.open('KeepNotesDB');req.onerror=()=>reject(req.error);
+      req.onsuccess=()=>{const db=req.result,r=db.transaction('notes').objectStore('notes').get('keep-source-17');r.onsuccess=()=>{db.close();resolve(r.result)};r.onerror=()=>reject(r.error);};
+    });
+  });
+  expect(source.id).toBe('keep-source-17');
+  expect(source.color).toBe('yellow');
+  expect(source.tags).toEqual(['study']);
+  expect(source.content).toContain('- [x] Review chapter ^review');
+  await page.reload();
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  await page.locator('[data-action=knowledge-keep-connect]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('Renamed research');
+  expect(errors).toEqual([]);
+ });
+}
+test('encrypted KEEP B3 vault header fails closed in Hub',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await page.evaluate(()=>localStorage.setItem('keepnotes_vault_enc_header','{"format":"keepnotes-vault-enc","version":"1.0.0"}'));
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await expect(page.locator('.ws-keep-owner-empty')).toContainText('KEEP encryption is enabled');
+ await expect(page.locator('[data-keep-owner-form]')).toHaveCount(0);
+});
