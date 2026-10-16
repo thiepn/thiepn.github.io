@@ -1,10 +1,13 @@
 import {getFaithTmsDue,clearFaithTmsDue} from '../lib/workspace/faith-source-session';
 import {acceptMddReply,type MddDeviceSummary} from '../lib/workspace/mdd-device';
+import {buildFaithReviewSignals} from '../lib/workspace/faith-weekly';
 /** Only displays data that the original TMS60 Hub session already approved. */
 function updateFaithTms(){
   const element=document.querySelector<HTMLElement>('[data-fd1-tms]');
   if(!element || document.hidden)return;
   const granted=getFaithTmsDue();
+  const weekly=document.querySelector<HTMLElement>('[data-fd1-review-tms60]');
+  if(weekly)weekly.textContent='TMS60: '+buildFaithReviewSignals({folio:null,mdd:null,tms:granted})[2].detail;
   element.textContent=granted
     ? `TMS60 authorized summary: ${granted.dueTaskCount} review tasks across ${granted.dueVerseCount} due verses · ${granted.newVerseCount} new verses (observed ${granted.observedAt}).`
     : 'TMS60 progress is unavailable until the original TMS60 Hub summary is authorized and opened.';
@@ -22,6 +25,8 @@ const mddStatus=()=>document.querySelector<HTMLElement>('[data-fd1-mdd]');
 function showMdd(){
   const box=mddStatus();if(!box || document.hidden)return;
   if(mddSummary && Date.parse(mddSummary.expiresAt)>Date.now()){
+    const weekly=document.querySelector<HTMLElement>('[data-fd1-review-mdd]');
+    if(weekly)weekly.textContent='My Daily Devotion: '+buildFaithReviewSignals({folio:null,mdd:mddSummary,tms:null})[1].detail;
     const r=mddSummary.reading;
     box.textContent=(r.status==='assigned'
       ? `Explicit MDD device summary: ${r.completed} of ${r.assigned} original readings`
@@ -29,6 +34,8 @@ function showMdd(){
       ` · reflection ${mddSummary.reflection.exists?'exists':'not recorded'} · one-time device-only read.`;
   } else {
     mddSummary=null;
+    const weekly=document.querySelector<HTMLElement>('[data-fd1-review-mdd]');
+    if(weekly)weekly.textContent='My Daily Devotion: '+buildFaithReviewSignals({folio:null,mdd:null,tms:null})[1].detail;
     box.textContent='My Daily Devotion owns reading and reflection records; no current device-only summary has been shared in this tab.';
   }
 }
