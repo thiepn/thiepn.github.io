@@ -20,6 +20,11 @@ export interface KeepOwnerNote {
 }
 export type KeepDeviceResult = {status:'ready';notes:KeepOwnerNote[]} |
   {status:'not_found'|'locked'|'unavailable';notes:[];detail:string};
+/** Clock-safe revision: never reuse the source's prior timestamp. */
+export function nextKeepTimestamp(previous:string, now=Date.now()):string{
+  const earlier=Date.parse(previous);
+  return new Date(Math.max(now,Number.isFinite(earlier)?earlier+1:now)).toISOString();
+}
 export class KeepDeviceConflict extends Error {
   constructor(){super('KEEP changed in another tab. Reopen its original record before editing.');}
 }
@@ -125,7 +130,7 @@ export async function updateKeepDevice(
         const record:unknown=row.result;
         if(!eligibleKeepNote(record)||record.archived||record.trashed||
             record.updatedAt!==originalUpdatedAt) return abort(new KeepDeviceConflict());
-        const next={...record,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:new Date().toISOString()};
+        const next={...record,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:nextKeepTimestamp(record.updatedAt)};
         store.put(next);
       };
       row.onerror=()=>abort(new Error('KEEP source note could not be read.'));
@@ -151,7 +156,7 @@ export async function toggleKeepDeviceChecklist(noteId:string,revision:string,it
           return abort(new KeepDeviceConflict());
         const matches=raw.checklist.filter(item=>item.id===itemId);
         if(matches.length!==1)return abort(new Error('Original KEEP checklist item changed.'));
-        const next={...raw,updatedAt:new Date().toISOString(),
+        const next={...raw,updatedAt:nextKeepTimestamp(raw.updatedAt),
           checklist:raw.checklist.map(item=>item.id===itemId?{...item,completed:!item.completed}:item)};
         store.put(next);
       };
