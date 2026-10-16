@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 const HUB = 'https://thiepn.dev';
+const accountClient=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8')).clientId;
 const OWNER = path.resolve(process.env.H16_LIBRARY_DIST ?? '../library/dist/library');
 const KEY = 'thiepn:library:hub-consent:v1', INDEX = 'thiepn:library:hub-personal-index:v1';
 const catalogue = JSON.parse(fs.readFileSync(path.join(OWNER,'hub/bridge/index.html'),'utf8').match(/data-books="([^"]+)"/)![1]!.replaceAll('&quot;','"').replaceAll('&#39;',"'").replaceAll('&amp;','&').replaceAll('&lt;','<').replaceAll('&gt;','>'));
@@ -10,6 +11,9 @@ if (!book) throw new Error('Actual owner catalogue has no EPUB');
 const grant = { schemaVersion: 1, deviceId: '11111111-1111-4111-8111-111111111111', revision: '22222222-2222-4222-8222-222222222222', permissions: ['summary','continue','search'], includePersonal: false };
 const mime = (p: string) => p.endsWith('.js') ? 'application/javascript' : p.endsWith('.css') ? 'text/css' : p.endsWith('.html') ? 'text/html' : p.endsWith('.json') ? 'application/json' : p.endsWith('.svg') ? 'image/svg+xml' : p.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream';
 async function fixture(page: Page) {
+  // Device-only consent coverage uses an explicitly signed-out guest.
+  // Automatic Account discovery is qualified in hub-sync.spec.ts.
+  await page.addInitScript((clientId:string)=>localStorage.setItem(`thiepn:sso:${clientId}:manual-signout`,'1'),accountClient);
   const calls: string[] = []; let hold = false; let release: () => void = () => {};
   await page.addInitScript(() => {
     (window as any).__requests = []; window.addEventListener('message', e => { if(e.data?.kind === 'read') (window as any).__requests.push(e.data); });

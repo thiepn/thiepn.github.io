@@ -105,11 +105,33 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
   try {
     localStorage.setItem(STORAGE + ':probe','1'); localStorage.removeItem(STORAGE + ':probe');
     accountSession = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first' });
-    const sso = createThiepnBrowserSso(accountSession, {
+    let pendingNavigation: string | null = null;
+    let navigating: Promise<void> | null = null;
+    function continueNavigation(url:string):Promise<void> {
+      if(navigating)return navigating;
+      pendingNavigation=url;
+      const work=(async()=>{
+        try {
+          // Discovery may finish while the user is typing. Flush again at
+          // the actual handoff, not only before the background probe.
+          await prepareAccountNavigation();
+          sessionStorage.setItem(RETURN,returnTo());
+          location.assign(url);
+        } catch {
+          busy=false;
+          show(activeIdentity,'Save or export your changes before continuing the Account connection.');
+          login.hidden=true;retry.hidden=false;
+        }
+      })();
+      navigating=work;
+      return work.finally(()=>{if(navigating===work)navigating=null;});
+    }
+    const createSso = () => createThiepnBrowserSso(accountSession!, {
       accountOrigin: configuration.accountOrigin,
       probeTimeoutMs: 8000,
-      navigate: url => { sessionStorage.setItem(RETURN, returnTo()); location.assign(url); },
+      navigate: url => {void continueNavigation(url);},
     });
+    let sso=createSso();
     async function verified(identity: ReturnType<ThiepnAccountSession['identity']>, ticket = verification) {
       if (ticket !== verification) return;
       async function retainBefore(nextOwner: string | null) {
@@ -170,7 +192,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     login.addEventListener('click', () => void connect());
     switcher.addEventListener('click', () => void connect(true));
     logout.addEventListener('click', () => { void (async()=>{try {await prepareAccountNavigation();++verification;++epoch;sso.signOutLocal();localStorage.removeItem(VERIFIED);show({status:'signed-out'});}catch{show(activeIdentity,'Save or export your changes before signing out.');}})(); });
-    retry.addEventListener('click', () => { if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); });
+    retry.addEventListener('click', () => { if(pendingNavigation){void continueNavigation(pendingNavigation);return;} if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); });
     window.addEventListener('storage', event => { if (event.key === STORAGE + ':tokens') void check(); });
     window.addEventListener('online', () => void check());
     window.addEventListener('focus', () => void check());
@@ -178,7 +200,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     const startDiscovery=()=>{if(!discoveryTimer)discoveryTimer=setInterval(()=>void check(),60_000);};
     startDiscovery();
     window.addEventListener('pagehide',()=>{clearInterval(discoveryTimer);discoveryTimer=undefined;});
-    window.addEventListener('pageshow',event=>{if(event.persisted){startDiscovery();void check();}});
+    window.addEventListener('pageshow',event=>{if(event.persisted){sso=createSso();pendingNavigation=null;navigating=null;startDiscovery();void check();}});
     document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) void check(); });
     if (location.pathname === new URL(configuration.callback).pathname) {
       const original = { href: location.href, hash: location.hash };
@@ -192,6 +214,9 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         location.replace(['/', '/apps/', '/home/', '/home/tasks/', '/home/calendar/', '/home/trackers/', '/home/settings/'].includes(target) ? target : '/');
       }
     } else {
+      // Guest-first: Account discovery runs in the background; private owner
+      // records still require a verified app credential before they can load.
+      if(!localStorage.getItem(STORAGE+':tokens'))show({status:'signed-out'});
       await check();
     }
   } catch { busy = false; show({ status: 'unavailable' }, 'Account connection needs working browser storage. Your local workspace remains available.'); }
