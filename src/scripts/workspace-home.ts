@@ -1,6 +1,6 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
 import {renderKeepOwnerEditor} from '../lib/workspace/keep-b3-editor';
-import {readKeepDevice,updateKeepDevice,type KeepDeviceResult} from '../lib/workspace/keep-b3-device';
+import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,type KeepDeviceResult} from '../lib/workspace/keep-b3-device';
 import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
@@ -102,7 +102,7 @@ async function setup(root: HTMLElement) {
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let knowledgeSelectedId:string|null=null,knowledgeCreating=false,knowledgeSearch='',knowledgeDraft:{id:string|null;title:string;body:string;revision:string}|null=null;
     let keepKnowledgeMode:'hub'|'keep'='hub';
-    let keepDevice:KeepDeviceResult|null=null,keepDeviceSelected:string|null=null;
+    let keepDevice:KeepDeviceResult|null=null,keepDeviceSelected:string|null=null,keepOwnerCreating=false;
     let keepDeviceDraft:{id:string;revision:string;title:string;content:string;pinned:boolean}|null=null;
     let keepConnectTicket=0;
     let privacyHeld = false;
@@ -762,17 +762,18 @@ async function setup(root: HTMLElement) {
     }
     async function saveKeepOwner(form:HTMLFormElement){
         if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge'||keepKnowledgeMode!=='keep'||keepDevice?.status!=='ready')return;
-        const selected=keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0];
-        if(!selected)throw new Error('KEEP note is unavailable.');
+        const selected=keepOwnerCreating?null:(keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0]);
+        if(!selected&&!keepOwnerCreating)throw new Error('KEEP note is unavailable.');
         const data=new FormData(form);
         const title=String(data.get('title')??''),content=String(data.get('content')??''),pinned=data.has('pinned');
-        const original=selected.updatedAt,ownerEpoch=epoch;
-        if(keepDeviceDraft&&keepDeviceDraft.revision!==original)throw new Error('KEEP note changed. Refresh the original record.');
-        await updateKeepDevice(selected.id,original,{title,content,pinned});
+        const original=selected?.updatedAt??'',ownerEpoch=epoch;
+        if(selected&&keepDeviceDraft&&keepDeviceDraft.revision!==original)throw new Error('KEEP note changed. Refresh the original record.');
+        const savedId=keepOwnerCreating?await createKeepDeviceNote({title,content,pinned}):
+            (await updateKeepDevice(selected!.id,original,{title,content,pinned}),selected!.id);
         if(ownerEpoch!==epoch)return;
-        keepDeviceDraft=null;
+        keepDeviceDraft=null;keepOwnerCreating=false;
         await connectKeepOwner();
-        keepDeviceSelected=selected.id;render();toast('Original KEEP note saved on this device.');
+        keepDeviceSelected=savedId;render();toast('Original KEEP note saved on this device.');
     }
     function fullContent() {
         if (view === 'settings')
@@ -781,7 +782,7 @@ async function setup(root: HTMLElement) {
             const modes='<nav class="ws-knowledge-switch" aria-label="Knowledge data owner">'+
               '<button type="button" data-action="knowledge-mode" data-id="hub" aria-pressed="'+(keepKnowledgeMode==='hub')+'">Hub local notes</button>'+
               '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>';
-            return modes+(keepKnowledgeMode==='keep'?renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,draft:keepDeviceDraft}):
+            return modes+(keepKnowledgeMode==='keep'?renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
                 renderKnowledge(state!.notes,state!.tasks,{selectedId:knowledgeSelectedId,create:knowledgeCreating,query:knowledgeSearch,draft:knowledgeDraft}));
         }
         if (view === 'tasks') {
@@ -1996,9 +1997,13 @@ async function setup(root: HTMLElement) {
                   .catch(e=>toast(e instanceof Error?e.message:'KEEP task could not be changed.'));
                 return;
             }
+            if(action==='knowledge-keep-new'){
+                if(keepDevice?.status!=='ready'||!discardKnowledgeDraft())return;
+                keepOwnerCreating=true;keepDeviceSelected=null;render();return;
+            }
             if(action==='knowledge-keep-open'){
                 if(keepDevice?.status!=='ready'||!keepDevice.notes.some(n=>n.id===id)||!discardKnowledgeDraft())return;
-                keepDeviceSelected=id;render();return;
+                keepDeviceSelected=id;keepOwnerCreating=false;render();return;
             }
             if(action==='knowledge-open'){
                 if(!state.notes.some(n=>n.id===id)||!discardKnowledgeDraft())return;
@@ -2793,10 +2798,10 @@ async function setup(root: HTMLElement) {
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
         if(view==='knowledge'&&el.closest('[data-keep-owner-form]')&&keepDevice?.status==='ready'){
-            const selected=keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0];
+            const selected=keepOwnerCreating?null:(keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0]);
             const form=el.closest<HTMLFormElement>('[data-keep-owner-form]')!;
-            if(selected){
-                keepDeviceDraft={id:selected.id,revision:keepDeviceDraft?.id===selected.id?keepDeviceDraft.revision:selected.updatedAt,
+            if(selected||keepOwnerCreating){
+                keepDeviceDraft={id:selected?.id??'new',revision:keepDeviceDraft?.id===(selected?.id??'new')?keepDeviceDraft.revision:selected?.updatedAt??'',
                     title:form.querySelector<HTMLInputElement>('[name=title]')?.value??'',
                     content:form.querySelector<HTMLTextAreaElement>('[name=content]')?.value??'',
                     pinned:form.querySelector<HTMLInputElement>('[name=pinned]')?.checked??false};
@@ -3070,7 +3075,7 @@ async function setup(root: HTMLElement) {
         channel = null;
         state = null;
         knowledgeDraft=null;knowledgeSelectedId=null;knowledgeCreating=false;knowledgeSearch='';
-        keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepKnowledgeMode='hub';keepConnectTicket++;
+        keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepKnowledgeMode='hub';keepConnectTicket++;
         dirty = false;
         locked = false;
         conflict = false;
