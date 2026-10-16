@@ -37,3 +37,24 @@ test('Hub knowledge unsaved draft cannot silently disappear through internal nav
  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-view','knowledge');
  await expect(page.locator('[data-knowledge-form] [name=title]')).toHaveValue('Unsaved study');
 });
+
+for(const width of [1440,390]){
+ test('native KEEP-derived project tasks remain in original Hub note '+width,async({page})=>{
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.locator('[data-action=knowledge-new-project]').click();
+  await page.locator('[data-knowledge-form] [name=title]').fill('Research project');
+  await page.locator('[data-knowledge-form] [type=submit]').click();
+  await expect(page.locator('.ws-knowledge-projects')).toContainText('Research project');
+  await expect(page.locator('.ws-knowledge-relations')).toContainText('0%');
+  await page.locator('[data-action=knowledge-toggle-task]').click();
+  await expect(page.locator('.ws-knowledge-relations')).toContainText('100%');
+  await page.reload();
+  await page.locator('[data-action=knowledge-open]').filter({hasText:'Research project'}).first().click();
+  await expect(page.locator('.ws-knowledge-relations')).toContainText('100%');
+  await expect(page.locator('[data-knowledge-form] [name=body]')).toContainValue('- [x] First step');
+  expect(errors).toEqual([]);
+ });
+}
