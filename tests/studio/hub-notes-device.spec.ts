@@ -27,7 +27,7 @@ test('native Notes owner-consent summary is private, source-bound and mobile rea
   await expect(page.locator('[data-source-today-notes]')).toContainText('Confirm the one-time share');
   await popup.getByRole('button',{name:'Share Notes overview once'}).click();
   await expect(page.locator('[data-source-today-notes]')).toContainText('Notes-owned <lecture>');
-  await expect(page.locator('[data-source-today-notes]')).toContainText('Active reminders');
+  await expect(page.locator('[data-source-today-notes]')).toContainText('1 shared reminders');
   await expect(page.locator('[data-source-today-notes]')).toContainText('1 active Notes items');
   await expect(page.locator('[data-source-today-notes]')).toContainText('One-time Notes snapshot');
   const escaped=await page.locator('[data-source-today-notes]').evaluate(el=>el.querySelectorAll('lecture,script').length);
