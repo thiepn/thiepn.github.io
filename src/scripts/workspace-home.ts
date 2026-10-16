@@ -41,6 +41,9 @@ async function setup(root: HTMLElement) {
     let privacyHeld = false;
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
     let folioSnapshot: FolioDeviceSnapshot | null = null;
+    // This binding never grants permission. It prevents a just-shared projection
+    // from crossing an Account identity change during focus re-verification.
+    let folioOwner: string | null = null;
     let folioStatus: FolioDeviceStatus = 'disconnected';
     let folioNonce: string | null = null;
     let folioPopup: Window | null = null;
@@ -52,10 +55,12 @@ async function setup(root: HTMLElement) {
         folioTimeout = null;
         folioSnapshot = null;
         folioStatus = 'disconnected';
+        folioOwner = null;
     }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
         if (folioTimeout) clearTimeout(folioTimeout);
+        folioOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
         folioNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
         folioSnapshot = null;
         folioStatus = 'awaiting';
@@ -78,8 +83,11 @@ async function setup(root: HTMLElement) {
         repaintOverview();
     }
     window.addEventListener('message', event => {
+        const currentScope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+            hubIdentity.status === 'signed-out' ? 'guest' : null;
         if (!folioNonce || event.origin !== location.origin || event.source !== folioPopup ||
-            !state || privacyHeld || state.preferences.hidden) return;
+            !folioOwner || (currentScope && currentScope !== folioOwner) ||
+            privacyHeld || state?.preferences.hidden) return;
         try {
             const snapshot = safeFolioBridgeReply(event.data, folioNonce);
             folioSnapshot = snapshot;
@@ -1401,7 +1409,14 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         const own = ++epoch;
         resetLanguages();
-        resetFolio();
+        const verifyingScope = identity.status === 'signed-in' ? 'user:' + identity.id :
+            identity.status === 'signed-out' ? 'guest' : null;
+        // Checking temporarily hides Hub content; preserve only the same owner
+        // handoff in RAM until verification returns. A different/invalid owner
+        // must never see the previous snapshot or pending consent reply.
+        if (identity.status === 'unavailable' ||
+            (verifyingScope !== null && folioOwner !== null && verifyingScope !== folioOwner))
+            resetFolio();
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
@@ -1468,6 +1483,7 @@ async function setup(root: HTMLElement) {
             return;
         state = loaded ?? initialState(apps.map(a => a.id), legacy);
         privacyHeld = state.preferences.hidden;
+        if (privacyHeld) resetFolio();
         selected = today();
         month = selected.slice(0, 7) + '-01';
         if (storageReady) {
