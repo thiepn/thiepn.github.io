@@ -1,4 +1,5 @@
 import type { FolioDeviceSnapshot } from './folio-device';
+import {getFaithTmsDue} from './faith-source-session';
 import type { AppShortcut } from './types';
 
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c =>
@@ -17,6 +18,7 @@ export function renderFaithDiscipline(
   const mdd = apps.find(app => /^(my-daily-devotion|daily-devotion|mdd)$/.test(app.id));
   const mddLink = mdd ? `<a href="${esc(mdd.url)}">Open original devotional journal</a>` :
     '<span>Devotional journal: no reviewed Hub launch available</span>';
+  const tms=getFaithTmsDue();
   const rhythms = folio?.habits.slice(0, 6) ?? [];
   const rows = rhythms.map(h =>
     `<li><span><strong>${esc(h.title)}</strong><small>Folio · ${h.status === 'completed' ? 'recorded' : h.status === 'skipped' ? 'rest day' : 'open'} · ${h.value}/${h.target}</small></span></li>`).join('');
@@ -33,7 +35,7 @@ export function renderFaithDiscipline(
       <section aria-label="Scripture and reflection"><h3>Scripture &amp; reflection</h3>
         <p>My Daily Devotion keeps its original reading, prayer and reflection records. Hub has no authorized MDD progress projection yet.</p>
         ${mddLink}
-        <p>TMS60 due reviews appear only through its separately authorized Hub connection.</p>
+        <p data-fd1-tms role="status">${tms ? `TMS60 authorized summary: ${tms.dueTaskCount} review tasks across ${tms.dueVerseCount} due verses · ${tms.newVerseCount} new verses (observed ${esc(tms.observedAt)}).` : 'TMS60 progress is unavailable until the original TMS60 Hub summary is authorized and opened.'}</p>
         <a href="https://tms60.thiepn.dev/">Open TMS60</a>
       </section>
       <section aria-label="Intentional focus"><h3>Focus &amp; weekly review</h3>
