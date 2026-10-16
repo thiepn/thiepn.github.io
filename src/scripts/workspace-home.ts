@@ -1,4 +1,5 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
+import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
 import {selectedShortcuts} from '../lib/workspace/selectors';
@@ -1920,6 +1921,31 @@ async function setup(root: HTMLElement) {
             }
             if(action==='knowledge-new'){if(!discardKnowledgeDraft())return;knowledgeSelectedId=null;knowledgeCreating=true;render();return;}
             if(action==='knowledge-cancel'){if(!discardKnowledgeDraft())return;knowledgeCreating=false;render();return;}
+            if(action==='knowledge-new-project'){
+                if(!discardKnowledgeDraft())return;
+                knowledgeCreating=true;knowledgeSelectedId=null;
+                knowledgeDraft={id:null,title:'',body:'---\\ntype: project\\nprogress: tasks\\n---\\n# Project overview\\n\\n## Next actions\\n- [ ] First step',revision:''};
+                // Use real line breaks in the original Hub note body.
+                knowledgeDraft.body=knowledgeDraft.body.replaceAll('\\n','\n');
+                render();return;
+            }
+            if(action==='knowledge-toggle-task'){
+                if(knowledgeDraft){toast('Save or discard your note draft before changing a task.');return;}
+                const current=state.notes.find(n=>n.id===knowledgeSelectedId)??state.notes.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
+                const task=current&&keepTasksFromHubNote(current).find(t=>t.id===id);
+                if(!current||!task){toast('The original task no longer exists.');return;}
+                const revised=toggleKeepTaskLine(current,task);
+                if(revised===null){toast('The task changed. Reopen the source note.');return;}
+                const rev=current.updatedAt,sourceId=current.id;
+                void mutate(s=>{
+                    const note=s.notes.find(n=>n.id===sourceId);
+                    if(!note||note.updatedAt!==rev||toggleKeepTaskLine(note,task)!==revised)
+                        throw new Error('Original task changed; no completion was written.');
+                    note.body=revised;note.updatedAt=stamp();
+                    activity(s,'Updated task in original KEEP-style Markdown note: '+note.title,'note');
+                },'Source Markdown task updated');
+                return;
+            }
             if(action==='knowledge-linked-task'){
                 const note=state.notes.find(n=>n.id===id);
                 if(note)editTask('',{title:'',notes:'[[note:'+note.id+']]'});
