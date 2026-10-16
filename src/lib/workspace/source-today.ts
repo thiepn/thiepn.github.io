@@ -1,3 +1,4 @@
+import { renderFaithDiscipline } from './faith-discipline';
 import type { NotesDeviceSummary } from './notes-device';
 import type { NotesDeviceStatus } from './notes-panel';
 import type { FolioDeviceSnapshot } from './folio-device';
@@ -79,5 +80,5 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       notesBody+'</section>'+
       '<section data-source-today-languages aria-label="Language owners"><h3>Language learning</h3>'+
       (languages.status==='signed-out'?languageRows:'<ul>'+languageRows+'</ul>')+
-      '</section></div></section>';
+      '</section></div>'+renderFaithDiscipline(folio.snapshot,apps)+'</section>';
 }
