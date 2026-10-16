@@ -12,7 +12,8 @@ function backend(options={sharing:false,probeEligible:false}) {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
-  await context.route('https://account.thiepn.dev/**',async route=>{if(probeDelay)await new Promise(resolve=>setTimeout(resolve,probeDelay));await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
+  let probeRequests=0;
+  await context.route('https://account.thiepn.dev/**',async route=>{probeRequests++;if(probeDelay)await new Promise(resolve=>setTimeout(resolve,probeDelay));await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
   await context.route('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard',async route=>{
    const request=route.request();expect(request.method()).toBe('GET');const bearer=request.headers().authorization??'';expect(bearer).toMatch(/^Bearer fixture\./);const token=JSON.parse(Buffer.from(bearer.split('.')[1]!,'base64url').toString());expect(token.client_id).toBe(configuration.clientId);expect([OWNER,OTHER]).toContain(token.sub);
    await route.fulfill({json:{ok:true,data:{schema:'thiepn-language-dashboard',schemaVersion:1,contractVersion:'p9-dashboard-v1',generatedAt:new Date().toISOString(),enrollments:[],snapshots:[]}}});
@@ -39,7 +40,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    } else {await route.fulfill({status:404,json:{message:'unexpected RPC'}});return;}
    await route.fulfill({json:result});
   });
-  const page=await context.newPage();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');return {page,context};
+  const page=await context.newPage();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
 async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
@@ -125,13 +126,20 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
   expect(api.exchanges()).toBe(0);api.accountSignedIn(true);
   await a.page.clock.fastForward(trigger==='focus'?31_000:61_000);
   if(trigger==='focus'){
-   api.delayProbe(3000);await a.page.locator('[data-capture-draft]').fill('Guest draft stays on its device');
+   api.delayProbe(3000);
+   await a.page.evaluate(()=>{let attempts=0;window.addEventListener('hub:before-account-navigation',event=>{if(++attempts===2)(event as CustomEvent<{wait(work:Promise<void>):void}>).detail.wait(new Promise<void>(resolve=>(window as any).__continueAccountNavigation=resolve));});});
+   await a.page.locator('[data-capture-draft]').fill('Guest draft stays on its device');
    await a.page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
+   await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
+   await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
+   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
   if(trigger==='focus'){
    const guest=await a.page.evaluate(()=>new Promise<string>((resolve,reject)=>{const open=indexedDB.open('thiepn-adaptive-workspace',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('records').objectStore('records').get('guest');read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};}));
-   expect(JSON.parse(guest).captureDraft).toBe('Guest draft stays on its device');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
   }
  }finally{await a.context.close();}
 });
