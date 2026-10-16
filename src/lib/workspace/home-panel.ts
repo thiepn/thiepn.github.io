@@ -1,4 +1,5 @@
 import { integratedLocalDay } from './integrated-overview';
+import { dayKey } from './model';
 import { HUB_LANGUAGE_IDS, HUB_LANGUAGE_OWNER_ROUTES, ownerLanguageLink, type HubLanguageCard } from './language-read';
 import type { WorkspaceState, AppShortcut } from './types';
 
@@ -29,9 +30,7 @@ export function renderIntegratedHome(
     '">' + esc(event.title) + '</button></div>'
   ).join('');
   const upcoming = day.upcoming.slice(0, 3).map(event => {
-    const when = event.allDay ? event.date : new Intl.DateTimeFormat('en-CA', {
-      timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date(event.start));
+    const when = event.allDay ? event.date : dayKey(zone, new Date(event.start));
     return '<div class="ws-brief-item"><small class="ws-brief-time">' + esc(when.slice(5)) +
       '</small><button type="button" data-action="edit-event" data-id="' + esc(event.id) + '">' +
       esc(event.title) + '</button></div>';

@@ -29,3 +29,7 @@ Original main: e0f64a41b519710136477511144de44f0fcfe3c4
 Vitest source tests cover local dates and source filtering, authentic Japanese metrics, enrollment hiding, invalid producer contracts, route containment and GET request settings. Repository build, browser/mobile workflows, hosted Account bearer availability, Core endpoint behavior and current producer publication require exact-branch executable acceptance before merge; static source review is not live production proof.
 
 No migration, existing app mutation, deployment, merge, OAuth client enablement, private Notes activation or paid service is included.
+
+## I2 native continuity and browser repair
+
+The integrated board now also renders the actual next-seven-day local agenda and current daily/weekly Hub tracker totals through the existing canonical tracker logs. It offers original tracker-log and task-completion handlers, not parallel writes. The summary's Add task/event/capture actions use unique controls to avoid hijacking planner focus, and the optional integrated dashboard is omitted while editing the draggable widget layout. An exact-head Playwright run exposed duplicate task selectors, incorrect dialog focus return and drag interference; these are concrete fixes in this batch. Folio's independent D18 Supabase email/password session and local IndexedDB data are explicitly outside Hub authorization, and are not silently queried. New unit coverage includes the date-shifted upcoming list and tracker totals.

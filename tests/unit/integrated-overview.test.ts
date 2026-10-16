@@ -15,6 +15,10 @@ function localFixture(): WorkspaceState {
       {id:'1',title:'Lecture',date:'2026-10-16',endDate:'2026-10-16',allDay:false,start:'2026-10-15T22:30:00Z',end:'2026-10-15T23:30:00Z',zone:'Europe/Berlin'},
       {id:'2',title:'Tomorrow',date:'2026-10-17',endDate:'2026-10-17',allDay:true,start:'',end:'',zone:'Europe/Berlin'},
     ],
+    trackers: [
+      { id:'reading',title:'Reading',kind:'count',unit:'sessions',goal:5,cadence:'weekly' },
+    ],
+    logs: [{ id:'log1',trackerId:'reading',date:'2026-10-15',value:2,note:'' }],
     notes: [
       {id:'1',title:'Older',body:'Private',updatedAt:'2026-10-12T12:00:00Z'},
       {id:'2',title:'Newest',body:'Private',updatedAt:'2026-10-16T08:00:00Z'},
@@ -32,6 +36,8 @@ describe('native local Hub overview', () => {
     expect(result.unscheduled).toBe(1);
     expect(result.agenda.map(e=>e.title)).toEqual(['Lecture']);
     expect(result.recentNotes[0]?.title).toBe('Newest');
+    expect(result.upcoming.map(e=>e.title)).toEqual(['Tomorrow']);
+    expect(result.trackerProgress).toMatchObject([{id:'reading',total:2,goal:5,cadence:'weekly'}]);
     expect(state.tasks).toHaveLength(4);
     expect(state.notes[0]?.title).toBe('Older');
   });
