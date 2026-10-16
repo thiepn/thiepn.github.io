@@ -4,6 +4,8 @@ import { hubIdentity, readHubLanguageToken } from './portal-auth';
 import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
+import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
+import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon } from '../lib/workspace/icons';
@@ -40,6 +42,63 @@ async function setup(root: HTMLElement) {
     let taskFilter = 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
+    let notesSource: NotesDeviceSummary | null = null;
+    let notesSourceStatus: NotesDeviceStatus = 'disconnected';
+    let notesSourceOwner: string | null = null;
+    let notesSourceNonce: string | null = null;
+    let notesSourceWindow: Window | null = null;
+    let notesSourceDeadline: ReturnType<typeof setTimeout> | null = null;
+    function clearNotesSource() {
+        notesSourceNonce = null;
+        notesSourceWindow = null;
+        if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
+        notesSourceDeadline = null;
+        notesSource = null;
+        notesSourceOwner = null;
+        notesSourceStatus = 'disconnected';
+    }
+    function openNotesSource() {
+        if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        clearNotesSource();
+        notesSourceOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
+        notesSourceNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)),
+            byte => byte.toString(16).padStart(2, '0')).join('');
+        const target = new URL('/notes/', location.origin);
+        target.searchParams.set('hubNotes', notesSourceNonce);
+        notesSourceStatus = 'awaiting';
+        notesSourceWindow = window.open(target.href, '_blank');
+        if (!notesSourceWindow) {
+            clearNotesSource();
+            notesSourceStatus = 'unavailable';
+        } else {
+            notesSourceDeadline = setTimeout(() => {
+                if (notesSourceStatus !== 'awaiting') return;
+                clearNotesSource();
+                notesSourceStatus = 'unavailable';
+                repaintOverview();
+            }, 3 * 60_000);
+        }
+        repaintOverview();
+    }
+    window.addEventListener('message', event => {
+        const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+            hubIdentity.status === 'signed-out' ? 'guest' : null;
+        if (!notesSourceNonce || event.origin !== location.origin ||
+            event.source !== notesSourceWindow || !notesSourceOwner ||
+            (scope && scope !== notesSourceOwner) || privacyHeld || state?.preferences.hidden)
+            return;
+        try {
+            notesSource = acceptNotesReply(event.data, notesSourceNonce);
+        } catch {
+            return; // Forged, stale, malformed or unrelated message.
+        }
+        notesSourceStatus = 'ready';
+        notesSourceNonce = null;
+        notesSourceWindow = null;
+        if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
+        notesSourceDeadline = null;
+        repaintOverview();
+    });
     let folioSnapshot: FolioDeviceSnapshot | null = null;
     // This binding never grants permission. It prevents a just-shared projection
     // from crossing an Account identity change during focus re-verification.
@@ -122,7 +181,7 @@ async function setup(root: HTMLElement) {
         if (panel && state && !privacyHeld && !state.preferences.hidden) {
             panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps, {
                 status: folioStatus, snapshot: folioSnapshot,
-            });
+            }, { status: notesSourceStatus, snapshot: notesSource });
         }
     }
     async function refreshLanguages(force = false) {
@@ -374,7 +433,7 @@ async function setup(root: HTMLElement) {
         return view === 'home' && !editing
             ? '<div data-native-overview>' + renderIntegratedHome(state!, languageStatus, languageCards, languageCheckedAt, apps, {
                 status: folioStatus, snapshot: folioSnapshot,
-            }) + '</div>' + renderGrid()
+            }, { status: notesSourceStatus, snapshot: notesSource }) + '</div>' + renderGrid()
             : renderGrid();
     }
     function render() {
@@ -871,6 +930,15 @@ async function setup(root: HTMLElement) {
             void refreshLanguages(true);
             return;
         }
+        if (action === 'connect-notes-source') {
+            openNotesSource();
+            return;
+        }
+        if (action === 'clear-notes-source') {
+            clearNotesSource();
+            repaintOverview();
+            return;
+        }
         if (action === 'connect-folio') {
             openFolioBridge();
             return;
@@ -1102,7 +1170,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'privacy': {
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); }
+                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -1417,6 +1485,10 @@ async function setup(root: HTMLElement) {
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && folioOwner !== null && verifyingScope !== folioOwner))
             resetFolio();
+        if (identity.status === 'unavailable' ||
+            (verifyingScope !== null && notesSourceOwner !== null &&
+                verifyingScope !== notesSourceOwner))
+            clearNotesSource();
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
@@ -1483,7 +1555,7 @@ async function setup(root: HTMLElement) {
             return;
         state = loaded ?? initialState(apps.map(a => a.id), legacy);
         privacyHeld = state.preferences.hidden;
-        if (privacyHeld) resetFolio();
+        if (privacyHeld) { resetFolio(); clearNotesSource(); }
         selected = today();
         month = selected.slice(0, 7) + '-01';
         if (storageReady) {
@@ -1542,11 +1614,16 @@ async function setup(root: HTMLElement) {
     });
     window.addEventListener('pagehide', resetLanguages);
     window.addEventListener('pagehide', resetFolio);
+    window.addEventListener('pagehide', clearNotesSource);
     document.addEventListener('visibilitychange', () => {
         // A pending consent window may hide the Hub until its user-approved reply.
         // Completed snapshots are one-tab-only and cleared on later backgrounding.
         if (document.hidden && folioStatus === 'ready') {
             resetFolio();
+            repaintOverview();
+        }
+        if (document.hidden && notesSourceStatus === 'ready') {
+            clearNotesSource();
             repaintOverview();
         }
     });

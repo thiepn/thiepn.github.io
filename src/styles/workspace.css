@@ -201,3 +201,12 @@
 .ws-folio-summary strong{font-size:12px;overflow-wrap:anywhere;}
 .ws-folio-summary a{display:inline-block;color:var(--ws-accent);font-size:12px;margin-top:10px;}
 @media(max-width:650px){.ws-folio-summary{grid-template-columns:minmax(0,1fr);gap:8px;}}
+
+/* Separate Notes source: owner-generated, user-consented titles/reminders only. */
+.ws-brief-notes-source{grid-column:1/-1;}
+.ws-notes-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.ws-notes-source-grid>div{min-width:0;}
+.ws-notes-source-grid h4{font-size:13px;margin:12px 0 7px;}
+.ws-notes-source-grid strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-source-deep-link{display:inline-block;margin-left:12px;font-size:12px;color:var(--ws-accent);}
+@media(max-width:650px){.ws-notes-source-grid{grid-template-columns:minmax(0,1fr);}}
