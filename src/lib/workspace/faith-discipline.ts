@@ -16,7 +16,8 @@ export function renderFaithDiscipline(
   apps: readonly AppShortcut[],
 ): string {
   const mdd = apps.find(app => /^(my-daily-devotion|daily-devotion|mdd)$/.test(app.id));
-  const mddLink = mdd ? `<a href="${esc(mdd.url)}">Open original devotional journal</a>` :
+  const mddLink = mdd ? `<a href="${esc(mdd.url)}">Open original devotional journal</a>
+    <button type="button" data-fd1-mdd-connect>Request an explicitly approved one-time MDD summary</button>` :
     '<span>Devotional journal: no reviewed Hub launch available</span>';
   const tms=getFaithTmsDue();
   const rhythms = folio?.habits.slice(0, 6) ?? [];
@@ -33,7 +34,7 @@ export function renderFaithDiscipline(
         <a href="/folio/?view=habits">Open Folio habits</a>
       </section>
       <section aria-label="Scripture and reflection"><h3>Scripture &amp; reflection</h3>
-        <p>My Daily Devotion keeps its original reading, prayer and reflection records. Hub has no authorized MDD progress projection yet.</p>
+        <p data-fd1-mdd role="status">My Daily Devotion owns reading and reflection records; no device-only summary has been shared in this tab.</p>
         ${mddLink}
         <p data-fd1-tms role="status">${tms ? `TMS60 authorized summary: ${tms.dueTaskCount} review tasks across ${tms.dueVerseCount} due verses · ${tms.newVerseCount} new verses (observed ${esc(tms.observedAt)}).` : 'TMS60 progress is unavailable until the original TMS60 Hub summary is authorized and opened.'}</p>
         <a href="https://tms60.thiepn.dev/">Open TMS60</a>
