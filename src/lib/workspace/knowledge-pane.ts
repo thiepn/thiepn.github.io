@@ -1,6 +1,7 @@
 import type { Note, Task } from './types';
 import { knowledgeDesk } from './knowledge-spine';
 import { classifyKeepPlanningNote, deriveKeepProjectProgress, keepTasksFromHubNote } from './keep-b3-source';
+import { parseOwnerRef, SOURCE_ADAPTERS } from './keep-b3-owner-refs';
 const esc=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const act=(action:string,label:string,id='')=>'<button type="button" class="ws-button" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(label)+'</button>';
 export interface KnowledgeViewState {
@@ -20,6 +21,9 @@ export function renderKnowledge(notes:readonly Note[],tasks:readonly Task[],view
   const nativeTasks=selected?keepTasksFromHubNote(selected):[];
   const taskRows=nativeTasks.map(t=>'<li><span>'+esc(t.text)+' '+(t.dueDate?' · due '+esc(t.dueDate):'')+'</span>'+
     act('knowledge-toggle-task',t.completed?'Mark incomplete':'Complete',t.id)+'</li>').join('');
+  const ownerRefs=selected?[...new Set((selected.body.match(/thiepn:\/\/[^\\s<>\\])}]+/gu)??[]))]
+    .map(raw=>parseOwnerRef(raw.replace(/[.,;]+$/u,''))).filter((ref):ref is NonNullable<typeof ref>=>!!ref):[];
+  const ownerRows=ownerRefs.map(ref=>'<li><strong>'+esc(SOURCE_ADAPTERS[ref.source].label)+'</strong><span>'+esc(ref.kind)+' · External owner reference, not connected</span></li>').join('');
   const list=desk.matches.map(n=>'<button type="button" class="ws-knowledge-item" data-action="knowledge-open" data-id="'+esc(n.id)+'" aria-current="'+String(n.id===selected?.id&&!view.create)+'"><strong>'+esc(n.title)+'</strong><small>'+esc(n.body.slice(0,100).replace(/\s+/gu,' '))+'</small></button>').join('');
   const outgoing=desk.outgoing.map(l=>'<li>'+(l.status==='resolved'?act('knowledge-open',l.title,l.targetId!):'<span>'+esc(l.title)+' · '+l.status+'</span>')+'</li>').join('');
   const incoming=desk.backlinks.map(n=>'<li>'+act('knowledge-open',n.title,n.id)+'</li>').join('');
@@ -36,7 +40,8 @@ export function renderKnowledge(notes:readonly Note[],tasks:readonly Task[],view
     if(!view.create)detail+='<div class="ws-knowledge-relations">'+
       (classified?'<p class="ws-muted">KEEP B3 planning type: '+esc(classified)+'</p>':'')+
       (progress?'<p class="ws-muted">Project task progress: '+(progress.percent===null?'Not configured':progress.percent+'%')+' · '+progress.completed+' / '+progress.total+' complete'+(progress.nextAction?' · Next: '+esc(progress.nextAction.text):'')+'</p>':'')+
-      '<h3>Markdown tasks in this note</h3><ul>'+(taskRows||'<li>No Markdown tasks</li>')+'</ul>';<h3>Outgoing links</h3><ul>'+(outgoing||'<li>No links</li>')+'</ul><h3>Backlinks</h3><ul>'+(incoming||'<li>No backlinks</li>')+'</ul><h3>Linked Hub tasks</h3><ul>'+(related||'<li>No explicitly linked tasks</li>')+'</ul></div>';
+      '<h3>Markdown tasks in this note</h3><ul>'+(taskRows||'<li>No Markdown tasks</li>')+'</ul>'+ 
+      '<h3>KEEP owner references</h3><ul>'+(ownerRows||'<li>No source references</li>')+'</ul>';<h3>Outgoing links</h3><ul>'+(outgoing||'<li>No links</li>')+'</ul><h3>Backlinks</h3><ul>'+(incoming||'<li>No backlinks</li>')+'</ul><h3>Linked Hub tasks</h3><ul>'+(related||'<li>No explicitly linked tasks</li>')+'</ul></div>';
   }
   return '<div class="ws-knowledge" data-knowledge><section class="ws-surface" aria-label="Hub knowledge navigation"><header><h2>Knowledge</h2><p class="ws-muted">Native Hub notes · KEEP-style linked navigation · no vault synchronization</p></header>'+
     '<label class="ws-field">Search notes<input data-knowledge-search type="search" maxlength="150" value="'+esc(view.query)+'" placeholder="Title or content"></label>'+
