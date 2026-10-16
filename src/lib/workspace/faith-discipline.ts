@@ -1,5 +1,6 @@
 import type { FolioDeviceSnapshot } from './folio-device';
 import {getFaithTmsDue} from './faith-source-session';
+import {buildFaithReviewSignals} from './faith-weekly';
 import type { AppShortcut } from './types';
 
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c =>
@@ -20,6 +21,7 @@ export function renderFaithDiscipline(
     <button type="button" data-fd1-mdd-connect data-fd1-mdd-url="${esc(mdd.url)}">Request an explicitly approved one-time MDD summary</button>` :
     '<span>Devotional journal: no reviewed Hub launch available</span>';
   const tms=getFaithTmsDue();
+  const review=buildFaithReviewSignals({folio,mdd:null,tms});
   const rhythms = folio?.habits.slice(0, 6) ?? [];
   const rows = rhythms.map(h =>
     `<li><span><strong>${esc(h.title)}</strong><small>Folio · ${h.status === 'completed' ? 'recorded' : h.status === 'skipped' ? 'rest day' : 'open'} · ${h.value}/${h.target}</small></span></li>`).join('');
@@ -45,6 +47,12 @@ export function renderFaithDiscipline(
         <a href="/folio/?view=habits">Review original practice history</a>
       </section>
     </div>
+    <section aria-label="Weekly source review" data-fd1-review>
+      <h3>Review the week without inventing results</h3>
+      <p>These are only current authorized observations, not seven days of history. Full practice history remains with Folio; reflection content remains private in MDD.</p>
+      <ul>${review.map(signal=>`<li data-fd1-review-${signal.source}><strong>${signal.source==='tms60'?'TMS60':signal.source==='mdd'?'My Daily Devotion':'Folio'}</strong>: ${esc(signal.detail)}</li>`).join('')}</ul>
+      <p>Reflect: What displaced my priorities? What helped me follow through? What one boundary should change next week?</p>
+    </section>
     <p class="ws-muted">No device-wide app blocking, automatic completion, hidden cloud reads, or holiness scoring.</p>
   </section>`;
 }
