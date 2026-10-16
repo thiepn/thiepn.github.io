@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedOn": "2026-10-15",
+  "updatedOn": "2026-10-16",
   "branch": "feat/connected-hub",
   "deployment": "not-deployed",
   "programComplete": false,
@@ -11,7 +11,8 @@
     "coreLaunchInventory": "9b1b378f644c3b9950583707afe7853994376966",
     "accountPR": "https://github.com/thiepn/account/pull/83",
     "corePR": "https://github.com/thiepn/core/pull/112",
-    "libraryPinnedOwner": "b84930b991f4819c9c22fc1d63e23b12a5c6ff4d"
+    "libraryPinnedOwner": "b84930b991f4819c9c22fc1d63e23b12a5c6ff4d",
+    "readingPilotPinnedOwner": "77058023894f4d7935c79e291a5dba7daacb8666"
   },
   "capabilities": {
     "publicDestinations": 31,
@@ -36,18 +37,29 @@
   },
   "verification": {
     "status": "review-candidate-with-explicit-release-blockers",
-    "unit": "303 tests passed in 39 files",
+    "unit": "309 tests passed in 40 files, including connection health, deadlines, cancellation and partial results.",
     "workspace": "89/90 passed in the full run; the guide-scoped file-input assertion was corrected and passed in the 10-test targeted rerun. Latest capture/editor/core regression run: 17/17 passed.",
-    "libraryPinned": "35/36 passed across Chromium/Firefox against exact pinned owner b84930b; isolated Firefox connection timeout passed on targeted rerun. WebKit could not launch because system libraries are missing.",
+    "libraryPinned": "Hosted staged-paired CI passed at cb243cc against immutable owner b84930b in Chromium, Firefox and WebKit. Latest-head qualification remains required.",
     "typecheck": "0 errors, 0 warnings; existing hints only",
-    "build": "Astro production build passed: 62 pages; latest artifact refreshed after compact capture polish.",
-    "releaseQualification": "Final refreshed qualification passed: 31 apps / 12 routes / 59 hashed artifacts; fault-injection release gates passed.",
+    "build": "Latest Astro production build passed: 62 pages, including the 44px Connections action targets.",
+    "releaseQualification": "Latest refreshed qualification passed: 31 apps / 12 routes / 59 hashed artifacts; fault-injection release gates passed.",
     "performance": "Built gzip budgets passed; 6.6 KB gzip public search index.",
     "realOwnerOAuth": "not certified",
     "productionSmoke": "not run",
-    "utilityPages": "118/121 passed; two assertions updated for shared Inbox/current inventory and passed targeted reruns. Existing Byte external GitHub previews failed browser image loads and remain an environment/external-asset limitation; no Byte source was changed.",
+    "utilityPages": "Previous-head hosted Quality passed the utility suites, including Byte previews. Earlier local Byte failures were an external-asset limitation, not a remaining hosted CI blocker.",
     "generatedFiles": "Generated catalogue/search/routes/media checks passed. Canonical launch/product projection matches pinned Core source.",
-    "boundaryChecks": "Owner release-gate and Account CI boundary regressions passed. Tracked lockfile gate passed."
+    "boundaryChecks": "Owner release-gate and Account CI boundary regressions passed. Tracked lockfile gate passed.",
+    "previousHeadCI": {
+      "head": "cb243ccecd885dbf520bdb484f103ecd5bbf76b5",
+      "quality": "652 passed, 4 skipped, 1 failed across Chromium/Firefox/WebKit. Only failure: overall 30-second limit on the three-device WebKit journey. Per-action deadlines unchanged; scoped journey limit corrected to 60 seconds.",
+      "qualityRun": "https://github.com/thiepn/thiepn.github.io/actions/runs/38814114730",
+      "libraryPaired": "Passed all required engines.",
+      "libraryRun": "https://github.com/thiepn/thiepn.github.io/actions/runs/38814114828",
+      "readingPilot": "47 failed because account discovery closed the fixture dialog. Fixture now waits for initialization and represents an explicitly signed-out device-only guest. Rerun required.",
+      "pilotRun": "https://github.com/thiepn/thiepn.github.io/actions/runs/38814114830"
+    },
+    "connectionHealth": "16/16 account/sync tests passed in Chromium/Firefox, including safe diagnostics, revoked sharing, focus preservation and sign-out clearing. 12/12 Connections handoff/accessibility tests passed across 320/1440px light/dark, Chromium/Firefox after increasing action targets to 44px.",
+    "readingPilot": "28/28 passed locally against immutable owner 7705802: Chromium desktop, Firefox desktop and Android preview. WebKit and iPad require hosted CI."
   },
   "releaseBlockers": [
     {
@@ -66,9 +78,9 @@
       "detail": "See connected-hub-progress.md and package-specific notes in connected-hub-backlog.json."
     },
     {
-      "id": "byte-external-previews",
-      "state": "not-certified-locally",
-      "detail": "Existing /byte/ raw.githubusercontent.com previews fail browser image loads; HEAD succeeded, GET returned 503 and authenticated content retrieval also failed. No unrelated Byte page change or test weakening was made."
+      "id": "final-head-browser-ci",
+      "state": "outstanding",
+      "detail": "Rerun Quality and reading pilot at the latest integrated head; previous-head failures and fixture corrections are recorded separately."
     }
   ]
 }

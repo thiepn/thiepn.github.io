@@ -2024,6 +2024,9 @@ async function setup(root: HTMLElement) {
                 void mutate(s=>{s.preferences.recordRecentLaunches=s.preferences.recordRecentLaunches===false;},'Recent apps preference saved');break;
             case 'clear-recents':
                 void mutate(s=>{s.activity=s.activity.filter(a=>!a.kind.startsWith('launch:'));},'Recent app history cleared');break;
+            case 'refresh-connections':
+                void refreshInsights();
+                break;
             case 'pin-app':
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));

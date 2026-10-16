@@ -58,6 +58,6 @@ import {sourceStatus,sourceStates,clearSourceStates,safeDiagnostics} from '../..
 it('clears connection diagnostics at identity boundaries and never exports resource bodies',()=>{
  clearSourceStates();sourceStatus('notes','ready');
  expect(sourceStates()).toHaveLength(1);
- const report=safeDiagnostics();expect(Object.keys(report.sources[0]!).sort()).toEqual(['checkedAt','source','status']);
+ const report=safeDiagnostics();expect(Object.keys(report.sources[0]!).sort()).toEqual(['checkedAt','errorCode','expiresAt','lastSuccessAt','source','status']);
  clearSourceStates();expect(safeDiagnostics().sources).toEqual([]);
 });

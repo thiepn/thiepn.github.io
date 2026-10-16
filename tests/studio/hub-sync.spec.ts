@@ -5,9 +5,10 @@ const OWNER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-822
 const base='http://127.0.0.1:4321';
 const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,client_id:configuration.clientId,iss:configuration.issuer+'/auth/v1',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'fixture'].join('.');
 function backend(options={sharing:false,probeEligible:false}) {
+ const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
  let challenge='',exchanges=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
- return {heads,writes,exchanges:()=>exchanges,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024}) {
+ return {heads,failures,writes,exchanges:()=>exchanges,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024}) {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
@@ -19,7 +20,8 @@ function backend(options={sharing:false,probeEligible:false}) {
    if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
-   const rpc=url.pathname.split('/').at(-1),data=request.postDataJSON()??{};let result:unknown;
+   const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
+   const failure=failures.get(rpc);if(failure){await route.fulfill({status:failure,json:{message:'PRIVATE backend error body'}});return;}
    if(rpc==='get_thiepn_hub_connections')result={owner:uid,notes:{permissions:options.sharing?['notes.hub.summary.read']:[],revision:options.sharing?OTHER:null},tms60:options.sharing?[{translation:'esv',permissions:['tms60.hub.summary.read'],revision:OTHER}]:[],library:options.sharing};
    else if(rpc==='read_thiepn_hub_notes')result=[{user_id:uid,note_id:OTHER,title:'Connected Notes title',deleted_at:null,trashed_at:null,archived_at:null}];
    else if(rpc==='read_thiepn_hub_library')result={owner:uid,items:[{title:'Connected Library book',percentage:50}]};
@@ -36,9 +38,12 @@ function backend(options={sharing:false,probeEligible:false}) {
   const page=await context.newPage();await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');return {page,context};
  }};
 }
-async function sync(page:Page){await page.locator('[data-action=cloud-retry]').first().click();await expect(page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');}
+async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
 async function task(page:Page,title:string){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();}
 test('two independent devices sync tasks, offline changes and app navigation without sharing another account',async({browser})=>{
+ // This journey opens three independent devices and performs several sync cycles.
+ // Preserve per-action/assertion deadlines; allow the complete journey to finish on WebKit.
+ test.setTimeout(60_000);
  const api=backend(),a=await api.device(browser);await sync(a.page);await task(a.page,'First device task');await sync(a.page);
  const b=await api.device(browser);await sync(b.page);await expect(b.page.locator('.ws-task-title')).toHaveText('First device task');
  await task(b.page,'Second device task');await sync(b.page);await sync(a.page);await expect(a.page.locator('.ws-task-title')).toHaveText(['First device task','Second device task']);
@@ -76,4 +81,27 @@ test('an account change from another tab saves pending capture to the old owner 
  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
  const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
  expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
+});
+
+// Exercises the real shared shell and summary readers, not a standalone status fixture.
+test('Connections preserves last success, distinguishes revoked access and exports only safe diagnostics',async({browser})=>{
+ const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
+ try {
+  await a.page.goto('https://thiepn.dev/home/connections/');
+  const notes=a.page.locator('[data-source-status=notes]'),detail=a.page.locator('[data-source-detail=notes]');
+  await expect(notes).toHaveText('Connected · fresh summary');await expect(detail).toContainText('Last successful read');
+  api.failures.set('read_thiepn_hub_notes',403);
+  await a.page.getByRole('button',{name:'Refresh connections',exact:true}).click();
+  await expect(notes).toHaveText('Sharing needs attention');await expect(detail).toContainText('Last successful read');await expect(detail).toContainText('permission-required');
+  await expect(a.page.locator('[data-source-status=library]')).toHaveText('Connected · fresh summary');
+  await expect(a.page.locator('[data-source-repair=notes] a')).toHaveAttribute('href','https://account.thiepn.dev/hub/connections');
+  const downloadPromise=a.page.waitForEvent('download');await a.page.getByRole('button',{name:'Export diagnostics',exact:true}).click();const download=await downloadPromise;
+  const report=JSON.parse(fs.readFileSync((await download.path())!,'utf8'));
+  expect(report.sources.find((row:any)=>row.source==='notes')).toMatchObject({status:'revoked',errorCode:'permission-required'});
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE|Connected Notes title|Connected Library book|fixture-refresh|note_id|accessToken/);
+  // Refreshing status must not replace the focused recovery control every second.
+  const repair=a.page.locator('[data-source-repair=notes] a');await repair.focus();await expect(repair).toBeFocused();await a.page.waitForTimeout(1100);await expect(repair).toBeFocused();
+  await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();
+  await expect(notes).toHaveText('Account not connected');await expect(detail).toHaveText('No successful read in this tab');
+ }finally{await a.context.close();}
 });

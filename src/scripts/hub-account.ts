@@ -1,3 +1,4 @@
+import {ConnectionFailure} from '../lib/providers/connection-state';
 import { createThiepnAccountSession, createThiepnBrowserSso, type ThiepnAccountSession } from '@thiepn/account-session';
 import configuration from '../data/hub-account.json';
 import { validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -24,23 +25,25 @@ function matchingToken(token: string, owner: string) {
   return value.sub === owner && value.client_id === configuration.clientId && value.iss === configuration.issuer + '/auth/v1' && value.aud === 'authenticated';
 }
 export async function hubRpc(owner: string, name: string, data: Record<string, unknown> = {}, signal?: AbortSignal): Promise<unknown> {
-  if (!accountSession || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new Error('Connect your THIEPN Account to sync.');
+  if (!accountSession || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new ConnectionFailure('session-required','Connect your THIEPN Account to sync.');
   const own = epoch;
   const token = await accountSession.getAccessToken();
-  if (own !== epoch || !token || !matchingToken(token, owner)) throw new Error('Account changed. Your device copy is preserved.');
+  if (own !== epoch || !token || !matchingToken(token, owner)) throw new ConnectionFailure('session-changed','Account changed. Your device copy is preserved.');
   const requestSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10000)]);
   const response = await fetch(configuration.issuer + '/rest/v1/rpc/' + name, {
     method: 'POST', credentials: 'omit', cache: 'no-store', redirect: 'error', referrerPolicy: 'no-referrer',
     headers: { apikey: configuration.publishableKey, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify(data), signal: requestSignal,
   });
-  if (own !== epoch || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new Error('Account changed.');
+  if (own !== epoch || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new ConnectionFailure('session-changed','Account changed.');
   if (!response.ok) {
-    if ([401,403].includes(response.status)) throw new Error('Account connection needs attention. Open Account to reconnect Hub and review permissions.');
-    throw new Error('Saved on this device · cloud sync unavailable. We will retry.');
+    if ([401,403].includes(response.status)) throw new ConnectionFailure(response.status===401?'session-required':'permission-required','Account connection needs attention. Open Account to reconnect Hub and review permissions.');
+    throw new ConnectionFailure(response.status===429?'rate-limited':'service-unavailable','Saved on this device · cloud sync unavailable. We will retry.');
   }
-  const value = JSON.parse(await readBoundedJson(response, 5100000, requestSignal));
-  if (own !== epoch || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new Error('Account changed.');
+  const raw = await readBoundedJson(response, 5100000, requestSignal);
+  let value:unknown;
+  try {value=JSON.parse(raw);}catch{throw new ConnectionFailure('invalid-response','Account returned an unreadable response.');}
+  if (own !== epoch || activeIdentity.status !== 'signed-in' || activeIdentity.id !== owner) throw new ConnectionFailure('session-changed','Account changed.');
   return value;
 }
 export function hubCloudTransport(owner: string): CloudTransport {
@@ -59,7 +62,7 @@ export interface HubConnections {
 }
 export async function hubConnections(owner: string, signal?: AbortSignal): Promise<HubConnections> {
   const value = await hubRpc(owner, 'get_thiepn_hub_connections', {}, signal) as HubConnections;
-  if (!value || value.owner !== owner || !Array.isArray(value.notes?.permissions) || !Array.isArray(value.tms60) || value.tms60.length > 7 || typeof value.library !== 'boolean') throw new Error('App connections could not be verified.');
+  if (!value || value.owner !== owner || !Array.isArray(value.notes?.permissions) || !Array.isArray(value.tms60) || value.tms60.length > 7 || typeof value.library !== 'boolean') throw new ConnectionFailure('invalid-response','App connections could not be verified.');
   return value;
 }
 export async function prepareAccountNavigation() {

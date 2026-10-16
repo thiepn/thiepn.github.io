@@ -1,7 +1,5 @@
 ---
 import ConnectionCenter from '../../../components/workspace/ConnectionCenter.astro';
-import DailyHome from '../../../components/hub/DailyHome.astro';
-import { getHubProjects } from '../../../lib/hub';
 import WorkspaceShell from '../../../components/workspace/WorkspaceShell.astro';
 import PrivateTms from '../../../components/hub/PrivateTms.astro';
 import PrivateNotes from '../../../components/hub/PrivateNotes.astro';
@@ -10,7 +8,6 @@ import IntegratedWorkflows from '../../../components/hub/IntegratedWorkflows.ast
 import ContinuationDesk from '../../../components/workspace/ContinuationDesk.astro';
 import '../../../styles/hub.css';
 import '../../../styles/continuation.css';
-const entries=await getHubProjects();
 ---
 <WorkspaceShell view="connections">
   <div class="portal-home page-shell">

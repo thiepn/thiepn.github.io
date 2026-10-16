@@ -23,13 +23,12 @@
       "detail": "Required Account jobs cannot start because of reported payment/spending limits."
     },
     {
-      "id": "library-paired-visibility",
+      "id": "final-head-browser-ci",
       "affects": [
         "IP00",
-        "IP04",
         "IP18"
       ],
-      "detail": "Hub PR 154 staged-paired Library suite expects data-private-library visible but receives hidden; reproduce and resolve contract/product/fixture mismatch without weakening privacy checks."
+      "detail": "Previous-head Library paired CI passed all engines; Quality had one overall WebKit journey timeout and pilot fixture raced initial account discovery. Qualify the corrected latest head."
     }
   ],
   "packages": [
@@ -54,7 +53,7 @@
         ".github/workflows/hub-library-browser.yml"
       ],
       "completionGate": "Exact heads and contract fixtures recorded; paired Library visibility failure reproduced and corrected without weakening privacy assertions.",
-      "implementationNote": "Account/planning stack reconciled onto current main. Exact pinned Library owner: 35/36 Chromium/Firefox checks passed; isolated Firefox timeout passed on targeted rerun. WebKit needs unavailable system libraries; full CI certification remains required."
+      "implementationNote": "Account/planning stack reconciled onto current main. Hosted exact-owner Library paired CI now passes all engines at cb243cc. Quality and reading-pilot fixture corrections require latest-head CI."
     },
     {
       "id": "IP01",
@@ -240,7 +239,7 @@
         "src/scripts/workspace-connections.ts"
       ],
       "completionGate": "All app capabilities, freshness and repair actions are truthful; diagnostics exclude secrets and private content; recovery controls work on mobile.",
-      "implementationNote": "31-app support table, three source status readers and redacted diagnostic export implemented. Last-success tracking, typed repair/error codes and complete lifecycle coverage remain."
+      "implementationNote": "Last-success/expiry, typed allowlisted error codes, account/sharing/retry actions and privacy-safe diagnostic export implemented for three established summary readers. Recovery/diagnostic browser checks pass Chromium/Firefox; remaining lifecycle and mobile acceptance still required."
     },
     {
       "id": "IP08",
@@ -271,7 +270,7 @@
         "docs/workspace/app-capabilities.json"
       ],
       "completionGate": "Every app has an owner/capability/evidence decision; bounded provider results pass ownership, revocation, expiry, cancellation and partial-failure tests.",
-      "implementationNote": "Canonical destinations and three established summary readers integrated. One consolidated runtime and the new native app adapters remain."
+      "implementationNote": "Existing account summary reads now have concurrency 3, per-read 2-second deadlines, cancellation and aggregate partial-source outcomes. Canonical destinations and three established readers are integrated. Consolidation with the gated envelope runner and new native app adapters remain."
     },
     {
       "id": "IP09",

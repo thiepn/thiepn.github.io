@@ -289,3 +289,7 @@
 .ws .portal-button{border-radius:10px;border-color:var(--ws-line);background:var(--ws-surface);color:var(--ws-ink);}
 
 .ws textarea[data-compact-capture]{min-height:64px;height:64px;}
+
+.ws-source-detail{display:block;color:var(--ws-muted);margin-top:5px;max-width:30ch;}
+
+.ws-connection-table td:last-child>a,.ws-connection-table [data-source-repair]>.ws-text-button{display:inline-flex;align-items:center;min-height:44px;}

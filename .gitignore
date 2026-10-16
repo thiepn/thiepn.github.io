@@ -36,3 +36,6 @@ test-results-final-targeted/
 test-results-utility/
 test-results-utility-recheck/
 test-results-polish/
+test-results-ci-regression/
+test-results-connection-health/
+test-results-reading-pilot/
