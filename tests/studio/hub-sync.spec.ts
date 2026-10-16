@@ -14,7 +14,7 @@ function backend(options={sharing:false,probeEligible:false}) {
   await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
   await context.route('https://account.thiepn.dev/**',async route=>{await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
   await context.route('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard',async route=>{
-   const request=route.request();expect(request.method()).toBe('GET');const bearer=request.headers().authorization;expect(bearer).toMatch(/^Bearer fixture\./);const token=JSON.parse(Buffer.from(bearer.split('.')[1]!,'base64url').toString());expect(token.client_id).toBe(configuration.clientId);expect([OWNER,OTHER]).toContain(token.sub);
+   const request=route.request();expect(request.method()).toBe('GET');const bearer=request.headers().authorization??'';expect(bearer).toMatch(/^Bearer fixture\./);const token=JSON.parse(Buffer.from(bearer.split('.')[1]!,'base64url').toString());expect(token.client_id).toBe(configuration.clientId);expect([OWNER,OTHER]).toContain(token.sub);
    await route.fulfill({json:{ok:true,data:{schema:'thiepn-language-dashboard',schemaVersion:1,contractVersion:'p9-dashboard-v1',generatedAt:new Date().toISOString(),enrollments:[],snapshots:[]}}});
   });
   await context.route(configuration.issuer+'/**',async route=>{
