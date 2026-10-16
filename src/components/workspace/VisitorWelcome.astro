@@ -1,0 +1,18 @@
+---
+interface Props { hidden?: boolean }
+const { hidden = false } = Astro.props;
+---
+<section class="ws-visitor-welcome" data-visitor-welcome hidden={hidden} aria-labelledby="ws-welcome-title">
+  <div class="ws-visitor-intro">
+    <p class="ws-visitor-eyebrow">Welcome to THIEPN Hub</p>
+    <h2 id="ws-welcome-title">Useful apps. A space to make your own.</h2>
+    <p>Explore tools for writing, reading, learning and everyday life. Keep your tasks, plans, trackers and favorite app shortcuts together here.</p>
+    <div class="ws-visitor-actions"><a class="ws-primary" href="/apps/">Explore apps</a><button class="ws-button" type="button" data-action="welcome-start">Use this workspace</button></div>
+    <p class="ws-visitor-storage"><strong>No account needed.</strong> Hub saves your workspace in this browser. Connect THIEPN Account whenever you want cloud backup and sync across devices.</p>
+  </div>
+  <nav class="ws-visitor-features" aria-label="Start using Hub">
+    <a href="/home/tasks/"><span class="ws-visitor-number" aria-hidden="true">01</span><span><strong>Make room for what matters</strong><small>Capture tasks and choose your next step.</small></span><span aria-hidden="true">→</span></a>
+    <a href="/home/calendar/"><span class="ws-visitor-number" aria-hidden="true">02</span><span><strong>See your plans together</strong><small>Add events to your browser calendar.</small></span><span aria-hidden="true">→</span></a>
+    <a href="/home/trackers/"><span class="ws-visitor-number" aria-hidden="true">03</span><span><strong>Keep track of your progress</strong><small>Build a tracker for a habit or goal.</small></span><span aria-hidden="true">→</span></a>
+  </nav>
+</section>
