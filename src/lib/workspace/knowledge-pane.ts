@@ -21,7 +21,7 @@ export function renderKnowledge(notes:readonly Note[],tasks:readonly Task[],view
   const nativeTasks=selected?keepTasksFromHubNote(selected):[];
   const taskRows=nativeTasks.map(t=>'<li><span>'+esc(t.text)+' '+(t.dueDate?' · due '+esc(t.dueDate):'')+'</span>'+
     act('knowledge-toggle-task',t.completed?'Mark incomplete':'Complete',t.id)+'</li>').join('');
-  const ownerRefs=selected?[...new Set((selected.body.match(/thiepn:\/\/[^\\s<>\\])}]+/gu)??[]))]
+  const ownerRefs=selected?[...new Set((selected.body.match(/thiepn:\/\/[a-z-]+\/[a-z-]+\/[a-z-]+\/[A-Za-z0-9%._~-]+\?v=1/gu)??[]))]
     .map(raw=>parseOwnerRef(raw.replace(/[.,;]+$/u,''))).filter((ref):ref is NonNullable<typeof ref>=>!!ref):[];
   const ownerRows=ownerRefs.map(ref=>'<li><strong>'+esc(SOURCE_ADAPTERS[ref.source].label)+'</strong><span>'+esc(ref.kind)+' · External owner reference, not connected</span></li>').join('');
   const list=desk.matches.map(n=>'<button type="button" class="ws-knowledge-item" data-action="knowledge-open" data-id="'+esc(n.id)+'" aria-current="'+String(n.id===selected?.id&&!view.create)+'"><strong>'+esc(n.title)+'</strong><small>'+esc(n.body.slice(0,100).replace(/\s+/gu,' '))+'</small></button>').join('');
