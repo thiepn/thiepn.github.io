@@ -771,7 +771,7 @@ async function setup(root: HTMLElement) {
         const ticket=++keepConnectTicket,ownerEpoch=epoch;
         keepDevice=null;render();
         const result=await readKeepDevice();
-        if(ticket!==keepConnectTicket||ownerEpoch!==epoch||view!=='knowledge'||privacyHeld||state?.preferences.hidden)return;
+        if(ticket!==keepConnectTicket||ownerEpoch!==epoch||view!=='knowledge'||keepKnowledgeMode!=='keep'||privacyHeld||state?.preferences.hidden)return;
         keepDevice=result;keepDeviceSelected=null;keepDeviceDraft=null;render();
     }
     async function saveKeepOwner(form:HTMLFormElement){
@@ -990,6 +990,7 @@ async function setup(root: HTMLElement) {
         const next = routes[url.pathname];
         if (!next) return;
         if(view==='knowledge'&&next!=='knowledge'&&!discardKnowledgeDraft()){if(pop)history.replaceState(null,'',committedUrl);return;}
+        if(view==='knowledge'&&next!=='knowledge')revokeKeepOwnerSession();
         const ticket = ++navigationTicket;
         const own = epoch;
         const previous = pop ? committedUrl : location.pathname + location.search;
@@ -1969,6 +1970,7 @@ async function setup(root: HTMLElement) {
                 if(id!==keepKnowledgeMode){
                     if(!discardKnowledgeDraft())return;
                     keepKnowledgeMode=id==='keep'?'keep':'hub';
+                    if(keepKnowledgeMode==='hub')revokeKeepOwnerSession();
                     render();
                 }
                 return;
