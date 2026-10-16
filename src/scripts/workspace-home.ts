@@ -305,7 +305,7 @@ async function setup(root: HTMLElement) {
             return `<div class="ws-content-toolbar">${button('today', 'Today')}${button('new-event', '+ Add event')}${button('new-task', '+ Add task')}</div><section class="ws-surface">${calendarHTML()}</section><section class="ws-surface"><header><h2>${esc(dateLabel(selected, true))}</h2></header>${agendaHTML()}${taskRows(state!.tasks.filter(t => t.due === selected))}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No logs yet. Add your first entry.</p>'}</section>`).join('') || empty('Track what matters to you', 'Use counts, durations or checklists. Your logs are shared across every workspace.', 'new-tracker', 'Create a tracker')}`;
-        return view === 'home'
+        return view === 'home' && !editing
             ? '<div data-native-overview>' + renderIntegratedHome(state!, languageStatus, languageCards, languageCheckedAt, apps) + '</div>' + renderGrid()
             : renderGrid();
     }
@@ -820,10 +820,20 @@ async function setup(root: HTMLElement) {
                 void mutate(s => s.preferences.rail = !s.preferences.rail, '', false);
                 break;
             case 'new-task':
+            case 'brief-new-task':
                 editTask();
                 break;
             case 'edit-task':
                 editTask(id);
+                break;
+            case 'brief-complete-task':
+                void mutate(s => {
+                    const task = s.tasks.find(t => t.id === id);
+                    if (task && !task.completedAt) {
+                        task.completedAt = stamp();
+                        activity(s, 'Completed task: ' + task.title, 'task');
+                    }
+                }, 'Task completed');
                 break;
             case 'delete-task': {
                 const t = state.tasks.find(t => t.id === id);
@@ -832,6 +842,7 @@ async function setup(root: HTMLElement) {
                 break;
             }
             case 'new-event':
+            case 'brief-new-event':
                 editEvent();
                 break;
             case 'edit-event':
@@ -844,6 +855,7 @@ async function setup(root: HTMLElement) {
                 break;
             }
             case 'capture':
+            case 'brief-capture':
                 editNote();
                 break;
             case 'edit-note':

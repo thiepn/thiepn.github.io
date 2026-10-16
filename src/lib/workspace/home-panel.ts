@@ -18,10 +18,9 @@ export function renderIntegratedHome(
   const zone = state.preferences.timezone;
   const localSource = '<span class="ws-source">Hub · this browser</span>';
   const tasks = day.tasks.slice(0, 4).map(task =>
-    '<div class="ws-brief-item"><input type="checkbox" data-task-toggle="' + esc(task.id) +
-    '" aria-label="Complete ' + esc(task.title) + '"' + (task.completedAt ? ' checked' : '') +
-    '/><button type="button" data-action="edit-task" data-id="' + esc(task.id) + '">' + esc(task.title) +
-    '</button><small>' + (task.due < day.date ? 'Overdue' : task.time ? esc(task.time) : '') + '</small></div>'
+    '<div class="ws-brief-item"><button type="button" data-action="edit-task" data-id="' + esc(task.id) + '">' + esc(task.title) +
+    '</button><small>' + (task.due < day.date ? 'Overdue' : task.time ? esc(task.time) : '') + '</small>' +
+    (task.completedAt ? '<small>Done</small>' : '<button type="button" class="ws-brief-done" data-action="brief-complete-task" data-id="' + esc(task.id) + '" aria-label="Complete ' + esc(task.title) + '">Done</button>') + '</div>'
   ).join('');
   const agenda = day.agenda.slice(0, 4).map(event =>
     '<div class="ws-brief-item"><span class="ws-brief-time">' +
@@ -70,14 +69,14 @@ export function renderIntegratedHome(
     (day.overdue ? ' · ' + day.overdue + ' overdue' : '') + '</p>' +
     (tasks || '<p class="ws-muted">No tasks due or overdue in this workspace.</p>') +
     (day.unscheduled ? '<small class="ws-muted">' + day.unscheduled + ' unscheduled local tasks</small>' : '') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="new-task">Add task</button><a href="/home/tasks/">All local tasks</a></div></section>' +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-task">Add task</button><a href="/home/tasks/">All local tasks</a></div></section>' +
     '<section class="ws-brief-card"><header><h3>Agenda</h3>' + localSource + '</header>' +
     (agenda || '<p class="ws-muted">No local events today.</p>') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="new-event">Add event</button><a href="/home/calendar/">Local calendar</a></div>' +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-event">Add event</button><a href="/home/calendar/">Local calendar</a></div>' +
     '<p class="ws-muted ws-brief-boundary">Google Calendar and university calendars are not connected here.</p></section>' +
     '<section class="ws-brief-card"><header><h3>Latest notes</h3>' + localSource + '</header>' +
     (notes || '<p class="ws-muted">No Hub-local notes yet.</p>') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="capture">Capture note</button></div>' +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button></div>' +
     '<p class="ws-muted ws-brief-boundary">Folio and Notes cloud content are not merged into this list.</p></section>' +
     '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
     '<span class="ws-source">Core · published P8 read models</span></header>' +

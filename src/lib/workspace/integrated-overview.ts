@@ -1,4 +1,4 @@
-import { dayKey } from './model';
+import { dayKey, addDays, trackerTotal } from './model';
 import type { WorkspaceState, Task, CalendarEvent, Note } from './types';
 
 /** Read-only projection of records OWNED by the Hub's local workspace. Never import Folio
@@ -11,6 +11,8 @@ export interface IntegratedLocalDay {
   readonly unscheduled: number;
   readonly agenda: readonly CalendarEvent[];
   readonly recentNotes: readonly Note[];
+  readonly upcoming: readonly CalendarEvent[];
+  readonly trackerProgress: readonly { id: string; title: string; total: number; goal: number; unit: string; cadence: 'daily' | 'weekly' }[];
 }
 export function integratedLocalDay(state: WorkspaceState, now = new Date()): IntegratedLocalDay {
   const zone = state.preferences.timezone;
@@ -26,10 +28,20 @@ export function integratedLocalDay(state: WorkspaceState, now = new Date()): Int
     return dayKey(zone, start) <= date && dayKey(zone, end) >= date;
   }).sort((a, b) => Number(!a.allDay) - Number(!b.allDay) || a.start.localeCompare(b.start));
   const recentNotes = [...state.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4);
+  const lastDay = addDays(date, 7);
+  const upcoming = state.events.filter(event => {
+    const first = event.allDay ? event.date : dayKey(zone, new Date(event.start));
+    const last = event.allDay ? event.endDate : dayKey(zone, new Date(Date.parse(event.end) - 1));
+    return first <= lastDay && last > date;
+  }).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 5);
+  const trackerProgress = state.trackers.slice(0, 6).map(tracker => ({
+    id: tracker.id, title: tracker.title, total: trackerTotal(state, tracker.id, date),
+    goal: tracker.goal, unit: tracker.unit, cadence: tracker.cadence,
+  }));
   return {
     date, tasks: candidates, remaining: candidates.filter(task => !task.completedAt).length,
     overdue: active.filter(task => task.due !== '' && task.due < date).length,
     unscheduled: active.filter(task => task.due === '').length,
-    agenda, recentNotes,
+    agenda, recentNotes, upcoming, trackerProgress,
   };
 }
