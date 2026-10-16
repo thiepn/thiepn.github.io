@@ -1,6 +1,6 @@
 import type { Note, Task } from './types';
 
-// KEEP B3-style stable-ID links over the ORIGINAL Hub note/task records.
+// KEEP B3 src/utils/linking.ts semantics (alias/heading-aware targets) over ORIGINAL Hub records.
 // No extra database, derived task or external provider access.
 export interface KnowledgeLink {
   raw: string;
@@ -29,7 +29,7 @@ export function wikiTargets(body: string): string[] {
     }
     if (fence) continue;
     for (const match of line.replace(/`[^`\r\n]*`/gu, '').matchAll(LINK)) {
-      const target = match[1]?.split('|')[0]?.trim();
+      const target = match[1]?.split('|')[0]?.split('#')[0]?.trim();
       if (target) result.push(target);
     }
   }
