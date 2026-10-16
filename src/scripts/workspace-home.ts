@@ -1157,6 +1157,86 @@ async function setup(root: HTMLElement) {
             el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
         }
     }
+    function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');
+        if(!panel || !state || origin!==epoch)return;
+        const date=dialog.querySelector<HTMLInputElement>('[name=spreadStart]')?.value??'';
+        const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
+        try {
+            if(date<today())throw new Error('Choose today or a future starting date.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw));
+            panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
+              <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
+                ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
+              <p>Existing Hub workload counts for these days:</p>
+              <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
+              ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}</li>`).join('')}</ul>
+              <p>Distribution balances record counts, not task duration or calendar availability.
+              It does not create appointments or change imported/owner-app data.</p>`;
+        } catch(error) {
+            panel.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the distribution fields.')}</p>`;
+        }
+    }
+    function reviewDistributedWeek() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)return;
+        if(!storageReady || dirty || conflict || !store) {
+            toast('Resolve storage or saved-state conflicts before spreading task due dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks to distribute.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
+        const own=epoch,source=store;
+        activeSpreadReview={snapshots,epoch:own};
+        const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
+          <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
+          <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
+            and dates with fewer existing Hub deadlines/events are considered first.</p>
+          ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
+          ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed every proposed due date and authorize changes to these Hub tasks only,
+            without scheduling event blocks or updating Folio, Notes, or external calendars.</label>
+          <p class="ws-muted">Original IDs, titles, priorities and completion states survive; clock times on moved tasks are cleared.
+            All changes use one existing owner-scoped workspace mutation and its undo/conflict protection.</p>
+        </div>`;
+        openForm('Review multi-day task distribution',formHtml,async data=>{
+            if(epoch!==own || store!==source || !state || !storageReady || locked ||
+              privacyHeld || state.preferences.hidden || dirty || conflict)
+                throw new Error('Identity or storage changed. Reopen this planning review.');
+            if(!data.has('confirm'))throw new Error('Confirm all proposed Hub task due-date changes.');
+            const requestedStart=String(data.get('spreadStart')??'');
+            if(!validDate(requestedStart) || requestedStart<today())
+                throw new Error('Select a current or future distribution date.');
+            const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon);
+            await mutate(next=>{
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon);
+                activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
+            },'Reviewed multi-day task plan updated');
+            if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
+            if(preview.changes.some(change=>{
+                const record=state!.tasks.find(task=>task.id===change.id);
+                return !record || record.due!==change.after || !!record.time;
+            }))throw new Error('The due-date distribution was not applied. Reopen planning.');
+            if(dirty || conflict)throw new Error('The plan remains unsaved in this tab. Export or retry before resubmitting.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=requestedStart;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed distribution');
+        paintDistributedPreview(snapshots,own);
+    }
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
             return;
@@ -2165,6 +2245,9 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-spread':
+                reviewDistributedWeek();
+                break;
             case 'week-scroll-review':
                 if(view==='calendar' && agendaMode==='week') {
                     root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
@@ -2590,6 +2673,11 @@ async function setup(root: HTMLElement) {
             } else weekSelection.delete(id);
             render();
             root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
+            return;
+        }
+        if (el.closest('[data-week-spread-review]')) {
+            const review=activeSpreadReview;
+            if(review && review.epoch===epoch)paintDistributedPreview(review.snapshots,review.epoch);
             return;
         }
         if (el.closest('[data-week-review-form]')) {
