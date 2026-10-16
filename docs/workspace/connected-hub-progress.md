@@ -12,6 +12,7 @@ This branch integrates the account-sync branch and the H9–H20 feature stack on
 - Track each established summary source’s last successful read, expiry and allowlisted failure code, with account/sharing/retry recovery controls. Limit summary concurrency to three and each read to two seconds; aggregate translation failures as partial results. Keep diagnostic exports free of private titles, resource IDs, response bodies and credentials.
 - Add a connection support table for every launch destination, live status for the three established summary readers and a diagnostic export containing only public software provenance and source status. Consented Notes summaries can resume an exact note through its existing native launch-intent contract. Library exact reader resume retains its device bridge contract.
 - Add workspace recovery issues to Attention Inbox and describe the actual reminder limits. Background notifications and native attention feeds are not silently enabled.
+- Protect manually logged tracker measurements: keep type/unit fixed once history exists, allow goal/period changes without rewriting entries, update corrections by stable ID and reject duplicate/stale edits. Validate date limits against the workspace timezone. Native metrics and historical goal versions remain outstanding.
 - Apply commands to a detached candidate document and validate before adopting it, preventing partially applied edits on failure. Extract shortcut commands/selectors while keeping the existing store writer, durable sync journal, owner isolation and conflict recovery.
 
 ## Important outstanding program work
@@ -20,17 +21,19 @@ This branch integrates the account-sync branch and the H9–H20 feature stack on
 - IP04–05: qualify Account PR 83, native app session adoption, real account/device journeys, retention/deletion and lifecycle contracts. Account required CI was last blocked before jobs could start by GitHub payment/spending limits; source changes cannot repair account billing.
 - IP06–09: finish utility-route controller consolidation, one provider runtime, the complete resource/activity contracts. Diet, Recipe, Bikes and Languages currently have launch support; their native data adapters are not implemented by adding launch cards.
 - IP10–12: qualify native capture commands, durable scheduling relations, recurring native events/exceptions, and authorized external calendar APIs. ICS preview is explicitly temporary and read-only.
-- IP13–17: complete the remaining layout/mobile acceptance journeys, source-aware tracker/habit projections, authorized federated search, native attention persistence/actions and notification policy/delivery.
+- IP13–17: complete the remaining layout/mobile acceptance journeys, historical tracker goals and source-aware tracker/habit projections, authorized federated search, native attention persistence/actions and notification policy/delivery.
 - IP18: final exact-head CI in all required engines, real-owner evidence, deployment and production smoke. A local test is not production certification.
 
 The machine-readable package backlog retains these distinctions. Do not mark the program complete from the presence of the draft feature source.
 
 ## Verification checkpoint, 16 October 2026
 
-309 unit tests pass in 40 files. The latest connection-health production build and typecheck pass. All 16 account/sync browser tests pass in Chromium and Firefox, including recovery and diagnostic export. All 28 reading-pilot tests pass across Chromium desktop, Firefox desktop and Android preview against the immutable owner build. All 12 Connections handoff/accessibility checks pass across Chromium/Firefox, 320/1440px and light/dark after increasing adjacent action targets to 44px. The refreshed build, generated outputs, release qualification and performance budgets pass.
+318 unit tests pass in 41 files. The latest connection-health production build and typecheck pass. All 16 account/sync browser tests pass in Chromium and Firefox, including recovery and diagnostic export. All 28 reading-pilot tests pass across Chromium desktop, Firefox desktop and Android preview against the immutable owner build. All 12 Connections handoff/accessibility checks pass across Chromium/Firefox, 320/1440px and light/dark after increasing adjacent action targets to 44px. The refreshed build, generated outputs, release qualification and performance budgets pass.
 
 Hosted Quality at `cb243cc` passed 652 tests, skipped four, and failed one across Chromium, Firefox and WebKit. The failure exhausted the overall 30-second allowance on a three-device WebKit sync journey; its complete-journey limit is now 60 seconds, preserving per-action and read deadlines. Earlier local Byte preview failures did not recur in hosted CI.
 
 The immutable-owner Library paired suite passed in all required hosted engines at that head. The separate reading-pilot suite failed because its fixture opened Account before identity discovery finished, which closed the dialog. The corrected fixture waits for initialization and represents a guest who explicitly signed out; automatic SSO retains separate coverage. Consent, no-cloud-read, expiry, rollback, visibility and exact-resume assertions remain intact. The pilot uses immutable Library owner `7705802`; the staged Library suite uses `b84930b`.
 
 WebKit cannot launch locally because required system libraries are unavailable. Hosted CI must qualify the final head. Real-owner OAuth/device evidence, Account qualification and production smoke remain outstanding; this candidate is not live.
+
+Tracker qualification adds nine command-level checks for measurement integrity, stale edits, duplicate IDs, checklist values and timezone boundaries. Shared shell/account path changes now trigger the reading-pilot browser workflow.

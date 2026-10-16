@@ -1,3 +1,4 @@
+import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
 import {selectedShortcuts} from '../lib/workspace/selectors';
 import {clearSourceStates} from '../lib/providers/connection-state';
@@ -33,7 +34,7 @@ import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, ty
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const button = (action: string, label: string, id = '', className = 'ws-button') => `<button type="button" class="${className}" data-action="${action}"${id ? ` data-id="${esc(id)}"` : ''}>${label}</button>`;
 const field = (label: string, name: string, value = '', type = 'text', extra = '') => `<label class="ws-field">${label}<input aria-label="${esc(label)}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/></label>`;
-const select = (label: string, name: string, options: string[][], value: string) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}">${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
+const select = (label: string, name: string, options: string[][], value: string, disabled = false) => `<label class="ws-field">${label}<select aria-label="${esc(label)}" name="${name}" ${disabled?'disabled':''}>${options.map(([id, title]) => `<option value="${esc(id)}" ${id === value ? 'selected' : ''}>${esc(title)}</option>`).join('')}</select></label>`;
 const area = (label: string, name: string, value: string, max = 10000) => `<label class="ws-field">${label}<textarea aria-label="${esc(label)}" name="${name}" maxlength="${max}">${esc(value)}</textarea></label>`;
 const safeNavigationDay = (value:string|null):value is string => {
     if(!value || !/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
@@ -1181,16 +1182,13 @@ async function setup(root: HTMLElement) {
     }
     function editTracker(id = '') {
         const t = state!.trackers.find(t => t.id === id);
-        openForm(t ? 'Edit tracker' : 'Create a tracker', field('Name', 'title', t?.title ?? '', 'text', 'required maxlength="80"') + select('Track', 'kind', [['count', 'Count'], ['duration', 'Duration'], ['checklist', 'Checklist']], t?.kind ?? 'count') + field('Unit', 'unit', t?.unit ?? 'sessions', 'text', 'required maxlength="40"') + field('Goal', 'goal', String(t?.goal ?? 5), 'number', 'required min="0.01" max="100000" step="any"') + select('Period', 'cadence', [['daily', 'Daily'], ['weekly', 'Weekly']], t?.cadence ?? 'weekly') + (t ? button('delete-tracker', 'Delete tracker and its logs', t.id) : ''), async (data) => {
-            const tracker: Tracker = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), kind: data.get('kind') as Tracker['kind'], unit: String(data.get('unit')).trim(), goal: Number(data.get('goal')), cadence: data.get('cadence') as Tracker['cadence'] };
-            if (!tracker.title)
-                throw new Error('Enter a name.');
+        const hasHistory=!!t&&state!.logs.some(log=>log.trackerId===t.id);
+        const measurementHelp=hasHistory?'<p class="ws-muted">Type and unit stay fixed to preserve your recorded measurements. Create a new tracker for a different unit. Goal and period changes apply to the current progress view; your entries stay unchanged.</p>':'';
+        openForm(t ? 'Edit tracker' : 'Create a tracker', field('Name', 'title', t?.title ?? '', 'text', 'required maxlength="80"') + select('Track', 'kind', [['count', 'Count'], ['duration', 'Duration'], ['checklist', 'Checklist']], t?.kind ?? 'count',hasHistory) + field('Unit', 'unit', t?.unit ?? 'sessions', 'text', `required maxlength="40" ${hasHistory?'readonly':''}`) + measurementHelp + field('Goal', 'goal', String(t?.goal ?? 5), 'number', 'required min="0.01" max="100000" step="any"') + select('Period', 'cadence', [['daily', 'Daily'], ['weekly', 'Weekly']], t?.cadence ?? 'weekly') + (t ? button('delete-tracker', 'Delete tracker and its logs', t.id) : ''), async (data) => {
+            const tracker: Tracker = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), kind: (data.get('kind') ?? t?.kind) as Tracker['kind'], unit: String(data.get('unit')).trim(), goal: Number(data.get('goal')), cadence: data.get('cadence') as Tracker['cadence'] };
+            validateTrackerChange(state!,tracker,t?'update':'create');
             await mutate(s => {
-                const ix = s.trackers.findIndex(x => x.id === tracker.id);
-                if (ix >= 0)
-                    s.trackers[ix] = tracker;
-                else
-                    s.trackers.push(tracker);
+                saveTracker(s,tracker,t?'update':'create');
                 activity(s, `${t ? 'Updated' : 'Created'} tracker: ${tracker.title}`, 'tracker');
             }, 'Tracker saved');
         });
@@ -1202,16 +1200,11 @@ async function setup(root: HTMLElement) {
             return;
         openForm(`${log ? 'Edit' : 'Log'} ${t.title}`, field('Date', 'date', log?.date ?? today(), 'date', `required max="${today()}"`) + field(t.kind === 'duration' ? `Duration (${esc(t.unit)})` : `Amount (${esc(t.unit)})`, 'value', String(log?.value ?? 1), 'number', 'required min="0" max="100000" step="any"') + field('Note (optional)', 'note', log?.note ?? '', 'text', 'maxlength="500"'), async (data) => {
             const value = Number(data.get('value')), date = String(data.get('date'));
-            if (t.kind === 'checklist' && value !== 0 && value !== 1)
-                throw new Error('Checklist entries are 0 or 1.');
+            const record = { id: log?.id ?? uid(), trackerId: id, date, value, note: String(data.get('note')) };
+            validateTrackerLog(state!,record,log?'update':'create',today());
             await mutate(s => {
-                const record = { id: log?.id ?? uid(), trackerId: id, date, value, note: String(data.get('note')) };
-                const ix = s.logs.findIndex(l => l.id === record.id);
-                if (ix >= 0)
-                    s.logs[ix] = record;
-                else
-                    s.logs.push(record);
-                activity(s, `Logged ${value} ${t.unit}: ${t.title}`, 'tracker');
+                saveTrackerLog(s,record,log?'update':'create',today());
+                activity(s, `${log?'Corrected':'Logged'} ${value} ${t.unit}: ${t.title}`, 'tracker');
             }, 'Tracker log saved');
         });
     }
@@ -1839,7 +1832,7 @@ async function setup(root: HTMLElement) {
             case 'delete-tracker': {
                 const t = state.trackers.find(t => t.id === id);
                 if (t)
-                    confirmRemoval('Delete tracker and logs?', `${t.title} and its recorded history will be removed.`, s => { s.trackers = s.trackers.filter(t => t.id !== id); s.logs = s.logs.filter(l => l.trackerId !== id); });
+                    confirmRemoval('Delete tracker and logs?', `${t.title} and its recorded history will be removed.`, s => removeTracker(s,id));
                 break;
             }
             case 'log-tracker':

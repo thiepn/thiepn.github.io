@@ -134,7 +134,7 @@
         "supabase/migrations/<cli-generated-workspace-v2-migration>.sql"
       ],
       "completionGate": "Single writer preserved; v1 data, fields and IDs survive transactional migration; incompatible older writers stop safely; realistic document budgets checked.",
-      "implementationNote": "Detached candidate validation protects the writer; shortcut commands/selectors extracted. Version negotiation, migration and the remaining controller extraction are outstanding."
+      "implementationNote": "Detached candidate validation protects the writer; shortcut and tracker commands extracted. Version negotiation, migration and the remaining controller extraction are outstanding."
     },
     {
       "id": "IP04",
@@ -412,7 +412,7 @@
     {
       "id": "IP14",
       "title": "Tracking, habits and source-backed progress",
-      "status": "planned",
+      "status": "in_progress",
       "dependsOn": [
         "IP03",
         "IP05",
@@ -431,7 +431,8 @@
         "src/lib/providers/measurements.ts",
         "src/pages/home/trackers/index.astro"
       ],
-      "completionGate": "Habits, goal changes and imported/manual measurements preserve units, day boundaries and corrections without duplicated events."
+      "completionGate": "Habits, goal changes and imported/manual measurements preserve units, day boundaries and corrections without duplicated events.",
+      "implementationNote": "Manual tracker commands now preserve measurement kind/unit once logs exist, allow goal/period changes without rewriting entries, replace corrections by stable ID, reject duplicate creates/stale edits and enforce the workspace day boundary. No document migration or native metric adapters added; historical goals and source-backed projections remain outstanding."
     },
     {
       "id": "IP15",

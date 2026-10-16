@@ -37,7 +37,7 @@
   },
   "verification": {
     "status": "review-candidate-with-explicit-release-blockers",
-    "unit": "309 tests passed in 40 files, including connection health, deadlines, cancellation and partial results.",
+    "unit": "318 tests passed in 41 files, including connection health, cancellation, partial results and tracker measurement history.",
     "workspace": "89/90 passed in the full run; the guide-scoped file-input assertion was corrected and passed in the 10-test targeted rerun. Latest capture/editor/core regression run: 17/17 passed.",
     "libraryPinned": "Hosted staged-paired CI passed at cb243cc against immutable owner b84930b in Chromium, Firefox and WebKit. Latest-head qualification remains required.",
     "typecheck": "0 errors, 0 warnings; existing hints only",
@@ -59,7 +59,8 @@
       "pilotRun": "https://github.com/thiepn/thiepn.github.io/actions/runs/38814114830"
     },
     "connectionHealth": "16/16 account/sync tests passed in Chromium/Firefox, including safe diagnostics, revoked sharing, focus preservation and sign-out clearing. 12/12 Connections handoff/accessibility tests passed across 320/1440px light/dark, Chromium/Firefox after increasing action targets to 44px.",
-    "readingPilot": "28/28 passed locally against immutable owner 7705802: Chromium desktop, Firefox desktop and Android preview. WebKit and iPad require hosted CI."
+    "readingPilot": "28/28 passed locally against immutable owner 7705802: Chromium desktop, Firefox desktop and Android preview. WebKit and iPad require hosted CI.",
+    "trackerHistory": "Nine command checks and 4/4 Chromium/Firefox browser checks passed, including rejected unit changes, goal updates, stable-ID corrections and reload persistence."
   },
   "releaseBlockers": [
     {
