@@ -91,6 +91,9 @@ for(const width of [1440,390]){
   await page.locator('[data-keep-owner-form] [name=title]').fill('Renamed research');
   await page.locator('[data-keep-owner-form] [type=submit]').click();
   await expect(page.locator('[data-keep-owner]')).toContainText('Renamed research');
+  await expect(page.locator('[data-action=knowledge-keep-undo]')).toBeVisible();
+  await page.locator('[data-action=knowledge-keep-undo]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('University research');
   const source=await page.evaluate(async()=>{
     return await new Promise<any>((resolve,reject)=>{
       const req=indexedDB.open('KeepNotesDB');req.onerror=()=>reject(req.error);
@@ -104,7 +107,7 @@ for(const width of [1440,390]){
   await page.reload();
   await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
   await page.locator('[data-action=knowledge-keep-connect]').click();
-  await expect(page.locator('[data-keep-owner]')).toContainText('Renamed research');
+  await expect(page.locator('[data-keep-owner]')).toContainText('University research');
   expect(errors).toEqual([]);
  });
 }
