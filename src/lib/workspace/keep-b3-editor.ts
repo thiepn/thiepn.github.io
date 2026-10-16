@@ -36,6 +36,10 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
     (planning?'<p class="ws-muted">KEEP original planning type: '+esc(planning)+'</p>':'')+
     (progress?'<p>Source progress: '+(progress.percent===null?'Unconfigured':progress.percent+'%')+
        ' · '+progress.completed+' / '+progress.total+' tasks complete</p>':'')+
+    '<h3>Original KEEP checklists</h3><ul>'+((selected?.checklist??[]).map(item=>'<li><span>'+
+      (item.completed?'✓ ':'□ ')+esc(item.text)+'</span>'+
+      act('knowledge-keep-checklist',item.completed?'Reopen':'Complete',item.id)+'</li>').join('')||'<li>No checklist entries</li>')+
+    '</ul>'+
     '<h3>Original Markdown tasks</h3><ul>'+ (tasks.map(t=>'<li><span>'+esc(t.text)+'</span>'+
        act('knowledge-keep-task',t.completed?'Mark incomplete':'Complete',t.id)+'</li>').join('')||'<li>No source tasks</li>')+
     '</ul><h3>Outgoing KEEP links</h3><ul>'+
