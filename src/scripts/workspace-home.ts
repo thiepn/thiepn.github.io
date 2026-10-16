@@ -1,6 +1,6 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
 import {renderKeepOwnerEditor} from '../lib/workspace/keep-b3-editor';
-import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,type KeepDeviceResult} from '../lib/workspace/keep-b3-device';
+import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,undoKeepDeviceEdit,type KeepDeviceResult,type KeepEditReceipt} from '../lib/workspace/keep-b3-device';
 import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
@@ -104,9 +104,9 @@ async function setup(root: HTMLElement) {
     let keepKnowledgeMode:'hub'|'keep'='hub';
     let keepDevice:KeepDeviceResult|null=null,keepDeviceSelected:string|null=null,keepOwnerCreating=false;
     let keepDeviceDraft:{id:string;revision:string;title:string;content:string;pinned:boolean}|null=null;
-    let keepConnectTicket=0;
+    let keepConnectTicket=0,keepUndo:KeepEditReceipt|null=null;
     function revokeKeepOwnerSession(){
-        keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;
+        keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;
         if(view==='knowledge'&&keepKnowledgeMode==='keep'&&state)render();
     }
     window.addEventListener('storage',e=>{
@@ -782,8 +782,9 @@ async function setup(root: HTMLElement) {
         const title=String(data.get('title')??''),content=String(data.get('content')??''),pinned=data.has('pinned');
         const original=selected?.updatedAt??'',ownerEpoch=epoch;
         if(selected&&keepDeviceDraft&&keepDeviceDraft.revision!==original)throw new Error('KEEP note changed. Refresh the original record.');
-        const savedId=keepOwnerCreating?await createKeepDeviceNote({title,content,pinned}):
-            (await updateKeepDevice(selected!.id,original,{title,content,pinned}),selected!.id);
+        let savedId:string;
+        if(keepOwnerCreating){savedId=await createKeepDeviceNote({title,content,pinned});keepUndo=null;}
+        else {keepUndo=await updateKeepDevice(selected!.id,original,{title,content,pinned});savedId=selected!.id;}
         if(ownerEpoch!==epoch)return;
         keepDeviceDraft=null;keepOwnerCreating=false;
         await connectKeepOwner();
@@ -795,7 +796,7 @@ async function setup(root: HTMLElement) {
         if(view==='knowledge'){
             const modes='<nav class="ws-knowledge-switch" aria-label="Knowledge data owner">'+
               '<button type="button" data-action="knowledge-mode" data-id="hub" aria-pressed="'+(keepKnowledgeMode==='hub')+'">Hub local notes</button>'+
-              '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>';
+              '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>'+(keepKnowledgeMode==='keep'&&keepUndo?'<div class="ws-keep-undo"><button type="button" data-action="knowledge-keep-undo">Undo latest KEEP edit</button><span>Only the unchanged original revision can be restored.</span></div>':'');
             return modes+(keepKnowledgeMode==='keep'?renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
                 renderKnowledge(state!.notes,state!.tasks,{selectedId:knowledgeSelectedId,create:knowledgeCreating,query:knowledgeSearch,draft:knowledgeDraft}));
         }
@@ -1995,6 +1996,15 @@ async function setup(root: HTMLElement) {
                 editor.dispatchEvent(new Event('input',{bubbles:true}));
                 editor.focus();return;
             }
+            if(action==='knowledge-keep-undo'){
+                if(!keepUndo||keepDeviceDraft||keepOwnerCreating||keepKnowledgeMode!=='keep')return;
+                const receipt=keepUndo,own=epoch;keepUndo=null;
+                void undoKeepDeviceEdit(receipt).then(async()=>{
+                    if(own!==epoch)return;
+                    await connectKeepOwner();keepDeviceSelected=receipt.original.id;render();toast('Previous KEEP note revision restored.');
+                }).catch(e=>toast(e instanceof Error?e.message:'KEEP undo refused because the source changed.'));
+                return;
+            }
             if(action==='knowledge-keep-checklist'){
                 if(keepDeviceDraft||keepOwnerCreating){toast('Save or discard the KEEP draft first.');return;}
                 const note=keepDevice?.status==='ready'?
@@ -2002,7 +2012,7 @@ async function setup(root: HTMLElement) {
                 if(!note||note.checklist.filter(item=>item.id===id).length!==1){toast('Original KEEP checklist item not found.');return;}
                 const own=epoch;
                 void toggleKeepDeviceChecklist(note.id,note.updatedAt,id)
-                    .then(async()=>{if(own!==epoch)return;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP checklist updated.');})
+                    .then(async(receipt)=>{if(own!==epoch)return;keepUndo=receipt;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP checklist updated.');})
                     .catch(e=>toast(e instanceof Error?e.message:'KEEP source checklist update refused.'));
                 return;
             }
@@ -2018,7 +2028,7 @@ async function setup(root: HTMLElement) {
                 if(updated===null)return;
                 const own=epoch;
                 void updateKeepDevice(note.id,note.updatedAt,{title:note.title,content:updated,pinned:note.pinned})
-                  .then(async()=>{if(own!==epoch)return;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP Markdown task updated.');})
+                  .then(async(receipt)=>{if(own!==epoch)return;keepUndo=receipt;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP Markdown task updated.');})
                   .catch(e=>toast(e instanceof Error?e.message:'KEEP task could not be changed.'));
                 return;
             }
@@ -2554,7 +2564,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepConnectTicket++; }
+                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;keepConnectTicket++; }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -3100,7 +3110,7 @@ async function setup(root: HTMLElement) {
         channel = null;
         state = null;
         knowledgeDraft=null;knowledgeSelectedId=null;knowledgeCreating=false;knowledgeSearch='';
-        keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepKnowledgeMode='hub';keepConnectTicket++;
+        keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;keepKnowledgeMode='hub';keepConnectTicket++;
         dirty = false;
         locked = false;
         conflict = false;
