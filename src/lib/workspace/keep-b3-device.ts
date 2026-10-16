@@ -25,6 +25,11 @@ export function nextKeepTimestamp(previous:string, now=Date.now()):string{
   const earlier=Date.parse(previous);
   return new Date(Math.max(now,Number.isFinite(earlier)?earlier+1:now)).toISOString();
 }
+/** In-memory one-step undo; never persisted to Hub storage or shared with another user. */
+export interface KeepEditReceipt {
+  original:KeepOwnerNote;
+  writtenAt:string;
+}
 export class KeepDeviceConflict extends Error {
   constructor(){super('KEEP changed in another tab. Reopen its original record before editing.');}
 }
@@ -114,12 +119,13 @@ export async function createKeepDeviceNote(changes:{title:string;content:string;
 /** Original B3 note ID + fields, revision-guarded, single-record atomic transaction. */
 export async function updateKeepDevice(
   id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean}
-):Promise<void>{
+):Promise<KeepEditReceipt>{
   if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
     throw new Error('KEEP title/content outside original editor limits.');
   const db=await connectExisting();
   try{
-    await new Promise<void>((resolve,reject)=>{
+    return await new Promise<KeepEditReceipt>((resolve,reject)=>{
+      let receipt:KeepEditReceipt|null=null;
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
       const store=tx.objectStore(KEEP_NOTES_STORE);
       let cause:Error|null=null;
@@ -131,10 +137,11 @@ export async function updateKeepDevice(
         if(!eligibleKeepNote(record)||record.archived||record.trashed||
             record.updatedAt!==originalUpdatedAt) return abort(new KeepDeviceConflict());
         const next={...record,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:nextKeepTimestamp(record.updatedAt)};
+        receipt={original:structuredClone(record),writtenAt:next.updatedAt};
         store.put(next);
       };
       row.onerror=()=>abort(new Error('KEEP source note could not be read.'));
-      tx.oncomplete=()=>resolve();
+      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('KEEP edit did not apply.'));
       tx.onerror=()=>{ /* rejection on abort handles the error */ };
       tx.onabort=()=>reject(cause??tx.error??new Error('KEEP device edit was cancelled.'));
     });
@@ -142,10 +149,11 @@ export async function updateKeepDevice(
 }
 
 /** Toggle one original KEEP checklist entry without translating it to a Hub task. */
-export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string):Promise<void>{
+export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string):Promise<KeepEditReceipt>{
   const db=await connectExisting();
   try {
-    await new Promise<void>((resolve,reject)=>{
+    return await new Promise<KeepEditReceipt>((resolve,reject)=>{
+      let receipt:KeepEditReceipt|null=null;
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite'),store=tx.objectStore(KEEP_NOTES_STORE);
       let cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
@@ -158,11 +166,39 @@ export async function toggleKeepDeviceChecklist(noteId:string,revision:string,it
         if(matches.length!==1)return abort(new Error('Original KEEP checklist item changed.'));
         const next={...raw,updatedAt:nextKeepTimestamp(raw.updatedAt),
           checklist:raw.checklist.map(item=>item.id===itemId?{...item,completed:!item.completed}:item)};
+        receipt={original:structuredClone(raw),writtenAt:next.updatedAt};
         store.put(next);
       };
       get.onerror=()=>abort(new Error('Original KEEP note is unavailable.'));
-      tx.oncomplete=()=>resolve();
+      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('KEEP checklist edit did not apply.'));
       tx.onabort=()=>reject(cause??tx.error??new Error('KEEP checklist update was refused.'));
+      tx.onerror=()=>{};
+    });
+  }finally{db.close();}
+}
+
+/** One-step guarded source recovery. The original record is retained only in RAM. */
+export async function undoKeepDeviceEdit(receipt:KeepEditReceipt):Promise<void>{
+  if(!eligibleKeepNote(receipt.original))throw new Error('Invalid KEEP undo receipt.');
+  const db=await connectExisting();
+  try{
+    await new Promise<void>((resolve,reject)=>{
+      const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
+      const store=tx.objectStore(KEEP_NOTES_STORE);
+      let cause:Error|null=null;
+      const abort=(e:Error)=>{cause=e;tx.abort();};
+      const get=store.get(receipt.original.id);
+      get.onsuccess=()=>{
+        const current=get.result;
+        if(!vaultAllowed()||!eligibleKeepNote(current)||current.archived||current.trashed||
+          current.updatedAt!==receipt.writtenAt)return abort(new KeepDeviceConflict());
+        const restored={...structuredClone(receipt.original),
+          updatedAt:nextKeepTimestamp(current.updatedAt)};
+        store.put(restored);
+      };
+      get.onerror=()=>abort(new Error('Original KEEP record is unavailable.'));
+      tx.oncomplete=()=>resolve();
+      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP source undo refused.'));
       tx.onerror=()=>{};
     });
   }finally{db.close();}
