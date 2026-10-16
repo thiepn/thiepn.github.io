@@ -1,0 +1,14 @@
+.ws-faith-discipline{margin-block:1rem;display:grid;gap:.9rem;border:1px solid var(--line,var(--border,#8b8b8b));border-radius:4px;padding:1rem;background:var(--surface,transparent);min-width:0}
+.ws-faith-discipline>header h2{margin:0;font-size:1.08rem;line-height:1.4}
+.ws-faith-discipline>header p,.ws-faith-discipline p{margin:.35rem 0;color:var(--muted,var(--text-muted,inherit));line-height:1.5}
+.ws-faith-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+.ws-faith-grid>section{display:grid;align-content:start;gap:.5rem;border:1px solid var(--line,var(--border,#888));padding:.8rem;min-width:0}
+.ws-faith-grid h3{margin:0;font-size:.97rem}
+.ws-faith-grid ul{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.ws-faith-grid li{padding:.5rem 0;border-bottom:1px solid var(--line,var(--border,#aaa))}
+.ws-faith-grid li span{display:grid;gap:.15rem;min-width:0}
+.ws-faith-grid li strong{overflow-wrap:anywhere}
+.ws-faith-grid li small{font-size:.75rem;opacity:.75}
+.ws-faith-grid a{display:inline-flex;align-items:center;min-height:44px;width:fit-content;text-decoration:underline;text-underline-offset:3px}
+.ws-faith-grid a:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+@media(max-width:760px){.ws-faith-discipline{padding:.8rem;margin-inline:0}.ws-faith-grid{grid-template-columns:minmax(0,1fr)}.ws-faith-grid>section{padding:.8rem}}
