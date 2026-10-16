@@ -47,8 +47,11 @@ function reviewedMddUrl(button:HTMLButtonElement):URL|null {
     const raw=button.dataset.fd1MddUrl;
     if(!raw)return null;
     const url=new URL(raw);
-    if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||
+    if(url.protocol!=='https:'||url.username||url.password||url.search||
+       (url.hash&&!/^#\\/today\\/?$/.test(url.hash))||
        url.origin==='https://thiepn.dev' || url.hostname==='localhost')return null;
+    // Original MDD uses a HashRouter. The handoff query stays BEFORE #/today.
+    url.hash='#/today';
     return url;
   } catch{return null}
 }
