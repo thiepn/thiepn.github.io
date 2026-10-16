@@ -29,6 +29,7 @@ export function compareApprovedFolioTime(
       if (!Number.isFinite(beginning) || !Number.isFinite(ending) || ending<=beginning) continue;
       result.push({hubEventId:hub.id,hubTitle:hub.title,folioEventId:owned.id,
         folioTitle:owned.title,minutes:Math.ceil((ending-beginning)/60000)});
+      if (result.length === 24) return result; // Bounded even with 10,000 local events.
     }
   }
   return result.slice(0,24);

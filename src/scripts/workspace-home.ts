@@ -1100,7 +1100,7 @@ async function setup(root: HTMLElement) {
                 const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
                 if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
                 // One detached candidate: event and optional task due-date change commit together.
-                if(alignDue && source.due!==proposal.date)applyTaskPlan(source,'today',proposal.date);
+                if(alignDue && (source.due!==proposal.date || source.time))applyTaskPlan(source,'today',proposal.date);
                 s.events.push(event);
                 activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}`,'event');
             },'Reviewed Hub calendar event created');
