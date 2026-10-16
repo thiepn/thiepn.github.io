@@ -80,6 +80,32 @@ export async function readKeepDevice():Promise<KeepDeviceResult>{
   }catch(e){return {status:'unavailable',notes:[],detail:e instanceof Error?e.message:'Read failed'};}
   finally {db.close();}
 }
+/** Create one original KEEP B3 note only inside an existing unencrypted owner database. */
+export async function createKeepDeviceNote(changes:{title:string;content:string;pinned:boolean}):Promise<string>{
+  if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
+    throw new Error('Invalid KEEP note title or content.');
+  const db=await connectExisting();
+  const id=crypto.randomUUID(),now=new Date().toISOString();
+  const original:KeepOwnerNote={
+    id,title:changes.title.trim(),content:changes.content,type:'text',checklist:[],color:'default',tags:[],
+    folderId:null,pinned:changes.pinned,archived:false,trashed:false,createdAt:now,updatedAt:now,
+    reminderDate:null,images:[],linkedNoteIds:[]
+  };
+  try {
+    await new Promise<void>((resolve,reject)=>{
+      const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
+      let cause:Error|null=null;
+      const abort=(e:Error)=>{cause=e;tx.abort();};
+      if(!vaultAllowed())abort(new Error('KEEP vault changed; creation refused.'));
+      else tx.objectStore(KEEP_NOTES_STORE).add(original);
+      tx.oncomplete=()=>resolve();
+      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP creation aborted.'));
+      tx.onerror=()=>{};
+    });
+    return id;
+  } finally {db.close();}
+}
+
 /** Original B3 note ID + fields, revision-guarded, single-record atomic transaction. */
 export async function updateKeepDevice(
   id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean}
