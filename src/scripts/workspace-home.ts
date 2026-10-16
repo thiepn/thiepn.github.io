@@ -297,6 +297,7 @@ async function setup(root: HTMLElement) {
 
     let changeVersion = 0;
     let queue = Promise.resolve();
+    let persistence = Promise.resolve();
     let cloud: WorkspaceCloudSync | null = null, pendingCloudRender = false;
     let cloudConflict=false;
     let insights: ConnectedInsight[] = [], insightController: AbortController | null = null;
@@ -406,7 +407,16 @@ async function setup(root: HTMLElement) {
     }
     function saved(label?: string) { renderAttention(); $('[data-workspace-status]').textContent = label ?? (dirty ? 'Unsaved · export or retry' : storageReady ? 'Workspace saved locally' : 'Unsaved · storage unavailable'); }
     function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    async function persist(backup = false) {
+    function persist(backup = false): Promise<void> {
+        const own = epoch;
+        // Initial workspace creation and an automatic Account handoff may
+        // save concurrently outside the command queue. Snapshot only after
+        // the prior write updates the local revision; never bypass CAS.
+        const operation = persistence.then(() => own === epoch ? persistSnapshot(backup) : undefined);
+        persistence = operation.catch(() => {});
+        return operation;
+    }
+    async function persistSnapshot(backup = false) {
         if (!state || locked)
             return;
         dirty = true;
