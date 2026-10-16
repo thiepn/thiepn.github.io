@@ -1,6 +1,6 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
 import {renderKeepOwnerEditor} from '../lib/workspace/keep-b3-editor';
-import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,type KeepDeviceResult} from '../lib/workspace/keep-b3-device';
+import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,type KeepDeviceResult} from '../lib/workspace/keep-b3-device';
 import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
@@ -1980,6 +1980,17 @@ async function setup(root: HTMLElement) {
                 editor.setRangeText(insert,start,end,'end');
                 editor.dispatchEvent(new Event('input',{bubbles:true}));
                 editor.focus();return;
+            }
+            if(action==='knowledge-keep-checklist'){
+                if(keepDeviceDraft||keepOwnerCreating){toast('Save or discard the KEEP draft first.');return;}
+                const note=keepDevice?.status==='ready'?
+                    (keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0]):null;
+                if(!note||note.checklist.filter(item=>item.id===id).length!==1){toast('Original KEEP checklist item not found.');return;}
+                const own=epoch;
+                void toggleKeepDeviceChecklist(note.id,note.updatedAt,id)
+                    .then(async()=>{if(own!==epoch)return;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP checklist updated.');})
+                    .catch(e=>toast(e instanceof Error?e.message:'KEEP source checklist update refused.'));
+                return;
             }
             if(action==='knowledge-keep-task'){
                 if(keepDeviceDraft){toast('Save or discard the original KEEP editing draft before completing a task.');return;}
