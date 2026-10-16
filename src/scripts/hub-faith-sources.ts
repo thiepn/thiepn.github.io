@@ -33,23 +33,22 @@ function showMdd(){
   }
 }
 const clearMdd=()=>{pendingMdd=null;mddSummary=null;showMdd();};
-function reviewedMddUrl():URL|null{
+function reviewedMddUrl(button:HTMLButtonElement):URL|null {
+  // The URL originates from the exact reviewed app entry rendered by Hub.
+  // Never fall back to an invented deployment URL or an arbitrary input.
   try {
-    const source=document.querySelector<HTMLScriptElement>('[data-workspace-apps]');
-    const entries:unknown=JSON.parse(source?.textContent??'null');
-    if(!Array.isArray(entries))return null;
-    const found=entries.find((v:unknown)=>v && typeof v==='object' &&
-      /^(my-daily-devotion|daily-devotion|mdd)$/.test(String((v as {id?:unknown}).id)));
-    if(!found||typeof found.url!=='string')return null;
-    const url=new URL(found.url);
-    if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)return null;
+    const raw=button.dataset.fd1MddUrl;
+    if(!raw)return null;
+    const url=new URL(raw);
+    if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||
+       url.origin==='https://thiepn.dev' || url.hostname==='localhost')return null;
     return url;
-  }catch{return null}
+  } catch{return null}
 }
 document.addEventListener('click',event=>{
   const button=(event.target as HTMLElement)?.closest?.<HTMLButtonElement>('[data-fd1-mdd-connect]');
   if(!button)return;
-  const owner=reviewedMddUrl();
+  const owner=reviewedMddUrl(button);
   const box=mddStatus();
   if(!owner){if(box)box.textContent='No reviewed My Daily Devotion launch is registered in Hub. No request was sent.';return;}
   const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
