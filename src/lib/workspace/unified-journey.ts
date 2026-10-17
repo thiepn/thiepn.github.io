@@ -10,8 +10,8 @@ import type { FolioDeviceSnapshot } from './folio-device';
 import type { NotesDeviceSummary } from './notes-device';
 import type { WorkspaceState, Task, CalendarEvent } from './types';
 
-export type HomeJourneyMode = 'today'|'focus'|'workspace';
-export const HOME_JOURNEY_MODES:readonly HomeJourneyMode[]=['today','focus','workspace'];
+export type HomeJourneyMode = 'today'|'focus'|'review'|'workspace';
+export const HOME_JOURNEY_MODES:readonly HomeJourneyMode[]=['today','focus','review','workspace'];
 export interface JourneyStatus {
   offline:boolean;
   dirty:boolean;
@@ -45,6 +45,7 @@ export function renderUnifiedJourneyNav(mode:HomeJourneyMode,state:WorkspaceStat
   const modes:{id:HomeJourneyMode;title:string;detail:string}[]=[
     {id:'today',title:'Today',detail:(counts.today+counts.inbox)+' to triage'},
     {id:'focus',title:'Focus',detail:'One task at a time'},
+    {id:'review',title:'Review',detail:'Follow through together'},
     {id:'workspace',title:'Workspace',detail:'Notes, apps & widgets'}
   ];
   const warning=status.conflict?'Another tab changed saved records':status.dirty?'Unsaved changes in this tab':
@@ -100,6 +101,6 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
     ${renderTaskEventBoard(state,true)}
     <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
-        <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
+        <a href="/?mode=review">Guided weekly review →</a></div></footer>
   </section>`;
 }

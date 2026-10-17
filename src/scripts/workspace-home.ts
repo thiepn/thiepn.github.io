@@ -45,6 +45,7 @@ import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, 
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
+import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
 import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
@@ -86,7 +87,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -121,8 +122,10 @@ async function setup(root: HTMLElement) {
     function focusWorkForSelection():Readonly<FocusWorkDraft>{
         return focus.selectedId ? (focusWork.get(focus.selectedId)??EMPTY_FOCUS_WORK) : EMPTY_FOCUS_WORK;
     }
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
+    let weeklyReviewStage:WeeklyReviewStage='triage';
+    let weeklyReviewDraft:WeeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; // Tab-local review, no saved completion state.
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
     let notesSource: NotesDeviceSummary | null = null;
@@ -839,6 +842,7 @@ async function setup(root: HTMLElement) {
                     day: today(), timezone: state!.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
+            if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,authorizedFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
@@ -896,7 +900,7 @@ async function setup(root: HTMLElement) {
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { focusWork.clear(); pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
@@ -2222,6 +2226,23 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
                 }
                 break;
+            case 'weekly-review-stage':
+                if(view==='home' && homeMode==='review' &&
+                    (WEEKLY_REVIEW_STAGES as readonly string[]).includes(id)){
+                    weeklyReviewStage=id as WeeklyReviewStage;
+                    render();
+                    root.querySelector<HTMLHeadingElement>('#ws-review-stage-title')?.focus();
+                }
+                break;
+            case 'weekly-review-note':
+                if(view!=='home'||homeMode!=='review'||!state || locked ||
+                    privacyHeld || state.preferences.hidden || editing){
+                    toast('Unlock the original Hub workspace before reviewing a note.');
+                    break;
+                }
+                // Candidate only. The original Hub note form still requires Save.
+                editNote('',weeklyReviewNoteSeed(state,today(),weeklyReviewDraft));
+                break;
             case 'unified-triage':
                 reviewUnifiedTask(id);
                 break;
@@ -2787,7 +2808,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { focusWork.clear(); resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -3060,6 +3081,13 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(el.hasAttribute('data-weekly-review-field')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||
+               view!=='home'||homeMode!=='review'||weeklyReviewStage!=='finish')return;
+            weeklyReviewDraft=weeklyReviewField(weeklyReviewDraft,
+                el.dataset.weeklyReviewField??'',el.value);
+            return;
+        }
         if(el.hasAttribute('data-focus-work-field')){
             const source=el.closest<HTMLElement>('[data-focus-work]');
             const taskId=source?.dataset.sourceTask;
@@ -3266,8 +3294,9 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage';
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
         } else if (homeMode === 'focus') homeMode='today';
         // Owner re-verification replaces account-scoped records, never the deliberately
@@ -3486,7 +3515,7 @@ async function setup(root: HTMLElement) {
         if(document.hidden)pauseFocusSession();
         else if(state && !dirty && !editing && !dialog.open && !searchDialog.open && !inputFocused() && !privacyHeld && !state.preferences.hidden && view==='home')render();
     });
-    window.addEventListener('pagehide',()=>{pauseFocusSession();focusWork.clear();});
+    window.addEventListener('pagehide',()=>{pauseFocusSession();focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';});
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing) void reloadSaved();
         if (event.persisted) void refreshLanguages(true);
