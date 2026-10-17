@@ -65,6 +65,7 @@ async function connectExisting():Promise<IDBDatabase> {
     open.onsuccess=()=>resolve(open.result);
   });
   db.onversionchange=()=>db.close();
+  if(db.version!==1){db.close();throw new Error('KEEP schema version is not B3 v1; use the original application.');}
   if(!db.objectStoreNames.contains(KEEP_NOTES_STORE)){db.close();throw new Error('KEEP notes store is absent.');}
   if(!vaultAllowed()){db.close();throw new Error('KEEP vault became protected.');}
   return db;
