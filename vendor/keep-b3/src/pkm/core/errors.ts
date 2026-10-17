@@ -76,9 +76,10 @@ export class PkmError extends Error {
     }
 
     // Capture stack trace where V8 supports
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, PkmError);
-    }
+    const captureStackTrace = (Error as ErrorConstructor & {
+      captureStackTrace?: (target: object, constructorOpt?: Function) => void;
+    }).captureStackTrace;
+    captureStackTrace?.(this, PkmError);
   }
 
   public toJSON(): SerializedPkmError {
