@@ -13,7 +13,7 @@ const message={
  type:MDD_FD1_MESSAGE,source:'mdd-device-local',nonce,
  observedAt:new Date(now).toISOString(),expiresAt:new Date(now+60_000).toISOString(),
  evidence:{schema:'thiepn.mdd.discipline.local',version:1,coverage:'device-local',
- date:'2026-10-17',reading:dates[6].reading,reflection:dates[6].reflection,
+ date:'2026-10-17',reading:dates[6]!.reading,reflection:dates[6]!.reflection,
  week:{schema:'thiepn.mdd.discipline.week.local',version:1,coverage:'device-local',
   from:'2026-10-11',through:'2026-10-17',dates}}
 };
@@ -22,15 +22,15 @@ describe('FD1 original MDD seven-date evidence acceptance',()=>{
   const evidence=acceptMddReply(message,nonce,now);
   expect(evidence?.week?.dates).toHaveLength(7);
   const signal=buildFaithReviewSignals({folio:null,mdd:evidence!,tms:null},now)[1];
-  expect(signal.detail).toContain('2 of 4 assigned passages currently marked complete');
-  expect(signal.detail).toContain('6 self-paced historical date(s) unavailable');
-  expect(signal.detail).toContain('not a completion-time log');
+  expect(signal!.detail).toContain('2 of 4 assigned passages currently marked complete');
+  expect(signal!.detail).toContain('6 self-paced historical date(s) unavailable');
+  expect(signal!.detail).toContain('not a completion-time log');
  });
  it('rejects fabricated or inconsistent weeks',()=>{
   expect(acceptMddReply({...message,evidence:{...message.evidence,
    week:{...message.evidence.week,dates:[...dates.slice(0,5),dates[5],dates[5]]}}},nonce,now)).toBeNull();
   expect(acceptMddReply({...message,evidence:{...message.evidence,
-   week:{...message.evidence.week,dates:[...dates.slice(0,6),{...dates[6],reading:{...dates[6].reading,completed:10}}]}}},nonce,now)).toBeNull();
+   week:{...message.evidence.week,dates:[...dates.slice(0,6),{...dates[6],reading:{...dates[6]!.reading,completed:10}}]}}},nonce,now)).toBeNull();
   expect(acceptMddReply(message,nonce,now+61_000)).toBeNull();
   expect(acceptMddReply(message,'00000000000000000000000000000000',now)).toBeNull();
  });
