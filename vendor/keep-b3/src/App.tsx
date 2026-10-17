@@ -4594,7 +4594,11 @@ export default function App() {
     viewMode: settings.defaultViewMode,
   });
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // In Hub's embedded mobile workspace the original drawer must not obscure
+  // the note composer on first entry. Standalone KEEP preserves its default.
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof document === 'undefined' || !document.querySelector('[data-keep-native-host]')
+  );
   const [isLoaded, setIsLoaded] = useState(false);
   const [isVaultEncrypted, setIsVaultEncrypted] = useState(
     vaultEncryptionService.isEncryptionEnabled()
