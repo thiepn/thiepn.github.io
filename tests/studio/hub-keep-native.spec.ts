@@ -270,3 +270,38 @@ test('disconnect clears original KEEP source content from visible Hub UI',async(
  await expect(page.locator('[data-action=knowledge-keep-connect]')).toBeVisible();
  await expect(page.locator('[data-workspace-content]')).not.toContainText('Private KEEP document');
 });
+
+
+test('interim KEEP writer scrubs original plaintext when native React assumes authority',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+  const o=indexedDB.open('KeepNotesDB',1);
+  o.onupgradeneeded=()=>o.result.createObjectStore('notes',{keyPath:'id'});
+  o.onsuccess=()=>{
+   const db=o.result,tx=db.transaction('notes','readwrite');
+   tx.objectStore('notes').put({
+     id:'keep-writer-exclusive',title:'Private owner text',content:'Private plaintext sentinel',type:'text',
+     checklist:[],color:'default',tags:[],folderId:null,pinned:false,archived:false,trashed:false,
+     createdAt:'2026-10-17T08:00:00Z',updatedAt:'2026-10-17T08:01:00Z',reminderDate:null,images:[]
+   });
+   tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error);
+  };
+  o.onerror=()=>reject(o.error);
+ }));
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await expect(page.locator('[data-keep-owner]')).toContainText('Private owner text');
+ await page.evaluate(()=>{
+  const root=document.createElement('div');
+  root.dataset.keepOriginalReactActive='true';
+  document.body.appendChild(root);
+  document.dispatchEvent(new Event('keep-original-react-mounted'));
+ });
+ await expect(page.locator('[data-keep-owner]')).not.toContainText('Private owner text');
+ await expect(page.locator('[data-keep-owner]')).not.toContainText('Private plaintext sentinel');
+ await page.locator('[data-action=knowledge-keep-refresh]').count().then(async count=>{
+  if(count)await page.locator('[data-action=knowledge-keep-refresh]').click();
+ });
+ await expect(page.locator('[data-keep-owner-form]')).toHaveCount(0);
+});
