@@ -11,6 +11,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // asset. No externalized crypto, CDN, or source-data migration.
 export default defineConfig({
   base: './',
+  // Original B3 is packaged in Vite library mode, which intentionally leaves
+  // process.env checks unresolved unless defined at build time. No Node global.
+  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': path.resolve(here, '..') } },
   build: {
