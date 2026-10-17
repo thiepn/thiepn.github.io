@@ -58,6 +58,9 @@ export const ZenFocusBar: React.FC<ZenFocusBarProps> = ({
 }) => {
   // Collapsed state (stored in localStorage)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    // The 330px expanded floating dock blocks original note composition in
+    // the embedded mobile Hub. Retain the user-toggleable collapsed control.
+    if (typeof document !== 'undefined' && document.querySelector('[data-keep-native-host]')) return true;
     try {
       return localStorage.getItem('keepnotes_zen_dock_collapsed') === 'true';
     } catch {
