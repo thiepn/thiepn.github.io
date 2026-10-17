@@ -37,7 +37,7 @@ export function parseOwnerRef(input:unknown): OwnerResourceRef|null {
   if(!m)return null;
   const source=OWNER_SOURCES.find(key=>SOURCE_ADAPTERS[key].product===m[1]&&SOURCE_ADAPTERS[key].module===m[2]);
   if(!source||!RESOURCE_KINDS[source].includes(m[3] as never))return null;
-  try {const id=decodeURIComponent(m[4]);const ref=makeOwnerRef(source,m[3] as OwnerKind<typeof source>,id);return ref.uri===input?ref:null;}
+  try {const id=decodeURIComponent(m[4]!);const ref=makeOwnerRef(source,m[3] as OwnerKind<typeof source>,id);return ref.uri===input?ref:null;}
   catch{return null;}
 }
 export function sourceLanding(ref:OwnerResourceRef):string|null {return SOURCE_ADAPTERS[ref.source].sourceHome;}
