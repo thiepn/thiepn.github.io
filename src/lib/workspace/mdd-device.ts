@@ -16,7 +16,7 @@ export interface MddWeekEvidence{
   from:string;through:string;dates:readonly MddDayEvidence[];
 }
 export interface MddDeviceSummary extends MddDayEvidence{
-  observedAt:string;expiresAt:string;week:MddWeekEvidence|null;
+  observedAt:string;expiresAt:string;week?:MddWeekEvidence|null;
 }
 function readDay(source:unknown,historical:boolean):MddDayEvidence|null{
   if(!obj(source)||!day(source.date)||!obj(source.reading)||!obj(source.reflection)||
