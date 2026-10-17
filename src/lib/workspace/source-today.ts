@@ -5,6 +5,8 @@ import type { FolioDeviceStatus } from './folio-panel';
 import type { HubLanguageCard } from './language-read';
 import { HUB_LANGUAGE_IDS,HUB_LANGUAGE_OWNER_ROUTES,ownerLanguageLink } from './language-read';
 import type { AppShortcut, CalendarEvent } from './types';
+import { buildSourceQueue } from './daily-source-queue';
+import { dayKey } from './model';
 import { compareApprovedFolioTime } from './source-time-review';
 
 export interface SourceTodayInputs {
@@ -13,6 +15,8 @@ export interface SourceTodayInputs {
   languages: {status:'signed-out'|'loading'|'ready'|'unavailable';cards:readonly HubLanguageCard[]};
   apps: readonly AppShortcut[];
   hubEvents?: readonly CalendarEvent[];
+  day?: string;
+  timezone?: string;
 }
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -81,9 +85,27 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       return '<li><div><strong>'+esc(title)+'</strong><small>'+esc(desc)+'</small></div>'+
         (link?'<a href="'+esc(link)+'" rel="noreferrer">Open app</a>':'')+'</li>';
     }).join('');
+  const timezone=sources.timezone??Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const day=sources.day??dayKey(timezone,new Date());
+  const queue=buildSourceQueue({day,timezone,folio,notes,languages});
+  const items=queue.rows.map(row=>'<li class="ws-source-queue-item" data-source-kind="'+esc(row.source.toLowerCase())+'">'+
+    '<div><strong>'+esc(row.title)+'</strong><small>'+esc(row.source)+' · '+esc(row.detail)+'</small></div>'+
+    '<a href="'+esc(row.href)+'" rel="noreferrer">Open '+esc(row.source)+'</a></li>').join('');
+  const queueHtml='<section class="ws-source-queue" aria-labelledby="ws-source-queue-heading" data-source-queue>'+
+    '<header><div><p class="ws-source-queue-eyebrow">External owner summaries</p><h3 id="ws-source-queue-heading">Next actions from connected apps</h3></div>'+
+    '<small>'+queue.connectedSources+' of 3 sources available</small></header>'+
+    (items?'<ul>'+items+'</ul>':info(queue.connectedSources?
+      'No due items in the currently shared summaries. Disconnected apps and unshared records are not checked.':
+      'No owner summaries are available. Share from Folio or Notes, or sign in to access published language reviews.'))+
+    (queue.available>queue.rows.length?'<p>'+esc(String(queue.available-queue.rows.length))+
+      ' more source items · open the original apps to review the full workload.</p>':'')+
+    '<p class="ws-source-queue-coverage">'+(queue.incomplete?
+      'Partial coverage · disconnected, stale, or truncated owners may have additional work.':
+      'Only authorized published or explicitly shared owner summaries are included.')+
+      ' Actions open the original app; no Hub task, reminder or study result is created.</p></section>';
   return '<section class="ws-source-today" data-source-today aria-labelledby="source-today-heading">'+
     '<header><h2 id="source-today-heading">Continue across your apps</h2>'+
-    '<p>Real app-owned summaries only. No cross-app grades, inferred progress or copied private records.</p></header>'+
+    '<p>Real app-owned summaries only. No cross-app grades, inferred progress or copied private records.</p></header>'+queueHtml+
     '<div class="ws-source-today-grid">'+
       '<section data-source-today-folio aria-label="Folio owner"><h3>Folio plans</h3><a href="/folio/">Go to Folio</a>'+
       folioBody+'</section>'+
