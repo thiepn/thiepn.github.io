@@ -38,5 +38,15 @@ The candidate adds only:
 1. Commit/version the original complete B3 source in a qualified workspace without rewriting or stripping its dependencies, and derive the authoritative package lock.
 2. Build the original React app/NoteWorkspaceView and original Argon2id/AES-GCM vault lifecycle as a same-origin native Hub module, with scoped CSS/portals and source contract checks.
 3. When real original React writer is mounted, disable the interim `keep-b3-device` writer so competing writable paths cannot race, unless both are proven to share the original revision and vault authority.
-4. Treat route change, owner session revoke, privacy mode, cross-tab encryption and auto-lock as hard key purge events. Add transaction abort/cancellation on identity changes occurring *after* an IndexedDB `put()` but before commit; callback-only checks do not cover that narrow race fully.
+4. Treat route change, owner session revoke, privacy mode, cross-tab encryption and auto-lock as hard key purge events. K5 now attaches `AbortSignal` cancellation to each live original KEEP IndexedDB write transaction and rotates the controller on source reconnect, privacy mask, account change and route exit. Exact-head asynchronous abort acceptance remains **NOT_TESTED**, and transactions already committed cannot be undone by later signals.
 5. Run actual exact-head TypeScript, Vitest, Vite/Astro build and Chromium/Firefox/WebKit desktop/mobile acceptance before merge.
+
+## K5b — transaction cancellation (same draft PR)
+
+The five original KEEP mutators require a live owner-session callback **and** `AbortSignal`. Hub rotates a per-session `AbortController` when reconnecting, hiding private data, switching identity, switching source mode, leaving Knowledge or receiving vault-header updates.
+
+Each active source `readwrite` transaction subscribes to abort, invokes native `IDBTransaction.abort()` if still open, and removes the subscription on completion/abort. Pre-flight guards fail closed if the signal is already aborted. This closes the window between checking the owner epoch and an in-flight transaction's commit, to the extent supported by the platform's transaction state.
+
+Source wiring checks (not full TypeScript/browser execution) verify five required signal arguments, five transaction listeners, five completions and five abort cleanups, and six Hub write call sites. New code preserves existing KEEP schema and IDs.
+
+**Do not claim a successful browser race test until exercised** with an intentionally delayed transaction and explicit identity/privacy switching. Also do not claim the native candidate has been staged into the GitHub branch; it is a separate, complete source archive.
