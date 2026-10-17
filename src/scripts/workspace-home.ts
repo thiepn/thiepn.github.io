@@ -252,7 +252,8 @@ async function setup(root: HTMLElement) {
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
                 languages: {status: languageStatus, cards: languageCards}, apps,
-                hubEvents: state.events
+                hubEvents: state.events,
+                day: today(), timezone: state.preferences.timezone
             });
         }
     }
@@ -758,7 +759,8 @@ async function setup(root: HTMLElement) {
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
                     languages: {status: languageStatus, cards: languageCards}, apps,
-                    hubEvents: state!.events
+                    hubEvents: state!.events,
+                    day: today(), timezone: state!.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
@@ -831,7 +833,7 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? (homeMode==='workspace' ? current().title : 'Today')) : view[0]!.toUpperCase() + view.slice(1);
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
         $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
