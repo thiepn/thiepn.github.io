@@ -113,11 +113,15 @@ async function setup(root: HTMLElement) {
           !privacyHeld && !state.preferences.hidden && keepKnowledgeMode==='keep' &&
           view==='knowledge' && keepDevice?.status==='ready';
     }
-    document.addEventListener('keep-original-react-mounted',()=>{revokeKeepOwnerSession();});
-    function revokeKeepOwnerSession(){
+    document.addEventListener('keep-original-react-mounted',()=>{
+        // Do not re-render the outer Hub shell during an original React mount;
+        // that could remove its native root before createRoot completes.
+        revokeKeepOwnerSession(false);
+    });
+    function revokeKeepOwnerSession(updateUI=true){
         keepSessionAbort.abort();keepSessionAbort=new AbortController();
         keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;
-        if(view==='knowledge'&&keepKnowledgeMode==='keep'&&state)render();
+        if(updateUI&&view==='knowledge'&&keepKnowledgeMode==='keep'&&state)render();
     }
     window.addEventListener('storage',e=>{
         if(e.key==='keepnotes_vault_enc_header'||e.key==='keepnotes_vault_enc_config')
