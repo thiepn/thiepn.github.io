@@ -57,6 +57,7 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
     '<section class="ws-surface ws-keep-list"><h2>Original KEEP · '+notes.length+' notes</h2>'+
     '<p class="ws-muted">Original IDs · no Hub record copies · this device only</p>'+
     '<div class="ws-knowledge-list">'+(list||'<p>No editable unlocked notes in this KEEP database.</p>')+'</div>'+
+    act('knowledge-keep-disconnect','Disconnect original KEEP')+
     act('knowledge-keep-new','+ New original KEEP note')+act('knowledge-keep-refresh','Refresh source')+'</section>'+
     '<section class="ws-surface ws-knowledge-editor">'+(selected||view.creating?
       '<header><h2>'+(view.creating?'New KEEP note':esc(title))+'</h2><p class="ws-muted">'+(view.creating?'Original KEEP source note creation':'KEEP note ID '+esc(selected!.id)+' · source record')+'</p></header>'+
