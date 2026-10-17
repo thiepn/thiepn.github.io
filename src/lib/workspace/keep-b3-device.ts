@@ -137,8 +137,10 @@ export async function updateKeepDevice(
         const record:unknown=row.result;
         if(!eligibleKeepNote(record)||record.archived||record.trashed||
             record.updatedAt!==originalUpdatedAt) return abort(new KeepDeviceConflict());
-        const tracked=(record.content!==changes.content||record.title!==changes.title.trim())?
-          recordKeepRevision(record,changes.content,'auto_coalesced'):record;
+        const changed=record.content!==changes.content||record.title!==changes.title.trim();
+        const tracked=changed?
+          recordKeepRevision(recordKeepRevision(record,record.content,'before_destructive_edit'),
+            changes.content,'auto_coalesced'):record;
         const next={...tracked,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:nextKeepTimestamp(record.updatedAt)};
         receipt={original:structuredClone(record),writtenAt:next.updatedAt};
         store.put(next);
