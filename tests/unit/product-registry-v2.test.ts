@@ -38,6 +38,11 @@ describe('product registry v2', () => {
     );
     expect(resolveProductAliasV2('tms60')?.canonicalRef).toBe('bible/tms60');
     expect(resolveProductAliasV2('mdd')?.canonicalRef).toBe('bible/devotion');
+    expect(resolveProductAliasV2('mdd')?.module).toMatchObject({
+      repo: 'thiepn/my-daily-devotion',
+      launchUrl: 'https://mdd.thiepn.dev/',
+      state: 'active',
+    });
     expect(resolveProductAliasV2('recipe')?.canonicalRef).toBe('recipe/book');
   });
 
