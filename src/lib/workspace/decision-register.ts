@@ -23,7 +23,7 @@ function valid(value:unknown):value is HubDecision {
   typeof v.reason==='string'&&v.reason.length<=500&&
   typeof v.review==='string'&&(!v.review||validDate(v.review))&&
   ['open','decided','archived'].includes(String(v.status))&&
-  (v.status==='open'?v.choice===''&&v.reason==='':v.options.includes(v.choice))&&
+  (v.status==='open'||(v.status==='archived'&&v.choice==='')?v.choice===''&&v.reason==='':v.options.includes(v.choice))&&
   typeof v.taskId==='string'&&(!v.taskId||id(v.taskId))&&
   typeof v.noteId==='string'&&(!v.noteId||id(v.noteId))&&
   typeof v.updatedAt==='string'&&v.updatedAt.length<=100&&Number.isFinite(Date.parse(v.updatedAt));
@@ -84,7 +84,7 @@ export function transitionDecision(state:WorkspaceState,idValue:string,snapshot:
  if(mode==='reopen'&&old.status!=='decided')throw Error('Only decided entries can be reopened.');
  if(mode==='archive'&&old.status==='archived')throw Error('Already archived.');
  const next:HubDecision=mode==='reopen'?{...old,status:'open',choice:'',reason:'',updatedAt:stamp()}:
-  {...old,status:mode==='archive'?'archived':'decided',updatedAt:stamp()};
+  {...old,status:mode==='archive'?'archived':old.choice?'decided':'open',updatedAt:stamp()};
  decisionBoard(state)!.config.decisions=mode==='remove'?list.filter(x=>x.id!==idValue):
   list.map(x=>x.id===idValue?next:x);changed(state);
 }

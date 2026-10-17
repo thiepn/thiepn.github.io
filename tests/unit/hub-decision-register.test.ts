@@ -34,6 +34,12 @@ describe('Hub source-safe decision register',()=>{
   expect(decisions(s)[0]?.status).toBe('archived');
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'restore');
   expect(decisions(s)[0]?.status).toBe('decided');
+  // An undecided entry can be archived and restored without inventing a choice.
+  transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'reopen');
+  transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'archive');
+  expect(decisions(parseState(JSON.stringify(s)))[0]).toMatchObject({status:'archived',choice:''});
+  transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'restore');
+  expect(decisions(s)[0]).toMatchObject({status:'open',choice:''});
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'remove');
   expect(decisions(s)).toHaveLength(0);
   expect(JSON.stringify({tasks:s.tasks,notes:s.notes})).toBe(before);
