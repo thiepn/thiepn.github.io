@@ -1,4 +1,5 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
+import type {OriginalKeepMountHandle} from './keep-native-loader';
 import {renderKeepOwnerEditor} from '../lib/workspace/keep-b3-editor';
 import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,undoKeepDeviceEdit,restoreKeepDeviceRevision,type KeepDeviceResult,type KeepEditReceipt} from '../lib/workspace/keep-b3-device';
 import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
@@ -106,6 +107,45 @@ async function setup(root: HTMLElement) {
     let keepDeviceDraft:{id:string;revision:string;title:string;content:string;pinned:boolean}|null=null;
     let keepConnectTicket=0,keepUndo:KeepEditReceipt|null=null;
     let keepSessionAbort=new AbortController();
+    let nativeKeepAbort:AbortController|null=null;
+    let nativeKeepHandle:OriginalKeepMountHandle|null=null;
+    let nativeKeepLoading=false;
+    /** The original React root is outside [data-workspace-content], so Hub rerenders never destroy it. */
+    function stopNativeKeep(){
+        const signal=nativeKeepAbort;nativeKeepAbort=null;
+        signal?.abort();
+        try{nativeKeepHandle?.unmount();}finally{
+            nativeKeepHandle=null;nativeKeepLoading=false;
+            const host=root.querySelector<HTMLElement>('[data-keep-native-host]');
+            if(host){host.hidden=true;host.replaceChildren();}
+        }
+    }
+    async function openNativeKeep(){
+        if(nativeKeepLoading||nativeKeepHandle)return;
+        if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge'||keepKnowledgeMode!=='keep')
+            throw new Error('Open your original KEEP workspace from an authorized Knowledge session.');
+        if(!discardKnowledgeDraft())return;
+        if(!window.confirm('Open the complete original KEEP editor in Hub? It uses its own existing notes and original encrypted-vault unlock. The interim KEEP editor will disconnect.'))return;
+        const host=root.querySelector<HTMLElement>('[data-keep-native-host]');
+        if(!host||!host.isConnected)throw new Error('The original KEEP workspace host is unavailable.');
+        const own=epoch,controller=new AbortController();nativeKeepAbort=controller;nativeKeepLoading=true;
+        const mayMount=()=>!controller.signal.aborted&&own===epoch&&!!state&&!locked&&
+            !privacyHeld&&!state.preferences.hidden&&view==='knowledge'&&keepKnowledgeMode==='keep';
+        host.hidden=false;
+        try{
+            const {mountOriginalKeepInHub}=await import('./keep-native-loader');
+            if(!mayMount())throw new Error('The Hub owner session changed before KEEP could open.');
+            const handle=await mountOriginalKeepInHub(host,{mayMount,revoked:controller.signal});
+            if(!mayMount()){handle.unmount();throw new Error('KEEP source session expired.');}
+            nativeKeepHandle=handle;nativeKeepLoading=false;
+            // The authentic React app is now the sole active original KEEP writer in this tab.
+            render();
+        }catch(error){
+            if(nativeKeepAbort===controller)stopNativeKeep();
+            throw error;
+        }
+    }
+    window.addEventListener('pagehide',stopNativeKeep);
     // Capture both Hub account epoch and explicit KEEP consent generation.
     // Rechecked by original KEEP IndexedDB transaction *before* it can commit.
     function authorizedKeepWrite(ownerEpoch:number,consentTicket:number){
@@ -819,10 +859,13 @@ async function setup(root: HTMLElement) {
         if (view === 'settings')
             return settingsHTML();
         if(view==='knowledge'){
+            if(nativeKeepHandle)return '<section class="ws-surface" data-keep-native-state><h2>Original KEEP B3</h2><p>The original React workspace is mounted below. KEEP keeps its own record and encryption ownership.</p>'+
+                '<button type="button" data-action="knowledge-native-stop" class="ws-button">Close and lock original KEEP</button></section>';
             const modes='<nav class="ws-knowledge-switch" aria-label="Knowledge data owner">'+
               '<button type="button" data-action="knowledge-mode" data-id="hub" aria-pressed="'+(keepKnowledgeMode==='hub')+'">Hub local notes</button>'+
               '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>'+(keepKnowledgeMode==='keep'&&keepUndo?'<div class="ws-keep-undo"><button type="button" data-action="knowledge-keep-undo">Undo latest KEEP edit</button><span>Only the unchanged original revision can be restored.</span></div>':'');
-            return modes+(keepKnowledgeMode==='keep'?renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
+            return modes+(keepKnowledgeMode==='keep'?'<section class="ws-surface ws-keep-native-entry"><h3>Full original KEEP B3 workspace</h3><p>Open the original React editor with its own encrypted-vault unlock. Requires the verified same-origin build; never creates or copies notes.</p>'+
+                '<button type="button" class="ws-primary" data-action="knowledge-native-start">Open original KEEP editor</button></section>'+renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
                 renderKnowledge(state!.notes,state!.tasks,{selectedId:knowledgeSelectedId,create:knowledgeCreating,query:knowledgeSearch,draft:knowledgeDraft}));
         }
         if (view === 'tasks') {
@@ -916,7 +959,7 @@ async function setup(root: HTMLElement) {
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { stopNativeKeep(); pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
@@ -1015,7 +1058,7 @@ async function setup(root: HTMLElement) {
         const next = routes[url.pathname];
         if (!next) return;
         if(view==='knowledge'&&next!=='knowledge'&&!discardKnowledgeDraft()){if(pop)history.replaceState(null,'',committedUrl);return;}
-        if(view==='knowledge'&&next!=='knowledge')revokeKeepOwnerSession();
+        if(view==='knowledge'&&next!=='knowledge'){stopNativeKeep();revokeKeepOwnerSession();}
         const ticket = ++navigationTicket;
         const own = epoch;
         const previous = pop ? committedUrl : location.pathname + location.search;
@@ -1991,11 +2034,16 @@ async function setup(root: HTMLElement) {
         }
         if(action.startsWith('knowledge-')){
             if(view!=='knowledge'||privacyHeld||state.preferences.hidden||locked)return;
+            if(action==='knowledge-native-start'){
+                void openNativeKeep().catch(error=>toast(error instanceof Error?error.message:'Original KEEP source is unavailable.'));
+                return;
+            }
+            if(action==='knowledge-native-stop'){stopNativeKeep();render();return;}
             if(action==='knowledge-mode'){
                 if(id!==keepKnowledgeMode){
                     if(!discardKnowledgeDraft())return;
                     keepKnowledgeMode=id==='keep'?'keep':'hub';
-                    if(keepKnowledgeMode==='hub')revokeKeepOwnerSession();
+                    if(keepKnowledgeMode==='hub'){stopNativeKeep();revokeKeepOwnerSession();}
                     render();
                 }
                 return;
@@ -3160,7 +3208,7 @@ async function setup(root: HTMLElement) {
         channel = null;
         state = null;
         knowledgeDraft=null;knowledgeSelectedId=null;knowledgeCreating=false;knowledgeSearch='';
-        keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;keepKnowledgeMode='hub';keepSessionAbort.abort();keepSessionAbort=new AbortController();keepConnectTicket++;
+        stopNativeKeep();keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;keepKnowledgeMode='hub';keepSessionAbort.abort();keepSessionAbort=new AbortController();keepConnectTicket++;
         dirty = false;
         locked = false;
         conflict = false;
