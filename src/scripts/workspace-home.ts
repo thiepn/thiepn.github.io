@@ -109,10 +109,11 @@ async function setup(root: HTMLElement) {
     // Capture both Hub account epoch and explicit KEEP consent generation.
     // Rechecked by original KEEP IndexedDB transaction *before* it can commit.
     function authorizedKeepWrite(ownerEpoch:number,consentTicket:number){
-        return epoch===ownerEpoch && keepConnectTicket===consentTicket && !!state && !locked &&
+        return !document.querySelector('[data-keep-original-react-active="true"]') && epoch===ownerEpoch && keepConnectTicket===consentTicket && !!state && !locked &&
           !privacyHeld && !state.preferences.hidden && keepKnowledgeMode==='keep' &&
           view==='knowledge' && keepDevice?.status==='ready';
     }
+    document.addEventListener('keep-original-react-mounted',()=>{revokeKeepOwnerSession();});
     function revokeKeepOwnerSession(){
         keepSessionAbort.abort();keepSessionAbort=new AbortController();
         keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;
@@ -777,6 +778,9 @@ async function setup(root: HTMLElement) {
     }
     async function connectKeepOwner(){
         if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge')return;
+        if(document.querySelector('[data-keep-original-react-active="true"]')){
+            revokeKeepOwnerSession();throw new Error('Original KEEP React is active; the interim device editor is disabled.');
+        }
         keepSessionAbort.abort();keepSessionAbort=new AbortController();
         const ticket=++keepConnectTicket,ownerEpoch=epoch;
         keepDevice=null;render();
