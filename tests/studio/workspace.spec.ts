@@ -82,3 +82,82 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  await expect(page.locator('[data-reading-shell]')).toHaveAttribute('data-library-host-route','/home/');
  await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
 });
+
+test('foreign revisions invalidate content Undo without deleting either tab’s work',async({page,context})=>{
+ await ready(page);
+ const other=await context.newPage();await ready(other);
+ await task(page,'Task A — keep');
+ await expect(page.locator('[data-workspace-toast] [data-action=undo-content]')).toBeVisible();
+ await expect(other.locator('.ws-task-title')).toHaveText('Task A — keep');
+ await task(other,'Task B — keep');
+ await expect(page.locator('.ws-task-title')).toHaveText(['Task A — keep','Task B — keep']);
+ await expect(page.locator('[data-workspace-toast] [data-action=undo-content]')).toHaveCount(0);
+ // Even a delayed/stale click must not restore the old snapshot.
+ await page.evaluate(()=>{const b=document.createElement('button');b.dataset.action='undo-content';document.querySelector('[data-workspace]')!.append(b);b.click();b.remove();});
+ await page.reload();
+ await expect(page.locator('.ws-task-title')).toHaveText(['Task A — keep','Task B — keep']);
+});
+
+test('a later preference change removes an obsolete Undo control',async({page})=>{
+ await ready(page);await task(page,'Keep after rail change');
+ await expect(page.locator('[data-workspace-toast] [data-action=undo-content]')).toBeVisible();
+ await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-rail','collapsed');
+ await expect(page.locator('[data-workspace-toast] [data-action=undo-content]')).toHaveCount(0);
+ await page.reload();await expect(page.locator('.ws-task-title')).toHaveText('Keep after rail change');
+});
+
+test('a capacity validation failure preserves the form and subsequent saves still work',async({page})=>{
+ await ready(page);
+ await page.evaluate(async()=>{
+  const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('thiepn-adaptive-workspace',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  await new Promise<void>((resolve,reject)=>{const tx=db.transaction('records','readwrite'),store=tx.objectStore('records'),r=store.get('guest');r.onsuccess=()=>{const s=JSON.parse(r.result);s.trackers=Array.from({length:100},(_,i)=>({id:'tracker-'+i,title:'Existing tracker '+i,kind:'count',unit:'sessions',goal:5,cadence:'weekly'}));store.put(JSON.stringify(s),'guest');};tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();
+ });
+ await page.goto('/home/trackers/');
+ await page.getByRole('button',{name:'+ Create tracker',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).fill('Keep this tracker input');
+ await page.locator('[data-dialog-submit]').click();
+ await expect(page.locator('[data-workspace-dialog]')).toBeVisible();
+ await expect(page.locator('[data-dialog-error]')).toContainText('100 trackers');
+ await expect(page.getByLabel('Name',{exact:true})).toHaveValue('Keep this tracker input');
+ await expect(page.locator('[data-dialog-submit]')).toBeEnabled();
+ await page.locator('[data-workspace-dialog]').getByRole('button',{name:'Cancel',exact:true}).click();
+ await task(page,'Valid save after failed tracker');await page.reload();
+ await expect(page.locator('.ws-task-title')).toHaveText('Valid save after failed tracker');
+});
+
+test('a failed storage write keeps the form and retry creates only one task',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{
+  const put=IDBObjectStore.prototype.put;
+  IDBObjectStore.prototype.put=function(...args:Parameters<IDBObjectStore['put']>){
+   if((window as any).__failWorkspaceWrite&&this.name==='records'&&args[1]==='guest')throw new DOMException('Audit write failure','QuotaExceededError');
+   return put.apply(this,args);
+  };
+ });
+ await ready(page);
+ await page.evaluate(()=>{(window as any).__failWorkspaceWrite=true;});
+ await page.locator('[data-planner] [data-action=new-task]').first().click();
+ await page.getByLabel('Task',{exact:true}).fill('One task after retry');
+ await page.locator('[data-dialog-submit]').click();
+ await expect(page.locator('[data-dialog-error]')).toContainText('could not be saved');
+ await expect(page.locator('[data-workspace-dialog]')).toBeVisible();
+ await expect(page.getByLabel('Task',{exact:true})).toHaveValue('One task after retry');
+ await page.evaluate(()=>{(window as any).__failWorkspaceWrite=false;});
+ await save(page);await page.reload();
+ await expect(page.locator('.ws-task-title')).toHaveText('One task after retry');
+ expect(errors).toEqual([]);
+});
+
+test('Undo cannot overwrite a newer persisted revision when cross-tab messages are unavailable',async({page,context})=>{
+ await page.addInitScript(()=>{
+  Object.defineProperty(window,'BroadcastChannel',{value:class{onmessage=null;postMessage(){}close(){}}});
+ });
+ await ready(page);await task(page,'Original task');
+ const other=await context.newPage();await ready(other);await task(other,'Newer task');
+ await page.locator('[data-workspace-toast] [data-action=undo-content]').click();
+ await expect(page.locator('[data-workspace-notice]')).toContainText('changed');
+ await expect(page.locator('.ws-task-title')).toHaveText('Original task');
+ await page.reload();
+ await expect(page.locator('.ws-task-title')).toHaveText(['Original task','Newer task']);
+});

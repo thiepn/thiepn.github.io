@@ -41,7 +41,10 @@ export function parseState(raw: string): WorkspaceState {
     if (v.preferences.theme !== undefined && !['system','light','dark'].includes(v.preferences.theme)) throw new Error('Invalid theme preference.');
     for (const key of ['tasks', 'events', 'notes', 'trackers', 'logs', 'activity'] as const) {
         const rows = v[key];
-        if (!Array.isArray(rows) || rows.length > (key === 'trackers' ? 100 : key === 'activity' ? 500 : 10000) || !unique(rows) || !rows.every(x => object(x) && text(x.id, 128) && x.id.length > 0))
+        const limit = key === 'trackers' ? 100 : key === 'activity' ? 500 : 10000;
+        if (Array.isArray(rows) && rows.length > limit)
+            throw new Error(`A workspace supports up to ${limit} ${key}. Remove an existing item before adding another.`);
+        if (!Array.isArray(rows) || !unique(rows) || !rows.every(x => object(x) && text(x.id, 128) && x.id.length > 0))
             throw new Error('Invalid content records.');
     }
     if (!v.tasks.every(t => text(t.title, 240) && t.title.trim() && text(t.notes, 2000) && text(t.due, 10) && (!t.due || validDate(t.due)) && text(t.time, 5) && (!t.time || /^([01]\d|2[0-3]):[0-5]\d$/.test(t.time)) && ['none', 'low', 'medium', 'high'].includes(t.priority) && (t.completedAt === null || text(t.completedAt, 100))))
