@@ -91,3 +91,25 @@ describe("C1-B StudyOS original read-only projection",()=>{
   expect(result.kind).toBe("ready");
  });
 });
+
+describe("C1-B signed-out contract and availability guards",()=>{
+ it("rejects source coverage from another requested week rather than rendering misleading calendar days",async()=>{
+  const raw=sample(),stamp=Date.now();raw.generatedAt=new Date(stamp).toISOString();
+  raw.expiresAt=new Date(stamp+300000).toISOString();
+  const fake=async()=>new Response(JSON.stringify({ok:true,status:"ready",data:raw}),{status:200});
+  await expect(fetchAcademic(origin,"synthetic.test.token","2026-10-24",new AbortController().signal,fake as typeof fetch)).rejects.toThrow("Wrong academic source horizon");
+ });
+ it("allows setup_required but never accepts error envelopes as zero academic work",async()=>{
+  const setup=async()=>new Response(JSON.stringify({ok:true,status:"setup_required"}),{status:200});
+  const unavailable=async()=>new Response(JSON.stringify({ok:false,error:"study_source_unavailable"}),{status:503});
+  expect((await fetchAcademic(origin,"synthetic.test.token","2026-10-17",new AbortController().signal,setup as typeof fetch)).kind).toBe("setup_required");
+  await expect(fetchAcademic(origin,"synthetic.test.token","2026-10-17",new AbortController().signal,unavailable as typeof fetch)).rejects.toThrow();
+ });
+ it("rejects cross-owner course IDs and accidental source-controlled task writes",()=>{
+  const data=sample(),other="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  data.commitments[0]!.courseId=other;
+  expect(()=>parseAcademic(data,now)).toThrow();
+  const x=sample();(x.candidates as Array<unknown>).push({kind:"plan_and_create_task"});
+  expect(()=>parseAcademic(x,now)).toThrow();
+ });
+});
