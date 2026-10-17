@@ -22,7 +22,14 @@ function backend(options={sharing:false,probeEligible:false}) {
    let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
   },storageMode);
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
-  await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
+  await context.route('https://thiepn.dev/**',async route=>{
+   try {const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search,{maxRetries:2});expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});}
+   catch(error){
+    // A late favicon/stylesheet request may be cancelled by context teardown.
+    // Keep failures observable while any test page is still open.
+    if(context.pages().some(page=>!page.isClosed()))throw error;
+   }
+  });
   let probeRequests=0;
   await context.route('https://account.thiepn.dev/**',async route=>{probeRequests++;if(probeDelay)await new Promise(resolve=>setTimeout(resolve,probeDelay));await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
   await context.route('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard',async route=>{
