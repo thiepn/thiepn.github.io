@@ -105,6 +105,13 @@ async function setup(root: HTMLElement) {
     let keepDevice:KeepDeviceResult|null=null,keepDeviceSelected:string|null=null,keepOwnerCreating=false;
     let keepDeviceDraft:{id:string;revision:string;title:string;content:string;pinned:boolean}|null=null;
     let keepConnectTicket=0,keepUndo:KeepEditReceipt|null=null;
+    // Capture both Hub account epoch and explicit KEEP consent generation.
+    // Rechecked by original KEEP IndexedDB transaction *before* it can commit.
+    function authorizedKeepWrite(ownerEpoch:number,consentTicket:number){
+        return epoch===ownerEpoch && keepConnectTicket===consentTicket && !!state && !locked &&
+          !privacyHeld && !state.preferences.hidden && keepKnowledgeMode==='keep' &&
+          view==='knowledge' && keepDevice?.status==='ready';
+    }
     function revokeKeepOwnerSession(){
         keepConnectTicket++;keepDevice=null;keepDeviceDraft=null;keepDeviceSelected=null;keepOwnerCreating=false;keepUndo=null;
         if(view==='knowledge'&&keepKnowledgeMode==='keep'&&state)render();
@@ -780,11 +787,12 @@ async function setup(root: HTMLElement) {
         if(!selected&&!keepOwnerCreating)throw new Error('KEEP note is unavailable.');
         const data=new FormData(form);
         const title=String(data.get('title')??''),content=String(data.get('content')??''),pinned=data.has('pinned');
-        const original=selected?.updatedAt??'',ownerEpoch=epoch;
+        const original=selected?.updatedAt??'',ownerEpoch=epoch,consentTicket=keepConnectTicket;
+        const canCommit=()=>authorizedKeepWrite(ownerEpoch,consentTicket);
         if(selected&&keepDeviceDraft&&keepDeviceDraft.revision!==original)throw new Error('KEEP note changed. Refresh the original record.');
         let savedId:string;
-        if(keepOwnerCreating){savedId=await createKeepDeviceNote({title,content,pinned});keepUndo=null;}
-        else {keepUndo=await updateKeepDevice(selected!.id,original,{title,content,pinned});savedId=selected!.id;}
+        if(keepOwnerCreating){savedId=await createKeepDeviceNote({title,content,pinned},canCommit);keepUndo=null;}
+        else {keepUndo=await updateKeepDevice(selected!.id,original,{title,content,pinned},canCommit);savedId=selected!.id;}
         if(ownerEpoch!==epoch)return;
         keepDeviceDraft=null;keepOwnerCreating=false;
         await connectKeepOwner();
@@ -2000,8 +2008,8 @@ async function setup(root: HTMLElement) {
             }
             if(action==='knowledge-keep-undo'){
                 if(!keepUndo||keepDeviceDraft||keepOwnerCreating||keepKnowledgeMode!=='keep')return;
-                const receipt=keepUndo,own=epoch;keepUndo=null;
-                void undoKeepDeviceEdit(receipt).then(async()=>{
+                const receipt=keepUndo,own=epoch,ticket=keepConnectTicket;keepUndo=null;
+                void undoKeepDeviceEdit(receipt,()=>authorizedKeepWrite(own,ticket)).then(async()=>{
                     if(own!==epoch)return;
                     await connectKeepOwner();keepDeviceSelected=receipt.original.id;render();toast('Previous KEEP note revision restored.');
                 }).catch(e=>toast(e instanceof Error?e.message:'KEEP undo refused because the source changed.'));
@@ -2020,8 +2028,8 @@ async function setup(root: HTMLElement) {
                 const note=keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0];
                 if(!note)return;
                 if(!window.confirm('Restore this original KEEP note revision? A pre-restore checkpoint is saved in its original history.'))return;
-                const own=epoch;
-                void restoreKeepDeviceRevision(note.id,note.updatedAt,id)
+                const own=epoch,ticket=keepConnectTicket;
+                void restoreKeepDeviceRevision(note.id,note.updatedAt,id,()=>authorizedKeepWrite(own,ticket))
                   .then(async(receipt)=>{
                     if(own!==epoch)return;
                     keepUndo=receipt;
@@ -2035,8 +2043,8 @@ async function setup(root: HTMLElement) {
                 const note=keepDevice?.status==='ready'?
                     (keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0]):null;
                 if(!note||note.checklist.filter(item=>item.id===id).length!==1){toast('Original KEEP checklist item not found.');return;}
-                const own=epoch;
-                void toggleKeepDeviceChecklist(note.id,note.updatedAt,id)
+                const own=epoch,ticket=keepConnectTicket;
+                void toggleKeepDeviceChecklist(note.id,note.updatedAt,id,()=>authorizedKeepWrite(own,ticket))
                     .then(async(receipt)=>{if(own!==epoch)return;keepUndo=receipt;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP checklist updated.');})
                     .catch(e=>toast(e instanceof Error?e.message:'KEEP source checklist update refused.'));
                 return;
@@ -2051,8 +2059,8 @@ async function setup(root: HTMLElement) {
                 if(!task){toast('The original KEEP task changed. Refresh the source.');return;}
                 const updated=toggleKeepTaskLine(original,task);
                 if(updated===null)return;
-                const own=epoch;
-                void updateKeepDevice(note.id,note.updatedAt,{title:note.title,content:updated,pinned:note.pinned})
+                const own=epoch,ticket=keepConnectTicket;
+                void updateKeepDevice(note.id,note.updatedAt,{title:note.title,content:updated,pinned:note.pinned},()=>authorizedKeepWrite(own,ticket))
                   .then(async(receipt)=>{if(own!==epoch)return;keepUndo=receipt;await connectKeepOwner();keepDeviceSelected=note.id;render();toast('Original KEEP Markdown task updated.');})
                   .catch(e=>toast(e instanceof Error?e.message:'KEEP task could not be changed.'));
                 return;
