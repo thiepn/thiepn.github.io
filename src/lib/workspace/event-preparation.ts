@@ -7,7 +7,7 @@ import {addDays, validDate} from './model';
 import {topicTokens} from './knowledge-work-context';
 import {approvedSourceRows} from './approved-source-search';
 import type {ContextOwnerInput} from './knowledge-work-context';
-import type {WorkspaceState, CalendarEvent, Task, Note} from './types';
+import type {WorkspaceState, CalendarEvent, Task} from './types';
 
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -114,7 +114,7 @@ export function renderEventPreparation(state:WorkspaceState,event:CalendarEvent,
     '<a href="'+esc(r.href)+'" rel="noreferrer">Open '+esc(r.source)+'</a></li>').join('');
   return '<section class="ws-event-preparation" data-event-preparation>'+
     '<header><div><p class="ws-home-eyebrow">Original Hub event · preparation</p>'+
-    '<h3>Prepare, capture, follow through</h3></div>'+
+    '<h3>'+esc(event.title)+'</h3><small>Prepare, capture, follow through</small></div>'+
     '<p>'+esc(event.date)+(event.endDate!==event.date?' – '+esc(event.endDate):'')+
     (event.allDay?' · All day':' · Time in Hub calendar')+'</p></header>'+
     '<div class="ws-event-prep-actions">'+
