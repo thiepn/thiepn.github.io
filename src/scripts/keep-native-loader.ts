@@ -29,7 +29,7 @@ interface OriginalKeepModule {
 }
 const PREFIX='/keep-b3-native/';
 // Immutable manifest digest of the supplied K6 original KEEP B3 source tree.
-const EXPECTED_SOURCE_SHA256='415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58';
+const EXPECTED_SOURCE_SHA256='ec50d0767c824ae1f822efc12ff43c3bb2a1143af43d92954a8e8d96df7d6faa';
 const EXPECTED_INPUTS:Record<string,string>={
   'hub-embed/entry.tsx':'f4148f9940a892295d64fe993344eaa173ba6ddbc6f19d05c46cd0d269988fe8',
   'hub-embed/vite.config.ts':'084560c67eb08f0413c97edafc04f16b4f1e15bb7e9c9ceea5aad8eb375581c7',
