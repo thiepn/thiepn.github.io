@@ -7,11 +7,12 @@ const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,clien
 function backend(options={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
- let challenge='',exchanges=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
- return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'='normal') {
+ let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
+ return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(storageMode!=='normal')await context.addInitScript(mode=>{
    if(location.origin!=='https://thiepn.dev')return;
+   if(mode==='idb-blocked'){const open=indexedDB.open.bind(indexedDB);indexedDB.open=(name,version)=>{if(name==='thiepn-hub-account')throw new DOMException('Fixture blocks Account IndexedDB','SecurityError');return open(name,version);};return;}
    if(mode==='session-blocked'){
     if(localStorage.getItem('fixture:session-recovered')!=='1')Object.defineProperty(window,'sessionStorage',{configurable:true,get(){throw new DOMException('Fixture blocks session storage','SecurityError');}});
     return;
@@ -21,7 +22,14 @@ function backend(options={sharing:false,probeEligible:false}) {
    let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
   },storageMode);
   if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
-  await context.route('https://thiepn.dev/**',async route=>{const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search);expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});});
+  await context.route('https://thiepn.dev/**',async route=>{
+   try {const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search,{maxRetries:2});expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});}
+   catch(error){
+    // A late favicon/stylesheet request may be cancelled by context teardown.
+    // Keep failures observable while any test page is still open.
+    if(context.pages().some(page=>!page.isClosed()))throw error;
+   }
+  });
   let probeRequests=0;
   await context.route('https://account.thiepn.dev/**',async route=>{probeRequests++;if(probeDelay)await new Promise(resolve=>setTimeout(resolve,probeDelay));await route.fulfill({contentType:'text/html',body:`<script>parent.postMessage(${JSON.stringify({type:'thiepn:sso-probe:v1',clientId:configuration.clientId,signedIn:options.probeEligible,eligible:options.probeEligible})},'https://thiepn.dev')</script>`});});
   await context.route('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard',async route=>{
@@ -32,7 +40,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/auth/v1/oauth/authorize'){expect(url.searchParams.get('client_id')).toBe(configuration.clientId);expect(url.searchParams.get('code_challenge_method')).toBe('S256');challenge=url.searchParams.get('code_challenge')!;const callback=new URL(configuration.callback);callback.searchParams.set('code','fictional-one-use-code');callback.searchParams.set('state',url.searchParams.get('state')!);await route.fulfill({contentType:'text/html',body:'<script>location.replace('+JSON.stringify(callback.href)+')</script>'});return;}
-   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
+   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
    const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
@@ -73,7 +81,8 @@ test('two independent devices sync tasks, offline changes and app navigation wit
  await Promise.all([a.context.close(),b.context.close(),other.context.close()]);
 });
 test('remote updates preserve an active capture draft and signing out clears account data',async({browser})=>{
- // Owner's qualified WebKit cleanup budget from merged main PR #172.
+ // Two devices, multiple sync cycles and WebKit context shutdown share this budget.
+ // Individual action/assertion deadlines remain unchanged.
  test.setTimeout(60_000);
  const api=backend(),a=await api.device(browser);await sync(a.page);const b=await api.device(browser);await sync(b.page);
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
@@ -92,14 +101,36 @@ test('the shared SDK completes explicit PKCE sign-in and consumes the callback o
 test('an eligible Account session connects Hub automatically through tokenless SSO and PKCE',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);expect(api.exchanges()).toBe(1);await sync(a.page);await a.context.close();
 });
+for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reuse the connected session after previous tabs close (${storageMode})`,async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,storageMode);
+ expect(api.exchanges()).toBe(1);await a.page.close();
+ const next=await a.context.newPage();const destinations:string[]=[];next.on('framenavigated',frame=>{if(frame===next.mainFrame())destinations.push(frame.url());});
+ await next.goto('https://thiepn.dev/');await expect(next.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+ expect(api.exchanges()).toBe(1);expect(destinations.every(url=>new URL(url).origin==='https://thiepn.dev')).toBe(true);
+ await a.context.close();
+});
+test('concurrent new tabs share a single rotating refresh instead of reconnecting',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
+  const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
+   const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
+   read.onsuccess=()=>{const record=read.result,token=JSON.parse(record.value);token.expiresAt=0;record.value=JSON.stringify(token);store.put(record,'thiepn:hub-sso:v1:tokens');};
+   tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
+  };request.onerror=()=>reject(request.error);
+ }));
+ await a.page.close();const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
+ expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+});
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
  const preserved=()=>a.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('fixture:app-data:')).reduce((size,key)=>size+localStorage.getItem(key)!.length,0));
  const before=await preserved();expect(before).toBeGreaterThan(4_000_000);expect(api.exchanges()).toBe(1);await sync(a.page);
  await a.page.reload();await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');expect(api.exchanges()).toBe(1);expect(await preserved()).toBe(before);
- const other=await a.context.newPage();await other.goto('https://thiepn.dev/');await expect(other.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
+ const other=await a.context.newPage();await other.goto('https://thiepn.dev/');await expect(other.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});expect(api.exchanges()).toBe(1);
  await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(other.locator('[data-storage-label]')).toHaveText('This device');
- await a.page.reload();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');expect(await preserved()).toBe(before);await a.context.close();
+ await a.page.reload();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');expect(await preserved()).toBe(before);
+ await Promise.all([a.page.close(),other.close()]);const fresh=await a.context.newPage();await fresh.goto('https://thiepn.dev/');await expect(fresh.locator('[data-storage-label]')).toHaveText('This device');expect(api.exchanges()).toBe(1);await a.context.close();
 });
 test('Try again restarts Account initialization after session storage recovers',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'session-blocked');
