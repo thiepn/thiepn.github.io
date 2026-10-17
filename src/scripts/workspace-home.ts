@@ -122,12 +122,12 @@ async function setup(root: HTMLElement) {
             if(nativeExit)nativeExit.hidden=true;
         }
     }
-    async function openNativeKeep(){
+    async function openNativeKeep(alreadyConsented=false){
         if(nativeKeepLoading||nativeKeepHandle)return;
         if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge'||keepKnowledgeMode!=='keep')
             throw new Error('Open your original KEEP workspace from an authorized Knowledge session.');
         if(!discardKnowledgeDraft())return;
-        if(!window.confirm('Open the complete original KEEP editor in Hub? It uses its own existing notes and original encrypted-vault unlock. The interim KEEP editor will disconnect.'))return;
+        if(!alreadyConsented&&!window.confirm('Open the complete original KEEP editor in Hub? It uses its own existing notes and original encrypted-vault unlock. The interim KEEP editor will disconnect.'))return;
         const host=root.querySelector<HTMLElement>('[data-keep-native-host]');
         if(!host||!host.isConnected)throw new Error('The original KEEP workspace host is unavailable.');
         const own=epoch,controller=new AbortController();nativeKeepAbort=controller;nativeKeepLoading=true;
@@ -144,6 +144,31 @@ async function setup(root: HTMLElement) {
             if(nativeExit)nativeExit.hidden=false;
             // The authentic React app is now the sole active original KEEP writer in this tab.
             render();
+        }catch(error){
+            if(nativeKeepAbort===controller)stopNativeKeep();
+            throw error;
+        }
+    }
+    /** First-use enrollment never copies, deletes, or modifies existing owner records. */
+    async function createEmptyNativeKeep(){
+        if(nativeKeepLoading||nativeKeepHandle)return;
+        if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge'||keepKnowledgeMode!=='keep')
+            throw new Error('Sign in to an authorized Knowledge session before creating KEEP.');
+        if(!discardKnowledgeDraft())return;
+        if(!window.confirm('Create a NEW, EMPTY original KEEP workspace on this device? This does not import notes from another origin, migrate a database, or seed sample content. Existing KEEP databases are never overwritten.'))return;
+        const ownerEpoch=epoch,controller=new AbortController();
+        const mayMount=()=>!controller.signal.aborted&&epoch===ownerEpoch&&!!state&&!locked&&
+            !privacyHeld&&!state.preferences.hidden&&view==='knowledge'&&keepKnowledgeMode==='keep';
+        nativeKeepLoading=true;nativeKeepAbort=controller;
+        try{
+            const {createEmptyOriginalKeepInHub}=await import('./keep-native-loader');
+            if(!mayMount())throw new Error('KEEP owner session expired before enrollment.');
+            await createEmptyOriginalKeepInHub({mayMount,revoked:controller.signal});
+            if(!mayMount())throw new Error('KEEP owner session expired during enrollment.');
+            // Never hand the new original database to the interim writer.
+            revokeKeepOwnerSession(false);
+            nativeKeepLoading=false;nativeKeepAbort=null;
+            await openNativeKeep(true);
         }catch(error){
             if(nativeKeepAbort===controller)stopNativeKeep();
             throw error;
@@ -870,7 +895,7 @@ async function setup(root: HTMLElement) {
               '<button type="button" data-action="knowledge-mode" data-id="hub" aria-pressed="'+(keepKnowledgeMode==='hub')+'">Hub local notes</button>'+
               '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>'+(keepKnowledgeMode==='keep'&&keepUndo?'<div class="ws-keep-undo"><button type="button" data-action="knowledge-keep-undo">Undo latest KEEP edit</button><span>Only the unchanged original revision can be restored.</span></div>':'');
             return modes+(keepKnowledgeMode==='keep'?'<section class="ws-surface ws-keep-native-entry"><h3>Full original KEEP B3 workspace</h3><p>Open the original React editor with its own encrypted-vault unlock. Requires the verified same-origin build; never creates or copies notes.</p>'+
-                '<button type="button" class="ws-primary" data-action="knowledge-native-start">Open original KEEP editor</button></section>'+renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
+                '<button type="button" class="ws-primary" data-action="knowledge-native-start">Open original KEEP editor</button><p class="ws-muted">First time on this Hub origin?</p><button type="button" class="ws-button" data-action="knowledge-native-create">Create empty original KEEP workspace</button></section>'+renderKeepOwnerEditor({status:keepDevice,selectedId:keepDeviceSelected,creating:keepOwnerCreating,draft:keepDeviceDraft}):
                 renderKnowledge(state!.notes,state!.tasks,{selectedId:knowledgeSelectedId,create:knowledgeCreating,query:knowledgeSearch,draft:knowledgeDraft}));
         }
         if (view === 'tasks') {
@@ -2041,6 +2066,10 @@ async function setup(root: HTMLElement) {
             if(view!=='knowledge'||privacyHeld||state.preferences.hidden||locked)return;
             if(action==='knowledge-native-start'){
                 void openNativeKeep().catch(error=>toast(error instanceof Error?error.message:'Original KEEP source is unavailable.'));
+                return;
+            }
+            if(action==='knowledge-native-create'){
+                void createEmptyNativeKeep().catch(error=>toast(error instanceof Error?error.message:'Original KEEP enrollment is unavailable.'));
                 return;
             }
             if(action==='knowledge-native-stop'){stopNativeKeep();render();return;}
