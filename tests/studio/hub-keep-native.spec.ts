@@ -378,8 +378,16 @@ for(const width of [1440,390]){
   }
   await expect(page.locator('[data-keep-native-host]')).toBeVisible();
   await expect(page.locator('[data-keep-native-host]')).not.toBeEmpty();
-  await expect(page.locator('[data-action=knowledge-native-stop]')).toBeVisible();
-  await page.locator('[data-action=knowledge-native-stop]').click();
+  const exit=page.locator('[data-keep-native-exit]');
+  await expect(exit).toBeVisible();
+  // The 390px failure was a fixed original-React mobile menu intercepting
+  // pointer events. Check the real click hit target rather than force-clicking.
+  await expect.poll(async()=>exit.evaluate(element=>{
+    const rect=element.getBoundingClientRect();
+    return document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)===element;
+  }),{timeout:10000}).toBe(true);
+  await exit.click();
+  await expect(exit).toBeHidden();
   await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
   await expect(page.locator('[data-keep-native-host]')).toBeHidden();
   const record=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
