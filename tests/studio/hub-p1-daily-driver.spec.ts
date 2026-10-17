@@ -9,6 +9,10 @@ test('desktop P1 Today prioritizes real work and preserves native planning navig
   await expect(page.locator('[data-workspace][data-view=home]')).toBeVisible();
   await expect(page.locator('#ws-title')).toHaveText('Today');
   await expect(page.locator('[data-unified-today]')).toBeVisible();
+  await expect(page.locator('[data-today-workbench]')).toBeVisible();
+  await expect(page.locator('.ws-workbench-day')).toHaveCount(7);
+  await expect(page.locator('[data-today-workbench]')).toContainText('Tracker check-in');
+  await expect(page.locator('[data-today-workbench]')).toContainText('Pick up a note');
   await expect(page.locator('[data-source-queue]')).toBeVisible();
   await expect(page.locator('[data-source-queue]')).toContainText('No owner summaries are available');
   await expect(page.locator('.ws-nav a[href="/"]')).toContainText('Today');

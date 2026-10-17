@@ -1,6 +1,7 @@
 import { reviewDay, reviewWeek } from './planning-review';
 import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
+import { renderTodayWorkbench } from './today-workbench';
 import type { WorkspaceState, Task, CalendarEvent } from './types';
 
 export type HomeJourneyMode = 'today'|'focus'|'workspace';
@@ -52,7 +53,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
   const inbox=focusTasks(state,today,'inbox').slice(0,4);
   const events=[...plan.timed,...plan.allDay].slice(0,4);
   const first=nextTask(state,today);
-  const lastNote=[...state.notes].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
+
   const pending=state.captureDraft.trim().length>0;
   return `<section class="ws-unified-today" id="ws-unified-today" aria-labelledby="ws-unified-title" data-unified-today>
     <header class="ws-unified-heading"><div><p class="ws-home-eyebrow">Today · ${esc(humanDate(today))}</p>
@@ -86,7 +87,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         `<p class="ws-unified-empty">No events today.</p>`}
       ${plan.overlaps.length?`<p class="ws-unified-overlap">${plan.overlaps.length} possible local timed overlap${plan.overlaps.length===1?'':'s'} · <a href="/home/calendar/">Review event times</a></p>`:''}
     </section>
-    ${lastNote?`<section class="ws-unified-last-note"><span><strong>Continue note: ${esc(lastNote.title)}</strong><small>Edited ${esc(new Date(lastNote.updatedAt).toLocaleDateString())}</small></span><div>${textButton('edit-note','Open note',lastNote.id)}${textButton('context-note','Next',lastNote.id)}</div></section>`:''}
+    ${renderTodayWorkbench(state,today)}
     <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
