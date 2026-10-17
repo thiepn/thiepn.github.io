@@ -73,6 +73,9 @@ test('two independent devices sync tasks, offline changes and app navigation wit
  await Promise.all([a.context.close(),b.context.close(),other.context.close()]);
 });
 test('remote updates preserve an active capture draft and signing out clears account data',async({browser})=>{
+ // Two devices, multiple sync cycles and WebKit context shutdown share this budget.
+ // Individual action/assertion deadlines remain unchanged.
+ test.setTimeout(60_000);
  const api=backend(),a=await api.device(browser);await sync(a.page);const b=await api.device(browser);await sync(b.page);
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
  await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
