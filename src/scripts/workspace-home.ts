@@ -27,6 +27,7 @@ import { utilityWidget } from '../lib/workspace/widget-views';
 import { enableHubPinboard, toggleHubRecordPin, moveHubRecordPin, hasHubPin } from '../lib/workspace/record-pinboard';
 import {outcomes,saveOutcome,changeOutcome,type OutcomeDraft} from '../lib/workspace/outcome-board';
 import {decisions,saveDecision,decide,transitionDecision,type DecisionDraft} from '../lib/workspace/decision-register';
+import {taskEventLinks,linkTaskEvent,unlinkTaskEvent,renderTaskEventContext,type RelationDraft} from '../lib/workspace/task-event-links';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
@@ -1119,6 +1120,7 @@ async function setup(root: HTMLElement) {
               <a class="ws-button" href="/home/connections/">Owner app permissions</a>
             </div>
             ${renderTaskKnowledgeContext(state!,task,knowledgeOwnerContext())}
+            ${renderTaskEventContext(state!,'task',id)}
           </div>`;
         openForm('Next actions · Hub task',details,()=>{});
         $('[data-dialog-submit]').hidden=true;
@@ -1144,7 +1146,7 @@ async function setup(root: HTMLElement) {
     function showEventContext(id:string) {
         if(!startHandoff('event',id))return;
         const item=state!.events.find(e=>e.id===id)!;
-        const html=hubPinAction('event',id)+renderEventPreparation(state!,item,knowledgeOwnerContext());
+        const html=hubPinAction('event',id)+renderTaskEventContext(state!,'event',id)+renderEventPreparation(state!,item,knowledgeOwnerContext());
         openForm('Next actions · Hub event',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -1797,6 +1799,44 @@ async function setup(root: HTMLElement) {
         else void apply().catch(e=>toast(e instanceof Error?e.message:'Unable to update decision.'));
     }
 
+
+    function reviewTaskEventLink(reference='') {
+        if(editing){toast('Finish editing the layout before linking records.');return;}
+        const [kind,sourceId]=reference.includes(':')?[reference.split(':')[0],reference.slice(reference.indexOf(':')+1)]:['',''];
+        const currentTask=kind==='task'?sourceId:'';
+        const currentEvent=kind==='event'?sourceId:'';
+        const workspaceId=state!.active;
+        const currentTasks=state!.tasks.map(t=>[t.id,t.title+(t.completedAt?' · completed':'')]);
+        const currentEvents=state!.events.map(e=>[e.id,e.title+' · '+e.date]);
+        if(currentTasks.length===0||currentEvents.length===0){
+          toast('Create an original Hub task and calendar event before linking them.');return;
+        }
+        openForm('Link original Hub task and event',
+          select('Original Hub task','taskId',currentTasks,currentTask||currentTasks[0]![0]!)+
+          select('Original Hub calendar event','eventId',currentEvents,currentEvent||currentEvents[0]![0]!)+
+          select('Relationship','role',[['work','Scheduled work'],['prepare','Preparation'],['followup','Follow-up']],'work')+
+          '<p>Review an explicit reference only. Neither task dates nor calendar times change; no external calendar receives anything.</p>',
+          async data=>{
+            const draft:RelationDraft={taskId:String(data.get('taskId')??''),eventId:String(data.get('eventId')??''),
+              role:String(data.get('role')??'') as RelationDraft['role']};
+            await mutate(s=>{
+              if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the link review.');
+              linkTaskEvent(s,draft);
+            },'Task–calendar relationship saved',true,false,true);
+          },'Link originals');
+    }
+    function reviewTaskEventUnlink(idValue:string) {
+        if(editing){toast('Finish editing the layout before unlinking.');return;}
+        const original=taskEventLinks(state!).find(x=>x.id===idValue);
+        if(!original){toast('Link no longer available.');return;}
+        const snapshot=JSON.stringify(original),workspaceId=state!.active;
+        openForm('Unlink task and event','<p>Remove only the relationship? Both original records, dates, status and activity remain unchanged.</p>',
+          async()=>mutate(s=>{
+            if(s.active!==workspaceId)throw Error('Workspace changed. Reopen this relationship.');
+            unlinkTaskEvent(s,idValue,snapshot);
+          },'Task–calendar relationship removed',true,false,true),'Unlink');
+    }
+
     function configureWidget(id: string) {
         let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
         if (!w)
@@ -1880,7 +1920,7 @@ async function setup(root: HTMLElement) {
         const groups: Array<{title:string;description:string;types:string[]}> = [
             {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
-            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board','decision-register']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board','decision-register','task-event-links']},
         ];
         openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div>`, () => { });
         $('[data-dialog-submit]').hidden = true;
@@ -2615,6 +2655,7 @@ async function setup(root: HTMLElement) {
                     return;
                 if (id==='outcome-board' && editing!.workspace.widgets.some(w=>w.type==='outcome-board')) {toast('One Outcomes board per workspace.');return;}
                 if (id==='decision-register' && editing!.workspace.widgets.some(w=>w.type==='decision-register')) {toast('One Decision register per workspace.');return;}
+                if (id==='task-event-links' && editing!.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One Task–calendar links widget per workspace.');return;}
                 if (editing!.workspace.widgets.length >= 32) {
                     toast('This workspace already has 32 widgets.');
                     return;
@@ -2634,6 +2675,8 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'review-task-event-link':reviewTaskEventLink(id);break;
+            case 'unlink-task-event':reviewTaskEventUnlink(id);break;
             case 'new-decision':editDecision();break;
             case 'edit-decision':editDecision(id);break;
             case 'choose-decision':chooseDecision(id);break;

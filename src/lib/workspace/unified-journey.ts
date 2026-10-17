@@ -4,6 +4,7 @@ import { focusTasks } from './daily-focus';
 import {renderHubPinboard} from './record-pinboard';
 import {renderOutcomes} from './outcome-board';
 import {renderDecisions} from './decision-register';
+import {renderTaskEventBoard} from './task-event-links';
 import { renderTodayWorkbench } from './today-workbench';
 import type { FolioDeviceSnapshot } from './folio-device';
 import type { NotesDeviceSummary } from './notes-device';
@@ -96,6 +97,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
     ${renderHubPinboard(state,true)}
     ${renderOutcomes(state,today,true)}
     ${renderDecisions(state,today,true)}
+    ${renderTaskEventBoard(state,true)}
     <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
