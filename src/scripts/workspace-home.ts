@@ -184,11 +184,14 @@ async function setup(root: HTMLElement) {
         folioStatus = 'disconnected';
         folioOwner = null;
     }
-    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+    function authorizedFolioPlanningSnapshot():FolioDeviceSnapshot|null {
         if(!state || locked || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
         const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
           hubIdentity.status==='signed-out'?'guest':null;
-        return scope && folioOwner===scope ? freshFolioPlanningShare(folioSnapshot):null;
+        return scope && folioOwner===scope ? folioSnapshot:null;
+    }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        return freshFolioPlanningShare(authorizedFolioPlanningSnapshot());
     }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
@@ -266,6 +269,11 @@ async function setup(root: HTMLElement) {
                 hubEvents: state.events,
                 day: today(), timezone: state.preferences.timezone
             });
+        }
+        const folioPlannerPanel=root.querySelector<HTMLElement>('[data-folio-continuity]');
+        if (folioPlannerPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden) {
+            folioPlannerPanel.outerHTML=renderFolioPlanningContinuity(
+                state,selected,agendaMode,authorizedFolioPlanningSnapshot());
         }
     }
     async function refreshLanguages(force = false) {
@@ -779,7 +787,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,activeFolioPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,authorizedFolioPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
