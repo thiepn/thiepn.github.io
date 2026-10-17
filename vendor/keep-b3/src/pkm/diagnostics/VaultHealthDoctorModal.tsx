@@ -50,7 +50,7 @@ export const VaultHealthDoctorModal: React.FC<VaultHealthDoctorModalProps> = ({
       item.sourceNoteTitle
     ) as Note;
     onSaveNote(stub);
-    soundscapeService.playSuccessChime();
+    soundscapeService.playCompletionChime();
     setReportKey((k) => k + 1);
   };
 
@@ -67,7 +67,7 @@ export const VaultHealthDoctorModal: React.FC<VaultHealthDoctorModalProps> = ({
       content: healedContent,
       updatedAt: new Date().toISOString(),
     });
-    soundscapeService.playSuccessChime();
+    soundscapeService.playCompletionChime();
     setReportKey((k) => k + 1);
   };
 
