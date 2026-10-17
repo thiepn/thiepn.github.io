@@ -114,9 +114,15 @@ async function setup(root: HTMLElement) {
           view==='knowledge' && keepDevice?.status==='ready';
     }
     document.addEventListener('keep-original-react-mounted',()=>{
-        // Do not re-render the outer Hub shell during an original React mount;
-        // that could remove its native root before createRoot completes.
+        // Do not re-render the outer Hub shell during the original React mount.
+        // Scrub the interim editor's rendered plaintext without removing the
+        // separate native React mount root before createRoot can run.
         revokeKeepOwnerSession(false);
+        const originalRoot=document.querySelector('[data-keep-original-react-active="true"]');
+        const oldEditor=root.querySelector<HTMLElement>('[data-keep-owner]');
+        if(oldEditor&&!oldEditor.contains(originalRoot)){
+            oldEditor.replaceChildren(document.createTextNode('Original KEEP React now owns this source. The interim writer is disconnected.'));
+        }
     });
     function revokeKeepOwnerSession(updateUI=true){
         keepSessionAbort.abort();keepSessionAbort=new AbortController();
