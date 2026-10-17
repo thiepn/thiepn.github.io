@@ -69,9 +69,6 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         <a href="/home/calendar/?mode=week" class="ws-unified-action">Plan the week</a>
       </div></header>
     ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters</span>${textButton('capture','Resume draft')}</div>`:''}
-    ${renderHubPinboard(state,true)}
-    ${renderOutcomes(state,today,true)}
-    ${renderDecisions(state,today,true)}
     ${status.hasLayoutDraft?`<div class="ws-unified-draft"><strong>Interrupted layout draft</strong><span>Review the original saved layout before replacing anything.</span>${textButton('review-return','Review recovery')}</div>`:''}
     <div class="ws-unified-metrics" aria-label="Actual Hub work">
       <a href="/home/tasks/?filter=today"><strong>${counts.today}</strong><span>Due or overdue</span></a>
@@ -96,6 +93,9 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
       ${plan.overlaps.length?`<p class="ws-unified-overlap">${plan.overlaps.length} possible local timed overlap${plan.overlaps.length===1?'':'s'} · <a href="/home/calendar/">Review event times</a></p>`:''}
     </section>
     ${renderTodayWorkbench(state,today,folio,Date.now(),notes)}
+    ${renderHubPinboard(state,true)}
+    ${renderOutcomes(state,today,true)}
+    ${renderDecisions(state,today,true)}
     <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
