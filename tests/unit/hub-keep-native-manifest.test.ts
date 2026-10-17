@@ -4,10 +4,10 @@ const hash='a'.repeat(64);
 const good={
  format:'thiepn-keep-b3-original-react',schema:1,
  entry:'keep-b3-original.js',css:'keep-b3-original.css',
- sourceSha256:'9301b04a4979c2288adeffcab53c63cc0d62dcc04f3d441e71007e29841d9c63',jsSha256:hash,cssSha256:hash,
+ sourceSha256:'d5b7878f04b4560be6bc2e6d48bd9d3535a23e698f17711cd00f183fdd8511ca',jsSha256:hash,cssSha256:hash,
  assets:{'keep-b3-original.js':hash,'keep-b3-original.css':hash,'assets/worker-38ab.js':hash},
  inputSha256:{
-  'hub-embed/entry.tsx':'f1044595f9f0550dbe38f1e5d9847ddfabd8733cc8d4674892950606a21dfa15',
+  'hub-embed/entry.tsx':'e16a552e7562bd58974e91f7f21f1f970f173396c1bb8d2de3e2e0e7437c8d58',
   'hub-embed/vite.config.ts':'617dbbe87b2083719e187f3ff541f9e811a4955f273512335c99038592bca8df',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
