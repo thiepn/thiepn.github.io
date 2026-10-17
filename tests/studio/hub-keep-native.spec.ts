@@ -182,3 +182,51 @@ test('native KEEP original checklist completion retains original item ID',async(
  expect(record.content).toBe('Original body');
  expect(record.tags).toEqual(['study']);
 });
+
+
+for(const width of [390,1440]){
+ test('original KEEP P29 revision restore is source-owned and bounded '+width,async({page})=>{
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.evaluate(async()=>{
+   await new Promise<void>((resolve,reject)=>{
+    const open=indexedDB.open('KeepNotesDB',1);
+    open.onupgradeneeded=()=>{open.result.createObjectStore('notes',{keyPath:'id'});};
+    open.onerror=()=>reject(open.error);
+    open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('notes','readwrite');
+     tx.objectStore('notes').put({
+      id:'keep-p29-source',title:'Original theorem',content:'Initial proof',type:'text',
+      checklist:[],color:'green',tags:['mathematics'],images:[],folderId:null,pinned:true,
+      archived:false,trashed:false,createdAt:'2026-10-16T06:00:00Z',
+      updatedAt:'2026-10-16T06:01:00Z',reminderDate:null
+     });
+     tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+    };
+   });
+  });
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  await page.locator('[data-action=knowledge-keep-connect]').click();
+  await page.locator('[data-keep-owner-form] [name=content]').fill('Revised proof');
+  await page.locator('[data-keep-owner-form] [type=submit]').click();
+  await expect(page.locator('[data-keep-owner]')).toContainText('Original KEEP P29 revision history');
+  await expect(page.locator('[data-action=knowledge-keep-revision]')).toHaveCount(2);
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action=knowledge-keep-revision]').first().click();
+  await expect(page.locator('[data-keep-owner-form] [name=content]')).toHaveValue('Initial proof');
+  const record=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
+    const request=indexedDB.open('KeepNotesDB');
+    request.onerror=()=>reject(request.error);
+    request.onsuccess=()=>{
+     const db=request.result,read=db.transaction('notes').objectStore('notes').get('keep-p29-source');
+     read.onerror=()=>reject(read.error);
+     read.onsuccess=()=>{db.close();resolve(read.result)};
+    };
+  }));
+  expect(record.id).toBe('keep-p29-source');
+  expect(record.tags).toEqual(['mathematics']);
+  expect(record.color).toBe('green');
+  expect(record.revisions.some((r:any)=>r.trigger==='pre_restore')).toBe(true);
+ });
+}
