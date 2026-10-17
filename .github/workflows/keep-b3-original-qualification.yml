@@ -1,0 +1,135 @@
+name: KEEP B3 original runtime qualification (no deployment)
+on:
+  push:
+    branches:
+      - feature/hub-keep-k1-native-knowledge-workspace
+    paths:
+      - .github/workflows/keep-b3-original-qualification.yml
+      - vendor/keep-b3/**
+      - scripts/build-original-keep.mjs
+      - src/scripts/keep-native-loader.ts
+      - src/scripts/workspace-home.ts
+      - tests/studio/hub-keep-native.spec.ts
+      - tests/unit/hub-keep-native-manifest.test.ts
+      - package.json
+      - package-lock.json
+permissions:
+  contents: read
+concurrency:
+  group: keep-b3-original-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  original-keep:
+    if: github.repository == 'thiepn/thiepn.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      HUSKY: '0'
+    steps:
+      - name: Checkout exact existing draft branch (read-only, no persisted credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact pushed branch HEAD
+        run: |
+          test "$GITHUB_REF_NAME" = "feature/hub-keep-k1-native-knowledge-workspace"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f vendor/keep-b3/src/pkm/workspace/NoteWorkspaceView.tsx
+          test -f vendor/keep-b3/src/pkm/encryption/vaultEncryptionService.ts
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install ORIGINAL KEEP frozen Bun dependencies
+        id: keep_deps
+        working-directory: vendor/keep-b3
+        run: bun install --frozen-lockfile
+        continue-on-error: true
+      - name: Execute original KEEP B1b/B2/B3, vault and AES tests
+        id: keep_models
+        if: steps.keep_deps.outcome == 'success'
+        run: npm run test:keep-b3
+        continue-on-error: true
+      - name: Execute original real Argon2id/AES-256-GCM
+        id: keep_crypto
+        if: steps.keep_deps.outcome == 'success'
+        working-directory: vendor/keep-b3
+        run: bun scripts/check-keep-real-crypto.ts
+        continue-on-error: true
+      - name: Typecheck ORIGINAL KEEP
+        id: keep_types
+        if: steps.keep_deps.outcome == 'success'
+        working-directory: vendor/keep-b3
+        run: bun run lint
+        continue-on-error: true
+      - name: Build and verify full ORIGINAL KEEP React module and assets
+        id: keep_build
+        if: steps.keep_deps.outcome == 'success'
+        run: node scripts/build-original-keep.mjs vendor/keep-b3
+        continue-on-error: true
+      - name: Install Hub frozen npm dependencies (isolated runner)
+        id: hub_deps
+        run: npm ci --no-audit --no-fund
+        continue-on-error: true
+      - name: Hub exact-head Astro/TypeScript
+        id: hub_types
+        if: steps.hub_deps.outcome == 'success'
+        run: npm run typecheck
+        continue-on-error: true
+      - name: Focused native KEEP Hub unit tests
+        id: hub_unit
+        if: steps.hub_deps.outcome == 'success'
+        run: ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-keep-owner-session.test.ts tests/unit/hub-keep-b3-revisions.test.ts
+        continue-on-error: true
+      - name: Build Hub locally with authentic KEEP bundle (no deploy)
+        id: hub_build
+        if: steps.hub_deps.outcome == 'success' && steps.keep_build.outcome == 'success'
+        run: npm run build
+        continue-on-error: true
+      - name: Install Chromium on ephemeral standard public runner
+        id: chromium
+        if: steps.hub_build.outcome == 'success'
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+        continue-on-error: true
+      - name: Chromium desktop and mobile KEEP browser acceptance
+        id: hub_browser
+        if: steps.chromium.outcome == 'success' && steps.hub_build.outcome == 'success'
+        run: ./node_modules/.bin/playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-keep-native.spec.ts
+        continue-on-error: true
+      - name: Record actual results and fail if any original qualification gate fails
+        if: always()
+        env:
+          KEEP_DEPS: ${{ steps.keep_deps.outcome }}
+          KEEP_MODELS: ${{ steps.keep_models.outcome }}
+          KEEP_CRYPTO: ${{ steps.keep_crypto.outcome }}
+          KEEP_TYPES: ${{ steps.keep_types.outcome }}
+          KEEP_BUILD: ${{ steps.keep_build.outcome }}
+          HUB_DEPS: ${{ steps.hub_deps.outcome }}
+          HUB_TYPES: ${{ steps.hub_types.outcome }}
+          HUB_UNIT: ${{ steps.hub_unit.outcome }}
+          HUB_BUILD: ${{ steps.hub_build.outcome }}
+          CHROMIUM: ${{ steps.chromium.outcome }}
+          HUB_BROWSER: ${{ steps.hub_browser.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '## Original KEEP B3 exact-head qualification'
+            echo "Commit: $GITHUB_SHA"
+            echo '| Stage | Result |'
+            echo '|---|---|'
+            for name in KEEP_DEPS KEEP_MODELS KEEP_CRYPTO KEEP_TYPES KEEP_BUILD HUB_DEPS HUB_TYPES HUB_UNIT HUB_BUILD CHROMIUM HUB_BROWSER; do
+              echo "| $name | ${!name} |"
+            done
+            echo 'No deployment, publishing, production database, credentials, artifact upload, cache or paid runner.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          for name in KEEP_DEPS KEEP_MODELS KEEP_CRYPTO KEEP_TYPES KEEP_BUILD HUB_DEPS HUB_TYPES HUB_UNIT HUB_BUILD CHROMIUM HUB_BROWSER; do
+            if [[ "${!name}" != "success" ]]; then
+              echo "UNQUALIFIED: $name=${!name}"
+              exit 1
+            fi
+          done
