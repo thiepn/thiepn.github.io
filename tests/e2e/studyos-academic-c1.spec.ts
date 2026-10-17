@@ -46,6 +46,12 @@ function markup(kind:'ready'|'unavailable'|'stale'|'signed-out', mode:'today'|'w
   return renderAcademic(state,origin,mode,T);
 }
 async function render(page:import('@playwright/test').Page, html:string, width=1440){
+  // about:blank has an opaque origin and forbids localStorage. A fully intercepted,
+  // non-public fixture origin makes read-only browser-storage assertions meaningful.
+  await page.route('https://c1-offline.test/blank', route=>route.fulfill({
+    status:200,contentType:'text/html',body:'<!doctype html><title>StudyOS C1 offline fixture</title>'
+  }));
+  await page.goto('https://c1-offline.test/blank');
   await page.setViewportSize({width,height:844});
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/>'+
     '<style>*,*:before,*:after{box-sizing:border-box}body{margin:0;padding:16px;font:14px Arial,sans-serif}main{max-width:100%;margin:auto}'+css+'</style>'+
