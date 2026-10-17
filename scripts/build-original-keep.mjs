@@ -35,8 +35,15 @@ for(const [name,checksum] of Object.entries(originals)){
     typeof checksum!=='string'||!(/^[a-f0-9]{64}$/u.test(checksum))||
     digest(check(name))!==checksum)throw new Error('Original KEEP file integrity failed: '+name);
 }
-for(const required of ['hub-embed/entry.tsx','hub-embed/vite.config.ts','package.json','bun.lock'])
-  check(required);
+const pinnedInputs={
+  'hub-embed/entry.tsx':'f4148f9940a892295d64fe993344eaa173ba6ddbc6f19d05c46cd0d269988fe8',
+  'hub-embed/vite.config.ts':'084560c67eb08f0413c97edafc04f16b4f1e15bb7e9c9ceea5aad8eb375581c7',
+  'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
+  'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
+};
+for(const [name,expected] of Object.entries(pinnedInputs)){
+  if(digest(check(name))!==expected)throw new Error('KEEP original dependency/mount input changed: '+name);
+}
 const vite=path.join(root,'node_modules','.bin','vite');
 if(!fs.existsSync(vite))throw new Error(
   'Original KEEP dependencies are not installed. No installation was attempted. Qualify the original lockfile first.');
@@ -78,7 +85,8 @@ if(!js.toString('utf8').includes('mountOriginalKeep'))
   throw new Error('Original React mount export not found in built ESM.');
 const built={
   format:'thiepn-keep-b3-original-react',schema:1,entry:bundle,css:style,
-  sourceSha256:digest(manifestBytes),jsSha256:assets[bundle],cssSha256:assets[style],assets
+  sourceSha256:digest(manifestBytes),jsSha256:assets[bundle],cssSha256:assets[style],
+  inputSha256:pinnedInputs,assets
 };
 const out=path.join(repo,'public','keep-b3-native');
 if(fs.existsSync(out))throw new Error('Refusing to overwrite existing local KEEP output: '+out);
