@@ -3,7 +3,7 @@
  * Source records are projections only: original IDs never become Hub task/event IDs.
  * No Folio store, background reads, inferred availability, or source write authority.
  */
-import {addDays, dayKey, weekDays} from './model';
+import {dayKey, weekDays} from './model';
 import {reviewDay, type AgendaMode} from './planning-review';
 import {compareApprovedFolioTime} from './source-time-review';
 import type {FolioDeviceSnapshot} from './folio-device';

@@ -96,3 +96,35 @@ test('Today compares only explicitly approved Folio slots to real local Hub even
   await expect(page.locator('[data-source-today-folio]')).not.toContainText('Folio appointment');
   await popup.close();
 });
+
+test('Folio owner share continues into Calendar week and optional reviewed Hub-only spread',async({page,context})=>{
+ test.setTimeout(60000);
+ await ready(page,'/home/calendar/?mode=week');
+ await expect(page.locator('[data-folio-continuity]')).toContainText('Share a bounded Folio snapshot');
+ await context.route('**/folio/?hubBridge=*',route=>route.fulfill({status:200,contentType:'text/html',body:
+   '<!doctype html><html><body><button id="share">Approve Folio</button><script>'+
+   'document.getElementById("share").onclick=()=>{const nonce=new URL(location.href).searchParams.get("hubBridge");'+
+   'window.opener.postMessage({type:"thiepn:folio-hub-daily:v1",nonce,snapshot:{'+
+   'schema:"thiepn:folio-hub-daily",version:1,source:"folio-local-device",'+
+   'generatedAt:new Date().toISOString(),date:new Date().toISOString().slice(0,10),'+
+   'pendingCount:1,overdueCount:0,notes:[],habits:[],tasks:[{id:"folio-one",title:"Source-owned Folio plan",'+
+   'priority:"high",plannedToday:true}],events:[]}},location.origin);};</script></body></html>'
+ }));
+ const pop=page.waitForEvent('popup');
+ await page.locator('[data-folio-continuity] [data-action=connect-folio]').click();
+ const owned=await pop;
+ await owned.getByRole('button',{name:'Approve Folio'}).click();
+ await expect(page.locator('[data-folio-continuity]')).toContainText('Source-owned Folio plan');
+ await addTask(page,'Hub original one');
+ await addTask(page,'Hub original two');
+ await page.locator('[data-action=week-filter][data-id=inbox]').click();
+ await page.locator('[data-action=week-select-visible]').click();
+ await page.locator('[data-week-followthrough] [data-action=week-spread]').last().click();
+ await expect(page.locator('[data-week-spread-review] [name=includeFolio]')).toHaveCount(1);
+ await page.locator('[data-week-spread-review] [name=includeFolio]').check();
+ await expect(page.locator('[data-week-spread-preview]')).toContainText('Folio task hints');
+ await page.locator('[data-action=close-dialog]').first().click();
+ await page.locator('[data-folio-continuity] [data-action=disconnect-folio]').click();
+ await expect(page.locator('[data-folio-continuity]')).not.toContainText('Source-owned Folio plan');
+ await owned.close();
+});
