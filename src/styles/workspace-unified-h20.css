@@ -300,3 +300,13 @@
 .ws-outcome-row ul{margin:0;padding-left:1.25rem;overflow-wrap:anywhere}
 .ws-outcome-actions{justify-content:flex-start}
 @media(max-width:600px){.ws-outcome-row{padding:.55rem}.ws-outcome-row>header{flex-direction:column}}
+
+/* WCAG AA: new Outcomes controls cannot inherit UA black text in dark mode. */
+.ws-outcome-board button{
+ color:var(--ws-ink);background:var(--ws-surface);
+ border:1px solid var(--ws-line);border-radius:5px;
+ padding:7px 10px;min-height:40px;font:inherit;cursor:pointer;
+}
+.ws-outcome-board button:disabled{opacity:.55;cursor:not-allowed}
+.ws-outcome-board button:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px}
+@media(max-width:680px){.ws-outcome-board button{min-height:44px}}

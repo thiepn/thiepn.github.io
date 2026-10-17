@@ -223,7 +223,10 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
   if(trigger==='focus'){
    const guest=await a.page.evaluate(()=>new Promise<string>((resolve,reject)=>{const open=indexedDB.open('thiepn-adaptive-workspace',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('records').objectStore('records').get('guest');read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};}));
-   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');
+   // PKCE returns to Today; the original account Workspace capture lives in Workspace mode.
+   await a.page.locator('[data-action=unified-mode][data-id=workspace]').click();
+   await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
   }
  }finally{await a.context.close();}
 });
