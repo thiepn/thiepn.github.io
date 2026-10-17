@@ -89,7 +89,8 @@ describe('native Today execution workbench',()=>{
     const before=JSON.stringify(s),sourceBefore=JSON.stringify(folio);
     const rows=projectFolioWorkbench(s,'2026-10-17',folio,now);
     expect(rows).toHaveLength(7);
-    expect(rows[2]).toMatchObject({date:'2026-10-19',taskCount:1,blockCount:1,overlaps:1});
+    // The owner's single block intersects both original Hub events on this day.
+    expect(rows[2]).toMatchObject({date:'2026-10-19',taskCount:1,blockCount:1,overlaps:2});
     const html=renderTodayWorkbench(s,'2026-10-17',folio,now);
     expect(html).toContain('data-folio-workbench-day="2026-10-19"');
     expect(html).toContain('Private &lt;Folio task&gt;');
