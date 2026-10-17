@@ -47,13 +47,13 @@ export const VaultArchiveModal: React.FC<VaultArchiveModalProps> = ({
   const handleDownloadJSON = () => {
     VaultArchiveExporter.exportAsJSON(manifest);
     setDownloadedJSON(true);
-    soundscapeService.playSuccessChime();
+    soundscapeService.playCompletionChime();
   };
 
   const handleDownloadHTML = () => {
     VaultArchiveExporter.exportStandaloneHTML(manifest);
     setDownloadedHTML(true);
-    soundscapeService.playSuccessChime();
+    soundscapeService.playCompletionChime();
   };
 
   return (
