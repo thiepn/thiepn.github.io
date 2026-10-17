@@ -54,7 +54,7 @@ for(const width of [1440,390]){
   await page.reload();
   await page.locator('[data-action=knowledge-open]').filter({hasText:'Research project'}).first().click();
   await expect(page.locator('.ws-knowledge-relations')).toContainText('100%');
-  await expect(page.locator('[data-knowledge-form] [name=body]')).toContainValue('- [x] First step');
+  await expect(page.locator('[data-knowledge-form] [name=body]')).toHaveValue(/- \[x\] First step/u);
   expect(errors).toEqual([]);
  });
 }
@@ -213,7 +213,7 @@ for(const width of [390,1440]){
   await expect(page.locator('[data-keep-owner]')).toContainText('Original KEEP P29 revision history');
   await expect(page.locator('[data-action=knowledge-keep-revision]')).toHaveCount(2);
   page.once('dialog',dialog=>dialog.accept());
-  await page.locator('[data-action=knowledge-keep-revision]').first().click();
+  await page.locator('[data-action=knowledge-keep-revision]').last().click();
   await expect(page.locator('[data-keep-owner-form] [name=content]')).toHaveValue('Initial proof');
   const record=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
     const request=indexedDB.open('KeepNotesDB');
