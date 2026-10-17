@@ -24,20 +24,20 @@ const uuid=(v:unknown):v is string=>typeof v==="string"&&/^[a-f0-9]{8}-[a-f0-9]{
 const date=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&
   Number.isFinite(Date.parse(v+"T12:00:00Z"))&&new Date(v+"T12:00:00Z").toISOString().slice(0,10)===v;
 const instant=(v:unknown):v is string=>typeof v==="string"&&Number.isFinite(Date.parse(v));
-const str=(v:unknown,max=240)=>typeof v==="string"&&v.length<=max;
-const number=(v:unknown,max=1e8)=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=max;
+const str=(v:unknown,max=240):v is string=>typeof v==="string"&&v.length<=max;
+const number=(v:unknown,max=1e8):v is number=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=max;
 const optional=(v:unknown,ok:(v:unknown)=>boolean)=>v===null||ok(v);
 function zoneValid(zone:string){try{new Intl.DateTimeFormat("en-GB",{timeZone:zone});return true}catch{return false}}
 const esc=(x:unknown)=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));
 /** The current verified StudyOS owner origin is study.thiepn.dev, not the obsolete studyos subdomain. */
 export function studyOrigin(v:unknown):string|null{
-  if(!str(v,130)||!v)return null;
+  if(typeof v!=="string"||!str(v,130)||!v)return null;
   try{const u=new URL(v);return u.origin==="https://study.thiepn.dev"&&u.pathname==="/"&&!u.search&&
     !u.hash&&!u.username&&!u.password?u.origin:null}catch{return null}
 }
 /** All owner-provided actions must stay within known, original StudyOS screens. */
 export function studyAction(origin:string,path:unknown):string|null{
-  if(!studyOrigin(origin)||!str(path,320)||!path.startsWith("/")||path.startsWith("//"))return null;
+  if(!studyOrigin(origin)||typeof path!=="string"||!str(path,320)||!path.startsWith("/")||path.startsWith("//"))return null;
   try{
     const u=new URL(path,origin);
     if(u.origin!==origin||u.hash||u.username||u.password)return null;
@@ -122,7 +122,7 @@ export function parseAcademic(v:unknown,now=Date.now()):AcademicRead{
       throw Error("Invalid academic review");
     skills.add(x.skillId);
   }
-  return v as AcademicRead;
+  return v as unknown as AcademicRead;
 }
 export async function fetchAcademic(origin:string,token:string,from:string,signal:AbortSignal,fetcher:typeof fetch=fetch){
   if(!studyOrigin(origin)||!token||token.length>16384||!/^[\x21-\x7e]+$/.test(token)||!date(from))
@@ -184,6 +184,11 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
     return "<section class=\"ws-study-c1-day\"><h4>"+esc(day)+" · "+(exams.length+deadlines.length)+
       " academic dates</h4>"+rows(dayRows,"No source deadlines for this day.")+"</section>";
   });
+  const futureExams=x.exams.filter(e=>localAcademicDay(e.examAt,zone)>=limit)
+    .sort((a,b)=>a.examAt.localeCompare(b.examAt)).slice(0,8).map(e=>({
+      title:e.courseName,detail:when(e.examAt,zone)+" · owner-configured, not university-verified",
+      href:action(origin,e.sourceRoute)
+    }));
   const dueReviews=x.reviews.items.map(r=>({title:r.title,detail:r.actionable===true?
     "Original eligible question · source-owned mastery":r.actionable===null?
     "Question availability unknown — source read is partial":"No eligible original question confirmed",
@@ -202,7 +207,9 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
     (overdue.length?'<section class="ws-study-c1-overdue"><h3>Overdue assignments ('+overdue.length+')</h3>'+
       rows(overdue.map(c=>({title:c.title,detail:c.kind+" · due "+when(c.dueAt,zone),href:action(origin,c.sourceRoute)})),"")+"</section>":"")+
     '<div class="ws-study-c1-grid"><section><h3>'+ (mode==="week"?"Academic week":"Next seven days")+
-    "</h3><div class=\"ws-study-c1-days\">"+daySections.join("")+"</div></section>"+
+    "</h3><div class=\"ws-study-c1-days\">"+daySections.join("")+"</div>"+
+    (futureExams.length?'<section class="ws-study-c1-later"><h3>Later configured exams</h3>'+
+      rows(futureExams,"")+"</section>":"")+"</section>"+
     '<section><h3>Due reviews ('+x.reviews.dueSkillCount+')</h3><p>'+
       x.reviews.actionableSkillCount+" confirmed actionable · "+x.reviews.budgetMinutes+" min review budget</p>"+
     rows(dueReviews.slice(0,12),x.reviews.dueSkillCount>0?

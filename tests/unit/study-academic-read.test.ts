@@ -56,7 +56,7 @@ describe("C1-B StudyOS original read-only projection",()=>{
  it("rejects foreign academic record IDs and source-owned calendar writers",()=>{
   const x=sample();x.reviews.items[0]!.courseId=skill;
   expect(()=>parseAcademic(x,now)).toThrow();
-  const y=sample();y.candidates.push({kind:"auto_schedule"});
+  const y=sample();(y.candidates as Array<unknown>).push({kind:"auto_schedule"});
   expect(()=>parseAcademic(y,now)).toThrow();
  });
  it("validates actionable unknown separately from zero work",()=>{
@@ -76,7 +76,9 @@ describe("C1-B StudyOS original read-only projection",()=>{
  });
  it("makes only a token-scoped no-credentials GET with caller-bound seven-day horizon",async()=>{
   let captured:RequestInit|undefined;let url="";
-  const raw=sample();raw.coverage.status="complete";raw.coverage.reasons=[];raw.coverage.truncated=false;
+  const raw=sample();const stamp=Date.now();raw.generatedAt=new Date(stamp).toISOString();
+  raw.expiresAt=new Date(stamp+300000).toISOString();
+  raw.coverage.status="complete";raw.coverage.reasons=[];raw.coverage.truncated=false;
   const fake=async (u:RequestInfo|URL,init?:RequestInit)=>{
     url=String(u);captured=init;return new Response(JSON.stringify({ok:true,status:"ready",data:raw}),
       {status:200,headers:{"content-type":"application/json"}});
