@@ -4,6 +4,7 @@ import configuration from '../data/hub-account.json';
 import { validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { readBoundedJson } from '../lib/providers/runtime';
 import { createHubAccountStorage } from '../lib/hub-account-storage';
+import { persistHubAccountStorage } from '../lib/hub-account-persistence';
 import type { CloudMutation, CloudTransport } from '../lib/workspace/cloud-sync';
 
 const STORAGE = 'thiepn:hub-sso:v1';
@@ -110,8 +111,16 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
   try {
     let persistent: Storage | null = null;
     try { persistent = localStorage; } catch { /* Account credentials may still use tab storage. */ }
-    const storage = createHubAccountStorage(persistent, sessionStorage, [STORAGE+':tokens', VERIFIED, `thiepn:sso:${configuration.clientId}:manual-signout`]);
-    accountSession = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first', localStorage: storage });
+    const keys = [STORAGE+':tokens', VERIFIED, `thiepn:sso:${configuration.clientId}:manual-signout`];
+    const fallback = createHubAccountStorage(persistent, sessionStorage, keys);
+    const durable = await persistHubAccountStorage(fallback, keys, persistent);
+    const storage = durable.storage;
+    const session = createThiepnAccountSession({ issuer: configuration.issuer, publishableKey: configuration.publishableKey, clientId: configuration.clientId, redirectUri: configuration.callback, storageKey: STORAGE, authPolicy: 'guest-first', localStorage: storage });
+    accountSession = { ...session,
+      verify: () => durable.run(() => session.verify()),
+      getAccessToken: () => durable.run(() => session.getAccessToken()),
+      completeCallback: input => durable.run(() => session.completeCallback(input)),
+    };
     let pendingNavigation: string | null = null;
     let navigating: Promise<void> | null = null;
     function continueNavigation(url:string):Promise<void> {
@@ -122,6 +131,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
           // Discovery may finish while the user is typing. Flush again at
           // the actual handoff, not only before the background probe.
           await prepareAccountNavigation();
+          await durable.flush();
           sessionStorage.setItem(RETURN,returnTo());
           location.assign(url);
         } catch {
@@ -146,13 +156,12 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
       try {
         await prepareAccountNavigation();
         ++verification;
-        sso.signOutLocal(); storage.removeItem(VERIFIED);
+        await durable.run(() => { sso.signOutLocal(); storage.removeItem(VERIFIED); });
         show({status:'signed-out'});
         if(notify)signOutChannel?.postMessage('signed-out');
       } catch { show(activeIdentity,'Save or export your changes before signing out.'); }
     }
-    // Tab-backed credentials are intentionally not shared. Sign-out still
-    // reaches other Hub tabs through a tokenless same-origin message.
+    // Notify other tabs without putting credentials in messages.
     if(signOutChannel)signOutChannel.onmessage = event => {if(event.data==='signed-out')void signOut(false);};
     async function verified(identity: ReturnType<ThiepnAccountSession['identity']>, ticket = verification) {
       if (ticket !== verification) return;
@@ -166,7 +175,13 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
         if (!token || !matchingToken(token, identity.id)) throw new Error('Account changed during verification.');
         const record = { id: identity.id, label: identity.email ?? 'THIEPN member', token: await fingerprint(token) };
         if (!await retainBefore(identity.id)) return;
-        storage.setItem(VERIFIED, JSON.stringify(record));
+        await durable.run(() => {
+          if (ticket !== verification) return;
+          const current = JSON.parse(storage.getItem(STORAGE+':tokens') ?? 'null') as {accessToken?: string} | null;
+          if (current?.accessToken !== token) throw new Error('Account changed during verification.');
+          storage.setItem(VERIFIED, JSON.stringify(record));
+        });
+        if (ticket !== verification) return;
         show({ status: 'signed-in', id: record.id, label: record.label });
       } else if (identity.status === 'signed-out' && !storage.getItem(STORAGE + ':tokens')) { if(!await retainBefore(null))return;storage.removeItem(VERIFIED); show({ status: 'signed-out' }); }
       else {
@@ -214,7 +229,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
       busy = true; ++verification;
       try {
         await prepareAccountNavigation();
-        if (changing) { sso.signOutLocal(); storage.removeItem(VERIFIED); }
+        if (changing) { await durable.run(() => { sso.signOutLocal(); storage.removeItem(VERIFIED); }); }
         show({ status: 'checking' });
         await sso.connect();
       } catch { busy = false; show(previousIdentity.status==='signed-out'?{status:'signed-out'}:{status:'unavailable'}, 'Cloud sync could not start. Try again.');retry.hidden=false; }
@@ -225,8 +240,8 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     retryConnection = () => { if(pendingNavigation){void continueNavigation(pendingNavigation);return;} if (location.pathname === '/home/auth/callback/') location.replace('/'); else void check(); };
     window.addEventListener('storage', event => {
       if (event.key === STORAGE + ':tokens') {
-        storage.reconcilePersistentChange(STORAGE+':tokens');
-        storage.reconcilePersistentChange(VERIFIED);
+        fallback.reconcilePersistentChange(STORAGE+':tokens');
+        fallback.reconcilePersistentChange(VERIFIED);
         void check();
       }
     });
@@ -246,6 +261,7 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
       const result = await accountSession.completeCallback(original);
       busy = false; await verified(result);
       if (activeIdentity.status === 'signed-in') {
+        await durable.flush();
         const target = sessionStorage.getItem(RETURN) ?? '/'; sessionStorage.removeItem(RETURN);
         location.replace(['/', '/apps/', '/home/', '/home/tasks/', '/home/calendar/', '/home/trackers/', '/home/settings/'].includes(target) ? target : '/');
       }

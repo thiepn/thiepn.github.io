@@ -13,3 +13,13 @@ Discovery keeps the guest workspace usable immediately. The final account redire
 Workspace initialization and the Account handoff also share a persistence queue. The next save captures its revision after the preceding save finishes, avoiding a false local revision conflict during cold automatic connection while preserving compare-and-swap checks against real concurrent writers.
 
 Account startup must not require free localStorage space. Apps sharing thiepn.dev can fill that quota while Account on its separate origin remains signed in. Hub reads existing credentials without an artificial write probe and falls back to sessionStorage for its own credentials and sign-out marker when persistent writes fail. Fallback records survive same-tab OAuth navigation and reloads, preserve explicit sign-out, and never clear another app's data. Tokenless sign-out messages reach other Hub tabs; a newer persistent credential from another tab replaces an older fallback. A retry handler exists before initialization and reloads the connection after an initialization failure. Error text distinguishes browser session storage denial from other startup failures.
+
+## Reusing the Hub session across tabs
+
+The localStorage-quota fallback above originally persisted credentials only in sessionStorage. Reloads worked, but each new tab performed another SSO/PKCE exchange. A regression now asserts exactly one exchange across fresh tabs, including with full app localStorage.
+
+Hub now keeps its app-scoped credentials, verified offline identity fingerprint and manual-sign-out marker in a dedicated IndexedDB store (`thiepn-hub-account`). It migrates existing local/tab records on first use. Null tombstones prevent an old local/tab credential from resurrecting after sign-out. No other app records are evicted and no credentials are broadcast. Browsers that block IndexedDB retain the previous local/tab storage adapter.
+
+Each SDK verification, token read/refresh, callback and sign-out loads the current durable records under a same-origin Web Lock, commits writes before releasing it, and retains the SDK's own refresh protection. Concurrent new tabs therefore reuse the latest rotated refresh token. The callback commits before returning to Hub. Existing server identity validation, owner isolation, manual opt-out and guest-only use remain intact.
+
+Browser coverage includes tabs reopened after every prior tab closes, full localStorage, blocked IndexedDB, simultaneous expired-token refresh, cross-tab sign-out and a fresh tab after sign-out. These checks use synthetic Account responses, not the owner's credentials.
