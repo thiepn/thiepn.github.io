@@ -25,6 +25,7 @@ import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/st
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
 import { enableHubPinboard, toggleHubRecordPin, moveHubRecordPin, hasHubPin } from '../lib/workspace/record-pinboard';
+import {outcomes,saveOutcome,changeOutcome,type OutcomeDraft} from '../lib/workspace/outcome-board';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
@@ -1714,6 +1715,37 @@ async function setup(root: HTMLElement) {
             await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,ids,nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
         });
     }
+
+    function editOutcome(id='') {
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=id?outcomes(state!).find(o=>o.id===id):undefined;
+        if(id&&!prior){toast('Outcome no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const tasks=[...state!.tasks.filter(t=>prior?.taskIds.includes(t.id)),...state!.tasks.filter(t=>!prior?.taskIds.includes(t.id)&&!t.completedAt)].slice(0,80);
+        const trackers=state!.trackers;
+        const fields=field('Outcome title','title',prior?.title??'','text','maxlength="100" required')+
+          field('Target date','target',prior?.target??'','date')+
+          '<p>Link original Hub records only. At most 16 tasks and 8 trackers; no source data is copied.</p>'+
+          '<fieldset><legend>Tasks</legend>'+tasks.map(t=>'<label class="ws-choice"><input type="checkbox" name="taskIds" aria-label="Link task '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.taskIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          '<fieldset><legend>Trackers</legend>'+trackers.map(t=>'<label class="ws-choice"><input type="checkbox" name="trackerIds" aria-label="Link tracker '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.trackerIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          (state!.tasks.length>tasks.length?'<p>Showing selected and up to 80 open tasks. Other Hub tasks remain in Tasks.</p>':'');
+        openForm(prior?'Edit outcome':'Create outcome',fields,async data=>{
+          const draft:OutcomeDraft={title:String(data.get('title')??''),target:String(data.get('target')??''),
+            taskIds:data.getAll('taskIds').map(String),trackerIds:data.getAll('trackerIds').map(String)};
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the editor.');saveOutcome(s,id||null,draft,snapshot);},'Outcome saved',true,false,true);
+        });
+    }
+    function updateOutcome(id:string,remove=false){
+       if(editing){toast('Finish editing the layout first.');return;}
+       const prior=outcomes(state!).find(o=>o.id===id);
+       if(!prior){toast('Outcome no longer exists.');return;}
+       const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+       const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');changeOutcome(s,id,snapshot,remove);},
+         remove?'Outcome grouping removed':prior.archived?'Outcome restored':'Outcome archived',true,false,remove);
+       if(remove)openForm('Remove outcome','<p>Remove this grouping only? All original tasks and tracker logs will remain.</p>',apply,'Remove grouping');
+       else void apply().catch(error=>toast(error instanceof Error?error.message:'Unable to change outcome.'));
+    }
+
     function configureWidget(id: string) {
         let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
         if (!w)
@@ -1797,7 +1829,7 @@ async function setup(root: HTMLElement) {
         const groups: Array<{title:string;description:string;types:string[]}> = [
             {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
-            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board']},
         ];
         openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div>`, () => { });
         $('[data-dialog-submit]').hidden = true;
@@ -2530,6 +2562,7 @@ async function setup(root: HTMLElement) {
                 const spec = specification(id);
                 if (!spec)
                     return;
+                if (id==='outcome-board' && editing!.workspace.widgets.some(w=>w.type==='outcome-board')) {toast('One Outcomes board per workspace.');return;}
                 if (editing!.workspace.widgets.length >= 32) {
                     toast('This workspace already has 32 widgets.');
                     return;
@@ -2549,6 +2582,10 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'new-outcome':editOutcome();break;
+            case 'edit-outcome':editOutcome(id);break;
+            case 'toggle-outcome':updateOutcome(id);break;
+            case 'remove-outcome':updateOutcome(id,true);break;
             case 'enable-record-pinboard':
                 if(editing){toast('Finish layout editing before adding a pinboard.');break;}
                 void mutate(s=>enableHubPinboard(s),'Workspace pinboard ready')
