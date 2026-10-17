@@ -4,7 +4,7 @@ const hash='a'.repeat(64);
 const good={
  format:'thiepn-keep-b3-original-react',schema:1,
  entry:'keep-b3-original.js',css:'keep-b3-original.css',
- sourceSha256:'de1dd047ecf0e1d3ae5456c5a26663fae3966fdf1122c5d86f5544811c527e90',jsSha256:hash,cssSha256:hash,
+ sourceSha256:'f7eca79bd43e76d470a3042ea3ae66bfa88ada46b49f6a37d96b846fe1f9fa59',jsSha256:hash,cssSha256:hash,
  assets:{'keep-b3-original.js':hash,'keep-b3-original.css':hash,'assets/worker-38ab.js':hash},
  inputSha256:{
   'hub-embed/entry.tsx':'f4148f9940a892295d64fe993344eaa173ba6ddbc6f19d05c46cd0d269988fe8',
