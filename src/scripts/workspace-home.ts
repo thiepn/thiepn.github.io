@@ -1,6 +1,6 @@
 import { renderKnowledge } from '../lib/workspace/knowledge-pane';
 import {renderKeepOwnerEditor} from '../lib/workspace/keep-b3-editor';
-import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,undoKeepDeviceEdit,type KeepDeviceResult,type KeepEditReceipt} from '../lib/workspace/keep-b3-device';
+import {readKeepDevice,updateKeepDevice,createKeepDeviceNote,toggleKeepDeviceChecklist,undoKeepDeviceEdit,restoreKeepDeviceRevision,type KeepDeviceResult,type KeepEditReceipt} from '../lib/workspace/keep-b3-device';
 import { keepTasksFromHubNote, toggleKeepTaskLine } from '../lib/workspace/keep-b3-source';
 import {saveTracker,saveTrackerLog,removeTracker,validateTrackerChange,validateTrackerLog} from '../lib/workspace/commands/trackers';
 import {workspaceAttention} from '../lib/workspace/attention';
@@ -2005,6 +2005,23 @@ async function setup(root: HTMLElement) {
                     if(own!==epoch)return;
                     await connectKeepOwner();keepDeviceSelected=receipt.original.id;render();toast('Previous KEEP note revision restored.');
                 }).catch(e=>toast(e instanceof Error?e.message:'KEEP undo refused because the source changed.'));
+                return;
+            }
+            if(action==='knowledge-keep-revision'){
+                if(keepDeviceDraft||keepOwnerCreating||keepDevice?.status!=='ready'){
+                    toast('Save or discard current changes before restoring original KEEP history.');return;
+                }
+                const note=keepDevice.notes.find(n=>n.id===keepDeviceSelected)??keepDevice.notes[0];
+                if(!note)return;
+                if(!window.confirm('Restore this original KEEP note revision? A pre-restore checkpoint is saved in its original history.'))return;
+                const own=epoch;
+                void restoreKeepDeviceRevision(note.id,note.updatedAt,id)
+                  .then(async(receipt)=>{
+                    if(own!==epoch)return;
+                    keepUndo=receipt;
+                    await connectKeepOwner();
+                    keepDeviceSelected=note.id;render();toast('Original KEEP revision restored. Latest edit can be undone.');
+                  }).catch(e=>toast(e instanceof Error?e.message:'Original KEEP revision restore refused.'));
                 return;
             }
             if(action==='knowledge-keep-checklist'){
