@@ -44,6 +44,31 @@ export function validKeepNativeManifest(value:unknown):value is NativeManifest {
     typeof v.jsSha256==='string'&&SHA.test(v.jsSha256)&&
     typeof v.cssSha256==='string'&&SHA.test(v.cssSha256);
 }
+/** Reuse an existing original KEEP owner DB; never silently initialize another one. */
+async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<void>{
+  if(typeof indexedDB.databases!=='function')
+    throw new Error('This browser cannot verify an existing original KEEP database.');
+  const databases=await indexedDB.databases();
+  if(signal.aborted)throw new Error('KEEP owner session was revoked.');
+  if(!databases.some(db=>db.name==='KeepNotesDB'&&db.version===1))
+    throw new Error('No original KEEP B3 v1 database exists on this Hub origin. Nothing was created or migrated.');
+  await new Promise<void>((resolve,reject)=>{
+    const req=indexedDB.open('KeepNotesDB');
+    req.onupgradeneeded=()=>{
+      req.transaction?.abort();
+      reject(new Error('Original KEEP schema initialization is forbidden in Hub.'));
+    };
+    req.onerror=()=>reject(req.error??new Error('Original KEEP database is unavailable.'));
+    req.onblocked=()=>reject(new Error('Original KEEP database is busy in another tab.'));
+    req.onsuccess=()=>{
+      const db=req.result;
+      const ok=db.version===1&&db.objectStoreNames.contains('notes')&&!signal.aborted;
+      db.close();
+      ok?resolve():reject(new Error('Original KEEP B3 notes store or owner session is unavailable.'));
+    };
+  });
+}
+
 async function verifiedAsset(name:string,expected:string,contentType:RegExp,signal:AbortSignal){
   const uri=new URL(PREFIX+name,location.origin);
   if(uri.origin!==location.origin)throw new Error('KEEP must load from Hub origin.');
@@ -63,6 +88,8 @@ export async function mountOriginalKeepInHub(
   if(!authority.mayMount()||authority.revoked.aborted||!container.isConnected||container.childElementCount)
     throw new Error('KEEP needs an empty workspace with current Hub owner authorization.');
   const signal=authority.revoked;
+  await requireExistingOriginalKeepDatabase(signal);
+  if(!authority.mayMount())throw new Error('KEEP owner authorization expired.');
   const response=await fetch(PREFIX+'manifest.json',{signal,cache:'no-store',credentials:'same-origin',redirect:'error'});
   if(!response.ok||!(response.headers.get('content-type')??'').includes('json'))
     throw new Error('Original KEEP React source has not been built into this preview.');
