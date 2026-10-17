@@ -4,7 +4,8 @@ const hash='a'.repeat(64);
 const good={
  format:'thiepn-keep-b3-original-react',schema:1,
  entry:'keep-b3-original.js',css:'keep-b3-original.css',
- sourceSha256:'415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58',jsSha256:hash,cssSha256:hash
+ sourceSha256:'415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58',jsSha256:hash,cssSha256:hash,
+ assets:{'keep-b3-original.js':hash,'keep-b3-original.css':hash,'assets/worker-38ab.js':hash}
 };
 describe('original KEEP native React integrity and source boundary',()=>{
  it('accepts only the qualified original-build shape',()=>{
@@ -15,6 +16,9 @@ describe('original KEEP native React integrity and source boundary',()=>{
    expect(validKeepNativeManifest({...good,css:'../inject.css'})).toBe(false);
    expect(validKeepNativeManifest({...good,schema:2})).toBe(false);
    expect(validKeepNativeManifest({...good,format:'generic-react-mock'})).toBe(false);
+   expect(validKeepNativeManifest({...good,assets:{'keep-b3-original.js':hash}})).toBe(false);
+   expect(validKeepNativeManifest({...good,assets:{...good.assets,'../escape.js':hash}})).toBe(false);
+   expect(validKeepNativeManifest({...good,assets:{...good.assets,'assets/worker-38ab.js':'bad'}})).toBe(false);
  });
  it('requires three verifiable sha256 digests',()=>{
    expect(validKeepNativeManifest({...good,jsSha256:'unverified'})).toBe(false);
