@@ -431,11 +431,30 @@ for (const width of [1440,390]) {
   expect(stored.version).toBe(1);
   expect(stored.stores).toEqual(['folders','notes','saved_searches','settings']);
   expect({notes:stored.notes,folders:stored.folders,searches:stored.searches}).toEqual({notes:0,folders:0,searches:0});
+  // Create an actual original React note and check the source DB, not Hub's
+  // interim editor or a copied app record.
+  const original=page.locator('[data-keep-native-host]');
+  await original.getByText('Take a note...', {exact:true}).click();
+  await original.locator('input[placeholder="Title"]').fill('Original owner enrollment note');
+  await original.locator('textarea[placeholder^="Take a note"]').fill('Original storage writes and stays on this origin');
+  await original.locator('#btn-quick-note-close').click();
+  const readOriginal=()=>page.evaluate(async()=>await new Promise<any[]>((resolve,reject)=>{
+    const req=indexedDB.open('KeepNotesDB');req.onerror=()=>reject(req.error);
+    req.onsuccess=()=>{
+      const db=req.result,read=db.transaction('notes','readonly').objectStore('notes').getAll();
+      read.onsuccess=()=>{db.close();resolve(read.result)};read.onerror=()=>reject(read.error);
+    };
+  }));
+  await expect.poll(async()=>(await readOriginal()).length,{timeout:15000}).toBe(1);
+  const [authored]=await readOriginal();
+  expect(authored).toMatchObject({title:'Original owner enrollment note',content:'Original storage writes and stays on this origin'});
+  expect(authored.id).toBeTruthy();
   await page.locator('[data-keep-native-exit]').click();
   await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('[data-action=knowledge-native-start]').click();
   await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1,{timeout:45000});
+  expect((await readOriginal())[0]?.id).toBe(authored.id);
   await page.locator('[data-keep-native-exit]').click();
  });
 }
