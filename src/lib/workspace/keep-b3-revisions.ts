@@ -38,7 +38,10 @@ export function keepRevisionList(note:KeepOwnerNote):KeepBoundedRevision[]{
 /** KEEP P29 original append/coalesce behavior with a bounded 50-version retention. */
 export function recordKeepRevision(note:KeepOwnerNote,currentContent:string,
   trigger:KeepBoundedRevision['trigger']='auto_coalesced',now=new Date()):KeepOwnerNote {
-  const revisions=keepRevisionList(note).slice(),stamp=now.toISOString(),checksum=keepChecksum(currentContent);
+  const compatible=keepRevisionList(note);
+  if(Array.isArray(note.revisions)&&compatible.length!==note.revisions.length)
+    throw new Error('This KEEP note has legacy revision entries. Use the original KEEP editor for safe editing.');
+  const revisions=compatible.slice(),stamp=now.toISOString(),checksum=keepChecksum(currentContent);
   if(revisions.length){
     const last=revisions[revisions.length-1]!,within=now.getTime()-Date.parse(last.timestamp)<COALESCE_MS;
     if(last.checksum===checksum&&trigger==='auto_coalesced')return note;
