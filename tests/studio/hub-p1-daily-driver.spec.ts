@@ -11,6 +11,7 @@ test('desktop P1 Today prioritizes real work and preserves native planning navig
   await expect(page.locator('[data-unified-today]')).toBeVisible();
   await expect(page.locator('[data-today-workbench]')).toBeVisible();
   await expect(page.locator('.ws-workbench-day')).toHaveCount(7);
+  await expect(page.locator('[data-workbench-source-actions]')).toContainText('Hub-only view');
   await expect(page.locator('[data-today-workbench]')).toContainText('Tracker check-in');
   await expect(page.locator('[data-today-workbench]')).toContainText('Pick up a note');
   await expect(page.locator('[data-source-queue]')).toBeVisible();

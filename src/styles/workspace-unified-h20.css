@@ -167,3 +167,14 @@
 .ws-today-workbench :is(button,a):focus-visible{outline:2px solid var(--ws-accent);outline-offset:3px;}
 @media(max-width:1150px){.ws-workbench-week{grid-template-columns:repeat(4,minmax(0,1fr));}.ws-workbench-panels{grid-template-columns:repeat(2,minmax(0,1fr));}.ws-workbench-panels>section:last-child{grid-column:1/-1;}}
 @media(max-width:680px){.ws-workbench-week{grid-template-columns:repeat(2,minmax(0,1fr));}.ws-workbench-panels{grid-template-columns:minmax(0,1fr);}.ws-workbench-panels>section:last-child{grid-column:auto;}.ws-workbench-day>a{min-height:44px;}.ws-workbench-action-row .ws-unified-action{min-height:44px;}}
+
+/* Explicitly approved Folio source rows within the original Hub seven-day workbench. */
+.ws-workbench-source-actions{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--ws-line);background:var(--ws-soft);border-radius:6px;}
+.ws-workbench-source-actions p{font-size:11px;line-height:1.5;color:var(--ws-muted);flex:1 1 220px;}
+.ws-workbench-source-actions>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ws-workbench-source-actions a{font-size:11px;color:var(--ws-accent);padding:6px;}
+.ws-workbench-source-day{display:grid;gap:4px;min-width:0;margin-top:5px;padding-top:7px;border-top:1px solid var(--ws-line);}
+.ws-workbench-source-day small{font-size:10px;line-height:1.45;color:var(--ws-muted);overflow-wrap:anywhere;}
+.ws-workbench-source-day strong{font-size:10px;color:var(--ws-ink);}
+.ws-workbench-source-day .ws-workbench-conflict{color:var(--ws-warning,#af7334);}
+@media(max-width:680px){.ws-workbench-source-actions .ws-unified-action{min-height:44px;}}

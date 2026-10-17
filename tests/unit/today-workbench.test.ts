@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { projectTodayWorkbench, renderTodayWorkbench } from '../../src/lib/workspace/today-workbench';
+import { projectTodayWorkbench, renderTodayWorkbench, projectFolioWorkbench } from '../../src/lib/workspace/today-workbench';
+import type { FolioDeviceSnapshot } from '../../src/lib/workspace/folio-device';
 import type { WorkspaceState } from '../../src/lib/workspace/types';
 
 const fixture=()=>({
@@ -71,5 +72,36 @@ describe('native Today execution workbench',()=>{
     expect(html).toContain('No Hub trackers yet');
     expect(html).toContain('No local Hub notes yet');
     expect(html).not.toContain('Connected Folio');
+  });
+
+  it('shows only fresh approved Folio tasks/blocks alongside Hub calendar and hides revoked data',()=>{
+    const s=fixture();
+    const now=Date.parse('2026-10-17T12:00:00Z');
+    const folio:FolioDeviceSnapshot={
+      schema:'thiepn:folio-hub-daily',version:1,source:'folio-local-device',
+      generatedAt:new Date(now).toISOString(),date:'2026-10-17',
+      pendingCount:2,overdueCount:0,habits:[],notes:[],
+      tasks:[{id:'original-folio',title:'Private <Folio task>',priority:'high',
+        plannedToday:false,deadline:'2026-10-19'}],
+      events:[{id:'original-event',title:'Folio <appointment>',kind:'event',
+        allDay:false,start:'2026-10-19T08:30:00Z',end:'2026-10-19T09:15:00Z'}],
+    };
+    const before=JSON.stringify(s),sourceBefore=JSON.stringify(folio);
+    const rows=projectFolioWorkbench(s,'2026-10-17',folio,now);
+    expect(rows).toHaveLength(7);
+    expect(rows[2]).toMatchObject({date:'2026-10-19',taskCount:1,blockCount:1,overlaps:1});
+    const html=renderTodayWorkbench(s,'2026-10-17',folio,now);
+    expect(html).toContain('data-folio-workbench-day="2026-10-19"');
+    expect(html).toContain('Private &lt;Folio task&gt;');
+    expect(html).toContain('Folio &lt;appointment&gt;');
+    expect(html).toContain('possible Hub/Folio time overlap');
+    expect(html).not.toContain('data-action="edit-task" data-id="original-folio"');
+    expect(html).not.toContain('<Folio task>');
+    expect(html).toContain('data-action="disconnect-folio"');
+    expect(renderTodayWorkbench(s,'2026-10-17',null,now)).not.toContain('Private');
+    expect(renderTodayWorkbench(s,'2026-10-17',folio,now+16*60_000)).not.toContain('Private');
+    expect(projectFolioWorkbench(s,'2026-10-17',folio,now+16*60_000)).toEqual([]);
+    expect(JSON.stringify(s)).toBe(before);
+    expect(JSON.stringify(folio)).toBe(sourceBefore);
   });
 });

@@ -2,6 +2,7 @@ import { reviewDay, reviewWeek } from './planning-review';
 import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
 import { renderTodayWorkbench } from './today-workbench';
+import type { FolioDeviceSnapshot } from './folio-device';
 import type { WorkspaceState, Task, CalendarEvent } from './types';
 
 export type HomeJourneyMode = 'today'|'focus'|'workspace';
@@ -46,7 +47,7 @@ export function renderUnifiedJourneyNav(mode:HomeJourneyMode,state:WorkspaceStat
   const alert=status.conflict||status.dirty||!status.storageReady;
   return `<nav class="ws-mode-bar" aria-label="Hub work modes"><div role="group" aria-label="Home presentation">${modes.map(item=>`<button type="button" data-action="unified-mode" data-id="${item.id}" aria-pressed="${item.id===mode}">${item.title}</button>`).join('')}</div><a href="/home/calendar/?mode=week">Plan the week →</a>${alert?`<span role="status">${esc(warning)}</span>`:''}</nav>`;
 }
-export function renderUnifiedToday(state:WorkspaceState,today:string,status:JourneyStatus) {
+export function renderUnifiedToday(state:WorkspaceState,today:string,status:JourneyStatus,folio:FolioDeviceSnapshot|null=null) {
   const counts=taskCounts(state.tasks,today);
   const plan=reviewDay(state,today);
   const due=focusTasks(state,today,'due').slice(0,5);
@@ -87,7 +88,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         `<p class="ws-unified-empty">No events today.</p>`}
       ${plan.overlaps.length?`<p class="ws-unified-overlap">${plan.overlaps.length} possible local timed overlap${plan.overlaps.length===1?'':'s'} · <a href="/home/calendar/">Review event times</a></p>`:''}
     </section>
-    ${renderTodayWorkbench(state,today)}
+    ${renderTodayWorkbench(state,today,folio)}
     <footer>
       <div>${first?textButton('unified-focus-task','Focus on next task',first.id):textButton('new-task','Add first task')}
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>

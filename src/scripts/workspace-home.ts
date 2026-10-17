@@ -39,6 +39,7 @@ import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspa
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
+import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -269,6 +270,10 @@ async function setup(root: HTMLElement) {
                 hubEvents: state.events,
                 day: today(), timezone: state.preferences.timezone
             });
+        }
+        const sourceWorkbench=root.querySelector<HTMLElement>('[data-today-workbench]');
+        if(sourceWorkbench && view==='home' && state && !privacyHeld && !state.preferences.hidden) {
+            sourceWorkbench.outerHTML=renderTodayWorkbench(state,today(),authorizedFolioPlanningSnapshot());
         }
         const folioPlannerPanel=root.querySelector<HTMLElement>('[data-folio-continuity]');
         if (folioPlannerPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden) {
@@ -793,7 +798,7 @@ async function setup(root: HTMLElement) {
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus(),authorizedFolioPlanningSnapshot())+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
