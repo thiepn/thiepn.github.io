@@ -7,7 +7,6 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
@@ -62,7 +61,7 @@ const built={
 };
 const out=path.join(repo,'public','keep-b3-native');
 if(fs.existsSync(out))throw new Error('Refusing to overwrite existing local KEEP output: '+out);
-const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'keep-native-build-'));
+const tmp=fs.mkdtempSync(path.join(repo,'public','.keep-native-staging-'));
 try {
   fs.writeFileSync(path.join(tmp,bundle),js);
   fs.writeFileSync(path.join(tmp,style),css);
