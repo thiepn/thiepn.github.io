@@ -25,3 +25,26 @@
 .ws-keep-owner .ws-knowledge-relations li{display:flex;justify-content:space-between;align-items:center;gap:.75rem}
 .ws-keep-owner input[type=checkbox]{width:auto;height:auto}
 @media(max-width:760px){.ws-keep-owner{grid-template-columns:1fr}.ws-keep-owner .ws-knowledge-list{max-height:180px}}
+
+/* Owner-controlled vault escape remains clickable above the original React
+   mobile fixed sidebars and full-screen overlays. Placed outside its mount root
+   so React cannot hide or intercept the control. */
+.ws-keep-native-exit:not([hidden]){
+  display:block;
+  position:fixed;
+  inset-block-start:calc(env(safe-area-inset-top, 0px) + 12px);
+  inset-inline-end:12px;
+  z-index:2147483647;
+  min-height:44px;
+  max-width:calc(100vw - 24px);
+  padding:.65rem 1rem;
+  border:2px solid currentColor;
+  border-radius:4px;
+  background:var(--surface, #fff);
+  color:var(--text, #181818);
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 2px 12px rgba(0,0,0,.22);
+}
+.ws-keep-native-exit:focus-visible{outline:3px solid currentColor;outline-offset:3px}
