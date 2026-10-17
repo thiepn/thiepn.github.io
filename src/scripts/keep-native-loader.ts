@@ -26,6 +26,8 @@ interface OriginalKeepModule {
   mountOriginalKeep(container:HTMLElement,authority:OriginalKeepAuthority):OriginalKeepMountHandle;
 }
 const PREFIX='/keep-b3-native/';
+// Immutable manifest digest of the supplied K6 original KEEP B3 source tree.
+const EXPECTED_SOURCE_SHA256='415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58';
 const SHA=/^[a-f0-9]{64}$/u;
 const CONTENT_JS=/javascript|ecmascript/u;
 const CONTENT_CSS=/css/u;
@@ -38,7 +40,7 @@ export function validKeepNativeManifest(value:unknown):value is NativeManifest {
   const v=value as Record<string,unknown>;
   return v.format==='thiepn-keep-b3-original-react'&&v.schema===1&&
     v.entry==='keep-b3-original.js'&&v.css==='keep-b3-original.css'&&
-    typeof v.sourceSha256==='string'&&SHA.test(v.sourceSha256)&&
+    v.sourceSha256===EXPECTED_SOURCE_SHA256&&
     typeof v.jsSha256==='string'&&SHA.test(v.jsSha256)&&
     typeof v.cssSha256==='string'&&SHA.test(v.cssSha256);
 }
