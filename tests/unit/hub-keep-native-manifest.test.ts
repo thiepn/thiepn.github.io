@@ -8,7 +8,7 @@ const good={
  assets:{'keep-b3-original.js':hash,'keep-b3-original.css':hash,'assets/worker-38ab.js':hash},
  inputSha256:{
   'hub-embed/entry.tsx':'f1044595f9f0550dbe38f1e5d9847ddfabd8733cc8d4674892950606a21dfa15',
-  'hub-embed/vite.config.ts':'084560c67eb08f0413c97edafc04f16b4f1e15bb7e9c9ceea5aad8eb375581c7',
+  'hub-embed/vite.config.ts':'617dbbe87b2083719e187f3ff541f9e811a4955f273512335c99038592bca8df',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
  }
