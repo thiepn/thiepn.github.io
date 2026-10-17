@@ -20,7 +20,7 @@ function environment(embedded,queue=[]){
  let purges=0;
  const mocks={'./kdf':kdf,'./aesGcm':aes,'../security/vaultPurge':{vaultPurgeManager:{executeVaultPurge:()=>purges++}}},exports={};
  vm.runInNewContext(built.outputText,{exports,require:s=>{if(!(s in mocks))throw Error('Unknown original KEEP dependency '+s);return mocks[s]},window,document,localStorage,console,setTimeout:()=>42,clearTimeout:()=>{}},{filename:'vaultEncryptionService.js'});
- const service=new exports.VaultEncryptionService();
+ const service=exports.vaultEncryptionService;
  const count=()=>Array.from(subscriptions.values()).reduce((sum,list)=>sum+list.size,0);
  return{service,localStorage,count,purges:()=>purges,window,subscriptions};
 }
