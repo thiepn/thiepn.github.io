@@ -12,3 +12,10 @@
 .ws-faith-grid a{display:inline-flex;align-items:center;min-height:44px;width:fit-content;text-decoration:underline;text-underline-offset:3px}
 .ws-faith-grid a:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 @media(max-width:760px){.ws-faith-discipline{padding:.8rem;margin-inline:0}.ws-faith-grid{grid-template-columns:minmax(0,1fr)}.ws-faith-grid>section{padding:.8rem}}
+
+/* Original-authority actions must remain usable at touch widths and keyboard zoom. */
+.ws-faith-grid li:has([data-fd1-folio-operation]){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:center}
+.ws-faith-grid button[data-fd1-folio-operation],.ws-faith-grid button[data-fd1-mdd-connect]{min-height:44px;max-width:100%;width:fit-content;border:1px solid currentColor;border-radius:0;background:transparent;color:inherit;padding:.55rem .75rem;cursor:pointer;font:inherit;text-align:left}
+.ws-faith-grid button[data-fd1-folio-operation]:focus-visible,.ws-faith-grid button[data-fd1-mdd-connect]:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.ws-faith-grid [data-fd1-folio-receipt]{overflow-wrap:anywhere}
+@media(max-width:760px){.ws-faith-grid li:has([data-fd1-folio-operation]){grid-template-columns:minmax(0,1fr)}.ws-faith-grid button[data-fd1-folio-operation],.ws-faith-grid button[data-fd1-mdd-connect]{width:100%}}

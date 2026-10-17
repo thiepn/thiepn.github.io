@@ -26,7 +26,7 @@ export function renderFaithDiscipline(
   const rows = rhythms.map(h =>
     `<li><span><strong>${esc(h.title)}</strong><small>Folio · ${h.status === 'completed' ? 'recorded' : h.status === 'skipped' ? 'rest day' : 'open'} · ${h.value}/${h.target}</small></span>${h.updatedAt && h.status!=='skipped' ?
     `<button type="button" data-fd1-folio-id="${esc(h.id)}" data-fd1-folio-rev="${esc(h.updatedAt)}"
-      data-fd1-folio-operation="${h.status==='completed'?'habit.reopen':'habit.complete'}">${h.status==='completed'?'Reopen in Folio':'Record in Folio'}</button>` :''}</li>`).join('');
+      data-fd1-folio-operation="${h.status==='completed'?'habit.reopen':'habit.complete'}" aria-label="${h.status==='completed'?'Reopen':'Record'} ${esc(h.title)} in original Folio">${h.status==='completed'?'Reopen in Folio':'Record in Folio'}</button>` :''}</li>`).join('');
   return `<section class="ws-faith-discipline ws-surface" data-faith-discipline aria-labelledby="faith-discipline-title">
     <header><h2 id="faith-discipline-title">Faith &amp; discipline</h2>
       <p>Practice, not performance. Every recorded status belongs to its original app.</p></header>
