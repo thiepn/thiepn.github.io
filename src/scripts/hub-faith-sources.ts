@@ -21,6 +21,8 @@ window.addEventListener('pagehide',clearFaithTmsDue);
 
 type PendingMdd={nonce:string;origin:string;popup:Window;requestedAt:number};
 let pendingMdd:PendingMdd|null=null, mddSummary:MddDeviceSummary|null=null;
+let mddExpiryTimer:ReturnType<typeof setTimeout>|null=null;
+function cancelMddExpiry(){if(mddExpiryTimer!==null){clearTimeout(mddExpiryTimer);mddExpiryTimer=null;}}
 const mddStatus=()=>document.querySelector<HTMLElement>('[data-fd1-mdd]');
 function showMdd(){
   const box=mddStatus();if(!box || document.hidden)return;
@@ -39,7 +41,7 @@ function showMdd(){
     box.textContent='My Daily Devotion owns reading and reflection records; no current device-only summary has been shared in this tab.';
   }
 }
-const clearMdd=()=>{pendingMdd=null;mddSummary=null;showMdd();};
+const clearMdd=()=>{cancelMddExpiry();pendingMdd=null;mddSummary=null;showMdd();};
 function reviewedMddUrl(button:HTMLButtonElement):URL|null {
   // The URL originates from the exact reviewed app entry rendered by Hub.
   // Never fall back to an invented deployment URL or an arbitrary input.
@@ -67,7 +69,7 @@ document.addEventListener('click',event=>{
   owner.searchParams.set('fd1_hub','https://thiepn.dev');
   const popup=window.open(owner.toString(),'_blank');
   if(!popup){if(box)box.textContent='The devotional app did not open. Allow this explicit popup or use its original app link.';return;}
-  mddSummary=null;
+  cancelMddExpiry();mddSummary=null;
   pendingMdd={nonce,origin:owner.origin,popup,requestedAt:Date.now()};
   if(box)box.textContent='In My Daily Devotion, explicitly select Share this device-only summary. No data is accessed automatically.';
 });
@@ -77,7 +79,11 @@ window.addEventListener('message',event=>{
     Date.now()-p.requestedAt>300_000)return;
   const result=acceptMddReply(event.data,p.nonce);
   if(!result)return;
+  cancelMddExpiry();
   pendingMdd=null;mddSummary=result;showMdd();
+  const delay=Date.parse(result.expiresAt)-Date.now();
+  if(delay>0) mddExpiryTimer=setTimeout(()=>{mddExpiryTimer=null;mddSummary=null;showMdd();},Math.min(delay+50,61_000));
+  else {mddSummary=null;showMdd();}
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)showMdd()});
 window.addEventListener('hub:identity',clearMdd);
