@@ -1,5 +1,5 @@
 {
-  "src/App.tsx": "6076b427f64e2a5e92f68a91a43d3955a78ef1d951a8016680445eedf404004b",
+  "src/App.tsx": "8aec8ec20ad8a9d5dedf29c30dcede3ad523086da87d8650dc1b0b67b1289c4d",
   "src/components/A11yLiveRegion.tsx": "1a608db1c85a009d151ed94c89ef1056cc34f3072b0e21d7f2ebce91a53d69ea",
   "src/components/AmbientSoundscapesPopover.tsx": "c06e83dadc15fd7c201d0921030f3f16d7725a51f380356f2d32c06e685176bf",
   "src/components/AudioRecorder.tsx": "d79342f089554d7a4a706cb6b7bc7ef8559018960bd5068ecf24ed100e224eaf",
@@ -21,7 +21,7 @@
   "src/components/TimelineScrubber.tsx": "dc45982bacdfa623506e4dce116b813328c0275a67a137231a389e633340dfe2",
   "src/components/WikiLinkWithHoverPreview.tsx": "3166d4b7e44ed7a43b03955b10353103f055ac51e7cef384d9192e1d7a1fe52b",
   "src/components/WritingActivityHeatmap.tsx": "2d416f88648e8fcc41e81d442d02bf1a08d3434d96307524198c69f5b0c78060",
-  "src/components/ZenFocusBar.tsx": "203c760e28884b62e10f2f1e9820a030fe1f0bbb61dced5c9b0b2b43222a2362",
+  "src/components/ZenFocusBar.tsx": "c762009917bd27c8c507b5cf6ebb56ee9c1a91b157f31c123f9bc03741e493f0",
   "src/components/home/KeepResourceBoard.tsx": "41cab3706cd31ad230e6b256b4e1dc9a90e84624fa7a3b65a93e2a9b6d31d8e3",
   "src/components/home/KeepTodayOverview.tsx": "ade050e9f3c0b66e8860ba6b2cfd2b65a424c4901ce1d5b712ca937058088f9c",
   "src/components/home/keepTodayModel.ts": "3c0af135a8fc72490533416bd929daca3bf7988eb6f0182b805039235385acd3",
