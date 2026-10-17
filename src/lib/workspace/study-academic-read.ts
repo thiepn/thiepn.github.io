@@ -81,12 +81,13 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
     '<ul>'+items.map(i=>'<li><div><strong>'+esc(i.title)+'</strong><small>'+esc(i.detail)+'</small></div>'+
     (i.href?'<a href="'+esc(i.href)+'" rel="noreferrer">Open source</a>':'')+'</li>').join("")+'</ul>':'<p>'+esc(empty)+'</p>';
   const a=(p:string|null)=>origin&&p?studyAction(origin,p):null;
-  const ex=x.exams.slice(0,5).map(e=>({title:e.courseName,detail:e.examAt.slice(0,16).replace("T"," ")+" · owner-configured date",href:a(e.sourceHref)}));
-  const cs=x.commitments.slice(0,10).map(c=>({title:c.title,detail:c.kind+" · due "+c.dueAt.slice(0,16).replace("T"," ")+" · "+c.estimatedMinutes+" min",href:a(c.sourceHref)}));
+  const local=(instant:string)=>new Intl.DateTimeFormat("de-DE",{timeZone:x.semester.timezone,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(instant));
+  const ex=x.exams.slice(0,5).map(e=>({title:e.courseName,detail:local(e.examAt)+" · owner-configured date",href:a(e.sourceHref)}));
+  const cs=x.commitments.slice(0,10).map(c=>({title:c.title,detail:c.kind+" · due "+local(c.dueAt)+" · "+c.estimatedMinutes+" min",href:a(c.sourceHref)}));
   const rv=x.reviews.items.filter(r=>r.actionable).slice(0,4).map(r=>({title:r.title,detail:"Original eligible review · no mastery inferred",href:a(r.sourceHref)}));
   return head+'<button data-action="study-connect" type="button">Refresh</button>'+
     '<button data-action="study-disconnect" type="button">Disconnect</button></header>'+
-    '<p>'+esc(x.semester.name)+" · "+esc(x.semester.timezone)+" · "+esc(x.coverage.status)+
+    '<p>'+esc(x.semester.name)+" · "+esc(x.semester.timezone)+" · from "+esc(x.coverage.from)+" · "+esc(x.coverage.days)+" days · "+esc(x.coverage.status)+
     ' source coverage · no calendar reservations</p>'+
     (x.coverage.status==="partial"?'<p role="status">Source limitations: '+esc(x.coverage.reasons.join(", "))+'</p>':'')+
     '<div class="ws-study-c1-grid"><div><h3>Exams</h3>'+list(ex,"No configured exam dates shown; verify source.")+
