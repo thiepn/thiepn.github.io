@@ -305,3 +305,20 @@ test('interim KEEP writer scrubs original plaintext when native React assumes au
  });
  await expect(page.locator('[data-keep-owner-form]')).toHaveCount(0);
 });
+
+for(const width of [390,1440]){
+ test('native original KEEP entry fails closed without verified build '+width,async({page})=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.route('**/keep-b3-native/manifest.json',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action=knowledge-native-start]').click();
+  await expect(page.locator('[data-workspace-toast]')).toContainText('not been built');
+  await expect(page.locator('[data-keep-native-host]')).toBeHidden();
+  await expect(page.locator('[data-keep-original-react-active]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+ });
+}
