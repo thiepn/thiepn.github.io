@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 test.use({ serviceWorkers: 'block' });
 test('opt-in Folio summary accepts only its popup and clears on command', async ({page,context}) => {
  await context.route('**/folio/?hubBridge=*', route=>route.fulfill({status:200,contentType:'text/html',body:"<!doctype html><html><body><button id=\"share\">Approve Folio share</button><script>\ndocument.querySelector('#share').addEventListener('click', () => {\n const nonce = new URL(location.href).searchParams.get('hubBridge');\n window.opener.postMessage({type:'thiepn:folio-hub-daily:v1',nonce,\n snapshot:{schema:'thiepn:folio-hub-daily',version:1,source:'folio-local-device',\n generatedAt:new Date().toISOString(),date:new Date().toISOString().slice(0,10),\n pendingCount:1,overdueCount:0,\n tasks:[{id:'task-1',title:'Source-owned task',priority:'high',plannedToday:true}],\n events:[{id:'event-1',title:'Source-owned meeting',start:new Date(Date.now()+3600000).toISOString(),end:new Date(Date.now()+7200000).toISOString(),kind:'event',allDay:false}],\n notes:[{id:'note-1',title:'Private Folio note title',updatedAt:new Date().toISOString()}],\n habits:[{id:'habit-1',title:'Reading habit',target:1,value:1,status:'completed'}]\n }},location.origin);\n});\n</script></body></html>"}));
- await page.goto('/');
+ await page.goto('/?mode=workspace');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await expect(page.locator('[data-folio-device]')).toContainText('Share from Folio');
  const request=page.waitForEvent('popup');

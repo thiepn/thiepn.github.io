@@ -50,7 +50,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    } else {await route.fulfill({status:404,json:{message:'unexpected RPC'}});return;}
    await route.fulfill({json:result});
   });
-  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');if(storageMode==='session-blocked'){await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','SecurityError');return {page,context};}try {
+  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/?mode=workspace');if(storageMode==='session-blocked'){await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','SecurityError');return {page,context};}try {
    // Cold SSO includes the bounded eight-second Account probe plus PKCE
    // navigation and verification. Local-token/guest assertions stay at 5s.
    await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device',{timeout:owner===null&&options.probeEligible?15_000:5_000});
@@ -68,11 +68,13 @@ test('two independent devices sync tasks, offline changes and app navigation wit
  await task(b.page,'Second device task');await sync(b.page);await sync(a.page);await expect(a.page.locator('.ws-task-title')).toHaveText(['First device task','Second device task']);
  api.offline(true);await task(a.page,'Offline task');await a.page.locator('[data-action=cloud-retry]').first().click();await expect(a.page.locator('[data-cloud-status]').first()).not.toHaveText('Synced with your account');
  api.offline(false);await sync(a.page);await sync(b.page);await expect(b.page.locator('.ws-task-title')).toHaveCount(3);
- await a.page.locator('a[href="/apps/"]').first().click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await a.page.locator('a[href="/"]').first().click();await expect(a.page.locator('.ws-task-title')).toHaveCount(3);
+ await a.page.locator('a[href="/apps/"]').first().click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await a.page.locator('a[href="/"]').first().click();await a.page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(a.page.locator('.ws-task-title')).toHaveCount(3);
  const other=await api.device(browser,OTHER);await sync(other.page);await expect(other.page.locator('.ws-task-title')).toHaveCount(0);expect(api.heads.get(OTHER)?.state).not.toEqual(api.heads.get(OWNER)?.state);
  await Promise.all([a.context.close(),b.context.close(),other.context.close()]);
 });
 test('remote updates preserve an active capture draft and signing out clears account data',async({browser})=>{
+ // Owner's qualified WebKit cleanup budget from merged main PR #172.
+ test.setTimeout(60_000);
  const api=backend(),a=await api.device(browser);await sync(a.page);const b=await api.device(browser);await sync(b.page);
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
  await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
@@ -109,7 +111,7 @@ test('visitors get an introduction and can choose their local workspace without 
  const api=backend(),a=await api.device(browser,null);
  await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
  await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
- await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
+ await a.page.goto('https://thiepn.dev/?mode=workspace');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
 });
 test('Account initialization failure leaves local tasks usable and persistent',async({browser})=>{

@@ -967,6 +967,8 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
+            // Home navigation always selects Today without changing original records.
+            if (next === 'home' && !url.searchParams.has('mode') && !editing) homeMode = 'today';
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
             dialog.close(); searchDialog.close(); account.close();

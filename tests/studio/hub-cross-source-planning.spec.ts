@@ -34,7 +34,7 @@ test('mobile reviewed week distribution updates native Hub tasks only and surviv
   // Local-first fixtures may already contain other Hub tasks. The three selected
   // source records must each remain unique and gain reviewed due dates.
   for(const title of ['First real task','Second real task','Third real task']) {
-    const original=page.locator('.ws-task-entry').filter({hasText:title});
+    const original=page.locator('.ws-task-results .ws-task-entry').filter({hasText:title});
     await expect(original).toHaveCount(1);
     await expect(original).not.toContainText('Inbox');
   }
@@ -61,7 +61,7 @@ test('task-owned reviewed calendar block can atomically align original task due 
 });
 test('Today compares only explicitly approved Folio slots to real local Hub events',async({page,context})=>{
   test.setTimeout(60000);
-  await ready(page,'/');
+  await ready(page,'/?mode=workspace');
   await page.locator('[data-action=new-event]').first().click();
   await page.getByLabel('Event',{exact:true}).fill('Hub meeting');
   await page.getByLabel('Start date',{exact:true}).fill('2027-02-10');
