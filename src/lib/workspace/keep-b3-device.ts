@@ -68,6 +68,8 @@ function vaultAllowed():boolean {
 }
 /** Abort if storage introspection is unavailable. Never create an empty KEEP database. */
 async function connectExisting():Promise<IDBDatabase> {
+  if(document.querySelector('[data-keep-original-react-active="true"]'))
+    throw new Error('Original KEEP React owns the device record writer; interim access is refused.');
   if(!vaultAllowed())throw new Error('KEEP encrypted vault is locked to Hub. Unlock in the original KEEP application.');
   if(typeof indexedDB.databases!=='function')throw new Error('Browser cannot safely inspect existing KEEP storage.');
   const existing=await indexedDB.databases();
