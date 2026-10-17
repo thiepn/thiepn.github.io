@@ -24,7 +24,7 @@ const check=(filename)=>{
 };
 const digest=data=>createHash('sha256').update(data).digest('hex');
 const manifestBytes=check('hub-embed/SOURCE_SHA256.json');
-if(digest(manifestBytes)!=='9301b04a4979c2288adeffcab53c63cc0d62dcc04f3d441e71007e29841d9c63')
+if(digest(manifestBytes)!=='7b1da1d474f36a02e2c1d9b472c6effea5bfa1321e641b9aae5572c547b5f1ad')
   throw new Error('This is not the pinned original KEEP B3 source tree.');
 const originals=JSON.parse(manifestBytes.toString('utf8'));
 const names=Object.keys(originals);
@@ -38,7 +38,7 @@ for(const [name,checksum] of Object.entries(originals)){
     digest(check(name))!==checksum)throw new Error('Original KEEP file integrity failed: '+name);
 }
 const pinnedInputs={
-  'hub-embed/entry.tsx':'f1044595f9f0550dbe38f1e5d9847ddfabd8733cc8d4674892950606a21dfa15',
+  'hub-embed/entry.tsx':'e16a552e7562bd58974e91f7f21f1f970f173396c1bb8d2de3e2e0e7437c8d58',
   'hub-embed/vite.config.ts':'617dbbe87b2083719e187f3ff541f9e811a4955f273512335c99038592bca8df',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
