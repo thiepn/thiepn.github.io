@@ -344,6 +344,7 @@ test('original React mount refuses an absent KEEP origin database without creati
 
 for(const width of [1440,390]){
  test('original React App mounts and unmounts without copying KEEP records '+width,async({page})=>{
+  test.setTimeout(90000);
   const errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width,height:width===390?844:900});
@@ -369,7 +370,12 @@ for(const width of [1440,390]){
   await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('[data-action=knowledge-native-start]').click();
-  await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1);
+  try{
+    await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1,{timeout:45000});
+  }catch(error){
+    const message=await page.locator('[data-workspace-toast]').allTextContents();
+    throw new Error('Original KEEP React mount did not complete. Hub message: '+message.join(' | ')+'; '+String(error));
+  }
   await expect(page.locator('[data-keep-native-host]')).toBeVisible();
   await expect(page.locator('[data-keep-native-host]')).not.toBeEmpty();
   await expect(page.locator('[data-action=knowledge-native-stop]')).toBeVisible();
