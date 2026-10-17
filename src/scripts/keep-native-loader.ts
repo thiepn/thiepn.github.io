@@ -26,6 +26,7 @@ export interface OriginalKeepAuthority {
 }
 interface OriginalKeepModule {
   mountOriginalKeep(container:HTMLElement,authority:OriginalKeepAuthority):OriginalKeepMountHandle;
+  createOriginalKeepEmptyHubWorkspace(authority:OriginalKeepAuthority):Promise<void>;
 }
 const PREFIX='/keep-b3-native/';
 // Immutable manifest digest of the supplied K6 original KEEP B3 source tree.
@@ -101,15 +102,12 @@ async function verifiedAsset(name:string,expected:string,contentType:RegExp|null
   }
   return uri.href;
 }
-/** Explicit opt-in, verified same-origin ESM React module; never an iframe. */
-export async function mountOriginalKeepInHub(
-  container:HTMLElement,authority:OriginalKeepAuthority
-):Promise<OriginalKeepMountHandle> {
-  if(!authority.mayMount()||authority.revoked.aborted||!container.isConnected||container.childElementCount)
-    throw new Error('KEEP needs an empty workspace with current Hub owner authorization.');
+/** Shared byte-verified original source loader for mount and explicit enrollment. */
+async function loadVerifiedOriginalKeep(authority:OriginalKeepAuthority):Promise<{
+  engine:OriginalKeepModule;css:string
+}> {
   const signal=authority.revoked;
-  await requireExistingOriginalKeepDatabase(signal);
-  if(!authority.mayMount())throw new Error('KEEP owner authorization expired.');
+  if(signal.aborted||!authority.mayMount())throw new Error('KEEP owner authorization expired.');
   const response=await fetch(PREFIX+'manifest.json',{signal,cache:'no-store',credentials:'same-origin',redirect:'error'});
   if(!response.ok||!(response.headers.get('content-type')??'').includes('json'))
     throw new Error('Original KEEP React source has not been built into this preview.');
@@ -126,17 +124,48 @@ export async function mountOriginalKeepInHub(
   const entry=new URL(PREFIX+manifest.entry,location.origin).href;
   const css=new URL(PREFIX+manifest.css,location.origin).href;
   if(signal.aborted||!authority.mayMount())throw new Error('KEEP owner authorization expired.');
+  // The original B3 ESM module is verified by its complete asset closure.
+  const engine=await import(/* @vite-ignore */ entry) as OriginalKeepModule;
+  if(signal.aborted||!authority.mayMount())throw new Error('KEEP owner authorization expired.');
+  return {engine,css};
+}
+
+/** Only a deliberate first-use action may create the original KEEP v1 schema. */
+export async function createEmptyOriginalKeepInHub(authority:OriginalKeepAuthority):Promise<void> {
+  if(authority.revoked.aborted||!authority.mayMount())
+    throw new Error('KEEP owner authorization expired.');
+  // Avoid even loading React unless this origin has no original KEEP DB.
+  if(typeof indexedDB.databases!=='function')
+    throw new Error('Browser cannot verify KEEP origin storage.');
+  const existing=await indexedDB.databases();
+  if(existing.some(db=>db.name==='KeepNotesDB'))
+    throw new Error('Original KEEP source already exists. No data was changed.');
+  const {engine}=await loadVerifiedOriginalKeep(authority);
+  if(typeof engine.createOriginalKeepEmptyHubWorkspace!=='function')
+    throw new Error('Original KEEP source enrollment export is missing.');
+  await engine.createOriginalKeepEmptyHubWorkspace(authority);
+}
+
+/** Explicit opt-in, verified same-origin ESM React module; never an iframe. */
+export async function mountOriginalKeepInHub(
+  container:HTMLElement,authority:OriginalKeepAuthority
+):Promise<OriginalKeepMountHandle> {
+  if(!authority.mayMount()||authority.revoked.aborted||!container.isConnected||container.childElementCount)
+    throw new Error('KEEP needs an empty workspace with current Hub owner authorization.');
+  const signal=authority.revoked;
+  await requireExistingOriginalKeepDatabase(signal);
+  if(!authority.mayMount())throw new Error('KEEP owner authorization expired.');
+  const {engine,css}=await loadVerifiedOriginalKeep(authority);
+  if(typeof engine.mountOriginalKeep!=='function')
+    throw new Error('The original KEEP React export is missing.');
   const style=document.createElement('link');
   style.rel='stylesheet';style.href=css;style.dataset.keepNativeStyle='true';
   document.head.appendChild(style);
   try {
     // Intentional runtime import: this module is created by the original
     // KEEP Vite build, not a Hub-generated alternative component.
-    const engine=await import(/* @vite-ignore */ entry) as OriginalKeepModule;
     if(signal.aborted||!authority.mayMount()||!container.isConnected)
       throw new Error('KEEP owner authorization expired.');
-    if(typeof engine.mountOriginalKeep!=='function')
-      throw new Error('The original KEEP React export is missing.');
     const handle=engine.mountOriginalKeep(container,authority);
     let live=true;
     const onRevoke=()=>{release();};
