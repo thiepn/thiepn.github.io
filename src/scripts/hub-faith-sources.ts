@@ -30,7 +30,7 @@ function showMdd(){
     const weekly=document.querySelector<HTMLElement>('[data-fd1-review-mdd]');
     if(weekly)weekly.textContent='My Daily Devotion: '+buildFaithReviewSignals({folio:null,mdd:mddSummary,tms:null})[1].detail;
     const r=mddSummary.reading;
-    box.textContent=(r.status==='assigned'
+    box.textContent=(mddSummary.week ? 'Seven-day original MDD evidence was shared. ' : '')+(r.status==='assigned'
       ? `Explicit MDD device summary: ${r.completed} of ${r.assigned} original readings`
       : 'Original MDD reading plan is not assigned today')+
       ` · reflection ${mddSummary.reflection.exists?'exists':'not recorded'} · one-time device-only read.`;
