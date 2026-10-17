@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify six generated-output artifact-only workflows (no publishing)
+        run: node --test tests/hub-automated-writer-gates.test.mjs
       - name: Owner-approved release gate regression tests (no publishing)
         run: node --test tests/hub-owner-release-gate.test.mjs
       - name: Account CI boundary regressions
