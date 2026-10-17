@@ -1,5 +1,7 @@
 # K8 — Complete original KEEP B3 source transfer
 
+> **K9 update (2026-10-17): SOURCE UPLOADED.** The complete K6 original KEEP B3 tree is now committed on THIS draft PR at `vendor/keep-b3/`, starting at import commit `c9345270b50b7d82a2855d9b32614efd8ce47074`. The transfer instructions below are historical and **must not be rerun** into an existing destination. The original `hub-embed/SOURCE_SHA256.json` contains **1,269** entries and SHA-256 `415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58`; GitHub blobs for the manifest, mount entry, Vite config, package.json and bun.lock match the K6 bytes. K7's stale manifest/count/Vite pins have been fixed on the same PR. Original Vite/React build and encrypted-vault runtime are still NOT qualified.
+
 **Scope:** PR #168, `feature/hub-keep-k1-native-knowledge-workspace` only.
 **Status:** Source import verified locally; GitHub upload/push requires access to a checkout holding the full original archive. NO full B3 source has been pushed by ChatGPT in this phase.
 
