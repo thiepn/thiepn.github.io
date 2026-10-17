@@ -14,6 +14,11 @@ test('mobile Today decision register saves options, decides and reopens without 
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-today-decisions]')).toContainText('Selected: AI');
  await page.locator('[data-today-decisions] [data-action=reopen-decision]').click();
+ // The existing source-safe workflow requires explicit confirmation: its original
+ // decision choice and rationale are not silently discarded by the first click.
+ await expect(page.locator('[data-workspace-dialog]')).toContainText('Clear the current choice');
+ await page.locator('[data-dialog-submit]').click();
+ await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
  await expect(page.locator('[data-today-decisions]')).toContainText('2 options to consider');
  await page.locator('[data-action=unified-mode][data-id=workspace]').click();
  await expect(page.locator('[data-widget-type=decision-register]')).toContainText('Which research direction?');
