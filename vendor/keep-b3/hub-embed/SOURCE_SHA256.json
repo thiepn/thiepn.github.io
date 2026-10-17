@@ -1252,7 +1252,7 @@
   "src/services/exporter.ts": "aa03237ec4a09d23aaf934bef02c8f4a960be8054914c81543762744be5caee5",
   "src/services/importer.ts": "fb739fa35160db49f3a788e8a8c4a505696a21260ea052e3afaa318c23fcf9a4",
   "src/services/smartNoteService.ts": "41f637ba26d51d6591f7c286e3d86d9b72c873e3cc9d8a615006a590e00b71c5",
-  "src/services/storage.ts": "062987e601bb08847393485c17bacb3f58002020f7e26f0d07c356ea997c0002",
+  "src/services/storage.ts": "4b7aeba0e57870e214e59837d026e39dd112dd792c1d956bdce76e01fa5a0672",
   "src/types.ts": "09556b77ad5f2d28c9ed16d2a21775678d504ec577e43cc9cc32c8a780369af0",
   "src/utils/a11y.ts": "836f65b5134835ca34663afec2ae897c9d7463d983f22ef0404e9d677c07e1d6",
   "src/utils/activityHeatmap.ts": "91a1ed626536e93ffaffa7f0d231dbaf4dea6d59109e788f7d24a01e3995f186",
