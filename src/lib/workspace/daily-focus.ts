@@ -65,9 +65,9 @@ export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresen
       ${btn('edit-task','Edit task',selected.id)}
       ${!selected.due?btn('task-plan-today','Schedule today',selected.id):btn('task-plan-tomorrow','Move to tomorrow',selected.id)}
       ${btn('focus-next','Choose next')}
-    </div>` : `<p class="ws-focus-empty">Choose a task from a queue below. This is a local focus selection, not a new assignment or progress record.</p>`;
+    </div>` : `<p class="ws-focus-empty">Choose a task.</p>`;
   return `<section class="ws-daily-focus" id="ws-daily-focus" aria-labelledby="ws-focus-title" data-focus-panel>
-    <header class="ws-focus-heading"><div><p class="ws-home-eyebrow">Daily focus · local Hub</p><h2 id="ws-focus-title">One next action at a time</h2><p>Choose your task and concentrate without changing your calendar or other apps.</p></div>
+    <header class="ws-focus-heading"><div><h2 id="ws-focus-title">Focus</h2></div>
       <div class="ws-focus-heading-actions">
         <button type="button" class="ws-focus-button ws-focus-quiet-toggle" data-action="focus-quiet" aria-pressed="${p.quiet}">${p.quiet?'Exit quiet view':'Quiet view'}</button>
         <a href="/home/tasks/">Task manager ↗</a>
@@ -83,7 +83,7 @@ export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresen
             ${p.running?btn('focus-pause','Pause'):btn('focus-start',p.elapsed?'Start again':p.remainingMs<p.duration*60000?'Resume':'Start')}
             ${btn('focus-reset','Reset')}
           </div>
-          <p class="ws-focus-timer-note" data-focus-session-status>${p.running?'Session running in this tab. Leaving or hiding the tab pauses it.':p.elapsed?'Session elapsed; task completion is still your decision. No progress was recorded.':'Session paused or not started. No time or mastery is recorded.'}</p>
+          <p class="ws-focus-timer-note" data-focus-session-status>${p.running?'Running · pauses when you leave this tab':p.elapsed?'Session ended':'Paused'}</p>
         </div>
       </section>
       <section class="ws-focus-queue" aria-label="Hub task queue">

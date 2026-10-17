@@ -5,7 +5,6 @@ test('daily Hub summary uses original local planner commands and preserves layou
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-native-overview]')).toBeVisible();
-  await expect(page.locator('[data-native-overview]')).toContainText('Hub · this browser');
   await expect(page.locator('[data-native-overview]')).toContainText('Sign in to Hub');
   await expect(page.locator('[data-native-overview] [data-task-toggle]')).toHaveCount(0);
 

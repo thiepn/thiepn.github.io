@@ -90,11 +90,11 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
     <button type="button" class="ws-week-inline" data-action="context-task" data-id="${esc(t.id)}">Next</button>
   </li>`).join('');
   return `<section class="ws-week-followthrough" data-week-followthrough aria-labelledby="ws-week-title">
-    <header><div><p class="ws-home-eyebrow">Weekly follow-through · Hub tasks only</p>
+    <header><div>
       <h2 id="ws-week-title">Review unfinished work</h2>
       <p>${esc(label(first))} – ${esc(label(last))} · ${todayInWeek?'This is the current week.':'Reviewing a different week.'}
-        Only tasks you select can be changed, after a separate confirmation.</p></div>
-      <span class="ws-week-source">${summary.open} unfinished local task${summary.open===1?'':'s'} · no external data</span>
+        </p></div>
+      <span class="ws-week-source">${summary.open} unfinished task${summary.open===1?'':'s'}</span>
     </header>
     <div class="ws-week-workload">
       <div><strong>${summary.categories.carry}</strong><span>Due before week</span></div>
@@ -104,7 +104,6 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
       <div><strong>${summary.allDayOccurrences}</strong><span>All-day event appearances</span></div>
       <div><strong>${summary.overlapOccurrences}</strong><span>Potential timed overlaps across days</span></div>
     </div>
-    <p class="ws-week-source-note">Workload is a count of actual Hub records, not expected hours or calendar availability. Task deadlines are not reserved time. Multi-day events may appear on multiple dates; external calendars were not queried.</p>
     <div class="ws-week-filters" role="group" aria-label="Weekly task categories">
       ${WEEK_FILTERS.map(value=>`<button type="button" data-action="week-filter" data-id="${value}" aria-pressed="${filter===value}">
         ${filters[value]} <span>${value==='all'?summary.open:counts[value]}</span></button>`).join('')}
@@ -112,7 +111,7 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
     <div class="ws-week-toolbar"><span>${selectedOpen.length} selected unfinished task${selectedOpen.length===1?'':'s'} · maximum ${MAX_WEEK_BATCH} per review</span>
       <div>${action('week-select-visible','Select shown')}${action('week-clear','Clear selection')}${action('week-preview','Move together')}${action('week-spread','Spread across days')}</div></div>
     ${items?`<ul class="ws-week-tasks">${items}</ul>`:
-       `<div class="ws-week-empty"><strong>No tasks in this category</strong><p>Choose another filter, add a Hub task, or use the existing Inbox and calendar planners.</p>
+       `<div class="ws-week-empty"><strong>No tasks in this category</strong><p></p>
        <a href="/home/tasks/?filter=inbox">Open task Inbox</a></div>`}
     ${available.length>visible.length?`<p class="ws-week-limited">Showing ${visible.length} of ${available.length} matching tasks. Narrow the category or open Tasks for the rest.</p>`:''}
     <div class="ws-week-actions">
@@ -120,7 +119,7 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
       <button type="button" data-action="week-preview" class="ws-week-primary">Review one due date →</button>
       <button type="button" data-action="week-spread" class="ws-week-primary">Spread reviewed work →</button>
     </div>
-    <footer><a href="/home/tasks/">Open native Tasks</a><a href="/home/calendar/">Local Calendar</a>
-      <span>Selection is temporary in this tab. No dates change until you confirm the review.</span></footer>
+    <footer><a href="/home/tasks/">Tasks</a><a href="/home/calendar/">Calendar</a>
+      </footer>
   </section>`;
 }

@@ -16,8 +16,8 @@ test('shared static routes retain their actual content after identity settles',a
   await page.goto(route!);await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');await expect(page.locator('[data-workspace]')).toHaveCount(1);await expect(page.locator(marker!)).toBeVisible();await expect(page.locator('[data-hub-account]')).toHaveCount(1);
  }
 });
-test('default Home shows shortcuts in the first desktop screen and optional modes reuse tasks',async({page})=>{
- await page.goto('/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');const box=await page.locator('[data-widget-type=app-shortcuts]').boundingBox();expect(box!.y).toBeLessThan(350);
+test('workspace Home keeps shortcuts near the top after the visitor introduction and optional modes reuse tasks',async({page})=>{
+ await page.goto('/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');await expect(page.locator('[data-visitor-welcome]')).toBeVisible();await page.getByRole('button',{name:'Use this workspace',exact:true}).click();const box=await page.locator('[data-widget-type=app-shortcuts]').boundingBox();expect(box!.y).toBeLessThan(350);
  await page.locator('.ws-topbar [data-action=capture]').click();await page.locator('[data-workspace-form] [data-capture-kind]').selectOption('task');await page.locator('[data-workspace-form] [data-capture-draft]').fill('Plan connected Hub');await page.locator('[data-dialog-submit]').click();
  await page.locator('[data-action=unified-mode][data-id=today]').click();await expect(page.locator('[data-unified-today]')).toContainText('Plan connected Hub');
  await page.locator('[data-action=unified-mode][data-id=focus]').click();await page.locator('[data-action=focus-queue][data-id=inbox]').click();await expect(page.locator('[data-workspace-content]')).toContainText('Plan connected Hub');

@@ -7,12 +7,12 @@ const { entries } = Astro.props;
 ---
 <dialog class="portal-customize" id="portal-customize" aria-labelledby="customize-title" data-portal-customize>
   <header class="portal-section-heading"><h2 id="customize-title">Customize Home</h2><button type="button" data-customize-close>Done</button></header>
-  <p class="portal-muted">Choose up to 12 pins. These preferences stay in this browser.</p>
+
   <ThemeControl />
   <fieldset class="portal-density"><legend>Spacing</legend><label><input type="radio" name="density" value="compact" /> Compact</label><label><input type="radio" name="density" value="comfortable" /> Comfortable</label></fieldset>
-  <fieldset class="portal-module-choices"><legend>Daily modules</legend><p class="portal-muted">Calendar and weather open their websites; no data is imported.</p><div>{HOME_MODULES.map(module => <label><input type="checkbox" value={module.id} data-module-choice /><span>{module.title}</span></label>)}</div></fieldset>
+  <fieldset class="portal-module-choices"><legend>Daily modules</legend><div>{HOME_MODULES.map(module => <label><input type="checkbox" value={module.id} data-module-choice /><span>{module.title}</span></label>)}</div></fieldset>
   <div class="portal-home-selects"><label>Focus on <select data-home-focus><option value="study">Study</option><option value="faith">Faith</option></select></label><label>Home timezone <select data-home-timezone>{HOME_TIMEZONES.map(zone => <option value={zone}>{zone === 'device' ? 'Device timezone' : zone}</option>)}</select></label></div>
-  <h3>Pin order</h3><p class="portal-muted">Use the arrows to reorder your shortcuts.</p>
+  <h3>Pin order</h3>
   <ol class="portal-pin-order" data-pin-order></ol>
   <h3>Choose apps</h3>
   <label class="portal-pin-filter" data-pin-filter-control hidden>Find an app to pin<input type="search" maxlength="200" autocomplete="off" data-pin-filter /></label>

@@ -21,7 +21,7 @@ function agendaRow(entry: HomeEvent, today: string, zone: string): string {
     const clock = event.allDay ? 'All day' : timeLabel(event.start, zone);
     const span = startDay !== endDay ? ' · through ' + dayLabel(endDay) : '';
     return `<div class="ws-home-event"><span class="ws-home-event-time">${escapeHTML(day)}<small>${escapeHTML(clock)}</small></span>
-      <button type="button" class="ws-home-event-open" data-action="edit-event" data-id="${escapeHTML(event.id)}"><strong>${escapeHTML(event.title)}</strong><small>Local Hub event${escapeHTML(span)}</small></button><button type="button" class="ws-handoff-inline" data-action="context-event" data-id="${escapeHTML(event.id)}">Next</button></div>`;
+      <button type="button" class="ws-home-event-open" data-action="edit-event" data-id="${escapeHTML(event.id)}"><strong>${escapeHTML(event.title)}</strong>${span ? `<small>${escapeHTML(span.slice(3))}</small>` : ''}</button><button type="button" class="ws-handoff-inline" data-action="context-event" data-id="${escapeHTML(event.id)}">Next</button></div>`;
 }
 
 /** All links are supplied by the published Hub launcher list, not synthesized deep links. */
@@ -36,7 +36,7 @@ export function renderOwnerHandoffs(apps: readonly AppShortcut[], limit = 4): st
         const app = apps.find(item => item.id === choice.id);
         if (!app) return '';
         const url = choice.useAction ? (app.action?.url ?? app.url) : app.url;
-        return `<a class="ws-handoff" href="${escapeHTML(url)}" rel="noreferrer"><span><strong>${escapeHTML(choice.label)}</strong><small>${escapeHTML(choice.description)}</small></span><span aria-hidden="true">↗</span></a>`;
+        return `<a class="ws-handoff" href="${escapeHTML(url)}" rel="noreferrer"><span><strong>${escapeHTML(choice.label)}</strong></span><span aria-hidden="true">↗</span></a>`;
     }).filter(Boolean);
     return links.join('');
 }
@@ -46,7 +46,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
     const first = summary.upcomingEvents[0];
     const next = first ? (first.startDay <= today ? 'Today' : dayLabel(first.startDay)) + ' · ' + first.event.title : 'No events in the next 7 days';
     return `<section class="ws-mobile-today" aria-label="Today at a glance">
-      <div class="ws-mobile-today-title"><strong>Today</strong><span>Hub local · ${escapeHTML(dayLabel(today))}</span></div>
+      <div class="ws-mobile-today-title"><strong>Today</strong><span>${escapeHTML(dayLabel(today))}</span></div>
       <div class="ws-mobile-today-stats">
         <span><strong>${summary.dueToday}</strong> due today</span>
         ${summary.overdue ? `<span class="ws-overdue"><strong>${summary.overdue}</strong> overdue</span>` : ''}
@@ -54,7 +54,7 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
       </div>
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
       ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>Next Hub task: ${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
-      ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished Hub capture · on this device</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
+      ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished capture</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
       <div class="ws-mobile-today-actions">
           <button type="button" data-action="capture" class="ws-button">Capture</button>
           <a href="/home/tasks/?filter=inbox" class="ws-button">Triage Inbox</a>
@@ -67,33 +67,29 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
     const summary = buildHomeSummary(state, today);
     const tasks = summary.upcomingTasks.length
         ? summary.upcomingTasks.slice(0, 3).map(priorityRow).join('')
-        : `<p class="ws-home-empty">No outstanding tasks scheduled for the next week. Add a task or open Tasks to plan ahead.</p>`;
+        : `<p class="ws-home-empty">No tasks due this week.</p>`;
     const events = summary.upcomingEvents.length
         ? summary.upcomingEvents.slice(0, 2).map(e => agendaRow(e, today, state.preferences.timezone)).join('')
-        : `<p class="ws-home-empty">No local events in the next seven days. Connected calendars are not shown here.</p>`;
+        : `<p class="ws-home-empty">No events this week.</p>`;
     const handoffs = renderOwnerHandoffs(apps, 2);
     const inbox = state.tasks.filter(t => !t.completedAt && !t.due).length;
     return `<section class="ws-home-lead" aria-label="Daily overview">
-      <header class="ws-home-lead-heading"><div><p class="ws-home-eyebrow">Your day</p><h2>Pick up what matters</h2><p>Priorities and events saved in this browser, with direct links to your THIEPN apps.</p></div>
-        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Local capture</button><a href="/home/tasks/?filter=inbox" class="ws-button">Task Inbox</a><button type="button" class="ws-button" data-action="unified-mode" data-id="focus">Focus view</button></div>
+      <header class="ws-home-lead-heading"><div><h2>Today</h2></div>
+        <div class="ws-home-lead-actions"><button type="button" class="ws-primary" data-action="capture">+ Capture</button><a href="/home/tasks/?filter=inbox" class="ws-button">Task Inbox</a><button type="button" class="ws-button" data-action="unified-mode" data-id="focus">Focus view</button></div>
       </header>
       <div class="ws-home-lead-grid">
         <section class="ws-home-panel" aria-labelledby="ws-priorities"><header><h3 id="ws-priorities">Next priorities</h3><a href="/home/tasks/">All tasks</a></header>
           <p class="ws-home-context">${summary.overdue ? summary.overdue + ' overdue · ' : ''}${summary.dueToday} due today · ${summary.completedToday} completed today</p>
           <div class="ws-home-list">${tasks}</div>
           <a class="ws-inbox-link" href="/home/tasks/?filter=inbox">Process inbox · ${inbox} unscheduled task${inbox===1?'':'s'} →</a>
-          <small class="ws-home-source">Source: Hub tasks on this device</small>
         </section>
         <section class="ws-home-panel" aria-labelledby="ws-upcoming"><header><h3 id="ws-upcoming">Coming up</h3><a href="/home/calendar/">Calendar</a><a href="/home/calendar/?mode=week">Week overview</a></header>
-          <p class="ws-home-context">Upcoming local events · 7-day view</p>
+          <p class="ws-home-context">Next 7 days</p>
           <div class="ws-home-list">${events}</div>
-          <button type="button" class="ws-text-button" data-action="new-event">+ Add local event</button>
-          <small class="ws-home-source">Source: Hub local calendar · not Google Calendar</small>
+          <button type="button" class="ws-text-button" data-action="new-event">+ Add event</button>
         </section>
         <section class="ws-home-panel ws-home-continue" aria-labelledby="ws-continue-apps"><header><h3 id="ws-continue-apps">Continue in your apps</h3><a href="/apps/">All apps</a></header>
-          <p class="ws-home-context">Canonical app actions. Authorized metadata, when available, appears separately in the connected Continue desk.</p>
           <div class="ws-home-handoffs">${handoffs || `<p class="ws-home-empty">Open Apps to choose a THIEPN application.</p>`}</div>
-          <small class="ws-home-source">These links do not read cross-app data</small>
         </section>
       </div>
     </section>`;

@@ -44,7 +44,7 @@ test('invalid legacy preferences recover and intentionally empty shortcuts survi
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
  await page.locator('[data-dialog-submit]').click();
- await page.reload();await expect(page.locator('[data-launch]')).toHaveCount(0);await expect(page.getByRole('heading',{name:'Your most useful apps'})).toBeVisible();
+ await page.reload();await expect(page.locator('[data-launch]')).toHaveCount(0);await expect(page.getByRole('heading',{name:'No shortcuts'})).toBeVisible();
 });
 
 test('Public task search is direct, reloadable, curated and network independent', async ({ page, request }) => {

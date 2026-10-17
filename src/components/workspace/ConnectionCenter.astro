@@ -4,9 +4,9 @@ import {launches} from '../../lib/launches/resolver';
 const providers=new Map([['notes','notes'],['thiepn-library','library'],['tms60','tms60']]);
 ---
 <section class="ws-surface" data-connection-center aria-labelledby="connection-center-title">
- <header><div><h2 id="connection-center-title">Your connected apps</h2><p class="ws-muted">All apps can open. Shared summaries appear only when Account confirms your permission.</p></div><button class="ws-button" type="button" data-export-diagnostics>Export diagnostics</button></header>
+ <header><div><h2 id="connection-center-title">Your connected apps</h2></div><button class="ws-button" type="button" data-export-diagnostics>Export diagnostics</button></header>
  <p class="ws-content-toolbar"><button class="ws-button" type="button" data-action="account">Connect or manage Account</button><button class="ws-button" type="button" data-action="refresh-connections">Refresh connections</button><a class="ws-button" href="https://account.thiepn.dev/hub/connections">Manage sharing in Account</a></p>
  <section aria-labelledby="app-actions-title"><h3 id="app-actions-title">App actions</h3><div class="ws-content-toolbar"><a class="ws-button" href={providerAction('notes','capture-text')!} rel="noreferrer">Capture a thought</a><a class="ws-button" href={providerAction('library','continue-in-app')!} rel="noreferrer">Continue in Library</a><a class="ws-button" href={providerAction('tms60','open')!} rel="noreferrer">Open TMS60</a></div></section>
  <div class="ws-connection-table"><table><thead><tr><th>App</th><th>Hub data</th><th>Connection</th><th>Action</th></tr></thead><tbody>{launches.map(app=><tr><th scope="row">{app.title}</th><td>{providers.has(app.id)?'Approved summaries':'Launch shortcut'}</td><td><span data-source-status={providers.get(app.id)}>{providers.has(app.id)?'Connect Account to check sharing':'No Hub data adapter yet'}</span>{providers.has(app.id) && <small class="ws-source-detail" data-source-detail={providers.get(app.id)}>No successful read in this tab</small>}</td><td><a href={app.url} aria-label={`Open ${app.title}`}>Open app ↗</a>{providers.has(app.id) && <div data-source-repair={providers.get(app.id)} />}</td></tr>)}</tbody></table></div>
- <p class="ws-muted">Diagnostics include software versions and connection status only.</p>
+
 </section>

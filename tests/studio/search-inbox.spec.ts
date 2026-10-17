@@ -22,8 +22,8 @@ test('H5 resource URLs are scrubbed without collecting or sending private querie
   await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
   await expect(page.locator('[data-portal-query]')).toBeHidden();
   await expect(page.locator('[data-portal-query]')).toHaveValue('');
-  await expect(page.getByRole('heading', { name: 'Private resource search is not connected yet' })).toBeVisible();
-  await expect(page.locator('[data-search-panel="resources"]')).toContainText('No private sources have been searched');
+  await expect(page.getByRole('heading', { name: 'Connected search' })).toBeVisible();
+  await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
   expect(requests.filter(url => /fictional-private-secret/.test(url))).toHaveLength(1); // Only the incoming document URL; cannot undo its transmission.
   expect(requests.some(url => /hub\/(search|inbox)|rest\/v1/.test(url))).toBe(false);
   expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).not.toContain('fictional-private-secret');
@@ -34,7 +34,7 @@ test('H5 Inbox is reachable without badges, distinguishes unavailable coverage a
   const requests: string[] = []; page.on('request', r => requests.push(r.url()));
   await page.goto('/inbox/');
   await expect(page.getByRole('heading', { name: 'App attention sources' })).toBeVisible();
-  await expect(page.locator('[data-inbox-content]')).toContainText('External attention feeds have not been connected');
+  await expect(page.locator('[data-inbox-content]')).toContainText('No connected feeds.');
   await expect(page.locator('[data-inbox-items]')).toBeEmpty();
   await expect(page.locator('.portal-inbox-footer')).toContainText('No unread total is available');
   await expect(page.getByRole('link', { name: 'Inbox', exact: true }).filter({ visible: true })).toHaveAttribute('aria-current', 'page');
