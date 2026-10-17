@@ -45,28 +45,53 @@ execFileSync(vite,['build','--config','hub-embed/vite.config.ts'],{
   cwd:root,stdio:'inherit',env:{...process.env,NODE_ENV:'production'},timeout:180000
 });
 const bundle='keep-b3-original.js',style='keep-b3-original.css';
-for(const asset of [bundle,style]){
-  const found=path.join(output,asset);
-  if(!fs.existsSync(found)||!fs.statSync(found).isFile()||fs.statSync(found).size===0)
-    throw new Error('Original React build asset missing: '+asset);
+const outputFiles=[];
+function scan(dir=''){
+  const full=path.join(output,dir);
+  for(const item of fs.readdirSync(full,{withFileTypes:true})){
+    const rel=path.posix.join(dir,item.name),absolute=path.join(full,item.name);
+    if(item.isSymbolicLink())throw new Error('Build output must not contain symlinks: '+rel);
+    if(item.isDirectory()){scan(rel);continue;}
+    if(!item.isFile()||!/^[A-Za-z0-9_./-]+$/u.test(rel)||rel.includes('..'))
+      throw new Error('Invalid KEEP asset path: '+rel);
+    if(fs.statSync(absolute).size>50*1024*1024)throw new Error('KEEP single-asset size cap exceeded: '+rel);
+    outputFiles.push(rel);
+  }
 }
-const extras=fs.readdirSync(output).filter(name=>name!==bundle&&name!==style);
-if(extras.length)throw new Error(
-  'Original KEEP build emitted dynamic assets which are not covered by the two-file integrity manifest: '+extras.join(', '));
-const js=fs.readFileSync(path.join(output,bundle)),css=fs.readFileSync(path.join(output,style));
-if(!js.includes('mountOriginalKeep'))throw new Error('Original React mount export not found in built ESM.');
+scan();
+if(!outputFiles.includes(bundle)||!outputFiles.includes(style))
+  throw new Error('Original KEEP JavaScript or CSS entry is missing.');
+if(outputFiles.length>600)throw new Error('KEEP asset closure exceeds the verified manifest capacity.');
+const assetContents=new Map();
+let totalBytes=0;
+const assets={};
+for(const rel of outputFiles){
+  const bytes=fs.readFileSync(path.join(output,rel));
+  if(!bytes.length)throw new Error('Empty KEEP build asset: '+rel);
+  totalBytes+=bytes.length;
+  if(totalBytes>250*1024*1024)throw new Error('KEEP build asset limit exceeded.');
+  assets[rel]=digest(bytes);
+  assetContents.set(rel,bytes);
+}
+const js=assetContents.get(bundle),css=assetContents.get(style);
+if(!js.toString('utf8').includes('mountOriginalKeep'))
+  throw new Error('Original React mount export not found in built ESM.');
 const built={
   format:'thiepn-keep-b3-original-react',schema:1,entry:bundle,css:style,
-  sourceSha256:digest(manifestBytes),jsSha256:digest(js),cssSha256:digest(css)
+  sourceSha256:digest(manifestBytes),jsSha256:assets[bundle],cssSha256:assets[style],assets
 };
 const out=path.join(repo,'public','keep-b3-native');
 if(fs.existsSync(out))throw new Error('Refusing to overwrite existing local KEEP output: '+out);
 const tmp=fs.mkdtempSync(path.join(repo,'public','.keep-native-staging-'));
 try {
-  fs.writeFileSync(path.join(tmp,bundle),js);
-  fs.writeFileSync(path.join(tmp,style),css);
+  for(const [rel,bytes] of assetContents){
+    const target=path.join(tmp,rel);
+    fs.mkdirSync(path.dirname(target),{recursive:true});
+    fs.writeFileSync(target,bytes);
+  }
   fs.writeFileSync(path.join(tmp,'manifest.json'),JSON.stringify(built,null,2)+'\n');
   fs.renameSync(tmp,out);
 }catch(error){fs.rmSync(tmp,{recursive:true,force:true});throw error;}
-console.log('Original KEEP B3 build qualified locally:',built.sourceSha256);
+console.log('Original KEEP B3 source integrity:',built.sourceSha256);
+console.log('Complete local asset closure:',outputFiles.length,'files,',totalBytes,'bytes');
 console.log('Local-only generated assets:',out);
