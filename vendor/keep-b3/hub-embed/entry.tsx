@@ -41,8 +41,9 @@ export function mountOriginalKeep(container: HTMLElement, authority: KeepHubMoun
   catch (error) { container.removeAttribute(ACTIVE_FLAG); throw error; }
   let live = true;
   const lock = () => {
-    // This is the ORIGINAL vault lock + cache purge, not a parallel key handler.
-    if (vaultEncryptionService.isEncryptionEnabled()) vaultEncryptionService.lockVault();
+    // Release the ORIGINAL vault's key, async unlock generation, timers and global
+    // activity listeners; no second key store or Hub crypto implementation.
+    vaultEncryptionService.endHubSession();
   };
   const onRevoke = () => handle.unmount();
   const handle: KeepMountHandle = {
@@ -68,6 +69,7 @@ export function mountOriginalKeep(container: HTMLElement, authority: KeepHubMoun
   authority.revoked.addEventListener('abort', onRevoke, {once:true});
   try {
     if (authority.revoked.aborted || !authority.mayMount()) throw new Error('KEEP owner authorization expired.');
+    vaultEncryptionService.beginHubSession();
     root.render(<StrictMode><App /></StrictMode>);
     return handle;
   } catch (error) {
