@@ -230,3 +230,43 @@ for(const width of [390,1440]){
   expect(record.revisions.some((r:any)=>r.trigger==='pre_restore')).toBe(true);
  });
 }
+
+test('unsupported future original KEEP schema is never silently modified',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+  const open=indexedDB.open('KeepNotesDB',2);
+  open.onupgradeneeded=()=>open.result.createObjectStore('notes',{keyPath:'id'});
+  open.onsuccess=()=>{open.result.close();resolve();};
+  open.onerror=()=>reject(open.error);
+ }));
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await expect(page.locator('.ws-keep-owner-empty')).toContainText('schema version is not B3 v1');
+ await expect(page.locator('[data-keep-owner-form]')).toHaveCount(0);
+});
+test('disconnect clears original KEEP source content from visible Hub UI',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+  const open=indexedDB.open('KeepNotesDB',1);
+  open.onupgradeneeded=()=>open.result.createObjectStore('notes',{keyPath:'id'});
+  open.onsuccess=()=>{
+   const db=open.result,tx=db.transaction('notes','readwrite');
+   tx.objectStore('notes').put({
+    id:'private-original',title:'Private KEEP document',content:'Private source',type:'text',
+    checklist:[],color:'default',tags:[],folderId:null,pinned:false,archived:false,trashed:false,
+    createdAt:'2026-10-17T08:00:00Z',updatedAt:'2026-10-17T08:01:00Z',reminderDate:null,images:[]
+   });
+   tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+  };
+  open.onerror=()=>reject(open.error);
+ }));
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ await page.locator('[data-action=knowledge-keep-connect]').click();
+ await expect(page.locator('[data-keep-owner]')).toContainText('Private KEEP document');
+ await page.locator('[data-action=knowledge-keep-disconnect]').click();
+ await expect(page.locator('[data-keep-owner]')).toHaveCount(0);
+ await expect(page.locator('[data-action=knowledge-keep-connect]')).toBeVisible();
+ await expect(page.locator('[data-workspace-content]')).not.toContainText('Private KEEP document');
+});
