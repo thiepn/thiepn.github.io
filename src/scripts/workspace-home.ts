@@ -118,6 +118,8 @@ async function setup(root: HTMLElement) {
             nativeKeepHandle=null;nativeKeepLoading=false;
             const host=root.querySelector<HTMLElement>('[data-keep-native-host]');
             if(host){host.hidden=true;host.replaceChildren();}
+            const nativeExit=root.querySelector<HTMLButtonElement>('[data-keep-native-exit]');
+            if(nativeExit)nativeExit.hidden=true;
         }
     }
     async function openNativeKeep(){
@@ -138,6 +140,8 @@ async function setup(root: HTMLElement) {
             const handle=await mountOriginalKeepInHub(host,{mayMount,revoked:controller.signal});
             if(!mayMount()){handle.unmount();throw new Error('KEEP source session expired.');}
             nativeKeepHandle=handle;nativeKeepLoading=false;
+            const nativeExit=root.querySelector<HTMLButtonElement>('[data-keep-native-exit]');
+            if(nativeExit)nativeExit.hidden=false;
             // The authentic React app is now the sole active original KEEP writer in this tab.
             render();
         }catch(error){
@@ -861,8 +865,7 @@ async function setup(root: HTMLElement) {
         if (view === 'settings')
             return settingsHTML();
         if(view==='knowledge'){
-            if(nativeKeepHandle)return '<section class="ws-surface" data-keep-native-state><h2>Original KEEP B3</h2><p>The original React workspace is mounted below. KEEP keeps its own record and encryption ownership.</p>'+
-                '<button type="button" data-action="knowledge-native-stop" class="ws-button">Close and lock original KEEP</button></section>';
+            if(nativeKeepHandle)return '<section class="ws-surface" data-keep-native-state><h2>Original KEEP B3</h2><p>The original React workspace is mounted below. KEEP keeps its own record and encryption ownership. Use the persistent Close and lock KEEP control to leave securely.</p></section>';
             const modes='<nav class="ws-knowledge-switch" aria-label="Knowledge data owner">'+
               '<button type="button" data-action="knowledge-mode" data-id="hub" aria-pressed="'+(keepKnowledgeMode==='hub')+'">Hub local notes</button>'+
               '<button type="button" data-action="knowledge-mode" data-id="keep" aria-pressed="'+(keepKnowledgeMode==='keep')+'">Original KEEP B3</button></nav>'+(keepKnowledgeMode==='keep'&&keepUndo?'<div class="ws-keep-undo"><button type="button" data-action="knowledge-keep-undo">Undo latest KEEP edit</button><span>Only the unchanged original revision can be restored.</span></div>':'');
