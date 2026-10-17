@@ -340,3 +340,51 @@ test('original React mount refuses an absent KEEP origin database without creati
  expect(names).not.toContain('KeepNotesDB');
  await expect(page.locator('[data-keep-native-host]')).toBeHidden();
 });
+
+
+for(const width of [1440,390]){
+ test('original React App mounts and unmounts without copying KEEP records '+width,async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+    const req=indexedDB.open('KeepNotesDB',1);
+    req.onupgradeneeded=()=>{
+      if(!req.result.objectStoreNames.contains('notes'))req.result.createObjectStore('notes',{keyPath:'id'});
+    };
+    req.onerror=()=>reject(req.error);
+    req.onsuccess=()=>{
+      const db=req.result,tx=db.transaction('notes','readwrite');
+      tx.objectStore('notes').put({
+        id:'original-b3-chromium-id',title:'Original React document',content:'KEEP native React source',
+        type:'text',checklist:[],color:'default',tags:['keep-native'],folderId:null,
+        pinned:false,archived:false,trashed:false,images:[],reminderDate:null,
+        createdAt:'2026-10-17T10:00:00Z',updatedAt:'2026-10-17T10:01:00Z'
+      });
+      tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);
+    };
+  }));
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action=knowledge-native-start]').click();
+  await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1);
+  await expect(page.locator('[data-keep-native-host]')).toBeVisible();
+  await expect(page.locator('[data-keep-native-host]')).not.toBeEmpty();
+  await expect(page.locator('[data-action=knowledge-native-stop]')).toBeVisible();
+  await page.locator('[data-action=knowledge-native-stop]').click();
+  await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
+  await expect(page.locator('[data-keep-native-host]')).toBeHidden();
+  const record=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
+    const req=indexedDB.open('KeepNotesDB');req.onerror=()=>reject(req.error);
+    req.onsuccess=()=>{
+      const db=req.result,read=db.transaction('notes','readonly').objectStore('notes').get('original-b3-chromium-id');
+      read.onerror=()=>reject(read.error);
+      read.onsuccess=()=>{db.close();resolve(read.result)};
+    };
+  }));
+  expect(record).toMatchObject({id:'original-b3-chromium-id',title:'Original React document',tags:['keep-native']});
+  expect(errors).toEqual([]);
+ });
+}
