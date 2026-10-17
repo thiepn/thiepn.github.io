@@ -32,7 +32,7 @@ const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[c]!));
 const headingDay=(date:string)=>new Date(date+'T12:00:00Z').toLocaleDateString(
-  undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric});
+  undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
 function sourceRows(shared:NotesDeviceSummary,zone:string):SharedNotesReminder[] {
   return shared.reminders.slice(0,6).flatMap(reminder=>{
     const at=new Date(reminder.dueAt);
