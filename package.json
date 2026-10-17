@@ -93,7 +93,7 @@
     "test:workspace": "playwright test --config=playwright.workspace.config.ts",
     "postbuild": "node --experimental-strip-types scripts/generate-workspace-sw.mjs",
     "launches:validate": "node scripts/validate-launch-manifest.mjs",
-    "test:keep-b3": "node vendor/keep-b3/scripts/check-keep-b1b.cjs && node vendor/keep-b3/scripts/check-keep-b2.cjs && node vendor/keep-b3/scripts/check-keep-b3.cjs",
+    "test:keep-b3": "node vendor/keep-b3/scripts/check-keep-b1b.cjs && node vendor/keep-b3/scripts/check-keep-b2.cjs && node vendor/keep-b3/scripts/check-keep-b3.cjs && node vendor/keep-b3/scripts/check-keep-vault-lock-race.cjs && node vendor/keep-b3/scripts/check-keep-hub-vault-lifecycle.cjs && node vendor/keep-b3/scripts/check-keep-aes-webcrypto.cjs",
     "verify:keep-b3": "node vendor/keep-b3/scripts/check-hub-embed.cjs",
     "build:keep-b3": "node scripts/build-original-keep.mjs vendor/keep-b3"
   },
