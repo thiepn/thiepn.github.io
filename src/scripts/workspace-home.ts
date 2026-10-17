@@ -42,6 +42,7 @@ import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type 
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
+import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
 import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -1133,13 +1134,7 @@ async function setup(root: HTMLElement) {
     function showEventContext(id:string) {
         if(!startHandoff('event',id))return;
         const item=state!.events.find(e=>e.id===id)!;
-        const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
-          <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
-          <div class="ws-context-actions">
-            ${button('edit-event','Edit original event',id)}
-            ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
-            <a class="ws-button" href="/home/calendar/">Open Calendar</a>
-          </div></div>`;
+        const html=renderEventPreparation(state!,item,knowledgeOwnerContext());
         openForm('Next actions · Hub event',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -1473,9 +1468,9 @@ async function setup(root: HTMLElement) {
             `:
             '<p class="ws-unified-review-error">Choose a valid present/future due date or select Inbox.</p>';
     }
-    function editTask(id = '', seed?: {title:string;notes:string}) {
+    function editTask(id = '', seed?: {title:string;notes:string;due?:string;priority?:Task['priority']}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed?.due ?? (seed ? '' : selected)), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? seed?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -2196,6 +2191,20 @@ async function setup(root: HTMLElement) {
             case 'context-event':
                 showEventContext(id);
                 break;
+            case 'prep-event-task':
+            case 'followup-event-task': {
+                if(!startHandoff('event',id))break;
+                const source=state.events.find(e=>e.id===id);
+                if(source)editTask('',preparationTaskSeed(
+                    source,today(),action==='prep-event-task'?'prepare':'followup'));
+                break;
+            }
+            case 'prep-event-note': {
+                if(!startHandoff('event',id))break;
+                const source=state.events.find(e=>e.id===id);
+                if(source)editNote('',preparationNoteSeed(source));
+                break;
+            }
             case 'plan-task-event':
                 planTaskInCalendar(id);
                 break;
