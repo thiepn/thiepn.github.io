@@ -1,0 +1,5 @@
+.ws-study-c1{margin-block:1rem;padding:1rem}.ws-study-c1 header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.6rem}
+.ws-study-c1 header h2{font-size:1.1rem;margin:0}.ws-study-c1-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.ws-study-c1 li{display:flex;justify-content:space-between;gap:.7rem;padding:.5rem 0;border-bottom:1px solid #ccc}
+.ws-study-c1 li strong,.ws-study-c1 li small{display:block;overflow-wrap:anywhere}.ws-study-c1 li small{opacity:.7}
+@media(max-width:900px){.ws-study-c1-grid{grid-template-columns:1fr}}[data-hub-study-panel][hidden]{display:none!important}
