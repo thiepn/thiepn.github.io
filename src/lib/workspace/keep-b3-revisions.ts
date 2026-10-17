@@ -23,7 +23,7 @@ export function keepChecksum(content:string):string {
   }
   return (h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0');
 }
-export function keepRevisionList(note:Pick<KeepOwnerNote,'id'|'revisions'>):KeepBoundedRevision[]{
+export function keepRevisionList(note:KeepOwnerNote):KeepBoundedRevision[]{
   if(!Array.isArray(note.revisions))return [];
   return note.revisions.filter((v):v is KeepBoundedRevision=>!!v&&typeof v==='object'&&
     (v as KeepBoundedRevision).noteId===note.id &&
