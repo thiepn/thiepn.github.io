@@ -368,7 +368,9 @@ class StorageService {
     type: 'note' | 'folder' | 'saved_search',
     item: T
   ): Promise<any> {
-    if (vaultEncryptionService.isEncryptionEnabled() && vaultEncryptionService.isVaultUnlocked()) {
+    if (vaultEncryptionService.isEncryptionEnabled()) {
+      if (!vaultEncryptionService.isVaultUnlocked())
+        throw new Error('Original KEEP vault is locked. Refusing plaintext record write.');
       return await vaultEncryptionService.encryptRecord(id, type, item);
     }
     return item;
@@ -543,7 +545,10 @@ class StorageService {
       const tx = db.transaction(STORE_NOTES, 'readwrite');
       tx.objectStore(STORE_NOTES).put(record);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       this.fallbackSaveNote(record);
     }
   }
@@ -560,7 +565,10 @@ class StorageService {
         store.put(r);
       }
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_notes');
       const currentList: any[] = raw ? JSON.parse(raw) : [];
       const map = new Map(currentList.map((n) => [n.id, n]));
@@ -584,7 +592,10 @@ class StorageService {
         store.put(r);
       }
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       localStorage.setItem('keepnotes_notes', JSON.stringify(records));
     }
   }
@@ -595,7 +606,10 @@ class StorageService {
       const tx = db.transaction(STORE_NOTES, 'readwrite');
       tx.objectStore(STORE_NOTES).delete(id);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_notes');
       if (raw) {
         const list: any[] = JSON.parse(raw);
@@ -624,7 +638,10 @@ class StorageService {
       const tx = db.transaction(STORE_FOLDERS, 'readwrite');
       tx.objectStore(STORE_FOLDERS).put(record);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_folders');
       const list: any[] = raw ? JSON.parse(raw) : [];
       const idx = list.findIndex((f) => f.id === folder.id);
@@ -640,7 +657,10 @@ class StorageService {
       const tx = db.transaction(STORE_FOLDERS, 'readwrite');
       tx.objectStore(STORE_FOLDERS).delete(folderId);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_folders');
       if (raw) {
         const list: any[] = JSON.parse(raw);
@@ -662,7 +682,10 @@ class StorageService {
         store.put(r);
       }
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       localStorage.setItem('keepnotes_folders', JSON.stringify(records));
     }
   }
@@ -675,7 +698,10 @@ class StorageService {
       const tx = db.transaction(STORE_SEARCHES, 'readwrite');
       tx.objectStore(STORE_SEARCHES).put(record);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_searches');
       const list: any[] = raw ? JSON.parse(raw) : [];
       const idx = list.findIndex((s) => s.id === preset.id);
@@ -691,7 +717,10 @@ class StorageService {
       const tx = db.transaction(STORE_SEARCHES, 'readwrite');
       tx.objectStore(STORE_SEARCHES).delete(id);
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       const raw = localStorage.getItem('keepnotes_searches');
       if (raw) {
         const list: any[] = JSON.parse(raw);
@@ -713,7 +742,10 @@ class StorageService {
         store.put(r);
       }
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       localStorage.setItem('keepnotes_searches', JSON.stringify(records));
     }
   }
@@ -726,7 +758,10 @@ class StorageService {
       const tx = db.transaction(STORE_SETTINGS, 'readwrite');
       tx.objectStore(STORE_SETTINGS).put({ key: 'app_settings', value: settings });
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       // ignore
     }
     if (typeof localStorage !== 'undefined') {
@@ -743,7 +778,10 @@ class StorageService {
       tx.objectStore(STORE_FOLDERS).clear();
       tx.objectStore(STORE_SEARCHES).clear();
       await this.txPromise(tx);
-    } catch {
+    } catch (error) {
+      // Native Hub is source-owned IndexedDB only. Never write an unnoticed
+      // plaintext localStorage mirror or misreport a failed original commit.
+      if (isEmbeddedHubKeep()) throw error;
       // ignore
     }
     if (typeof localStorage !== 'undefined') {
