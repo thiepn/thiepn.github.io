@@ -2,6 +2,7 @@ import { addDays, dayKey } from './model';
 import { taskCounts } from './task-flow';
 import {renderHubPinboard} from './record-pinboard';
 import {renderOutcomes} from './outcome-board';
+import {renderDecisions} from './decision-register';
 import type { AppShortcut, Task, Widget, WorkspaceState } from './types';
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -121,5 +122,6 @@ export function utilityWidget(w:Widget,state:WorkspaceState,apps:readonly AppSho
     if(w.type==='owner-handoffs')return ownerHandoffs(w,apps);
     if(w.type==='record-pinboard')return renderHubPinboard(state);
     if(w.type==='outcome-board')return renderOutcomes(state,today,w.view==='compact');
+    if(w.type==='decision-register')return renderDecisions(state,today,w.view==='compact');
     return null;
 }

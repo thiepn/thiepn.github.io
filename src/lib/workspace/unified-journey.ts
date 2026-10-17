@@ -3,6 +3,7 @@ import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
 import {renderHubPinboard} from './record-pinboard';
 import {renderOutcomes} from './outcome-board';
+import {renderDecisions} from './decision-register';
 import { renderTodayWorkbench } from './today-workbench';
 import type { FolioDeviceSnapshot } from './folio-device';
 import type { NotesDeviceSummary } from './notes-device';
@@ -70,6 +71,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
     ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters</span>${textButton('capture','Resume draft')}</div>`:''}
     ${renderHubPinboard(state,true)}
     ${renderOutcomes(state,today,true)}
+    ${renderDecisions(state,today,true)}
     ${status.hasLayoutDraft?`<div class="ws-unified-draft"><strong>Interrupted layout draft</strong><span>Review the original saved layout before replacing anything.</span>${textButton('review-return','Review recovery')}</div>`:''}
     <div class="ws-unified-metrics" aria-label="Actual Hub work">
       <a href="/home/tasks/?filter=today"><strong>${counts.today}</strong><span>Due or overdue</span></a>

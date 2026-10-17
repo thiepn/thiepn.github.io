@@ -26,6 +26,7 @@ import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
 import { enableHubPinboard, toggleHubRecordPin, moveHubRecordPin, hasHubPin } from '../lib/workspace/record-pinboard';
 import {outcomes,saveOutcome,changeOutcome,type OutcomeDraft} from '../lib/workspace/outcome-board';
+import {decisions,saveDecision,decide,transitionDecision,type DecisionDraft} from '../lib/workspace/decision-register';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
@@ -1746,6 +1747,56 @@ async function setup(root: HTMLElement) {
        else void apply().catch(error=>toast(error instanceof Error?error.message:'Unable to change outcome.'));
     }
 
+
+    function editDecision(idValue=''){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=idValue?decisions(state!).find(d=>d.id===idValue):undefined;
+        if(idValue&&!prior){toast('Decision no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const choice=(items:{id:string;title:string}[],label:string,fieldName:string,current='')=>
+          select(label,fieldName,[['','None'],...items.map(x=>[x.id,x.title])],current);
+        const fields=field('Decision title','title',prior?.title??'','text','required maxlength="100"')+
+          area('Situation and criteria','context',prior?.context??'',300)+
+          area('Options, one per line','options',prior?.options.join('\n')??'',370)+
+          field('Review date','review',prior?.review??'','date')+
+          choice(state!.tasks,'Related original task','taskId',prior?.taskId??'')+
+          choice(state!.notes,'Related original note','noteId',prior?.noteId??'')+
+          '<p class="ws-muted">Two to four distinct options, each at most 90 characters. Decisions are Hub-owned; linked original records are not copied or edited.</p>';
+        openForm(prior?'Edit decision':'New decision',fields,async data=>{
+          const draft:DecisionDraft={
+            title:String(data.get('title')??''),context:String(data.get('context')??''),
+            options:String(data.get('options')??'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
+            review:String(data.get('review')??''),taskId:String(data.get('taskId')??''),noteId:String(data.get('noteId')??'')
+          };
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen decision.');saveDecision(s,idValue||null,draft,snapshot);},'Decision saved',true,false,true);
+        });
+    }
+    function chooseDecision(idValue:string){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior||prior.status==='archived'){toast('Restore or reopen the decision first.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const fields=select('Selected option','choice',prior.options.map(x=>[x,x]),prior.choice||prior.options[0]!)+
+          area('Why this option?','reason',prior.reason,500)+
+          '<p>Confirm the chosen alternative and rationale; earlier decision text is replaced, not historically versioned.</p>';
+        openForm(prior.status==='open'?'Make decision':'Revise decision',fields,async data=>{
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');decide(s,idValue,snapshot,String(data.get('choice')??''),String(data.get('reason')??''));},
+            'Decision recorded',true,false,true);
+        },'Record decision');
+    }
+    function decisionTransition(idValue:string,mode:'reopen'|'archive'|'restore'|'remove'){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior){toast('Decision no longer exists.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');transitionDecision(s,idValue,snapshot,mode);},
+          mode==='remove'?'Decision removed':'Decision updated',true,false,true);
+        if(mode==='remove'||mode==='reopen')
+          openForm(mode==='remove'?'Remove decision?':'Reopen decision?',
+            '<p>'+ (mode==='remove'?'Remove this Hub-owned decision record? Original linked records remain unchanged.':'Clear the current choice and rationale to deliberate again? The previous choice is not retained in a decision history.')+'</p>',apply,mode==='remove'?'Remove':'Reopen');
+        else void apply().catch(e=>toast(e instanceof Error?e.message:'Unable to update decision.'));
+    }
+
     function configureWidget(id: string) {
         let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
         if (!w)
@@ -1829,7 +1880,7 @@ async function setup(root: HTMLElement) {
         const groups: Array<{title:string;description:string;types:string[]}> = [
             {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
-            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board','decision-register']},
         ];
         openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div>`, () => { });
         $('[data-dialog-submit]').hidden = true;
@@ -2563,6 +2614,7 @@ async function setup(root: HTMLElement) {
                 if (!spec)
                     return;
                 if (id==='outcome-board' && editing!.workspace.widgets.some(w=>w.type==='outcome-board')) {toast('One Outcomes board per workspace.');return;}
+                if (id==='decision-register' && editing!.workspace.widgets.some(w=>w.type==='decision-register')) {toast('One Decision register per workspace.');return;}
                 if (editing!.workspace.widgets.length >= 32) {
                     toast('This workspace already has 32 widgets.');
                     return;
@@ -2582,6 +2634,13 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'new-decision':editDecision();break;
+            case 'edit-decision':editDecision(id);break;
+            case 'choose-decision':chooseDecision(id);break;
+            case 'reopen-decision':decisionTransition(id,'reopen');break;
+            case 'archive-decision':decisionTransition(id,'archive');break;
+            case 'restore-decision':decisionTransition(id,'restore');break;
+            case 'remove-decision':decisionTransition(id,'remove');break;
             case 'new-outcome':editOutcome();break;
             case 'edit-outcome':editOutcome(id);break;
             case 'toggle-outcome':updateOutcome(id);break;
