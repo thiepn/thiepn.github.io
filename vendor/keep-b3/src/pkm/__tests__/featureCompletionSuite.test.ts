@@ -95,6 +95,8 @@ export function runFeatureCompletionSuiteTests(): { passed: number; failed: numb
       pinned: false,
       archived: false,
       trashed: false,
+      reminderDate: null,
+      images: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -110,6 +112,8 @@ export function runFeatureCompletionSuiteTests(): { passed: number; failed: numb
       pinned: false,
       archived: false,
       trashed: false,
+      reminderDate: null,
+      images: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -125,6 +129,8 @@ export function runFeatureCompletionSuiteTests(): { passed: number; failed: numb
       pinned: false,
       archived: false,
       trashed: false,
+      reminderDate: null,
+      images: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -157,7 +163,7 @@ export function runFeatureCompletionSuiteTests(): { passed: number; failed: numb
   assert(healed === 'Orbiting Jupiter Moons with probes.', 'Healed content stripped wiki-link brackets cleanly');
 
   // --- GATE 5: Standalone Vault Archive Exporter ---
-  const mockFolders: Folder[] = [{ id: 'f1', name: 'Astronomy' }];
+  const mockFolders: Folder[] = [{ id: 'f1', name: 'Astronomy', createdAt: new Date().toISOString() }];
   const manifest = VaultArchiveExporter.createManifest(mockNotes, mockFolders, 'Cosmos Vault');
   assert(manifest.totalNotes === 3, 'Manifest captures 3 notes');
   assert(manifest.totalFolders === 1, 'Manifest captures 1 folder');
