@@ -313,6 +313,12 @@ for(const width of [390,1440]){
   await page.route('**/keep-b3-native/manifest.json',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));
   await page.goto('/home/knowledge/');
   await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+    const request=indexedDB.open('KeepNotesDB',1);
+    request.onupgradeneeded=()=>request.result.createObjectStore('notes',{keyPath:'id'});
+    request.onsuccess=()=>{request.result.close();resolve();};
+    request.onerror=()=>reject(request.error);
+  }));
   await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('[data-action=knowledge-native-start]').click();
@@ -322,3 +328,15 @@ for(const width of [390,1440]){
   expect(errors).toEqual([]);
  });
 }
+
+test('original React mount refuses an absent KEEP origin database without creating one',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('[data-action=knowledge-native-start]').click();
+ await expect(page.locator('[data-workspace-toast]')).toContainText('No original KEEP B3 v1 database');
+ const names=await page.evaluate(async()=>(await indexedDB.databases()).map(db=>db.name));
+ expect(names).not.toContain('KeepNotesDB');
+ await expect(page.locator('[data-keep-native-host]')).toBeHidden();
+});
