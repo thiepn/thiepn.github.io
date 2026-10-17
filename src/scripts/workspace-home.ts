@@ -1170,7 +1170,8 @@ async function setup(root: HTMLElement) {
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
           <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Only shared Folio blocks can be compared with Hub blocks; neither source is comprehensive availability.</p>
-          <label class="ws-choice"><input type="checkbox" name="alignDue"/> Also set this original Hub task's due date to the reviewed block date (clears its task clock). This does not create a permanent task-event link.</label>
+          <label class="ws-choice"><input type="checkbox" name="alignDue"/> Also set this original Hub task's due date to the reviewed block date (clears its task clock). </label>
+          <label class="ws-choice"><input type="checkbox" name="persistLink"/> Persist a relationship between this original task and the new Hub event (no automatic date or status sync).</label>
           <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
@@ -1187,7 +1188,7 @@ async function setup(root: HTMLElement) {
             const currentTask=state.tasks.find(t=>t.id===id);
             if(!currentTask || JSON.stringify(taskSnapshot(currentTask))!==JSON.stringify(originalTask))
                 throw new Error('The original task changed. Reopen scheduling and review the latest record.');
-            const alignDue=data.has('alignDue');
+            const alignDue=data.has('alignDue'),persistLink=data.has('persistLink');
             const preview=prepareTaskCalendarEvent(currentTask,proposal,state.preferences.timezone);
             if (identicalLocalEvent(state.events,preview.event))
                 throw new Error('An identical local calendar event already exists. No duplicate was created.');
@@ -1200,7 +1201,8 @@ async function setup(root: HTMLElement) {
                 // One detached candidate: event and optional task due-date change commit together.
                 if(alignDue && (source.due!==proposal.date || source.time))applyTaskPlan(source,'today',proposal.date);
                 s.events.push(event);
-                activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}`,'event');
+                if(persistLink)linkTaskEvent(s,{taskId:id,eventId:event.id,role:'work'});
+                activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}${persistLink?' · linked original IDs':''}`,'event');
             },'Reviewed Hub calendar event created');
             if (!state.events.some(event=>event.title===preview.event.title &&
                 event.start===preview.event.start && event.end===preview.event.end &&
@@ -1234,8 +1236,9 @@ async function setup(root: HTMLElement) {
                     '<p>No timed overlap detected in original local Hub events.</p>'}
                 ${folioSnapshot?`<p>Approved Folio snapshot: ${shared.timed.length} timed overlap${shared.timed.length===1?'':'s'}${shared.timed.length?' · '+esc(shared.timed.map(c=>c.folioTitle).join(', ')):''}. ${shared.allDayTitles.length?'All-day Folio commitments: '+esc(shared.allDayTitles.join(', '))+'.':''} This is a partial, one-time source summary, not complete availability.</p>`:
                     '<p>Folio and other calendar owners have not shared schedules with this tab; no cross-app availability is assumed.</p>'}
-                ${data.has('alignDue')?`<p>Confirming will also move this task due date to ${esc(proposal.date)} without creating a persistent task-event link.</p>`:
-                    '<p>The original task due date remains unchanged.</p>'}`;
+                ${data.has('alignDue')?`<p>Confirming will also move this task due date to ${esc(proposal.date)} .</p>`:
+                    '<p>The original task due date remains unchanged.</p>'}
+                ${data.has('persistLink')?'<p>Confirming will persist one original task–event ID reference.</p>':'<p>No permanent relation will be stored.</p>'}`;
         } catch(e) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }

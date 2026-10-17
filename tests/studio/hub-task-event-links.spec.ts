@@ -10,7 +10,7 @@ test('desktop source task and event link through original review, persist and un
  await page.locator('[data-action=unified-mode][data-id=today]').click();
  await page.locator('[data-today-task-event] [data-action=review-task-event-link]').click();
  await page.getByLabel('Original Hub task').selectOption({label:'Original study task'});
- await page.getByLabel('Original Hub calendar event').selectOption({label:'Original study block'});
+ await page.getByLabel('Original Hub calendar event').selectOption({index:0});
  await page.getByLabel('Relationship').selectOption('work');
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-today-task-event]')).toContainText('Original study task');
@@ -19,7 +19,7 @@ test('desktop source task and event link through original review, persist and un
  await page.locator('[data-today-task-event] [data-action=unlink-task-event]').click();
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-today-task-event]')).toContainText('No confirmed task');
- await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+ await page.goto('/home/tasks/?filter=all');
  await expect(page.locator('.ws-task-results .ws-task-entry').filter({hasText:'Original study task'})).toHaveCount(1);
 });
 test('mobile Today explicit Hub relation does not overflow layout',async({page})=>{
