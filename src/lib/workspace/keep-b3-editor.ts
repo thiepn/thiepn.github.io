@@ -1,6 +1,7 @@
 import type {KeepDeviceResult,KeepOwnerNote} from './keep-b3-device';
 import {classifyKeepPlanningNote,deriveKeepProjectProgress,keepTasksFromHubNote} from './keep-b3-source';
 import {resolveWiki} from './knowledge-spine';
+import {keepRevisionList} from './keep-b3-revisions';
 import type {Note} from './types';
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const act=(action:string,text:string,id='')=>'<button type="button" class="ws-button" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(text)+'</button>';
@@ -32,6 +33,9 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
   const outgoing=own?resolveWiki(own,views):[];
   const backlinks=own?views.filter(n=>n.id!==own.id&&resolveWiki(n,views).some(l=>l.targetId===own.id)):[];
   const ownLinks=selected?.linkedNoteIds?.filter(id=>notes.some(n=>n.id===id))??[];
+  const revisions=selected?keepRevisionList(selected).slice().reverse():[];
+  const revisionRows=revisions.map(r=>'<li><span>Version '+esc(r.version)+' · '+esc(r.timestamp)+' · '+esc(r.trigger)+
+    ' · '+esc(r.title)+'</span>'+act('knowledge-keep-revision','Restore version '+r.version,r.id)+'</li>').join('');
   const context='<div class="ws-knowledge-relations">'+
     (planning?'<p class="ws-muted">KEEP original planning type: '+esc(planning)+'</p>':'')+
     (progress?'<p>Source progress: '+(progress.percent===null?'Unconfigured':progress.percent+'%')+
@@ -46,7 +50,9 @@ export function renderKeepOwnerEditor(view:KeepOwnerEditor):string{
       (outgoing.map(l=>'<li>'+(l.targetId?act('knowledge-keep-open',l.title,l.targetId):'<span>'+esc(l.raw)+' · '+esc(l.status)+'</span>')+'</li>').join('')||'<li>No links</li>')+
     '</ul><h3>Backlinks</h3><ul>'+
       (backlinks.map(n=>'<li>'+act('knowledge-keep-open',n.title,n.id)+'</li>').join('')||'<li>No backlinks</li>')+
-    '</ul><p class="ws-muted">Original linkedNoteIds: '+ownLinks.length+' resolved links. Original records were not copied.</p></div>';
+    '</ul><h3>Original KEEP P29 revision history</h3><ul>'+(revisionRows||'<li>No recorded revisions</li>')+'</ul>'+
+    '<p class="ws-muted">Revision restore creates a pre-restore checkpoint and checks the original source revision.</p>'+
+    '<p class="ws-muted">Original linkedNoteIds: '+ownLinks.length+' resolved links. Original records were not copied.</p></div>';
   return '<div class="ws-keep-owner" data-keep-owner>'+
     '<section class="ws-surface ws-keep-list"><h2>Original KEEP · '+notes.length+' notes</h2>'+
     '<p class="ws-muted">Original IDs · no Hub record copies · this device only</p>'+
