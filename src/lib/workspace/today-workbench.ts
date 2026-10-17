@@ -133,7 +133,7 @@ export function renderTodayWorkbench(
   const tasks=data.nextTasks.map(t=>'<li class="ws-workbench-action-row"><div><strong>'+
     esc(t.title)+'</strong><small>Due '+esc(t.due)+' · '+esc(t.priority)+
     ' priority'+(t.time?' · task clock '+esc(t.time):'')+'</small></div>'+
-    btn('unified-triage','Review plan',t.id)+btn('unified-focus-task','Focus',t.id)+'</li>').join('');
+    btn('unified-triage','Review plan',t.id)+btn('unified-focus-task','Focus',t.id)+btn('context-task','Context',t.id)+'</li>').join('');
   const trackers=data.trackers.map(({tracker,logged,goal,label})=>{
     const amount=formatTrackerValue(tracker,logged),target=formatTrackerValue(tracker,goal);
     return '<li class="ws-workbench-action-row ws-workbench-tracker"><div><strong>'+
@@ -145,7 +145,7 @@ export function renderTodayWorkbench(
   }).join('');
   const notes=data.recentNotes.map(note=>'<li class="ws-workbench-action-row"><div><strong>'+
     esc(note.title)+'</strong><small>Last changed '+esc(note.updatedAt.slice(0,10))+
-    ' · Hub local note</small></div>'+btn('edit-note','Continue',note.id)+'</li>').join('');
+    ' · Hub local note</small></div>'+btn('edit-note','Continue',note.id)+btn('context-note','Related work',note.id)+'</li>').join('');
   return '<section class="ws-today-workbench" data-today-workbench aria-labelledby="ws-workbench-heading">'+
     '<header><div><p class="ws-home-eyebrow">Forward view · Hub-owned records</p>'+
     '<h3 id="ws-workbench-heading">Plan the next seven days</h3></div>'+

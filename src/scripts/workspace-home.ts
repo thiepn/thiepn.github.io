@@ -31,6 +31,7 @@ import { providerAction } from '../lib/providers/registry';
 import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
+import {renderTaskKnowledgeContext,renderNoteWorkContext} from '../lib/workspace/knowledge-work-context';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
 import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
@@ -118,6 +119,8 @@ async function setup(root: HTMLElement) {
     let notesSourceWindow: Window | null = null;
     let notesSourceDeadline: ReturnType<typeof setTimeout> | null = null;
     function clearNotesSource() {
+        // Revoke owner-title projections even inside an already open context dialog.
+        root.querySelectorAll('[data-context-owner="notes"]').forEach(node=>node.remove());
         notesSourceNonce = null;
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
@@ -177,6 +180,8 @@ async function setup(root: HTMLElement) {
     let folioPopup: Window | null = null;
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
     function resetFolio() {
+        // Revoke consented Folio titles even inside an already open context dialog.
+        root.querySelectorAll('[data-context-owner="folio"]').forEach(node=>node.remove());
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -1060,6 +1065,15 @@ async function setup(root: HTMLElement) {
         renderHandoffBar();
         return true;
     }
+    function knowledgeOwnerContext() {
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        const available=!!scope&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden;
+        return {
+            folio:available?authorizedFolioPlanningSnapshot():null,
+            notes:available&&notesSourceStatus==='ready'&&notesSourceOwner===scope?notesSource:null,
+        };
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
@@ -1073,6 +1087,7 @@ async function setup(root: HTMLElement) {
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
               <a class="ws-button" href="/home/connections/">Owner app permissions</a>
             </div>
+            ${renderTaskKnowledgeContext(state!,task,knowledgeOwnerContext())}
           </div>`;
         openForm('Next actions · Hub task',details,()=>{});
         $('[data-dialog-submit]').hidden=true;
@@ -1088,7 +1103,9 @@ async function setup(root: HTMLElement) {
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
-          </div></div>`;
+          </div>
+          ${renderNoteWorkContext(state!,note,knowledgeOwnerContext())}
+          </div>`;
         openForm('Next actions · Hub note',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }

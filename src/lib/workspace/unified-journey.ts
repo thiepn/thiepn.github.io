@@ -23,7 +23,7 @@ function taskRow(task:Task,today:string) {
   return `<li class="ws-unified-task">
     <label class="ws-unified-task-toggle"><input type="checkbox" data-task-toggle="${esc(task.id)}" aria-label="Complete ${esc(task.title)}"/></label>
     <div class="ws-unified-task-body"><strong>${esc(task.title)}</strong><small>${esc(status)} · ${esc(task.priority)} priority${task.time?' · task clock '+esc(task.time):''}</small></div>
-    <div class="ws-unified-task-actions">${textButton('unified-triage','Plan',task.id)}${textButton('unified-focus-task','Focus',task.id)}${textButton('context-task','Next',task.id)}</div>
+    <div class="ws-unified-task-actions">${textButton('unified-triage','Plan',task.id)}${textButton('unified-focus-task','Focus',task.id)}${textButton('context-task','Knowledge & next',task.id)}</div>
   </li>`;
 }
 const humanDate=(day:string)=>new Date(day+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});

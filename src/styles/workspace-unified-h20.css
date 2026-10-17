@@ -190,3 +190,19 @@
 .ws-folio-conflict-row strong{font-size:12px;overflow-wrap:anywhere;}
 .ws-folio-conflict-row small{overflow-wrap:anywhere;}
 .ws-folio-conflict-row button{min-height:44px;}
+
+/* Native task ↔ knowledge handoffs; owner titles remain ephemeral within dialogs. */
+.ws-knowledge-context{display:grid;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--ws-line);min-width:0;}
+.ws-knowledge-context>section,.ws-knowledge-owner{display:grid;gap:8px;min-width:0;}
+.ws-knowledge-context section>header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.ws-knowledge-context h4{font-size:13px;font-weight:700;}
+.ws-knowledge-context small,.ws-knowledge-context p{font-size:11px;line-height:1.55;color:var(--ws-muted);overflow-wrap:anywhere;}
+.ws-knowledge-context ul{list-style:none;display:grid;gap:0;margin:0;padding:0;}
+.ws-knowledge-context li{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0;border-top:1px solid var(--ws-line);min-width:0;}
+.ws-knowledge-context li>span{display:grid;gap:4px;flex:1 1 185px;min-width:0;}
+.ws-knowledge-context li strong{font-size:12px;font-weight:680;overflow-wrap:anywhere;}
+.ws-knowledge-context li>a{font-size:11px;color:var(--ws-accent);text-decoration:none;padding:8px;min-height:40px;display:inline-flex;align-items:center;}
+.ws-knowledge-context li>a:hover{text-decoration:underline;}
+.ws-knowledge-context li button{min-height:40px;}
+.ws-knowledge-owner-list{display:grid;gap:8px;padding:12px;border:1px solid var(--ws-line);border-radius:6px;background:var(--ws-soft);}
+@media(max-width:680px){.ws-knowledge-context li button,.ws-knowledge-context li>a{min-height:44px;}}
