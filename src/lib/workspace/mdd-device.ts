@@ -44,7 +44,7 @@ function readWeek(source:unknown,through:string):MddWeekEvidence|null{
     if(row.date!==target.toISOString().slice(0,10))return null;
     days.push(row);
   }
-  return source.from===days[0].date?{from:source.from,through,dates:days}:null;
+  return source.from===days[0]!.date?{from:source.from,through,dates:days}:null;
 }
 export function acceptMddReply(raw:unknown,nonce:string,now=Date.now()):MddDeviceSummary|null{
   if(!obj(raw)||raw.type!==MDD_FD1_MESSAGE||raw.source!=='mdd-device-local'||
