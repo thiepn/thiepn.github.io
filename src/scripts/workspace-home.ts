@@ -877,7 +877,7 @@ async function setup(root: HTMLElement) {
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { focusWork.clear(); pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
