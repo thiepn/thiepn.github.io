@@ -104,7 +104,7 @@ async function setup(root: HTMLElement) {
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
     let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
-    let contentUndo: WorkspaceState | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
+    let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
     let notesSource: NotesDeviceSummary | null = null;
     let notesSourceStatus: NotesDeviceStatus = 'disconnected';
@@ -402,6 +402,10 @@ async function setup(root: HTMLElement) {
     const dateLabel = (key: string, long = false) => new Date(key + 'T12:00:00Z').toLocaleDateString(undefined, { timeZone: 'UTC', weekday: long ? 'long' : 'short', day: 'numeric', month: long ? 'long' : 'short', ...(long ? { year: 'numeric' } : {}) });
     const timeLabel = (at: string) => new Date(at).toLocaleTimeString(undefined, { timeZone: state!.preferences.timezone, hour: '2-digit', minute: '2-digit' });
     function toast(message: string, undo = false) { clearTimeout(toastTimer); const el = $('[data-workspace-toast]'); el.innerHTML = `<span>${esc(message)}</span>${undo ? button('undo-content', 'Undo', '', '') : ''}`; el.hidden = false; toastTimer = setTimeout(() => { el.hidden = true; }, 8000); }
+    function clearContentUndo() {
+        contentUndo = null;
+        root.querySelector('[data-workspace-toast] [data-action=undo-content]')?.remove();
+    }
     function notice(message: string, actions = '') { const el = $('[data-workspace-notice]'); el.innerHTML = `${esc(message)}${actions}`; el.hidden = !message; }
     function renderAttention() {
         const target=root.querySelector<HTMLElement>('[data-workspace-attention]');if(!target)return;
@@ -416,13 +420,13 @@ async function setup(root: HTMLElement) {
         status.hidden = !dirty && storageReady && !label;
     }
     function download(value: string, name: string) { const url = URL.createObjectURL(new Blob([value], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    function persist(backup = false): Promise<void> {
+    function persist(backup = false): Promise<boolean | undefined> {
         const own = epoch;
         // Initial workspace creation and an automatic Account handoff may
         // save concurrently outside the command queue. Snapshot only after
         // the prior write updates the local revision; never bypass CAS.
         const operation = persistence.then(() => own === epoch ? persistSnapshot(backup) : undefined);
-        persistence = operation.catch(() => {});
+        persistence = operation.then(() => {}, () => {});
         return operation;
     }
     async function persistSnapshot(backup = false) {
@@ -447,6 +451,7 @@ async function setup(root: HTMLElement) {
             updateRecoveryStrip();
             channel?.postMessage({ key: store.key, revision: state.revision });
             cloud?.schedule();
+            return true;
         }
         catch (err) {
             if (own !== epoch)
@@ -459,30 +464,42 @@ async function setup(root: HTMLElement) {
             notice(err instanceof RevisionConflict ? err.message : 'Changes are in memory but could not be saved. Export a backup or retry.', button('export', 'Export') + button('retry', 'Retry') + button('reload', 'Reload saved data'));
         }
     }
-    function mutate(change: (s: WorkspaceState) => void, message = '', undo = true, backup = false) {
+    function mutate(change: (s: WorkspaceState) => void, message = '', undo = true, backup = false, retainForm = dialog.open) {
         const own = epoch;
-        queue = queue.then(async () => {
+        const operation = queue.then(async () => {
             if (own !== epoch || !state || locked)
-                return;
+                throw new Error('This workspace changed. Reopen the form.');
             const previous = clone(state);
             const candidate = clone(state);
             change(candidate);
+            parseState(JSON.stringify(candidate));
             changeVersion++;
-            try {
-                parseState(JSON.stringify(candidate));
-            }
-            catch (e) {
-                state = previous;
-                throw e;
-            }
+            clearContentUndo();
             state = candidate;
-            contentUndo = undo ? previous : null;
+            const entry = undo ? { before: previous, after: clone(candidate) } : null;
+            contentUndo = entry;
+            const requireSave = retainForm && storageReady;
             render();
-            await persist(backup);
+            const didSave = await persist(backup);
+            if (own !== epoch) throw new Error('This workspace changed. Reopen the form.');
+            if (requireSave && !didSave) {
+                // The form retains the proposed values. Keep the committed model
+                // unchanged so retrying cannot insert the same record twice.
+                const draft = state!.captureDraft;
+                state = previous;
+                state.captureDraft = draft;
+                clearContentUndo();
+                render();
+                throw new Error('Changes could not be saved. Your input is still here. Try again.');
+            }
+            if (entry && contentUndo === entry) entry.after.revision = state!.revision;
             if (message)
-                toast(dirty ? message.replace(/\bsaved.*$/i, 'updated') + ' · not saved. Export or retry.' : message, undo);
-        }).catch(e => toast(e instanceof Error ? e.message : 'Unable to apply this change.'));
-        return queue;
+                toast(dirty ? message.replace(/\bsaved.*$/i, 'updated') + ' · not saved. Export or retry.' : message, !!contentUndo);
+        });
+        // Keep fire-and-forget commands handled and the queue usable, while
+        // returning the actual result to forms and other awaiting callers.
+        queue = operation.catch(e => toast(e instanceof Error ? e.message : 'Unable to apply this change.'));
+        return operation;
     }
     function openForm(title: string, html: string, onSubmit: (data: FormData) => Promise<void> | void, label = 'Save') {
         if (!dialog.open && document.activeElement instanceof HTMLElement) {
@@ -1496,7 +1513,7 @@ async function setup(root: HTMLElement) {
         if(!app)return;
         if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||link.target==='_blank'){void mutate(s=>activity(s,'Opened '+app.title,'launch:'+app.id),'',false);return;}
         event.preventDefault();const destination=link.href;
-        void mutate(s=>activity(s,'Opened '+app.title,'launch:'+app.id),'',false).then(()=>location.assign(destination));
+        void mutate(s=>activity(s,'Opened '+app.title,'launch:'+app.id),'',false).then(()=>location.assign(destination)).catch(()=>{});
     });
     root.addEventListener('click',event=>{
         const control=(event.target as Element).closest<HTMLButtonElement>('[data-shortcut-move]');
@@ -1886,7 +1903,7 @@ async function setup(root: HTMLElement) {
                 toast('Finish or cancel the layout edit before switching workspaces.');
                 return;
             }
-            void switchWorkspace(target.dataset.workspaceId!);
+            void switchWorkspace(target.dataset.workspaceId!).catch(()=>{});
             return;
         }
         switch (action) {
@@ -2253,7 +2270,7 @@ async function setup(root: HTMLElement) {
                 beginEdit();
                 break;
             case 'done-layout':
-                void finishEdit();
+                void finishEdit().catch(()=>{});
                 break;
             case 'cancel-layout':
                 editing = null;
@@ -2368,9 +2385,14 @@ async function setup(root: HTMLElement) {
                 break;
             case 'undo-content':
                 if (contentUndo) {
-                    const prior = clone(contentUndo);
-                    contentUndo = null;
-                    void mutate(s => { const revision = s.revision; Object.assign(s, prior, { revision }); }, 'Change undone', false);
+                    const entry = contentUndo;
+                    clearContentUndo();
+                    void mutate(s => {
+                        if (JSON.stringify(s) !== JSON.stringify(entry.after))
+                            throw new Error('This workspace changed. That change can no longer be undone.');
+                        const revision = s.revision;
+                        Object.assign(s, entry.before, { revision });
+                    }, 'Change undone', false, false, true);
                 }
                 break;
             case 'privacy': {
@@ -2386,7 +2408,7 @@ async function setup(root: HTMLElement) {
                         void refreshLanguages(true);
                         void refreshInsights();
                     }
-                });
+                }).catch(()=>{});
 
                 break;
             }
@@ -2495,7 +2517,7 @@ async function setup(root: HTMLElement) {
                     } catch {
                         notice('The recovered layout is saved. Its original draft could not be cleared.',button('export','Export'));
                     }
-                });
+                }).catch(()=>{});
                 break;
             }
             case 'resume-draft':
@@ -2513,7 +2535,7 @@ async function setup(root: HTMLElement) {
                         recoveryDraft=null;
                         notice('');
                         render();
-                    });
+                    }).catch(()=>{});
                 }
                 break;
             case 'discard-draft':
@@ -2530,7 +2552,7 @@ async function setup(root: HTMLElement) {
                     w.widgets.forEach(x => x.id = uid());
                     editing = null;
                     conflict = false;
-                    void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null));
+                    void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
                 }
                 break;
             case 'search-task':
@@ -2652,7 +2674,7 @@ async function setup(root: HTMLElement) {
         if (el.hasAttribute('data-capture-draft') && state) {
             state.captureDraft = el.value;
             changeVersion++;
-            contentUndo = null;
+            clearContentUndo();
             dirty = true;
             saved('Draft not saved yet…');
             updateReturnPanel();
@@ -2661,7 +2683,7 @@ async function setup(root: HTMLElement) {
             const own = epoch;
             captureTimer = setTimeout(() => {
                 if (own === epoch)
-                    queue = queue.then(() => persist());
+                    queue = queue.then(async () => { await persist(); });
             }, 500);
         }
     });
@@ -2819,9 +2841,13 @@ async function setup(root: HTMLElement) {
         } catch { return null; } // Preserve the original draft; committed records are still usable.
     }
     async function reloadSaved() {
+        const own = epoch, source = store;
         await queue;
-        const latest = await store?.load();
+        if (own !== epoch || !source || source !== store) return;
+        const latest = await source.load();
+        if (own !== epoch || source !== store) return;
         if (latest) {
+            clearContentUndo();
             privacyHeld ||= latest.preferences.hidden;
             state = latest;
             dirty = false;
@@ -2867,7 +2893,7 @@ async function setup(root: HTMLElement) {
         clearTimeout(captureTimer);
         editing = null;
         recoveryDraft = null;
-        contentUndo = null;
+        clearContentUndo();
         store?.close();
         channel?.close();
         store = null;
@@ -2961,6 +2987,7 @@ async function setup(root: HTMLElement) {
             channel.onmessage = event => {
                 if (event.data?.key !== nextStore.key || event.data.revision === state?.revision)
                     return;
+                clearContentUndo();
                 if (editing || dirty) {
                     conflict = true;
                     updateReturnPanel();
