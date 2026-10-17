@@ -2007,6 +2007,12 @@ async function setup(root: HTMLElement) {
                 }).catch(e=>toast(e instanceof Error?e.message:'KEEP undo refused because the source changed.'));
                 return;
             }
+            if(action==='knowledge-keep-disconnect'){
+                if(!discardKnowledgeDraft())return;
+                revokeKeepOwnerSession();
+                toast('Original KEEP owner session disconnected.');
+                return;
+            }
             if(action==='knowledge-keep-revision'){
                 if(keepDeviceDraft||keepOwnerCreating||keepDevice?.status!=='ready'){
                     toast('Save or discard current changes before restoring original KEEP history.');return;
