@@ -14,8 +14,8 @@ test('tasks, notes and tracker logs persist through layout edits and reload',asy
  await page.reload();await expect(page.locator('.ws-task-title')).toHaveText('Read chapter six');await expect(page.locator('.ws-tracker-table')).toContainText('2 / 5');await expect(page.locator('[data-widget-type=continue]')).toContainText('Study notes');expect(errors).toEqual([]);
 });
 test('layout Cancel and Undo preserve data, and removing a widget leaves notes recoverable',async({page})=>{
- await ready(page);await page.locator('[data-capture-draft]').fill('Keep this note');await page.locator('[data-capture-form]').getByRole('button',{name:'Capture',exact:true}).click();
- await page.getByRole('button',{name:'Customize',exact:true}).click();const cells=page.locator('[data-widget-id]');const before=await cells.first().getAttribute('style');await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(cells.first()).toHaveAttribute('style',before!);await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await ready(page);await page.locator('[data-capture-draft]').fill('Keep this note');await page.locator('[data-capture-form]').getByRole('button',{name:'Capture',exact:true}).click();await expect(page.locator('[data-widget-type=continue]')).toContainText('Keep this note');
+ await page.getByRole('button',{name:'Customize',exact:true}).click();const cells=page.locator('[data-widget-id]');const before=await cells.first().getAttribute('style');await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await page.locator('[data-action=undo-layout]').click();await expect(cells.first()).toHaveAttribute('style',before!);await page.getByRole('button',{name:'Cancel',exact:true}).click();
  await page.locator('[data-widget-type=continue] [data-action=configure-widget]').click();await page.getByRole('button',{name:'Remove widget',exact:true}).click();await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.locator('[data-widget-type=continue]')).toHaveCount(0);
  await page.getByRole('button',{name:'Customize',exact:true}).click();await page.getByRole('button',{name:'+ Add widget',exact:true}).click();await page.locator('[data-action=add-type][data-id=continue]').click();await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.locator('[data-widget-type=continue]')).toContainText('Keep this note');
 });
@@ -160,4 +160,23 @@ test('Undo cannot overwrite a newer persisted revision when cross-tab messages a
  await expect(page.locator('.ws-task-title')).toHaveText('Original task');
  await page.reload();
  await expect(page.locator('.ws-task-title')).toHaveText(['Original task','Newer task']);
+});
+
+test('draft autosave cannot move Capture away during a pointer press',async({page})=>{
+ await page.setViewportSize({width:1440,height:1024});
+ await ready(page);
+ await page.clock.install({time:new Date('2026-10-17T10:00:00Z')});
+ await page.clock.pauseAt(new Date('2026-10-17T10:01:00Z'));
+ await page.locator('[data-capture-draft]').fill('Capture through autosave');
+ const submit=page.locator('[data-capture-form] button[type=submit]');
+ await submit.scrollIntoViewIfNeeded();
+ const before=(await submit.boundingBox())!;
+ await page.mouse.move(before.x+before.width/2,before.y+before.height/2);await page.mouse.down();
+ await page.clock.runFor(600);
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ const after=(await submit.boundingBox())!;
+ await page.mouse.up();
+ expect(after.y,'Autosave must not shift the active Capture control').toBeCloseTo(before.y,0);
+ await expect(page.locator('[data-widget-type=continue]')).toContainText('Capture through autosave');
+ await page.reload();await expect(page.locator('[data-widget-type=continue]')).toContainText('Capture through autosave');
 });

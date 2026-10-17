@@ -2678,7 +2678,7 @@ async function setup(root: HTMLElement) {
             dirty = true;
             saved('Draft not saved yet…');
             updateReturnPanel();
-            updateRecoveryStrip();
+            // Failed saves publish recovery; routine autosave must not move controls.
             clearTimeout(captureTimer);
             const own = epoch;
             captureTimer = setTimeout(() => {
