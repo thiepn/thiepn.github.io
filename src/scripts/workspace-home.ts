@@ -2977,7 +2977,9 @@ async function setup(root: HTMLElement) {
         if(homeModeRestorePending) {
             homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='today';
+        } else if (homeMode === 'focus') homeMode='today';
+        // Owner re-verification replaces account-scoped records, never the deliberately
+        // selected presentation. A fresh visit and explicit Home navigation still use Today.
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();

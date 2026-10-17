@@ -62,7 +62,13 @@ function backend(options={sharing:false,probeEligible:false}) {
    // Cold SSO includes the bounded eight-second Account probe plus PKCE
    // navigation and verification. Local-token/guest assertions stay at 5s.
    await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device',{timeout:owner===null&&options.probeEligible?15_000:5_000});
-  }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
+  }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+   // Account/PKCE may return to bare / (Today). Restore the explicit legacy
+   // Workspace used by the native planner fixtures without altering Account data.
+   if (owner && await page.locator('[data-action=unified-mode][data-id=workspace]').count()) {
+     await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+   }
+   if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
 async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
