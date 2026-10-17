@@ -4,6 +4,7 @@
  * No schema upgrades, seeding, migrations, fallback writes, decryption,
  * authorization token reuse, or Hub record copies.
  */
+import {recordKeepRevision,prepareKeepRevisionRestore} from './keep-b3-revisions';
 export const KEEP_DB_NAME = 'KeepNotesDB';
 export const KEEP_NOTES_STORE = 'notes';
 export const KEEP_VAULT_HEADER = 'keepnotes_vault_enc_header';
@@ -136,7 +137,9 @@ export async function updateKeepDevice(
         const record:unknown=row.result;
         if(!eligibleKeepNote(record)||record.archived||record.trashed||
             record.updatedAt!==originalUpdatedAt) return abort(new KeepDeviceConflict());
-        const next={...record,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:nextKeepTimestamp(record.updatedAt)};
+        const tracked=(record.content!==changes.content||record.title!==changes.title.trim())?
+          recordKeepRevision(record,changes.content,'auto_coalesced'):record;
+        const next={...tracked,title:changes.title.trim(),content:changes.content,pinned:changes.pinned,updatedAt:nextKeepTimestamp(record.updatedAt)};
         receipt={original:structuredClone(record),writtenAt:next.updatedAt};
         store.put(next);
       };
@@ -199,6 +202,33 @@ export async function undoKeepDeviceEdit(receipt:KeepEditReceipt):Promise<void>{
       get.onerror=()=>abort(new Error('Original KEEP record is unavailable.'));
       tx.oncomplete=()=>resolve();
       tx.onabort=()=>reject(cause??tx.error??new Error('KEEP source undo refused.'));
+      tx.onerror=()=>{};
+    });
+  }finally{db.close();}
+}
+
+/** Restore one original bounded P29 revision, atomically, after exact CAS validation. */
+export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:string,revisionId:string):Promise<KeepEditReceipt>{
+  const db=await connectExisting();
+  try {
+    return await new Promise<KeepEditReceipt>((resolve,reject)=>{
+      const tx=db.transaction(KEEP_NOTES_STORE,'readwrite'),store=tx.objectStore(KEEP_NOTES_STORE);
+      let receipt:KeepEditReceipt|null=null,cause:Error|null=null;
+      const abort=(e:Error)=>{cause=e;tx.abort();};
+      const req=store.get(noteId);
+      req.onsuccess=()=>{
+        const record:unknown=req.result;
+        if(!vaultAllowed()||!eligibleKeepNote(record)||record.archived||record.trashed||
+          record.updatedAt!==originalUpdatedAt)return abort(new KeepDeviceConflict());
+        const previous=prepareKeepRevisionRestore(record,revisionId);
+        if(!previous)return abort(new Error('Original KEEP revision is missing or has a changed checksum.'));
+        const next={...previous,updatedAt:nextKeepTimestamp(record.updatedAt)};
+        receipt={original:structuredClone(record),writtenAt:next.updatedAt};
+        store.put(next);
+      };
+      req.onerror=()=>abort(new Error('Original KEEP note is unavailable.'));
+      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('Revision restore was not applied.'));
+      tx.onabort=()=>reject(cause??tx.error??new Error('Revision restore refused.'));
       tx.onerror=()=>{};
     });
   }finally{db.close();}
