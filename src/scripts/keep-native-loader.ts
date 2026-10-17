@@ -17,6 +17,7 @@ interface NativeManifest {
   sourceSha256:string;
   jsSha256:string;
   cssSha256:string;
+  assets:Record<string,string>;
 }
 export interface OriginalKeepAuthority {
   mayMount():boolean;
@@ -31,6 +32,7 @@ const EXPECTED_SOURCE_SHA256='415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02
 const SHA=/^[a-f0-9]{64}$/u;
 const CONTENT_JS=/javascript|ecmascript/u;
 const CONTENT_CSS=/css/u;
+const SAFE_ASSET=/^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/u;
 async function sha256(bytes:ArrayBuffer):Promise<string>{
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)))
     .map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -42,7 +44,14 @@ export function validKeepNativeManifest(value:unknown):value is NativeManifest {
     v.entry==='keep-b3-original.js'&&v.css==='keep-b3-original.css'&&
     v.sourceSha256===EXPECTED_SOURCE_SHA256&&
     typeof v.jsSha256==='string'&&SHA.test(v.jsSha256)&&
-    typeof v.cssSha256==='string'&&SHA.test(v.cssSha256);
+    typeof v.cssSha256==='string'&&SHA.test(v.cssSha256)&&
+    !!v.assets&&typeof v.assets==='object'&&!Array.isArray(v.assets)&&
+    Object.entries(v.assets).length>=2&&Object.entries(v.assets).length<=600&&
+    Object.entries(v.assets).every(([name,digest])=>
+      name!=='manifest.json'&&!name.includes('..')&&SAFE_ASSET.test(name)&&
+      typeof digest==='string'&&SHA.test(digest))&&
+    (v.assets as Record<string,string>)[v.entry as string]===v.jsSha256&&
+    (v.assets as Record<string,string>)[v.css as string]===v.cssSha256;
 }
 /** Reuse an existing original KEEP owner DB; never silently initialize another one. */
 async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<void>{
@@ -69,11 +78,11 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
   });
 }
 
-async function verifiedAsset(name:string,expected:string,contentType:RegExp,signal:AbortSignal){
+async function verifiedAsset(name:string,expected:string,contentType:RegExp|null,signal:AbortSignal){
   const uri=new URL(PREFIX+name,location.origin);
   if(uri.origin!==location.origin)throw new Error('KEEP must load from Hub origin.');
   const response=await fetch(uri.href,{signal,cache:'no-store',credentials:'same-origin',redirect:'error'});
-  if(!response.ok||!contentType.test(response.headers.get('content-type')??'')){
+  if(!response.ok||(contentType&&!contentType.test(response.headers.get('content-type')??''))){
     throw new Error('The original KEEP build is not available on this Hub preview.');
   }
   if(await sha256(await response.arrayBuffer())!==expected){
@@ -95,10 +104,16 @@ export async function mountOriginalKeepInHub(
     throw new Error('Original KEEP React source has not been built into this preview.');
   const manifest:unknown=await response.json();
   if(!validKeepNativeManifest(manifest))throw new Error('Original KEEP build manifest is invalid.');
-  const [entry,css]=await Promise.all([
-    verifiedAsset(manifest.entry,manifest.jsSha256,CONTENT_JS,signal),
-    verifiedAsset(manifest.css,manifest.cssSha256,CONTENT_CSS,signal)
-  ]);
+  // The original KEEP Vite build includes lazy modules, workers, wasm and
+  // other assets. Verify the complete closure, not merely the entry JS/CSS.
+  const all=Object.entries(manifest.assets);
+  for(let start=0;start<all.length;start+=6){
+    const batch=all.slice(start,start+6);
+    await Promise.all(batch.map(([name,digest])=>verifiedAsset(name,digest,
+       name===manifest.entry?CONTENT_JS:name===manifest.css?CONTENT_CSS:null,signal)));
+  }
+  const entry=new URL(PREFIX+manifest.entry,location.origin).href;
+  const css=new URL(PREFIX+manifest.css,location.origin).href;
   if(signal.aborted||!authority.mayMount())throw new Error('KEEP owner authorization expired.');
   const style=document.createElement('link');
   style.rel='stylesheet';style.href=css;style.dataset.keepNativeStyle='true';
