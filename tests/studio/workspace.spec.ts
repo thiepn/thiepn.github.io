@@ -69,19 +69,19 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  const origin = new URL(page.url()).origin;
  await task(page, 'Keep existing Home data');
  await page.locator('.ws-brand a').click(); await expect(page).toHaveURL(origin + '/');
- await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
- await expect(page.locator('[data-library-pilot]')).toHaveCount(0);
+ await expect(page.locator('[data-unified-today]')).toContainText('Keep existing Home data');
+ await expect(page.locator('[data-library-pilot]').toHaveCount(0);
  await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
  await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
  await page.locator('.ws-nav').getByRole('link',{name:'Today',exact:true}).click();
- await expect(page).toHaveURL(origin + '/'); await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await expect(page).toHaveURL(origin + '/'); await expect(page.locator('[data-unified-today]')).toContainText('Keep existing Home data');
  await page.locator('.ws-topbar [data-action=account]').click();
  await page.getByRole('link',{name:'Open reading connection',exact:true}).click();
  await expect(page).toHaveURL(origin + '/home/');
  await expect(page.locator('[data-account-dialog]')).toBeVisible();
  await expect(page.locator('[data-reading-shell]')).toHaveAttribute('data-library-host-route','/home/');
- await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await expect(page.locator('[data-unified-today]')).toContainText('Keep existing Home data');
 });
 
 test('foreign revisions invalidate content Undo without deleting either tab’s work',async({page,context})=>{
