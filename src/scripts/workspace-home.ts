@@ -76,7 +76,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -105,7 +105,7 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -848,7 +848,7 @@ async function setup(root: HTMLElement) {
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -2973,9 +2973,9 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else homeMode='today';
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
