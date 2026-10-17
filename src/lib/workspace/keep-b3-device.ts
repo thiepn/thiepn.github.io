@@ -36,6 +36,13 @@ export type KeepWriteAuthorization = () => boolean;
 export class KeepDeviceAuthorizationExpired extends Error {
   constructor(){super('Hub source session changed; original KEEP write refused.');}
 }
+/** Abort a pending original owner write if the Hub authorization generation is revoked. */
+function attachOwnerAbort(tx:IDBTransaction,signal:AbortSignal):()=>void {
+  const onAbort=()=>{try{tx.abort();}catch{/* Transaction already closed */}};
+  if(signal.aborted)onAbort();
+  else signal.addEventListener('abort',onAbort,{once:true});
+  return ()=>signal.removeEventListener('abort',onAbort);
+}
 export function keepWriteAuthorized(allowed:KeepWriteAuthorization):boolean {
   try{return allowed()===true;}catch{return false;}
 }
@@ -101,9 +108,10 @@ export async function readKeepDevice():Promise<KeepDeviceResult>{
   finally {db.close();}
 }
 /** Create one original KEEP B3 note only inside an existing unencrypted owner database. */
-export async function createKeepDeviceNote(changes:{title:string;content:string;pinned:boolean}, allowed:KeepWriteAuthorization):Promise<string>{
+export async function createKeepDeviceNote(changes:{title:string;content:string;pinned:boolean}, allowed:KeepWriteAuthorization,signal:AbortSignal):Promise<string>{
   if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
     throw new Error('Invalid KEEP note title or content.');
+  if(signal.aborted||!keepWriteAuthorized(allowed))throw new KeepDeviceAuthorizationExpired();
   const db=await connectExisting();
   const id=crypto.randomUUID(),now=new Date().toISOString();
   const original:KeepOwnerNote={
@@ -114,13 +122,14 @@ export async function createKeepDeviceNote(changes:{title:string;content:string;
   try {
     await new Promise<void>((resolve,reject)=>{
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
+      const detach=attachOwnerAbort(tx,signal);
       let cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
       if(!vaultAllowed())abort(new Error('KEEP vault changed; creation refused.'));
       else if(!keepWriteAuthorized(allowed))abort(new KeepDeviceAuthorizationExpired());
       else tx.objectStore(KEEP_NOTES_STORE).add(original);
-      tx.oncomplete=()=>resolve();
-      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP creation aborted.'));
+      tx.oncomplete=()=>{detach();resolve();};
+      tx.onabort=()=>{detach();reject(cause??tx.error??new Error('KEEP creation aborted.'));};
       tx.onerror=()=>{};
     });
     return id;
@@ -129,15 +138,17 @@ export async function createKeepDeviceNote(changes:{title:string;content:string;
 
 /** Original B3 note ID + fields, revision-guarded, single-record atomic transaction. */
 export async function updateKeepDevice(
-  id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean},allowed:KeepWriteAuthorization
+  id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean},allowed:KeepWriteAuthorization,signal:AbortSignal
 ):Promise<KeepEditReceipt>{
   if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
     throw new Error('KEEP title/content outside original editor limits.');
+  if(signal.aborted||!keepWriteAuthorized(allowed))throw new KeepDeviceAuthorizationExpired();
   const db=await connectExisting();
   try{
     return await new Promise<KeepEditReceipt>((resolve,reject)=>{
       let receipt:KeepEditReceipt|null=null;
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
+      const detach=attachOwnerAbort(tx,signal);
       const store=tx.objectStore(KEEP_NOTES_STORE);
       let cause:Error|null=null;
       const abort=(err:Error)=>{cause=err;tx.abort();};
@@ -157,20 +168,22 @@ export async function updateKeepDevice(
         store.put(next);
       };
       row.onerror=()=>abort(new Error('KEEP source note could not be read.'));
-      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('KEEP edit did not apply.'));
+      tx.oncomplete=()=>{detach();receipt?resolve(receipt):reject(new Error('KEEP edit did not apply.'));};
       tx.onerror=()=>{ /* rejection on abort handles the error */ };
-      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP device edit was cancelled.'));
+      tx.onabort=()=>{detach();reject(cause??tx.error??new Error('KEEP device edit was cancelled.'));};
     });
   }finally{db.close();}
 }
 
 /** Toggle one original KEEP checklist entry without translating it to a Hub task. */
-export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string,allowed:KeepWriteAuthorization):Promise<KeepEditReceipt>{
+export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string,allowed:KeepWriteAuthorization,signal:AbortSignal):Promise<KeepEditReceipt>{
+  if(signal.aborted||!keepWriteAuthorized(allowed))throw new KeepDeviceAuthorizationExpired();
   const db=await connectExisting();
   try {
     return await new Promise<KeepEditReceipt>((resolve,reject)=>{
       let receipt:KeepEditReceipt|null=null;
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite'),store=tx.objectStore(KEEP_NOTES_STORE);
+      const detach=attachOwnerAbort(tx,signal);
       let cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
       const get=store.get(noteId);
@@ -187,20 +200,22 @@ export async function toggleKeepDeviceChecklist(noteId:string,revision:string,it
         store.put(next);
       };
       get.onerror=()=>abort(new Error('Original KEEP note is unavailable.'));
-      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('KEEP checklist edit did not apply.'));
-      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP checklist update was refused.'));
+      tx.oncomplete=()=>{detach();receipt?resolve(receipt):reject(new Error('KEEP checklist edit did not apply.'));};
+      tx.onabort=()=>{detach();reject(cause??tx.error??new Error('KEEP checklist update was refused.'));};
       tx.onerror=()=>{};
     });
   }finally{db.close();}
 }
 
 /** One-step guarded source recovery. The original record is retained only in RAM. */
-export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed:KeepWriteAuthorization):Promise<void>{
+export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed:KeepWriteAuthorization,signal:AbortSignal):Promise<void>{
   if(!eligibleKeepNote(receipt.original))throw new Error('Invalid KEEP undo receipt.');
+  if(signal.aborted||!keepWriteAuthorized(allowed))throw new KeepDeviceAuthorizationExpired();
   const db=await connectExisting();
   try{
     await new Promise<void>((resolve,reject)=>{
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite');
+      const detach=attachOwnerAbort(tx,signal);
       const store=tx.objectStore(KEEP_NOTES_STORE);
       let cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
@@ -215,19 +230,21 @@ export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed:KeepWri
         store.put(restored);
       };
       get.onerror=()=>abort(new Error('Original KEEP record is unavailable.'));
-      tx.oncomplete=()=>resolve();
-      tx.onabort=()=>reject(cause??tx.error??new Error('KEEP source undo refused.'));
+      tx.oncomplete=()=>{detach();resolve();};
+      tx.onabort=()=>{detach();reject(cause??tx.error??new Error('KEEP source undo refused.'));};
       tx.onerror=()=>{};
     });
   }finally{db.close();}
 }
 
 /** Restore one original bounded P29 revision, atomically, after exact CAS validation. */
-export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:string,revisionId:string,allowed:KeepWriteAuthorization):Promise<KeepEditReceipt>{
+export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:string,revisionId:string,allowed:KeepWriteAuthorization,signal:AbortSignal):Promise<KeepEditReceipt>{
+  if(signal.aborted||!keepWriteAuthorized(allowed))throw new KeepDeviceAuthorizationExpired();
   const db=await connectExisting();
   try {
     return await new Promise<KeepEditReceipt>((resolve,reject)=>{
       const tx=db.transaction(KEEP_NOTES_STORE,'readwrite'),store=tx.objectStore(KEEP_NOTES_STORE);
+      const detach=attachOwnerAbort(tx,signal);
       let receipt:KeepEditReceipt|null=null,cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
       const req=store.get(noteId);
@@ -243,8 +260,8 @@ export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:
         store.put(next);
       };
       req.onerror=()=>abort(new Error('Original KEEP note is unavailable.'));
-      tx.oncomplete=()=>receipt?resolve(receipt):reject(new Error('Revision restore was not applied.'));
-      tx.onabort=()=>reject(cause??tx.error??new Error('Revision restore refused.'));
+      tx.oncomplete=()=>{detach();receipt?resolve(receipt):reject(new Error('Revision restore was not applied.'));};
+      tx.onabort=()=>{detach();reject(cause??tx.error??new Error('Revision restore refused.'));};
       tx.onerror=()=>{};
     });
   }finally{db.close();}
