@@ -65,7 +65,7 @@ test('C1-B desktop source-owner projection: exam, overdue, original repair, no l
   await expect(panel.locator('a[href*="/practice?mode=repair"]')).toHaveCount(1);
   expect(await panel.locator('a[href*="/practice?mode=repair"]').first().getAttribute('href'))
     .toBe(origin+'/practice?mode=repair&course='+course+'&skill='+skill);
-  expect(await panel.locator('[data-task-toggle], [data-action="save-task"], form')).toHaveCount(0);
+  await expect(panel.locator('[data-task-toggle], [data-action="save-task"], form')).toHaveCount(0);
   const store=await page.evaluate(()=>({local:localStorage.length,db:sessionStorage.length}));
   expect(store).toEqual({local:0,db:0});
 });
