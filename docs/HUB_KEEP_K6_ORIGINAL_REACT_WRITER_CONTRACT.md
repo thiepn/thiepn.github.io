@@ -12,10 +12,10 @@
 ## Complete original source candidate — attachment in this conversation
 
 `KEEP_B3_native_hub_react_K6_candidate.zip`
-- SHA-256: `0ebea3013afe247fee895b21d5891fe94820ecce616da209421d6614eea04ddc`
+- SHA-256: `702f59e6fc8a51c3094e0b051287cd986932c698ac53a3782a9ba6c0da04ed3d`
 - 1,288 archive files; all **1,269 original KEEP B3 source files** validated byte-identical using `hub-embed/SOURCE_SHA256.json`.
 - Includes original `src/App.tsx`, `src/pkm/workspace/NoteWorkspaceView.tsx`, KEEP workspace context, `src/services/storage.ts`, `vaultEncryptionService.ts`, original Argon2id `kdf.ts`, AES-GCM implementation and original key-purge/auto-lock.
-- Restores original **scripts and tests**, which the prior K5 candidate omitted, so `npm run test:b1b`, `test:b2`, `test:b3` execute from the candidate directory.
+- Restores original **scripts and tests**, which the prior K5 candidate omitted, including portable `require('typescript')` in the K6 smoke script, so `npm run test:b1b`, `test:b2`, `test:b3` execute from the candidate directory.
 - `hub-embed/entry.tsx` mounts `<App/>` with `createRoot` on an empty, connected same-origin Hub container; must receive `{mayMount, revoked: AbortSignal}`, allows only one React owner root, marks native source active before render, and locks/purges with the original `vaultEncryptionService.lockVault()` during revocation and unmount.
 - `hub-embed/vite.config.ts`: ESM-safe `import.meta.url` path resolution, candidate original React ESM build, no CDN, no externals for React or crypto.
 - `scripts/check-hub-embed.cjs` verifies all original source SHA-256 hashes and entry/config syntax.
