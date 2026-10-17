@@ -95,6 +95,7 @@ export interface Note {
   isLocked?: boolean;
   lockHash?: string; // SHA-256 hash of password/PIN
   isFavorite?: boolean;
+  isDailyNote?: boolean; // Original daily-note flag consumed by App and migration handlers
   order?: number; // Zero-based index for custom manual sorting
   priority?: NotePriority;
   status?: NoteStatus;
