@@ -259,6 +259,67 @@ Connected with [[Book Recommendations]] and [[Favorite Recipes & Cooking Notes]]
   },
 ];
 
+/**
+ * Explicit first-use native Hub enrollment, implemented by ORIGINAL KEEP storage.
+ * Never touches an existing DB, never seeds examples or copies another origin.
+ * The version-change transaction is atomic; concurrent initialization loses
+ * without overwriting existing records.
+ */
+export async function createEmptyOriginalKeepHubDatabase(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) throw new Error('KEEP owner session expired before enrollment.');
+  if (typeof indexedDB.databases !== 'function')
+    throw new Error('This browser cannot safely verify an empty KEEP origin.');
+  const existing = await indexedDB.databases();
+  if (signal.aborted) throw new Error('KEEP owner session expired before enrollment.');
+  if (existing.some(db => db.name === DB_NAME))
+    throw new Error('An original KEEP database already exists here. No records were changed.');
+
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let created = false;
+    const onAbort = () => {
+      // Abort the version-change transaction if it is still running.
+      try { request.transaction?.abort(); } catch { /* Already committed or not started. */ }
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    const finish = () => signal.removeEventListener('abort', onAbort);
+    request.onblocked = () => { finish(); reject(new Error('KEEP database is locked in another tab.')); };
+    request.onupgradeneeded = (event) => {
+      const db = request.result;
+      if (event.oldVersion !== 0 || signal.aborted) {
+        request.transaction?.abort();
+        return;
+      }
+      created = true;
+      const notes = db.createObjectStore(STORE_NOTES, { keyPath: 'id' });
+      notes.createIndex('updatedAt', 'updatedAt', { unique: false });
+      notes.createIndex('createdAt', 'createdAt', { unique: false });
+      notes.createIndex('folderId', 'folderId', { unique: false });
+      notes.createIndex('color', 'color', { unique: false });
+      db.createObjectStore(STORE_FOLDERS, { keyPath: 'id' });
+      db.createObjectStore(STORE_SEARCHES, { keyPath: 'id' });
+      db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
+    };
+    request.onerror = () => { finish(); reject(request.error ?? new Error('KEEP enrollment failed.')); };
+    request.onsuccess = () => {
+      const db = request.result;
+      const complete = created && db.version === DB_VERSION &&
+        [STORE_NOTES, STORE_FOLDERS, STORE_SEARCHES, STORE_SETTINGS]
+          .every(name => db.objectStoreNames.contains(name));
+      db.close();
+      finish();
+      if (!complete) {
+        reject(new Error('KEEP database was created elsewhere or is incompatible. No records were changed.'));
+      } else {
+        resolve();
+      }
+    };
+  });
+}
+
+const isEmbeddedHubKeep = () =>
+  typeof document !== 'undefined' && document.querySelector('[data-keep-native-host]') !== null;
+
 class StorageService {
   private dbPromise: Promise<IDBDatabase> | null = null;
   private cachedSettings: AppSettings = DEFAULT_SETTINGS;
@@ -391,6 +452,7 @@ class StorageService {
 
       // Seed if brand new (and not encrypted)
       if (
+        !isEmbeddedHubKeep() &&
         !vaultEncryptionService.isEncryptionEnabled() &&
         notes.length === 0 &&
         folders.length === 0
@@ -414,6 +476,9 @@ class StorageService {
         settings: finalSettings,
       };
     } catch (err) {
+      // On Hub, falling back to plaintext localStorage would silently diverge
+      // from the original IndexedDB source and potentially leak owner data.
+      if (isEmbeddedHubKeep()) throw err;
       console.warn('IndexedDB initialization failed, using localStorage fallback:', err);
       return this.fallbackInitialize();
     }
