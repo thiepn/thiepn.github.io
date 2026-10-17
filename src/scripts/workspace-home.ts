@@ -24,6 +24,7 @@ import { initialState, parseState, activity, dayKey, addDays, weekDays, validDat
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
+import { enableHubPinboard, toggleHubRecordPin, moveHubRecordPin, hasHubPin } from '../lib/workspace/record-pinboard';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
@@ -714,6 +715,7 @@ async function setup(root: HTMLElement) {
             const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Review task ${esc(t.title)}">
                 ${button('unified-triage','Review due date & priority',t.id,'ws-button')}
                 ${button('context-task', 'Next actions', t.id, 'ws-text-button')}
+                ${hubPinAction('task',t.id)}
                 ${button('plan-task-event', 'Review calendar block', t.id, 'ws-text-button')}
               </div>` : '';
             return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
@@ -821,7 +823,7 @@ async function setup(root: HTMLElement) {
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,authorizedFolioPlanningSnapshot())}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}${hubPinAction('tracker',t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
@@ -1096,6 +1098,10 @@ async function setup(root: HTMLElement) {
             notes:available&&notesSourceStatus==='ready'&&notesSourceOwner===scope?notesSource:null,
         };
     }
+    function hubPinAction(kind:'task'|'note'|'event'|'tracker',id:string){
+        const key=kind+':'+id;
+        return button('toggle-record-pin',hasHubPin(state!,key)?'Unpin from Workspace':'Pin to Workspace',key,'ws-button');
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
@@ -1104,6 +1110,7 @@ async function setup(root: HTMLElement) {
 
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
+              ${hubPinAction('task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
               ${button('create-note-from-task','Draft a local note',id)}
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
@@ -1122,6 +1129,7 @@ async function setup(root: HTMLElement) {
           <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
           <div class="ws-context-actions">
             ${button('edit-note','Edit original note',id)}
+            ${hubPinAction('note',id)}
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
@@ -1134,7 +1142,7 @@ async function setup(root: HTMLElement) {
     function showEventContext(id:string) {
         if(!startHandoff('event',id))return;
         const item=state!.events.find(e=>e.id===id)!;
-        const html=renderEventPreparation(state!,item,knowledgeOwnerContext());
+        const html=hubPinAction('event',id)+renderEventPreparation(state!,item,knowledgeOwnerContext());
         openForm('Next actions · Hub event',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -2540,6 +2548,27 @@ async function setup(root: HTMLElement) {
             case 'pin-app':
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
+                break;
+            case 'enable-record-pinboard':
+                if(editing){toast('Finish layout editing before adding a pinboard.');break;}
+                void mutate(s=>enableHubPinboard(s),'Workspace pinboard ready')
+                    .catch(error=>toast(error instanceof Error?error.message:'Unable to create pinboard.'));
+                break;
+            case 'toggle-record-pin':
+                if(editing){toast('Finish layout editing before pinning records.');break;}
+                void mutate(s=>{toggleHubRecordPin(s,id);},'Pinned records updated')
+                  .then(()=>{
+                    root.querySelectorAll<HTMLButtonElement>('[data-action="toggle-record-pin"]').forEach(el=>{
+                        if(el.dataset.id!==id||el.closest('[data-record-pinboard]'))return;
+                        el.textContent=hasHubPin(state!,id)?'Unpin from Workspace':'Pin to Workspace';
+                    });
+                  }).catch(error=>toast(error instanceof Error?error.message:'Unable to update pin.'));
+                break;
+            case 'move-record-pin-up':
+            case 'move-record-pin-down':
+                if(editing){toast('Finish layout editing before reordering pins.');break;}
+                void mutate(s=>{moveHubRecordPin(s,id,action==='move-record-pin-up'?-1:1);},'Pinboard order updated')
+                  .catch(error=>toast(error instanceof Error?error.message:'Unable to reorder pin.'));
                 break;
             case 'configure-widget':
                 configureWidget(id);

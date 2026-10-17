@@ -1,6 +1,7 @@
 import { reviewDay, reviewWeek } from './planning-review';
 import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
+import {renderHubPinboard} from './record-pinboard';
 import { renderTodayWorkbench } from './today-workbench';
 import type { FolioDeviceSnapshot } from './folio-device';
 import type { NotesDeviceSummary } from './notes-device';
@@ -66,6 +67,7 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         <a href="/home/calendar/?mode=week" class="ws-unified-action">Plan the week</a>
       </div></header>
     ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters</span>${textButton('capture','Resume draft')}</div>`:''}
+    ${renderHubPinboard(state,true)}
     ${status.hasLayoutDraft?`<div class="ws-unified-draft"><strong>Interrupted layout draft</strong><span>Review the original saved layout before replacing anything.</span>${textButton('review-return','Review recovery')}</div>`:''}
     <div class="ws-unified-metrics" aria-label="Actual Hub work">
       <a href="/home/tasks/?filter=today"><strong>${counts.today}</strong><span>Due or overdue</span></a>

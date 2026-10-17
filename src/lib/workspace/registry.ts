@@ -1,4 +1,5 @@
 import {customLinks} from './commands';
+import {validateHubPinConfig} from './record-pinboard';
 import type { Widget } from './types';
 export const WIDGETS = {
     'app-shortcuts': { title: 'App shortcuts', icon: 'squares-four', description: 'Your chosen apps, one click away.', views: ['tiles', 'list', 'compact'], width: 12, height: 20, minWidth: 4, minHeight: 16 },
@@ -13,6 +14,7 @@ export const WIDGETS = {
     'recent-captures': { title: 'Recent captures', icon: 'notebook', description: 'Captured Hub notes and tasks, not external app activity.', views: ['list', 'detailed'], width: 6, height: 32, minWidth: 4, minHeight: 20 },
     'quick-plan': { title: 'Quick planning', icon: 'calendar-blank', description: 'Plan unscheduled tasks using existing Hub task actions.', views: ['compact', 'detailed'], width: 6, height: 36, minWidth: 4, minHeight: 20 },
     'owner-handoffs': { title: 'Connected app handoffs', icon: 'arrow-up-right', description: 'Source-honest owner-app actions and existing access routes.', views: ['compact', 'detailed'], width: 6, height: 28, minWidth: 4, minHeight: 20 },
+    'record-pinboard': { title: 'Pinned records', icon: 'pin', description: 'Original Hub tasks, notes, events and trackers saved only by reference.', views: ['detailed', 'compact'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
 } as const;
 export type WidgetType = keyof typeof WIDGETS;
 export function specification(type: string) { return Object.hasOwn(WIDGETS, type) ? WIDGETS[type as WidgetType] : undefined; }
@@ -25,6 +27,7 @@ export function validWidget(widget: Widget): boolean {
         return false;
     if (!spec || widget.typeVersion > 1)
         return true; // Future widgets are retained, never rewritten.
+    if (widget.type === 'record-pinboard' && !validateHubPinConfig(widget.config.pins)) return false;
     if (widget.config.title !== undefined && (typeof widget.config.title !== 'string' || !widget.config.title.trim() || widget.config.title.length > 80)) return false;
     if (widget.config.useActions !== undefined && typeof widget.config.useActions !== 'boolean') return false;
     if (widget.config.itemLimit !== undefined && (!Number.isSafeInteger(widget.config.itemLimit) || Number(widget.config.itemLimit) < 2 || Number(widget.config.itemLimit) > 12)) return false;
