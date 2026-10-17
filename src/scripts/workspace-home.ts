@@ -32,6 +32,9 @@ import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
+import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
+import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
+import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
@@ -74,7 +77,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -94,6 +97,7 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number;folio:FolioDeviceSnapshot|null}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
@@ -102,7 +106,7 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -180,6 +184,12 @@ async function setup(root: HTMLElement) {
         folioStatus = 'disconnected';
         folioOwner = null;
     }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        if(!state || locked || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+          hubIdentity.status==='signed-out'?'guest':null;
+        return scope && folioOwner===scope ? freshFolioPlanningShare(folioSnapshot):null;
+    }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -252,7 +262,9 @@ async function setup(root: HTMLElement) {
             todayPanel.outerHTML = renderSourceToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
-                languages: {status: languageStatus, cards: languageCards}, apps
+                languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state.events,
+                day: today(), timezone: state.preferences.timezone
             });
         }
     }
@@ -385,6 +397,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeSpreadReview=null;
         activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
@@ -766,7 +779,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,activeFolioPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
@@ -776,7 +789,9 @@ async function setup(root: HTMLElement) {
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
+                    languages: {status: languageStatus, cards: languageCards}, apps,
+                    hubEvents: state!.events,
+                    day: today(), timezone: state!.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
@@ -840,7 +855,7 @@ async function setup(root: HTMLElement) {
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -849,7 +864,7 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? (homeMode==='workspace' ? current().title : 'Today')) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
@@ -959,6 +974,8 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
+            // Home navigation always selects Today without changing original records.
+            if (next === 'home' && !url.searchParams.has('mode') && !editing) homeMode = 'today';
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
             dialog.close(); searchDialog.close(); account.close();
@@ -1084,6 +1101,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const zone=state!.preferences.timezone;
+        const originalTask=taskSnapshot(task);
         const html=`<div class="ws-context-summary" data-task-calendar-review>
           <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
           <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
@@ -1093,7 +1111,8 @@ async function setup(root: HTMLElement) {
           </div>
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
-          <p class="ws-muted">${esc(zone)} · event must finish before midnight</p>
+          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Only shared Folio blocks can be compared with Hub blocks; neither source is comprehensive availability.</p>
+          <label class="ws-choice"><input type="checkbox" name="alignDue"/> Also set this original Hub task's due date to the reviewed block date (clears its task clock). This does not create a permanent task-event link.</label>
           <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
@@ -1107,21 +1126,30 @@ async function setup(root: HTMLElement) {
                 time:String(data.get('start')),duration:Number(data.get('duration')),
                 allDay:data.has('allDay'),confirmed:data.has('confirm')};
             // Validate before mutation; validate again inside the native queued writer.
-            const preview=prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            const currentTask=state.tasks.find(t=>t.id===id);
+            if(!currentTask || JSON.stringify(taskSnapshot(currentTask))!==JSON.stringify(originalTask))
+                throw new Error('The original task changed. Reopen scheduling and review the latest record.');
+            const alignDue=data.has('alignDue');
+            const preview=prepareTaskCalendarEvent(currentTask,proposal,state.preferences.timezone);
             if (identicalLocalEvent(state.events,preview.event))
                 throw new Error('An identical local calendar event already exists. No duplicate was created.');
             await mutate(s=>{
                 const source=s.tasks.find(t=>t.id===id);
-                if(!source)throw new Error('The source task was deleted. No calendar event was created.');
+                if(!source || JSON.stringify(taskSnapshot(source))!==JSON.stringify(originalTask))
+                    throw new Error('The source task changed during review. Reopen scheduling.');
                 const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
                 if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
+                // One detached candidate: event and optional task due-date change commit together.
+                if(alignDue && (source.due!==proposal.date || source.time))applyTaskPlan(source,'today',proposal.date);
                 s.events.push(event);
-                activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
+                activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}`,'event');
             },'Reviewed Hub calendar event created');
             if (!state.events.some(event=>event.title===preview.event.title &&
                 event.start===preview.event.start && event.end===preview.event.end &&
                 event.date===preview.event.date && event.allDay===preview.event.allDay))
                 throw new Error('The calendar event was not created. Review the message and try again.');
+            if(alignDue && state.tasks.find(t=>t.id===id)?.due!==proposal.date)
+                throw new Error('The task due-date change was not applied. Review your original Hub task.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
         paintTaskCalendarPreview(task,zone);
@@ -1138,13 +1166,18 @@ async function setup(root: HTMLElement) {
                 state.tasks.find(t=>t.id===task.id)??task,proposal,zone).event;
             const duplicate=identicalLocalEvent(state.events,preview);
             const overlaps=overlapsForEvent(state.events,preview);
+            const shared=folioWarningsForProposedEvent(preview,folioSnapshot,zone);
             const names=[...new Set(overlaps.map(p=>p.first===preview.id?p.second:p.first))]
                 .map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
             el.innerHTML=`<strong>Proposed local calendar block · ${esc(preview.title)}</strong>
                 <p>${esc(preview.date)} · ${preview.allDay?'All day':esc(preview.start)+' → '+esc(preview.end)} (${esc(zone)})</p>
                 ${duplicate?'<p class="ws-plan-preview-warning">Identical event already exists. This proposal cannot be added again.</p>':''}
-                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}. No external calendars were checked.</p>`:
-                    '<p>No timed overlaps detected in local Hub events. All-day commitments and external sources are not checked for time conflicts.</p>'}`;
+                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}.</p>`:
+                    '<p>No timed overlap detected in original local Hub events.</p>'}
+                ${folioSnapshot?`<p>Approved Folio snapshot: ${shared.timed.length} timed overlap${shared.timed.length===1?'':'s'}${shared.timed.length?' · '+esc(shared.timed.map(c=>c.folioTitle).join(', ')):''}. ${shared.allDayTitles.length?'All-day Folio commitments: '+esc(shared.allDayTitles.join(', '))+'.':''} This is a partial, one-time source summary, not complete availability.</p>`:
+                    '<p>Folio and other calendar owners have not shared schedules with this tab; no cross-app availability is assumed.</p>'}
+                ${data.has('alignDue')?`<p>Confirming will also move this task due date to ${esc(proposal.date)} without creating a persistent task-event link.</p>`:
+                    '<p>The original task due date remains unchanged.</p>'}`;
         } catch(e) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }
@@ -1165,6 +1198,99 @@ async function setup(root: HTMLElement) {
         } catch(error) {
             el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
         }
+    }
+    function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');
+        if(!panel || !state || origin!==epoch)return;
+        const date=dialog.querySelector<HTMLInputElement>('[name=spreadStart]')?.value??'';
+        const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
+        try {
+            if(date<today())throw new Error('Choose today or a future starting date.');
+            const useFolio=dialog.querySelector<HTMLInputElement>('[name=includeFolio]')?.checked===true;
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio sharing changed or expired. Refresh and reopen the review.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw),useFolio?pinned:null);
+            panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
+              <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
+                ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
+              <p>${prepared.folioConsidered?'Hub workload plus explicitly shared Folio hints':'Existing Hub workload'} for these days:</p>
+              <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
+              ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}${prepared.folioConsidered?', '+row.folioTasks+' Folio task hints, '+row.folioTimed+' timed and '+row.folioAllDay+' all-day Folio blocks':''}</li>`).join('')}</ul>
+              <p>Distribution balances record counts, not task duration or calendar availability.
+              It does not create appointments or change imported/owner-app data.</p>`;
+        } catch(error) {
+            panel.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the distribution fields.')}</p>`;
+        }
+    }
+    function reviewDistributedWeek() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)return;
+        if(!storageReady || dirty || conflict || !store) {
+            toast('Resolve storage or saved-state conflicts before spreading task due dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks to distribute.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
+        const own=epoch,source=store;
+        const availableFolio=activeFolioPlanningSnapshot();
+        activeSpreadReview={snapshots,epoch:own,folio:availableFolio};
+        const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
+          <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
+          <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
+            and dates with fewer existing Hub deadlines/events are considered first.</p>
+          ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
+          ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          ${availableFolio?'<label class="ws-week-confirm"><input type="checkbox" name="includeFolio"/>Consider this one-time Folio snapshot as *partial* day-load hints. The planner changes only Hub task due dates; refresh if the source share expires.</label>':'<p class="ws-muted">Share from Folio separately to optionally include its workload in this task review.</p>'}
+          <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed every proposed due date and authorize changes to these Hub tasks only,
+            without scheduling event blocks or updating Folio, Notes, or external calendars.</label>
+          <p class="ws-muted">Original IDs, titles, priorities and completion states survive; clock times on moved tasks are cleared.
+            All changes use one existing owner-scoped workspace mutation and its undo/conflict protection.</p>
+        </div>`;
+        openForm('Review multi-day task distribution',formHtml,async data=>{
+            if(epoch!==own || store!==source || !state || !storageReady || locked ||
+              privacyHeld || state.preferences.hidden || dirty || conflict)
+                throw new Error('Identity or storage changed. Reopen this planning review.');
+            if(!data.has('confirm'))throw new Error('Confirm all proposed Hub task due-date changes.');
+            const requestedStart=String(data.get('spreadStart')??'');
+            if(!validDate(requestedStart) || requestedStart<today())
+                throw new Error('Select a current or future distribution date.');
+            const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
+            const useFolio=data.has('includeFolio');
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio share changed or expired. Review the distribution again.');
+            const hint=useFolio?pinned:null;
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon,hint);
+            await mutate(next=>{
+                if(useFolio && pinned!==activeFolioPlanningSnapshot())
+                    throw new Error('Folio share changed while saving. No Hub task dates were changed.');
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon,hint);
+                activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
+            },'Reviewed multi-day task plan updated');
+            if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
+            if(preview.changes.some(change=>{
+                const record=state!.tasks.find(task=>task.id===change.id);
+                return !record || record.due!==change.after || !!record.time;
+            }))throw new Error('The due-date distribution was not applied. Reopen planning.');
+            if(dirty || conflict)throw new Error('The plan remains unsaved in this tab. Export or retry before resubmitting.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=requestedStart;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed distribution');
+        paintDistributedPreview(snapshots,own);
     }
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
@@ -2174,6 +2300,9 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-spread':
+                reviewDistributedWeek();
+                break;
             case 'week-scroll-review':
                 if(view==='calendar' && agendaMode==='week') {
                     root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
@@ -2606,6 +2735,11 @@ async function setup(root: HTMLElement) {
             root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
             return;
         }
+        if (el.closest('[data-week-spread-review]')) {
+            const review=activeSpreadReview;
+            if(review && review.epoch===epoch)paintDistributedPreview(review.snapshots,review.epoch);
+            return;
+        }
         if (el.closest('[data-week-review-form]')) {
             const review=activeWeekReview;
             if(review && review.epoch===epoch)paintWeekChangePreview(review.snapshots,review.epoch);
@@ -2861,13 +2995,16 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else if (homeMode === 'focus') homeMode='today';
+        // Owner re-verification replaces account-scoped records, never the deliberately
+        // selected presentation. A fresh visit and explicit Home navigation still use Today.
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
+        activeSpreadReview=null;
         weekFilter='carry';
         const own = ++epoch;
         cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();
