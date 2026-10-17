@@ -73,7 +73,7 @@ export function keepTasksFromHubNote(note:Note):KeepTask[] {
       noteId:note.id,line:i,rawLine:row,text,completed:m[3]!.toLowerCase()==='x',
       ...(block?.[1]?{blockId:block[1]}:{}),
       ...(date&&day(date)?{dueDate:date}:{}),
-      ...(priority?{priority:priority as KeepTask['priority']}:{}),
+      ...(priority?{priority:priority as NonNullable<KeepTask['priority']>}:{}),
       ...(heading?{heading}:{})});
   }
   return tasks;
