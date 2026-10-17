@@ -33,7 +33,7 @@ async function sha256(bytes:ArrayBuffer):Promise<string>{
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)))
     .map(n=>n.toString(16).padStart(2,'0')).join('');
 }
-function validManifest(value:unknown):value is NativeManifest {
+export function validKeepNativeManifest(value:unknown):value is NativeManifest {
   if(!value||typeof value!=='object')return false;
   const v=value as Record<string,unknown>;
   return v.format==='thiepn-keep-b3-original-react'&&v.schema===1&&
@@ -65,7 +65,7 @@ export async function mountOriginalKeepInHub(
   if(!response.ok||!(response.headers.get('content-type')??'').includes('json'))
     throw new Error('Original KEEP React source has not been built into this preview.');
   const manifest:unknown=await response.json();
-  if(!validManifest(manifest))throw new Error('Original KEEP build manifest is invalid.');
+  if(!validKeepNativeManifest(manifest))throw new Error('Original KEEP build manifest is invalid.');
   const [entry,css]=await Promise.all([
     verifiedAsset(manifest.entry,manifest.jsSha256,CONTENT_JS,signal),
     verifiedAsset(manifest.css,manifest.cssSha256,CONTENT_CSS,signal)
