@@ -41,7 +41,8 @@ export function renderKnowledge(notes:readonly Note[],tasks:readonly Task[],view
       (classified?'<p class="ws-muted">KEEP B3 planning type: '+esc(classified)+'</p>':'')+
       (progress?'<p class="ws-muted">Project task progress: '+(progress.percent===null?'Not configured':progress.percent+'%')+' · '+progress.completed+' / '+progress.total+' complete'+(progress.nextAction?' · Next: '+esc(progress.nextAction.text):'')+'</p>':'')+
       '<h3>Markdown tasks in this note</h3><ul>'+(taskRows||'<li>No Markdown tasks</li>')+'</ul>'+ 
-      '<h3>KEEP owner references</h3><ul>'+(ownerRows||'<li>No source references</li>')+'</ul>';<h3>Outgoing links</h3><ul>'+(outgoing||'<li>No links</li>')+'</ul><h3>Backlinks</h3><ul>'+(incoming||'<li>No backlinks</li>')+'</ul><h3>Linked Hub tasks</h3><ul>'+(related||'<li>No explicitly linked tasks</li>')+'</ul></div>';
+      '<h3>KEEP owner references</h3><ul>'+(ownerRows||'<li>No source references</li>')+'</ul>'+ 
+      '<h3>Outgoing links</h3><ul>'+(outgoing||'<li>No links</li>')+'</ul><h3>Backlinks</h3><ul>'+(incoming||'<li>No backlinks</li>')+'</ul><h3>Linked Hub tasks</h3><ul>'+(related||'<li>No explicitly linked tasks</li>')+'</ul></div>';
   }
   return '<div class="ws-knowledge" data-knowledge><section class="ws-surface" aria-label="Hub knowledge navigation"><header><h2>Knowledge</h2><p class="ws-muted">Native Hub notes · KEEP-style linked navigation · no vault synchronization</p></header>'+
     '<label class="ws-field">Search notes<input data-knowledge-search type="search" maxlength="150" value="'+esc(view.query)+'" placeholder="Title or content"></label>'+
