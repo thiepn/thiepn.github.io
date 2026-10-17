@@ -29,13 +29,13 @@ describe('Hub source-safe decision register',()=>{
  it('reopens, archives, restores and removes only decision metadata',()=>{
   const s=fixture(),id=saveDecision(s,null,draft,null),before=JSON.stringify({tasks:s.tasks,notes:s.notes});
   decide(s,id,JSON.stringify(decisions(s)[0]),'AI','Explicit rationale');
-  transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'reopen');expect(decisions(s)[0]).toMatchObject({status:'open',choice:''});
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'archive');
   expect(decisions(s)[0]?.status).toBe('archived');
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'restore');
   expect(decisions(s)[0]?.status).toBe('decided');
-  // An undecided entry can be archived and restored without inventing a choice.
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'reopen');
+  expect(decisions(s)[0]).toMatchObject({status:'open',choice:''});
+  // An undecided entry can be archived and restored without inventing a choice.
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'archive');
   expect(decisions(parseState(JSON.stringify(s)))[0]).toMatchObject({status:'archived',choice:''});
   transitionDecision(s,id,JSON.stringify(decisions(s)[0]),'restore');
