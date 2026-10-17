@@ -71,8 +71,10 @@ export function keepTasksFromHubNote(note:Note):KeepTask[] {
     const priority=rawPriority==='med'?'medium':rawPriority;
     tasks.push({id:'task-'+note.id+'-'+i+'-'+hashString(text),
       noteId:note.id,line:i,rawLine:row,text,completed:m[3]!.toLowerCase()==='x',
-      blockId:block?.[1],dueDate:date&&day(date)?date:undefined,
-      priority:priority as KeepTask['priority'],heading:heading||undefined});
+      ...(block?.[1]?{blockId:block[1]}:{}),
+      ...(date&&day(date)?{dueDate:date}:{}),
+      ...(priority?{priority:priority as KeepTask['priority']}:{}),
+      ...(heading?{heading}:{})});
   }
   return tasks;
 }
