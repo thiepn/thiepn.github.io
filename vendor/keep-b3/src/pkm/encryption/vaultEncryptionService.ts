@@ -36,6 +36,11 @@ const MAGIC_KEY_CHECK_PLAINTEXT = 'KEEPNOTES_ENCRYPTED_VAULT_AUTHENTICATED_V1';
 
 export class VaultEncryptionService {
   private activeVaultKey: CryptoKey | null = null;
+  /** Invalidates pending Argon2id/AES-GCM operations on lock or replacement. */
+  private keyOperationEpoch = 0;
+  private isCurrentKeyOperation(epoch: number, header: EncryptedVaultHeader | null): boolean {
+    return epoch === this.keyOperationEpoch && this.vaultHeader === header;
+  }
   private vaultHeader: EncryptedVaultHeader | null = null;
   private securityStatus: VaultSecurityStatus = 'unencrypted';
   private autoLockTimeoutId: any = null;
@@ -134,9 +139,11 @@ export class VaultEncryptionService {
       return { success: false, error: 'Vault is not encrypted' };
     }
 
+    const header = this.vaultHeader;
+    const operation = ++this.keyOperationEpoch;
     try {
       // 1. Derive KEK using stored Argon2id parameters
-      const { rawKey: kekBytes } = await deriveKeyFromPassphrase(passphrase, this.vaultHeader.kdf);
+      const { rawKey: kekBytes } = await deriveKeyFromPassphrase(passphrase, header.kdf);
       const kek = await importRawKeyAsCryptoKey(kekBytes, false);
 
       // 2. Unwrap the Vault Encryption Key (VEK)
@@ -144,8 +151,8 @@ export class VaultEncryptionService {
       try {
         vek = await unwrapKeyAesGcm(
           kek,
-          this.vaultHeader.wrappedKey.ciphertext,
-          this.vaultHeader.wrappedKey.iv
+          header.wrappedKey.ciphertext,
+          header.wrappedKey.iv
         );
       } catch (err: any) {
         return { success: false, error: 'Incorrect master passphrase or corrupted key' };
@@ -155,8 +162,8 @@ export class VaultEncryptionService {
       try {
         const decryptedCheck = await decryptAesGcmToText(
           vek,
-          this.vaultHeader.keyCheck.ciphertext,
-          this.vaultHeader.keyCheck.iv
+          header.keyCheck.ciphertext,
+          header.keyCheck.iv
         );
         if (decryptedCheck !== MAGIC_KEY_CHECK_PLAINTEXT) {
           return { success: false, error: 'Vault authentication token mismatch. Vault may be tampered.' };
@@ -165,6 +172,9 @@ export class VaultEncryptionService {
         return { success: false, error: 'Vault authentication failed: ' + err.message };
       }
 
+      // A Hub logout/route unmount may lock the vault during the awaits above.
+      if (!this.isCurrentKeyOperation(operation, header))
+        return { success: false, error: 'Vault unlock cancelled by a newer lock or session.' };
       // 4. Set unlocked state
       this.activeVaultKey = vek;
       this.securityStatus = 'unlocked';
@@ -183,6 +193,9 @@ export class VaultEncryptionService {
    * Lock vault and purge all decrypted caches and keys from memory
    */
   lockVault(): void {
+    // Increment even for an unencrypted vault: an async encryption setup must
+    // never commit after Hub revokes the original React workspace.
+    ++this.keyOperationEpoch;
     if (!this.vaultHeader) return;
 
     // Purge active cryptographic key
@@ -220,6 +233,8 @@ export class VaultEncryptionService {
       return { success: false, error: 'Passphrase must be at least 6 characters' };
     }
 
+    const operation = ++this.keyOperationEpoch;
+    const startingHeader = this.vaultHeader;
     onProgress?.({ step: 'Deriving master key encryption key (Argon2id)...', percent: 20 });
 
     try {
@@ -280,6 +295,8 @@ export class VaultEncryptionService {
         throw new Error('Pre-flight roundtrip key verification failed');
       }
 
+      if (!this.isCurrentKeyOperation(operation, startingHeader))
+        return { success: false, error: 'Vault encryption setup cancelled by a newer lock or session.' };
       // 7. Commit header and set active key
       this.savePersistedHeader(header);
       this.activeVaultKey = vek;
@@ -313,6 +330,8 @@ export class VaultEncryptionService {
       return { success: false, error: 'New passphrase must be at least 6 characters' };
     }
 
+    const startingHeader = this.vaultHeader;
+    const operation = ++this.keyOperationEpoch;
     try {
       // 1. Authenticate old passphrase and get VEK
       const { rawKey: oldKekBytes } = await deriveKeyFromPassphrase(
@@ -351,6 +370,8 @@ export class VaultEncryptionService {
         throw new Error('New passphrase key check failed');
       }
 
+      if (!this.isCurrentKeyOperation(operation, startingHeader))
+        return { success: false, error: 'Passphrase change cancelled by a newer lock or session.' };
       // 5. Commit updated header
       const updatedHeader: EncryptedVaultHeader = {
         ...this.vaultHeader,
