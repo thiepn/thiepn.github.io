@@ -63,10 +63,11 @@ function backend(options={sharing:false,probeEligible:false}) {
    // navigation and verification. Local-token/guest assertions stay at 5s.
    await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device',{timeout:owner===null&&options.probeEligible?15_000:5_000});
   }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-   // Account/PKCE may return to bare / (Today). Restore the explicit legacy
-   // Workspace used by the native planner fixtures without altering Account data.
-   if (owner && await page.locator('[data-action=unified-mode][data-id=workspace]').count()) {
-     await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+   // SSO/PKCE may return to Today. Navigate to Workspace only after Account
+   // verification, reusing the same session with no additional PKCE exchange.
+   if ((owner || options.probeEligible) && new URL(page.url()).searchParams.get('mode')!=='workspace') {
+     await page.goto('https://thiepn.dev/?mode=workspace');
+     await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
    }
    if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
@@ -216,7 +217,7 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
    await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
    await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
    await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
-   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await expect(a.page).toHaveURL('https://thiepn.dev/?mode=workspace');
    await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
