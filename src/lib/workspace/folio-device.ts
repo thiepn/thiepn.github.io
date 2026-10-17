@@ -13,7 +13,7 @@ export interface FolioDeviceSnapshot {
   overdueCount:number;
   events:readonly {id:string;title:string;start:string;end:string;kind:'task'|'event';allDay:boolean}[];
   notes:readonly {id:string;title:string;updatedAt:string}[];
-  habits:readonly {id:string;title:string;target:number;value:number;status:'open'|'completed'|'skipped'}[];
+  habits:readonly {id:string;title:string;target:number;value:number;status:'open'|'completed'|'skipped';updatedAt?:string}[];
 }
 const obj=(v:unknown):v is Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const txt=(v:unknown,max=200)=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f]/.test(v);
@@ -40,7 +40,8 @@ export function parseFolioDeviceSnapshot(input:unknown,now=Date.now()):FolioDevi
     if(!txt(n.id,100)||!txt(n.title)||!iso(n.updatedAt))throw new Error('Invalid Folio note summary');
   for (const h of input.habits as Record<string,unknown>[])
     if(!txt(h.id,100)||!txt(h.title)||!count(h.value)||!count(h.target)||
-      !['open','completed','skipped'].includes(String(h.status)))throw new Error('Invalid Folio habit summary');
+      !['open','completed','skipped'].includes(String(h.status))||
+      (h.updatedAt!==undefined&&!iso(h.updatedAt)))throw new Error('Invalid Folio habit summary');
   return input as unknown as FolioDeviceSnapshot;
 }
 export function safeFolioBridgeReply(value:unknown, expectedNonce:string, now=Date.now()):FolioDeviceSnapshot {

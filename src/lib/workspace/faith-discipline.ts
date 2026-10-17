@@ -24,7 +24,9 @@ export function renderFaithDiscipline(
   const review=buildFaithReviewSignals({folio,mdd:null,tms});
   const rhythms = folio?.habits.slice(0, 6) ?? [];
   const rows = rhythms.map(h =>
-    `<li><span><strong>${esc(h.title)}</strong><small>Folio · ${h.status === 'completed' ? 'recorded' : h.status === 'skipped' ? 'rest day' : 'open'} · ${h.value}/${h.target}</small></span></li>`).join('');
+    `<li><span><strong>${esc(h.title)}</strong><small>Folio · ${h.status === 'completed' ? 'recorded' : h.status === 'skipped' ? 'rest day' : 'open'} · ${h.value}/${h.target}</small></span>${h.updatedAt && h.status!=='skipped' ?
+    `<button type="button" data-fd1-folio-id="${esc(h.id)}" data-fd1-folio-rev="${esc(h.updatedAt)}"
+      data-fd1-folio-operation="${h.status==='completed'?'habit.reopen':'habit.complete'}">${h.status==='completed'?'Reopen in Folio':'Record in Folio'}</button>` :''}</li>`).join('');
   return `<section class="ws-faith-discipline ws-surface" data-faith-discipline aria-labelledby="faith-discipline-title">
     <header><h2 id="faith-discipline-title">Faith &amp; discipline</h2>
       <p>Practice, not performance. Every recorded status belongs to its original app.</p></header>
@@ -34,6 +36,7 @@ export function renderFaithDiscipline(
           (rows ? '<ul>'+rows+'</ul>':'<p>No habits in this source snapshot.</p>') :
           '<p>No Folio data shared with this tab. Private practice progress is unavailable.</p>'}
         <a href="/folio/?view=habits">Open Folio habits</a>
+        <p data-fd1-folio-receipt role="status" aria-live="polite"></p>
       </section>
       <section aria-label="Scripture and reflection"><h3>Scripture &amp; reflection</h3>
         <p data-fd1-mdd role="status">My Daily Devotion owns reading and reflection records; no device-only summary has been shared in this tab.</p>

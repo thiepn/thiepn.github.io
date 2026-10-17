@@ -91,3 +91,68 @@ window.addEventListener('pagehide',clearMdd);
 document.addEventListener('click',e=>{
   if((e.target as HTMLElement)?.closest?.('[data-action=privacy]'))clearMdd();
 });
+
+
+/** Explicit original-device command flow: no record IDs or CAS revisions in URLs. */
+type PendingFolioAction={
+  nonce:string;popup:Window;resourceId:string;
+  expectedUpdatedAt:string;operation:'habit.complete'|'habit.reopen';started:number;
+};
+let pendingFolioAction:PendingFolioAction|null=null;
+let pendingFolioTimer:ReturnType<typeof setTimeout>|null=null;
+function clearPendingFolio(){
+  if(pendingFolioTimer!==null)clearTimeout(pendingFolioTimer);
+  pendingFolioTimer=null;pendingFolioAction=null;
+}
+const folioNotice=()=>document.querySelector<HTMLElement>('[data-fd1-folio-receipt]');
+document.addEventListener('click',event=>{
+  const btn=(event.target as HTMLElement)?.closest?.<HTMLButtonElement>('[data-fd1-folio-operation]');
+  if(!btn||document.hidden)return;
+  const resourceId=btn.dataset.fd1FolioId??'';
+  const expectedUpdatedAt=btn.dataset.fd1FolioRev??'';
+  const operation=btn.dataset.fd1FolioOperation;
+  if(!/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,127}$/.test(resourceId)||
+     !Number.isFinite(Date.parse(expectedUpdatedAt))||
+     (operation!=='habit.complete'&&operation!=='habit.reopen'))return;
+  const status=folioNotice();
+  if(pendingFolioAction){if(status)status.textContent='Finish or close the existing Folio review first.';return;}
+  const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
+  const nonce=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  const url=new URL('/folio/',location.origin);
+  // Nonce only. Never put private habit IDs, progress or CAS revisions in a URL.
+  url.searchParams.set('fd1Action',nonce);
+  const popup=window.open(url.href,'_blank');
+  if(!popup){if(status)status.textContent='Allow this explicit Folio popup to review the requested action.';return;}
+  pendingFolioAction={nonce,popup,resourceId,expectedUpdatedAt,operation,started:Date.now()};
+  pendingFolioTimer=setTimeout(()=>{
+    if(pendingFolioAction?.nonce===nonce){clearPendingFolio();const box=folioNotice();if(box)box.textContent='The Folio approval window expired without a receipt. No success is assumed.';}
+  },180_000);
+  if(status)status.textContent='Review and approve the original habit in the Folio popup. Hub cannot edit it directly.';
+});
+window.addEventListener('message',event=>{
+  const p=pendingFolioAction;
+  if(!p||event.origin!==location.origin||event.source!==p.popup||
+     Date.now()-p.started>180_000||!event.data||event.data.nonce!==p.nonce)return;
+  if(event.data.type==='thiepn:folio-fd1-ready:v1'){
+    p.popup.postMessage({type:'thiepn:folio-fd1-command:v1',nonce:p.nonce,
+      command:{idempotencyKey:p.nonce,operation:p.operation,resourceId:p.resourceId,
+        expectedUpdatedAt:p.expectedUpdatedAt}},location.origin);
+    return;
+  }
+  if(event.data.type!=='thiepn:folio-fd1-receipt:v1')return;
+  const r=event.data.receipt;
+  if(!r||r.idempotencyKey!==p.nonce||r.resourceId!==p.resourceId||
+    r.operation!==p.operation||!['applied','conflict','denied','unavailable'].includes(r.result))return;
+  clearPendingFolio();
+  const box=folioNotice();
+  if(box)box.textContent=r.result==='applied'
+    ?'Original Folio action applied. Refresh the consented Folio snapshot to see the new status.'
+    :r.result==='conflict'?'Original Folio record changed; no stale update was applied.'
+    :r.result==='denied'?'Folio action declined; no changes reported.'
+    :'Original Folio action unavailable. No success is assumed.';
+});
+window.addEventListener('pagehide',clearPendingFolio);
+window.addEventListener('hub:identity',clearPendingFolio);
+document.addEventListener('click',event=>{
+  if((event.target as HTMLElement)?.closest?.('[data-action=privacy]'))clearPendingFolio();
+});
