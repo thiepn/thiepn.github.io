@@ -4,7 +4,7 @@ const hash='a'.repeat(64);
 const good={
  format:'thiepn-keep-b3-original-react',schema:1,
  entry:'keep-b3-original.js',css:'keep-b3-original.css',
- sourceSha256:hash,jsSha256:hash,cssSha256:hash
+ sourceSha256:'415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58',jsSha256:hash,cssSha256:hash
 };
 describe('original KEEP native React integrity and source boundary',()=>{
  it('accepts only the qualified original-build shape',()=>{
@@ -19,6 +19,7 @@ describe('original KEEP native React integrity and source boundary',()=>{
  it('requires three verifiable sha256 digests',()=>{
    expect(validKeepNativeManifest({...good,jsSha256:'unverified'})).toBe(false);
    expect(validKeepNativeManifest({...good,sourceSha256:null})).toBe(false);
+   expect(validKeepNativeManifest({...good,sourceSha256:hash})).toBe(false);
    expect(validKeepNativeManifest({...good,cssSha256:'B'.repeat(64)})).toBe(false);
  });
  it('refuses empty, primitive and array manifests',()=>{
