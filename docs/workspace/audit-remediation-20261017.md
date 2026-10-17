@@ -28,3 +28,9 @@ D04 and D05: Consolidate managed and legacy connection states and readers; ensur
 E01: Restore Account CI capacity, qualify the pending Account changes, and reconcile deployed migrations with main. This cannot be solved by bypassing CI or changing Hub labels.
 
 The remaining navigation, calendar, shortcut, accessibility, performance and product-completeness findings stay open. Release and deployment evidence must identify the merged commit before these fixes are marked live.
+
+## Capture stability follow-up
+
+The exact-main gate found an intermittent WebKit note-recovery failure after layout edits. Investigation reproduced a missed Capture click: the normal draft-save recovery banner was removed during a pointer press, moving the submit button by 85.5 pixels. The note had never been captured; its text remained a draft.
+
+Routine draft typing no longer inserts that recovery banner. Actual persistence failures still publish recovery controls. A virtual-clock regression holds the pointer down while autosave completes and requires both stable button position and a captured note that survives reload. The layout lifecycle scenario now also verifies that initial capture succeeded before editing widgets, and selects layout Undo explicitly.
