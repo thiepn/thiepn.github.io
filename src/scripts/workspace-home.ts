@@ -39,6 +39,7 @@ import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type Pla
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
+import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import { preset, PRESETS } from '../lib/workspace/presets';
@@ -108,6 +109,12 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
+    // Unsaved working pads are never attached to Hub storage or a remote account.
+    // Distinct originals retain separate drafts until tab closure or identity/privacy wipe.
+    const focusWork=new Map<string,FocusWorkDraft>();
+    function focusWorkForSelection():Readonly<FocusWorkDraft>{
+        return focus.selectedId ? (focusWork.get(focus.selectedId)??EMPTY_FOCUS_WORK) : EMPTY_FOCUS_WORK;
+    }
     let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
@@ -628,6 +635,7 @@ async function setup(root: HTMLElement) {
         focus.elapsed=false;
     }
     function clearFocusIdentity() {
+        focusWork.clear();
         pauseFocusSession();
         focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
         root.dataset.focusQuiet='false';
@@ -811,7 +819,7 @@ async function setup(root: HTMLElement) {
                     hubEvents: state!.events,
                     day: today(), timezone: state!.preferences.timezone
                 });
-            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
+            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
@@ -2088,6 +2096,35 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>('[data-action=focus-start]')?.focus();
                 }
                 break;
+            case 'focus-work-note': {
+                const task=state.tasks.find(t=>t.id===focus.selectedId&&!t.completedAt);
+                if(!task){toast('Choose an unfinished Hub task before preparing a note.');break;}
+                const work=focusWorkForSelection();
+                if(!hasFocusWork(work)){toast('Enter working notes, a blocker or a next step first.');break;}
+                const seed=focusWorkNoteSeed(task,work);
+                // Review in the original Hub note editor; no write is made now.
+                editNote('',seed);
+                break;
+            }
+            case 'focus-work-plan':
+                if(focus.selectedId)reviewUnifiedTask(focus.selectedId);
+                break;
+            case 'focus-work-knowledge':
+                if(focus.selectedId)showTaskContext(focus.selectedId);
+                break;
+            case 'focus-work-clear': {
+                const taskId=focus.selectedId;
+                if(!taskId||!focusWork.has(taskId))break;
+                openForm('Discard working session pad?',
+                    '<p>This removes only the unsaved scratch for this task in this tab. '+
+                    'Original Hub notes, tasks and other session pads are unchanged.</p>',
+                    ()=>{
+                        if(focus.selectedId!==taskId)throw new Error('Selected task changed. Review before discarding.');
+                        focusWork.delete(taskId);
+                        render();
+                    },'Discard pad');
+                break;
+            }
             case 'focus-queue':
                 if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
                     focus.queue=id as FocusQueue;
@@ -2557,7 +2594,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { focusWork.clear(); resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -2830,6 +2867,18 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(el.hasAttribute('data-focus-work-field')){
+            const source=el.closest<HTMLElement>('[data-focus-work]');
+            const taskId=source?.dataset.sourceTask;
+            if(!state || locked || privacyHeld || state.preferences.hidden || !taskId ||
+                taskId!==focus.selectedId || !state.tasks.some(t=>t.id===taskId&&!t.completedAt))return;
+            const field=el.dataset.focusWorkField!;
+            const next=focusWorkInput(focusWork.get(taskId)??EMPTY_FOCUS_WORK,field,el.value);
+            focusWork.set(taskId,next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-note]')!.disabled=!hasFocusWork(next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-clear]')!.disabled=!hasFocusWork(next);
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
@@ -3244,7 +3293,7 @@ async function setup(root: HTMLElement) {
         if(document.hidden)pauseFocusSession();
         else if(state && !dirty && !editing && !dialog.open && !searchDialog.open && !inputFocused() && !privacyHeld && !state.preferences.hidden && view==='home')render();
     });
-    window.addEventListener('pagehide',()=>{pauseFocusSession();});
+    window.addEventListener('pagehide',()=>{pauseFocusSession();focusWork.clear();});
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing) void reloadSaved();
         if (event.persisted) void refreshLanguages(true);
