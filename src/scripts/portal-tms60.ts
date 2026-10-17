@@ -57,7 +57,7 @@ if(root){
         refresh.hidden=!operationAllowed('summary')&&!operationAllowed('continue');disconnect.hidden=false;return;
       }
       if(!['ready','empty'].includes(envelope.status) || !envelope.data)throw new Error('Unavailable');
-      if(operation==='summary' && operationAllowed('summary'))publishFaithTmsDue(envelope,true);
+      if(operation==='summary' && operationAllowed('summary'))publishFaithTmsDue({status:envelope.status,observedAt:envelope.observedAt,expiresAt:envelope.expiresAt,data:{dueTaskCount:envelope.data.dueTaskCount,dueVerseCount:envelope.data.dueVerseCount,newVerseCount:envelope.data.newVerseCount}},true);
       publishOwnerContinue(envelope);
       if(import.meta.env.PUBLIC_HUB_WORKFLOWS_PRIVATE==='staged-v1')integratedWorkflows.publish(envelope);
       for(const item of envelope.data.items){
