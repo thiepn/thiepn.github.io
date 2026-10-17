@@ -141,7 +141,7 @@ test('identity transition erases device results without transferring consent to 
 test('absent native databases are empty without persisting new databases', async ({page}) => {
   await fixture(page); await page.evaluate(({KEY,grant})=>localStorage.setItem(KEY,JSON.stringify(grant)),{KEY,grant});
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click(); await expect(page.locator('[data-library-status]')).toContainText('No matching saved progress');
-  expect(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name).filter(name=>!['thiepn-adaptive-workspace','thiepn-hub-account'].includes(name)))).toEqual([]);
+  expect(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name).filter((name): name is string => typeof name === 'string' && !['thiepn-adaptive-workspace','thiepn-hub-account'].includes(name)))).toEqual([]);
 });
 test('native progress events erase the prior snapshot and require reconnection', async ({page}) => {
   await fixture(page); await seed(page); await connect(page);
