@@ -7,7 +7,7 @@ function updateFaithTms(){
   if(!element || document.hidden)return;
   const granted=getFaithTmsDue();
   const weekly=document.querySelector<HTMLElement>('[data-fd1-review-tms60]');
-  if(weekly)weekly.textContent='TMS60: '+buildFaithReviewSignals({folio:null,mdd:null,tms:granted})[2].detail;
+  if(weekly)weekly.textContent='TMS60: '+(buildFaithReviewSignals({folio:null,mdd:null,tms:granted})[2]?.detail??'TMS60 status unavailable');
   element.textContent=granted
     ? `TMS60 authorized summary: ${granted.dueTaskCount} review tasks across ${granted.dueVerseCount} due verses · ${granted.newVerseCount} new verses (observed ${granted.observedAt}).`
     : 'TMS60 progress is unavailable until the original TMS60 Hub summary is authorized and opened.';
@@ -28,7 +28,7 @@ function showMdd(){
   const box=mddStatus();if(!box || document.hidden)return;
   if(mddSummary && Date.parse(mddSummary.expiresAt)>Date.now()){
     const weekly=document.querySelector<HTMLElement>('[data-fd1-review-mdd]');
-    if(weekly)weekly.textContent='My Daily Devotion: '+buildFaithReviewSignals({folio:null,mdd:mddSummary,tms:null})[1].detail;
+    if(weekly)weekly.textContent='My Daily Devotion: '+(buildFaithReviewSignals({folio:null,mdd:mddSummary,tms:null})[1]?.detail??'MDD status unavailable');
     const r=mddSummary.reading;
     box.textContent=(mddSummary.week ? 'Seven-day original MDD evidence was shared. ' : '')+(r.status==='assigned'
       ? `Explicit MDD device summary: ${r.completed} of ${r.assigned} original readings`
@@ -37,7 +37,7 @@ function showMdd(){
   } else {
     mddSummary=null;
     const weekly=document.querySelector<HTMLElement>('[data-fd1-review-mdd]');
-    if(weekly)weekly.textContent='My Daily Devotion: '+buildFaithReviewSignals({folio:null,mdd:null,tms:null})[1].detail;
+    if(weekly)weekly.textContent='My Daily Devotion: '+(buildFaithReviewSignals({folio:null,mdd:null,tms:null})[1]?.detail??'MDD status unavailable');
     box.textContent='My Daily Devotion owns reading and reflection records; no current device-only summary has been shared in this tab.';
   }
 }
