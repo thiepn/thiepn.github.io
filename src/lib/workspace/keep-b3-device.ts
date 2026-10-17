@@ -36,8 +36,8 @@ export type KeepWriteAuthorization = () => boolean;
 export class KeepDeviceAuthorizationExpired extends Error {
   constructor(){super('Hub source session changed; original KEEP write refused.');}
 }
-function ownerCanWrite(allowed?:KeepWriteAuthorization):boolean {
-  try{return !allowed || allowed()===true;}catch{return false;}
+export function keepWriteAuthorized(allowed:KeepWriteAuthorization):boolean {
+  try{return allowed()===true;}catch{return false;}
 }
 export class KeepDeviceConflict extends Error {
   constructor(){super('KEEP changed in another tab. Reopen its original record before editing.');}
@@ -101,7 +101,7 @@ export async function readKeepDevice():Promise<KeepDeviceResult>{
   finally {db.close();}
 }
 /** Create one original KEEP B3 note only inside an existing unencrypted owner database. */
-export async function createKeepDeviceNote(changes:{title:string;content:string;pinned:boolean}, allowed?:KeepWriteAuthorization):Promise<string>{
+export async function createKeepDeviceNote(changes:{title:string;content:string;pinned:boolean}, allowed:KeepWriteAuthorization):Promise<string>{
   if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
     throw new Error('Invalid KEEP note title or content.');
   const db=await connectExisting();
@@ -117,7 +117,7 @@ export async function createKeepDeviceNote(changes:{title:string;content:string;
       let cause:Error|null=null;
       const abort=(e:Error)=>{cause=e;tx.abort();};
       if(!vaultAllowed())abort(new Error('KEEP vault changed; creation refused.'));
-      else if(!ownerCanWrite(allowed))abort(new KeepDeviceAuthorizationExpired());
+      else if(!keepWriteAuthorized(allowed))abort(new KeepDeviceAuthorizationExpired());
       else tx.objectStore(KEEP_NOTES_STORE).add(original);
       tx.oncomplete=()=>resolve();
       tx.onabort=()=>reject(cause??tx.error??new Error('KEEP creation aborted.'));
@@ -129,7 +129,7 @@ export async function createKeepDeviceNote(changes:{title:string;content:string;
 
 /** Original B3 note ID + fields, revision-guarded, single-record atomic transaction. */
 export async function updateKeepDevice(
-  id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean},allowed?:KeepWriteAuthorization
+  id:string,originalUpdatedAt:string,changes:{title:string;content:string;pinned:boolean},allowed:KeepWriteAuthorization
 ):Promise<KeepEditReceipt>{
   if(!changes.title.trim()||changes.title.length>1000||changes.content.length>500000)
     throw new Error('KEEP title/content outside original editor limits.');
@@ -144,7 +144,7 @@ export async function updateKeepDevice(
       const row=store.get(id);
       row.onsuccess=()=>{
         if(!vaultAllowed())return abort(new Error('KEEP vault changed during edit.'));
-        if(!ownerCanWrite(allowed))return abort(new KeepDeviceAuthorizationExpired());
+        if(!keepWriteAuthorized(allowed))return abort(new KeepDeviceAuthorizationExpired());
         const record:unknown=row.result;
         if(!eligibleKeepNote(record)||record.archived||record.trashed||
             record.updatedAt!==originalUpdatedAt) return abort(new KeepDeviceConflict());
@@ -165,7 +165,7 @@ export async function updateKeepDevice(
 }
 
 /** Toggle one original KEEP checklist entry without translating it to a Hub task. */
-export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string,allowed?:KeepWriteAuthorization):Promise<KeepEditReceipt>{
+export async function toggleKeepDeviceChecklist(noteId:string,revision:string,itemId:string,allowed:KeepWriteAuthorization):Promise<KeepEditReceipt>{
   const db=await connectExisting();
   try {
     return await new Promise<KeepEditReceipt>((resolve,reject)=>{
@@ -176,7 +176,7 @@ export async function toggleKeepDeviceChecklist(noteId:string,revision:string,it
       const get=store.get(noteId);
       get.onsuccess=()=>{
         const raw=get.result;
-        if(!ownerCanWrite(allowed))return abort(new KeepDeviceAuthorizationExpired());
+        if(!keepWriteAuthorized(allowed))return abort(new KeepDeviceAuthorizationExpired());
         if(!vaultAllowed()||!eligibleKeepNote(raw)||raw.archived||raw.trashed||raw.updatedAt!==revision)
           return abort(new KeepDeviceConflict());
         const matches=raw.checklist.filter(item=>item.id===itemId);
@@ -195,7 +195,7 @@ export async function toggleKeepDeviceChecklist(noteId:string,revision:string,it
 }
 
 /** One-step guarded source recovery. The original record is retained only in RAM. */
-export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed?:KeepWriteAuthorization):Promise<void>{
+export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed:KeepWriteAuthorization):Promise<void>{
   if(!eligibleKeepNote(receipt.original))throw new Error('Invalid KEEP undo receipt.');
   const db=await connectExisting();
   try{
@@ -207,7 +207,7 @@ export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed?:KeepWr
       const get=store.get(receipt.original.id);
       get.onsuccess=()=>{
         const current=get.result;
-        if(!ownerCanWrite(allowed))return abort(new KeepDeviceAuthorizationExpired());
+        if(!keepWriteAuthorized(allowed))return abort(new KeepDeviceAuthorizationExpired());
         if(!vaultAllowed()||!eligibleKeepNote(current)||current.archived||current.trashed||
           current.updatedAt!==receipt.writtenAt)return abort(new KeepDeviceConflict());
         const restored={...structuredClone(receipt.original),
@@ -223,7 +223,7 @@ export async function undoKeepDeviceEdit(receipt:KeepEditReceipt,allowed?:KeepWr
 }
 
 /** Restore one original bounded P29 revision, atomically, after exact CAS validation. */
-export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:string,revisionId:string,allowed?:KeepWriteAuthorization):Promise<KeepEditReceipt>{
+export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:string,revisionId:string,allowed:KeepWriteAuthorization):Promise<KeepEditReceipt>{
   const db=await connectExisting();
   try {
     return await new Promise<KeepEditReceipt>((resolve,reject)=>{
@@ -233,7 +233,7 @@ export async function restoreKeepDeviceRevision(noteId:string,originalUpdatedAt:
       const req=store.get(noteId);
       req.onsuccess=()=>{
         const record:unknown=req.result;
-        if(!ownerCanWrite(allowed))return abort(new KeepDeviceAuthorizationExpired());
+        if(!keepWriteAuthorized(allowed))return abort(new KeepDeviceAuthorizationExpired());
         if(!vaultAllowed()||!eligibleKeepNote(record)||record.archived||record.trashed||
           record.updatedAt!==originalUpdatedAt)return abort(new KeepDeviceConflict());
         const previous=prepareKeepRevisionRestore(record,revisionId);
