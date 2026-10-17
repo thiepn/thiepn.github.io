@@ -1,5 +1,20 @@
-.ws-study-c1{margin-block:1rem;padding:1rem}.ws-study-c1 header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.6rem}
-.ws-study-c1 header h2{font-size:1.1rem;margin:0}.ws-study-c1-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.ws-study-c1 li{display:flex;justify-content:space-between;gap:.7rem;padding:.5rem 0;border-bottom:1px solid #ccc}
-.ws-study-c1 li strong,.ws-study-c1 li small{display:block;overflow-wrap:anywhere}.ws-study-c1 li small{opacity:.7}
-@media(max-width:900px){.ws-study-c1-grid{grid-template-columns:1fr}}[data-hub-study-panel][hidden]{display:none!important}
+.ws-study-c1{margin-block:1rem;padding:1.25rem;min-width:0}
+.ws-study-c1>header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.65rem}
+.ws-study-c1>header div{margin-right:auto}.ws-study-c1>header h2{font-size:1.12rem;margin:.15rem 0}
+.ws-study-c1 .ws-study-c1-grid{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr));gap:1.3rem}
+.ws-study-c1 .ws-study-c1-grid>section,.ws-study-c1-day{min-width:0}
+.ws-study-c1 h3{font-size:1rem;margin:1.1rem 0 .65rem}
+.ws-study-c1 h4{font-size:.87rem;margin:.6rem 0 .3rem}
+.ws-study-c1 ul{list-style:none;padding:0;margin:0}
+.ws-study-c1 li{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.55rem 0;border-bottom:1px solid var(--ws-border,#d1d5db)}
+.ws-study-c1 li strong,.ws-study-c1 li small{display:block;overflow-wrap:anywhere}
+.ws-study-c1 li small{opacity:.75;margin-top:.2rem;font-size:.8rem}
+.ws-study-c1 li a{flex-shrink:0;align-self:center;text-decoration:underline}
+.ws-study-c1-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.6rem}
+.ws-study-c1-day{border:1px solid var(--ws-border,#d1d5db);padding:.65rem}
+.ws-study-c1-warning{font-weight:600}
+.ws-study-c1-disclosure{font-size:.87rem;opacity:.8}
+.ws-study-c1-overdue{margin-top:.75rem}
+@media(max-width:1050px){.ws-study-c1 .ws-study-c1-grid{grid-template-columns:1fr 1fr}.ws-study-c1 .ws-study-c1-grid>section:first-child{grid-column:span 2}}
+@media(max-width:650px){.ws-study-c1{padding:.8rem}.ws-study-c1 .ws-study-c1-grid{grid-template-columns:1fr}.ws-study-c1 .ws-study-c1-grid>section:first-child{grid-column:auto}.ws-study-c1-days{grid-template-columns:1fr}}
+[data-hub-study-panel][hidden]{display:none!important}
