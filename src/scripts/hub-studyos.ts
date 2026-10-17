@@ -13,7 +13,7 @@ if(root&&target){
     (workspace.dataset.view==="calendar"||
       (workspace.dataset.view==="home"&&workspace.dataset.homeMode==="today"));
   const currentDay=()=>{
-    const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const zone=workspace.dataset.calendarZone||Intl.DateTimeFormat().resolvedOptions().timeZone;
     const parts=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"})
       .formatToParts(new Date());
     return ["year","month","day"].map(k=>parts.find(v=>v.type===k)!.value).join("-");
@@ -77,7 +77,7 @@ if(root&&target){
     }else paint();
   }
   new MutationObserver(onContextChange).observe(root,{
-    attributes:true,attributeFilter:["data-view","data-home-mode","data-calendar-private"]});
+    attributes:true,attributeFilter:["data-view","data-home-mode","data-calendar-private","data-calendar-zone"]});
   window.addEventListener("popstate",onContextChange);
   // Native Hub can update the selected calendar date using pushState without popstate.
   window.addEventListener("click",()=>queueMicrotask(onContextChange));
