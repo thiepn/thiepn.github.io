@@ -425,7 +425,7 @@ for (const width of [1440,390]) {
     const results=Promise.all(['notes','folders','saved_searches'].map(name=>new Promise<number>((done,fail)=>{
       const count=tx.objectStore(name).count();count.onsuccess=()=>done(count.result);count.onerror=()=>fail(count.error);
     })));
-    void results.then(([notes,folders,searches])=>{db.close();resolve({version:db.version,stores,notes,folders,searches})},reject);
+    void results.then(values=>{db.close();resolve({version:db.version,stores,notes:values[0]!,folders:values[1]!,searches:values[2]!})},reject);
    };
   }));
   expect(stored.version).toBe(1);
