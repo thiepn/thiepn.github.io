@@ -18,6 +18,7 @@ interface NativeManifest {
   jsSha256:string;
   cssSha256:string;
   assets:Record<string,string>;
+  inputSha256:Record<string,string>;
 }
 export interface OriginalKeepAuthority {
   mayMount():boolean;
@@ -29,6 +30,12 @@ interface OriginalKeepModule {
 const PREFIX='/keep-b3-native/';
 // Immutable manifest digest of the supplied K6 original KEEP B3 source tree.
 const EXPECTED_SOURCE_SHA256='415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58';
+const EXPECTED_INPUTS:Record<string,string>={
+  'hub-embed/entry.tsx':'f4148f9940a892295d64fe993344eaa173ba6ddbc6f19d05c46cd0d269988fe8',
+  'hub-embed/vite.config.ts':'084560c67eb08f0413c97edafc04f16b4f1e15bb7e9c9ceea5aad8eb375581c7',
+  'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
+  'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
+};
 const SHA=/^[a-f0-9]{64}$/u;
 const CONTENT_JS=/javascript|ecmascript/u;
 const CONTENT_CSS=/css/u;
@@ -51,7 +58,11 @@ export function validKeepNativeManifest(value:unknown):value is NativeManifest {
       name!=='manifest.json'&&!name.includes('..')&&SAFE_ASSET.test(name)&&
       typeof digest==='string'&&SHA.test(digest))&&
     (v.assets as Record<string,string>)[v.entry as string]===v.jsSha256&&
-    (v.assets as Record<string,string>)[v.css as string]===v.cssSha256;
+    (v.assets as Record<string,string>)[v.css as string]===v.cssSha256&&
+    !!v.inputSha256&&typeof v.inputSha256==='object'&&!Array.isArray(v.inputSha256)&&
+    Object.keys(v.inputSha256).length===Object.keys(EXPECTED_INPUTS).length&&
+    Object.entries(EXPECTED_INPUTS).every(([name,expected])=>
+      (v.inputSha256 as Record<string,unknown>)[name]===expected);
 }
 /** Reuse an existing original KEEP owner DB; never silently initialize another one. */
 async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<void>{
