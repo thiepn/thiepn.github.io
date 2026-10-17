@@ -70,7 +70,7 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  await task(page, 'Keep existing Home data');
  await page.locator('.ws-brand a').click(); await expect(page).toHaveURL(origin + '/');
  await expect(page.locator('[data-unified-today]')).toContainText('Keep existing Home data');
- await expect(page.locator('[data-library-pilot]').toHaveCount(0);
+ await expect(page.locator('[data-library-pilot]')).toHaveCount(0);
  await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
  await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
