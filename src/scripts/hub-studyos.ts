@@ -40,6 +40,10 @@ if(root&&target&&["home","calendar"].includes(root.dataset.view||"")){
   document.addEventListener("visibilitychange",()=>{if(document.hidden)reset()});
   new MutationObserver(()=>{if(consented&&!visible())reset();else paint()})
     .observe(root,{attributes:true,attributeFilter:["data-home-mode","data-calendar-private"]});
-  window.addEventListener("popstate",paint);
+  const refreshIfRangeChanged=()=>{
+    if(consented&&state.kind==="ready"&&visible()&&state.data.coverage.from!==selectedDay())void load();
+  };
+  window.addEventListener("click",refreshIfRangeChanged);
+  window.addEventListener("popstate",()=>{refreshIfRangeChanged();paint()});
   paint();
 }
