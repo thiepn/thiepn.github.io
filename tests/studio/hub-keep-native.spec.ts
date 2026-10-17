@@ -402,3 +402,68 @@ for(const width of [1440,390]){
   expect(errors).toEqual([]);
  });
 }
+
+
+for (const width of [1440,390]) {
+ test('first-use original KEEP creates an empty B3 vault only by owner consent '+width,async({page})=>{
+  test.setTimeout(90000);
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/knowledge/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const before=await page.evaluate(async()=>((await indexedDB.databases()).map(db=>db.name)));
+  expect(before).not.toContain('KeepNotesDB');
+  await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action=knowledge-native-create]').click();
+  await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1,{timeout:45000});
+  const stored=await page.evaluate(async()=>await new Promise<{version:number;stores:string[];notes:number;folders:number;searches:number}>((resolve,reject)=>{
+   const req=indexedDB.open('KeepNotesDB');
+   req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    const db=req.result,stores=Array.from(db.objectStoreNames);
+    const tx=db.transaction(['notes','folders','saved_searches'],'readonly');
+    const results=Promise.all(['notes','folders','saved_searches'].map(name=>new Promise<number>((done,fail)=>{
+      const count=tx.objectStore(name).count();count.onsuccess=()=>done(count.result);count.onerror=()=>fail(count.error);
+    })));
+    void results.then(([notes,folders,searches])=>{db.close();resolve({version:db.version,stores,notes,folders,searches})},reject);
+   };
+  }));
+  expect(stored.version).toBe(1);
+  expect(stored.stores).toEqual(['folders','notes','saved_searches','settings']);
+  expect({notes:stored.notes,folders:stored.folders,searches:stored.searches}).toEqual({notes:0,folders:0,searches:0});
+  await page.locator('[data-keep-native-exit]').click();
+  await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action=knowledge-native-start]').click();
+  await expect(page.locator('[data-keep-native-host][data-keep-original-react-active=true]')).toHaveCount(1,{timeout:45000});
+  await page.locator('[data-keep-native-exit]').click();
+ });
+}
+
+test('first-use original KEEP never overwrites an existing owner database',async({page})=>{
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+  const o=indexedDB.open('KeepNotesDB',1);
+  o.onupgradeneeded=()=>o.result.createObjectStore('notes',{keyPath:'id'});
+  o.onerror=()=>reject(o.error);
+  o.onsuccess=()=>{
+   const db=o.result,tx=db.transaction('notes','readwrite');
+   tx.objectStore('notes').put({id:'original-keep-safe',title:'Do not change',content:'owner source'});
+   tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error);
+  };
+ }));
+ await page.locator('[data-action=knowledge-mode][data-id=keep]').click();
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('[data-action=knowledge-native-create]').click();
+ await expect(page.locator('[data-workspace-toast]')).toContainText('already exists');
+ const existing=await page.evaluate(async()=>await new Promise<any>((resolve,reject)=>{
+  const o=indexedDB.open('KeepNotesDB');o.onerror=()=>reject(o.error);
+  o.onsuccess=()=>{
+   const db=o.result,req=db.transaction('notes').objectStore('notes').get('original-keep-safe');
+   req.onsuccess=()=>{db.close();resolve(req.result)};req.onerror=()=>reject(req.error);
+  };
+ }));
+ expect(existing).toMatchObject({id:'original-keep-safe',title:'Do not change',content:'owner source'});
+ await expect(page.locator('[data-keep-native-host]')).toBeHidden();
+});
