@@ -43,3 +43,7 @@ test-results-tracker-history/
 test-results-release-merge/
 test-results-sso-discovery/
 test-results-sso-library/
+
+# Generated locally from the verified ORIGINAL KEEP B3 source; never auto-publish.
+/public/keep-b3-native/
+/public/.keep-native-staging-*/
