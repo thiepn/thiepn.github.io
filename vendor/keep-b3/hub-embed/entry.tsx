@@ -6,6 +6,7 @@
 import React, { StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import App from '../src/App';
+import { createEmptyOriginalKeepHubDatabase } from '../src/services/storage';
 import { vaultEncryptionService } from '../src/pkm/encryption/vaultEncryptionService';
 import '../src/index.css';
 
@@ -19,6 +20,20 @@ export interface KeepMountHandle {
   unmount(): void;
   isEncrypted(): boolean;
   isUnlocked(): boolean;
+}
+
+/**
+ * Owner-initiated first-use enrollment on the current Hub origin.
+ * Uses the ORIGINAL storage v1 schema, never initializes note content.
+ * Calling this cannot mount React, unlock a vault or replace existing data.
+ */
+export async function createOriginalKeepEmptyHubWorkspace(authority: KeepHubMountAuthority): Promise<void> {
+  if (!authority || authority.revoked.aborted || !authority.mayMount() ||
+      activeHandle || document.querySelector('[data-keep-original-react-active="true"]'))
+    throw new Error('KEEP enrollment requires an authorized inactive Hub owner session.');
+  await createEmptyOriginalKeepHubDatabase(authority.revoked);
+  if (authority.revoked.aborted || !authority.mayMount())
+    throw new Error('KEEP owner session expired after local enrollment.');
 }
 
 const ACTIVE_FLAG = 'data-keep-original-react-active';
