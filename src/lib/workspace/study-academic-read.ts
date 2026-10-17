@@ -74,7 +74,7 @@ export function parseAcademic(v:unknown,now=Date.now()):AcademicRead{
   if(!obj(s)||!uuid(s.id)||!str(s.name,120)||!str(s.timezone,80)||!zoneValid(s.timezone)||
     !obj(c)||!["complete","partial"].includes(String(c.status))||
     !Array.isArray(c.reasons)||c.reasons.length>16||c.reasons.some(x=>!str(x,80))||
-    !date(c.from)||!Number.isSafeInteger(c.days)||c.days<1||c.days>21||
+    !date(c.from)||!number(c.days,21)||!Number.isSafeInteger(c.days)||c.days<1||
     c.truncated!==(c.reasons.length>0)||c.status!==(c.reasons.length?"partial":"complete")||
     c.calendarCoverage!=="not_included"||c.academicCandidates!=="not_published"||
     !Array.isArray(v.candidates)||v.candidates.length!==0||

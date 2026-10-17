@@ -22,7 +22,7 @@ if(root&&target){
     const from=new URLSearchParams(location.search).get("date");
     const isDay=!!from&&/^\d{4}-\d{2}-\d{2}$/.test(from)&&
       Number.isFinite(Date.parse(from+"T12:00:00Z"))&&new Date(from+"T12:00:00Z").toISOString().slice(0,10)===from;
-    const day=workspace.dataset.view==="calendar"&&isDay?from:currentDay();
+    const day=workspace.dataset.view==="calendar"&&isDay&&from?from:currentDay();
     return workspace.dataset.view==="calendar"?academicWeekStart(day):day;
   };
   const clearTimer=()=>{if(expiresTimer!==null){clearTimeout(expiresTimer);expiresTimer=null;}};
