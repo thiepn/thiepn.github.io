@@ -64,7 +64,8 @@ test('populated workspace remains readable and keyboard scrollable in both theme
 });
 
 test('root workspace, Apps catalogue and legacy Home share navigation and saved data', async ({page}) => {
- await page.goto('/home/'); await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ // Legacy planner fixture opts into Workspace; bare /home/ intentionally opens Today.
+ await page.goto('/home/?mode=workspace'); await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  const origin = new URL(page.url()).origin;
  await task(page, 'Keep existing Home data');
  await page.locator('.ws-brand a').click(); await expect(page).toHaveURL(origin + '/');
