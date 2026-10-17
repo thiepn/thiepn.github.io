@@ -47,3 +47,37 @@ test('mobile retains Today, Apps and Tasks as direct navigation, with Plan in Mo
   }));
   expect(widths.document).toBeLessThanOrEqual(widths.viewport);
 });
+
+
+test('mobile approved Folio share appears in native seven-day Today and clears without copying',async({page,context})=>{
+  test.setTimeout(60_000);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.locator('[data-workbench-source-actions]')).toContainText('Hub-only view');
+  await context.route('**/folio/?hubBridge=*',route=>route.fulfill({
+    status:200,contentType:'text/html',body:
+      '<!doctype html><html><body><button id="share">Share Folio once</button><script>'+
+      'document.getElementById("share").onclick=()=>{'+
+      'const nonce=new URL(location.href).searchParams.get("hubBridge");'+
+      'window.opener.postMessage({type:"thiepn:folio-hub-daily:v1",nonce,'+
+      'snapshot:{schema:"thiepn:folio-hub-daily",version:1,source:"folio-local-device",'+
+      'generatedAt:new Date().toISOString(),date:new Date().toISOString().slice(0,10),'+
+      'pendingCount:1,overdueCount:0,notes:[],habits:[],'+
+      'tasks:[{id:"owner-folio-task",title:"Folio owner only",priority:"high",plannedToday:true}],'+
+      'events:[]}},location.origin);};</script></body></html>'
+  }));
+  const opened=page.waitForEvent('popup');
+  await page.locator('[data-workbench-source-actions] [data-action=connect-folio]').click();
+  const popup=await opened;
+  await popup.getByRole('button',{name:'Share Folio once'}).click();
+  await expect(page.locator('[data-today-workbench]')).toContainText('Folio owner only');
+  await expect(page.locator('[data-folio-workbench-day]')).toHaveCount(7);
+  await expect(page.locator('[data-workbench-source-actions]')).toContainText('Folio shared once');
+  await page.locator('[data-workbench-source-actions] [data-action=disconnect-folio]').click();
+  await expect(page.locator('[data-today-workbench]')).not.toContainText('Folio owner only');
+  await expect(page.locator('[data-folio-workbench-day]')).toHaveCount(0);
+  await expect(page.locator('[data-workbench-source-actions]')).toContainText('Hub-only view');
+  const width=await page.evaluate(()=>document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(390);
+  await popup.close();
+});
