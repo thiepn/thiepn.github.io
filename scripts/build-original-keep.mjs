@@ -24,7 +24,7 @@ const check=(filename)=>{
 };
 const digest=data=>createHash('sha256').update(data).digest('hex');
 const manifestBytes=check('hub-embed/SOURCE_SHA256.json');
-if(digest(manifestBytes)!=='7dd190d70b957622e2cf37b8e134cd01937f8c0709882c95099df195399a87a0')
+if(digest(manifestBytes)!=='9301b04a4979c2288adeffcab53c63cc0d62dcc04f3d441e71007e29841d9c63')
   throw new Error('This is not the pinned original KEEP B3 source tree.');
 const originals=JSON.parse(manifestBytes.toString('utf8'));
 const names=Object.keys(originals);
