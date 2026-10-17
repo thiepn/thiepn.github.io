@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {initialState} from '../../src/lib/workspace/model';
 import {taskSnapshot} from '../../src/lib/workspace/weekly-followthrough';
 import {prepareDistributedWeek,applyDistributedWeek} from '../../src/lib/workspace/distributed-planning';
-import {freshFolioPlanningShare,folioDayLoad,folioPlanningDays,renderFolioPlanningContinuity} from '../../src/lib/workspace/folio-continuity';
+import {freshFolioPlanningShare,folioDayLoad,folioPlanningDays,folioConflictActions,renderFolioPlanningContinuity} from '../../src/lib/workspace/folio-continuity';
 import type {FolioDeviceSnapshot} from '../../src/lib/workspace/folio-device';
 import type {Task} from '../../src/lib/workspace/types';
 
@@ -83,5 +83,21 @@ describe('original Folio day/week continuity',()=>{
   expect(s.tasks.map(task=>task.id)).toEqual(['first','second']);
   expect(s.events).toHaveLength(0);
   expect(()=>applyDistributedWeek(s,originals,'2026-10-19',3,shared())).toThrow('changed');
+ });
+ it('routes source-shared overlap review only to the original Hub event, never the Folio owner',()=>{
+  const state=hub(),source=shared(),before=JSON.stringify(state),original=JSON.stringify(source);
+  const clashes=folioConflictActions(state,['2026-10-20','2026-10-20','2026-10-21'],source,now);
+  expect(clashes).toHaveLength(1);
+  expect(clashes[0]).toMatchObject({day:'2026-10-20',hubEventId:'hub-meeting',
+   folioTitle:'Folio <meeting>',minutes:30});
+  const html=renderFolioPlanningContinuity(state,'2026-10-20','day',source,now);
+  expect(html).toContain('data-folio-conflict-review');
+  expect(html).toContain('data-action="review-event-time" data-id="hub-meeting"');
+  expect(html).not.toContain('data-id="owner-block"');
+  expect(html).toContain('Folio &lt;meeting&gt;');
+  expect(folioConflictActions(state,['2026-10-20'],null,now)).toEqual([]);
+  expect(folioConflictActions(state,['2026-10-20'],source,now+16*60_000)).toEqual([]);
+  expect(JSON.stringify(state)).toBe(before);
+  expect(JSON.stringify(source)).toBe(original);
  });
 });

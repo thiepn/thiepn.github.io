@@ -3,7 +3,7 @@
  * Source records are projections only: original IDs never become Hub task/event IDs.
  * No Folio store, background reads, inferred availability, or source write authority.
  */
-import {dayKey, weekDays} from './model';
+import {dayKey, validDate, weekDays} from './model';
 import {reviewDay, type AgendaMode} from './planning-review';
 import {compareApprovedFolioTime} from './source-time-review';
 import type {FolioDeviceSnapshot} from './folio-device';
@@ -46,6 +46,30 @@ export function folioDayLoad(snapshot:FolioDeviceSnapshot,day:string,zone:string
   return {day,tasks,blocks,timed:blocks.filter(e=>!e.allDay).length,
     allDay:blocks.filter(e=>e.allDay).length,
     overlapPairs:compareApprovedFolioTime(startOfDay,sourceForDay).length};
+}
+export interface FolioConflictReview {
+  day:string;hubEventId:string;hubTitle:string;folioTitle:string;minutes:number;
+}
+/** Read only original Hub and fresh approved Folio event IDs; never modify the source. */
+export function folioConflictActions(state:WorkspaceState,days:readonly string[],
+  shared:FolioDeviceSnapshot|null,now=Date.now(),limit=12):readonly FolioConflictReview[] {
+  const active=freshFolioPlanningShare(shared,now);if(!active)return [];
+  const result:FolioConflictReview[]=[],seen=new Set<string>();
+  const max=Number.isSafeInteger(limit)&&limit>0?Math.min(limit,24):12;
+  for(const day of days.slice(0,7)){
+    if(!validDate(day)||seen.has(day))continue;seen.add(day);
+    const source=folioDayLoad(active,day,state.preferences.timezone,state);
+    const pairs=compareApprovedFolioTime(reviewDay(state,day).timed,
+      {...active,events:source.blocks});
+    for(const pair of pairs){
+      // Only the original local Hub event can enter the existing reviewed writer.
+      if(!state.events.some(e=>e.id===pair.hubEventId))continue;
+      result.push({day,hubEventId:pair.hubEventId,hubTitle:pair.hubTitle,
+        folioTitle:pair.folioTitle,minutes:pair.minutes});
+      if(result.length>=max)return result;
+    }
+  }
+  return result;
 }
 export function folioPlanningDays(
   snapshot:FolioDeviceSnapshot,anchor:string,mode:AgendaMode,hub:WorkspaceState,
@@ -94,10 +118,20 @@ export function renderFolioPlanningContinuity(
       (row.tasks.length>4||row.blocks.length>4?'<p>More shared items may exist; open Folio for the full view.</p>':'')+
       '</li>';
   }).join('');
+  const conflicts=folioConflictActions(state,days.map(d=>d.day),active,now);
+  const reviews=conflicts.map(c=>'<li class="ws-folio-conflict-row"><div><strong>'+
+    esc(c.hubTitle)+'</strong><small>'+esc(c.day)+' · Folio: '+esc(c.folioTitle)+
+    ' · '+c.minutes+' min overlap</small></div><button type="button" class="ws-unified-action"'+
+    ' data-action="review-event-time" data-id="'+esc(c.hubEventId)+'">Review Hub event</button></li>').join('');
+  const reviewPanel='<section class="ws-folio-conflict-actions" data-folio-conflict-review>'+
+    '<header><h4>Review overlapping calendar commitments</h4><small>Hub event only · Folio read-only</small></header>'+
+    (reviews?'<ul>'+reviews+'</ul>':'<p>No conflicts found in this limited share; not a free-time check.</p>')+
+    (conflicts.length>=12?'<p>Up to 12 conflicts shown; check both owners for more.</p>':'')+
+    '<p>Opens the original Hub event review. Changes require explicit confirmation and never modify Folio.</p></section>';
   return '<section class="ws-folio-continuity" data-folio-continuity>'+
     '<header><div><p class="ws-home-eyebrow">One-time owner share · '+esc(active.date)+'</p>'+
     '<h3>Folio beside your Hub plan</h3></div><div>'+buttons+open+'</div></header>'+
-    '<ol class="ws-folio-days">'+rows+'</ol>'+
+    reviewPanel+'<ol class="ws-folio-days">'+rows+'</ol>'+
     '<p class="ws-plan-provenance">Folio owns every displayed task and event. Its share contains up to '+
     '12 tasks and 12 event blocks, may omit additional work, and does not prove free time. '+
     'Nothing shown here is imported, completed, rescheduled, or synced into Hub. '+

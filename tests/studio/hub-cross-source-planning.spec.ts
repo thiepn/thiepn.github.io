@@ -128,3 +128,46 @@ test('Folio owner share continues into Calendar week and optional reviewed Hub-o
  await expect(page.locator('[data-folio-continuity]')).not.toContainText('Source-owned Folio plan');
  await owned.close();
 });
+
+
+test('approved Folio collision opens original Hub reviewed event form without modifying Folio',async({page,context})=>{
+  test.setTimeout(60_000);
+  await ready(page,'/home/calendar/?date=2027-02-10');
+  await page.locator('[data-action=new-event]').first().click();
+  await page.getByLabel('Event',{exact:true}).fill('Hub appointment to review');
+  await page.getByLabel('Start date',{exact:true}).fill('2027-02-10');
+  await page.getByLabel('End date',{exact:true}).fill('2027-02-10');
+  await page.getByLabel('Start time',{exact:true}).fill('09:00');
+  await page.getByLabel('End time',{exact:true}).fill('10:00');
+  await page.locator('[data-dialog-submit]').click();
+  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
+  await context.route('**/folio/?hubBridge=*',route=>route.fulfill({
+    status:200,contentType:'text/html',body:
+    '<!doctype html><html><body><button id="share">Approve Folio</button><script>'+
+    'document.getElementById("share").onclick=()=>{const nonce=new URL(location.href).searchParams.get("hubBridge");'+
+    'window.opener.postMessage({type:"thiepn:folio-hub-daily:v1",nonce,'+
+    'snapshot:{schema:"thiepn:folio-hub-daily",version:1,source:"folio-local-device",'+
+    'generatedAt:new Date().toISOString(),date:new Date().toISOString().slice(0,10),'+
+    'pendingCount:0,overdueCount:0,tasks:[],notes:[],habits:[],'+
+    'events:[{id:"folio-owned",title:"Folio-only commitment",kind:"event",allDay:false,'+
+    'start:"2027-02-10T08:30:00.000Z",end:"2027-02-10T10:30:00.000Z"}]'+
+    '}},location.origin);};</script></body></html>'
+  }));
+  const opening=page.waitForEvent('popup');
+  await page.locator('[data-folio-continuity] [data-action=connect-folio]').click();
+  const popup=await opening;
+  await popup.getByRole('button',{name:'Approve Folio'}).click();
+  const conflict=page.locator('[data-folio-conflict-review]');
+  await expect(conflict).toContainText('Hub appointment to review');
+  await expect(conflict).toContainText('Folio-only commitment');
+  await conflict.locator('[data-action=review-event-time]').first().click();
+  await expect(page.locator('[data-review-event-move]')).toBeVisible();
+  await expect(page.locator('[data-review-event-move]')).toContainText('Hub appointment to review');
+  await expect(page.locator('[data-workspace-dialog] [name=confirm]')).not.toBeChecked();
+  await page.locator('[data-workspace-dialog] [data-action=close-dialog]').first().click();
+  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
+  await page.locator('[data-folio-continuity] [data-action=disconnect-folio]').click();
+  await expect(page.locator('[data-folio-conflict-review]')).toHaveCount(0);
+  await expect(page.locator('[data-planning-review]')).toContainText('Hub appointment to review');
+  await popup.close();
+});

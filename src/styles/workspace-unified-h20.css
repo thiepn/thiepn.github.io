@@ -178,3 +178,15 @@
 .ws-workbench-source-day strong{font-size:10px;color:var(--ws-ink);}
 .ws-workbench-source-day .ws-workbench-conflict{color:var(--ws-warning,#af7334);}
 @media(max-width:680px){.ws-workbench-source-actions .ws-unified-action{min-height:44px;}}
+
+/* Cross-owner collision review calls the existing Hub event editor. */
+.ws-folio-conflict-actions{display:grid;gap:10px;min-width:0;border:1px solid var(--ws-line);border-radius:7px;padding:13px;background:var(--ws-surface);}
+.ws-folio-conflict-actions>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
+.ws-folio-conflict-actions h4{font-size:13px;font-weight:700;}
+.ws-folio-conflict-actions small,.ws-folio-conflict-actions>p{font-size:11px;color:var(--ws-muted);line-height:1.5;}
+.ws-folio-conflict-actions ul{display:grid;list-style:none;padding:0;margin:0;}
+.ws-folio-conflict-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0;border-top:1px solid var(--ws-line);}
+.ws-folio-conflict-row>div{display:grid;gap:4px;min-width:0;flex:1 1 200px;}
+.ws-folio-conflict-row strong{font-size:12px;overflow-wrap:anywhere;}
+.ws-folio-conflict-row small{overflow-wrap:anywhere;}
+.ws-folio-conflict-row button{min-height:44px;}

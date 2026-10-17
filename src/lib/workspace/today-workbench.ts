@@ -5,7 +5,7 @@
  */
 import { addDays, formatTrackerValue, trackerTotal } from './model';
 import { reviewDay } from './planning-review';
-import { freshFolioPlanningShare, folioDayLoad } from './folio-continuity';
+import { freshFolioPlanningShare, folioDayLoad, folioConflictActions } from './folio-continuity';
 import type { FolioDeviceSnapshot } from './folio-device';
 import type { WorkspaceState, Task, Note, Tracker } from './types';
 
@@ -97,6 +97,14 @@ export function renderTodayWorkbench(
   const approved=freshFolioPlanningShare(shared,now);
   const folioDays=projectFolioWorkbench(state,day,approved,now);
   const sharedByDate=new Map(folioDays.map(row=>[row.date,row]));
+  const conflicts=folioConflictActions(state,data.days.map(row=>row.date),approved,now);
+  const conflictPanel=conflicts.length?'<section class="ws-folio-conflict-actions" data-today-folio-conflicts>'+
+    '<header><h4>Cross-calendar conflicts to review</h4><small>Hub event changes only · approved Folio share</small></header>'+
+    '<ul>'+conflicts.map(c=>'<li class="ws-folio-conflict-row"><div><strong>'+esc(c.hubTitle)+
+      '</strong><small>'+esc(c.day)+' · Folio: '+esc(c.folioTitle)+' · '+
+      c.minutes+' min overlap</small></div>'+
+      btn('review-event-time','Review Hub event',c.hubEventId)+'</li>').join('')+'</ul>'+
+    '<p>Only source-shared conflicts are shown; no Folio appointment is edited.</p></section>':'';
   const days=data.days.map((entry,index)=>{
     const owner=sharedByDate.get(entry.date);
     const folioSummary=owner?'<div class="ws-workbench-source-day" data-folio-workbench-day="'+esc(entry.date)+'">'+
@@ -151,7 +159,7 @@ export function renderTodayWorkbench(
     (shared?'<button type="button" data-action="disconnect-folio" class="ws-unified-action">Clear share</button>':'')+
     '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>'+
     '<ol class="ws-workbench-week" aria-label="Next seven calendar days">'+days+'</ol>'+
-    '<div class="ws-workbench-panels">'+
+    conflictPanel+'<div class="ws-workbench-panels">'+
     '<section aria-labelledby="ws-next-tasks"><header><h4 id="ws-next-tasks">Coming up</h4><a href="/home/tasks/?filter=upcoming">All upcoming ('+
     data.upcomingCount+')</a></header>'+(tasks?'<ul>'+tasks+'</ul>':
       '<p class="ws-unified-empty">No additional Hub task deadlines over the next six days.</p>')+

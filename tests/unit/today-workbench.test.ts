@@ -104,4 +104,21 @@ describe('native Today execution workbench',()=>{
     expect(JSON.stringify(s)).toBe(before);
     expect(JSON.stringify(folio)).toBe(sourceBefore);
   });
+  it('offers native Hub event review only when original-owner Folio shares show an overlap',()=>{
+    const state=fixture(),now=Date.parse('2026-10-17T12:00:00Z');
+    const folio:FolioDeviceSnapshot={
+      schema:'thiepn:folio-hub-daily',version:1,source:'folio-local-device',
+      generatedAt:new Date(now).toISOString(),date:'2026-10-17',
+      pendingCount:0,overdueCount:0,notes:[],tasks:[],habits:[],
+      events:[{id:'folio-foreign-id',title:'Folio & meeting',kind:'event',
+        allDay:false,start:'2026-10-19T08:30:00Z',end:'2026-10-19T09:15:00Z'}],
+    };
+    const html=renderTodayWorkbench(state,'2026-10-17',folio,now);
+    expect(html).toContain('data-today-folio-conflicts');
+    expect(html).toContain('data-action="review-event-time" data-id="event1"');
+    expect(html).toContain('Folio &amp; meeting');
+    expect(html).not.toContain('data-action="review-event-time" data-id="folio-foreign-id"');
+    expect(renderTodayWorkbench(state,'2026-10-17',null,now)).not.toContain('data-today-folio-conflicts');
+    expect(renderTodayWorkbench(state,'2026-10-17',folio,now+16*60_000)).not.toContain('data-today-folio-conflicts');
+  });
 });
