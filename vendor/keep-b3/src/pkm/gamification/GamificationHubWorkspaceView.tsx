@@ -98,7 +98,7 @@ export const GamificationHubWorkspaceView: React.FC = () => {
   const handleUnlockNode = (node: SkillNode) => {
     const success = gamificationEngine.unlockSkillNode(node.id);
     if (success) {
-      soundscapeService.playSuccessChime();
+      soundscapeService.playCompletionChime();
       setSelectedNode(node);
     }
   };
@@ -106,7 +106,7 @@ export const GamificationHubWorkspaceView: React.FC = () => {
   const handleClaimQuest = (questId: string) => {
     const success = gamificationEngine.claimQuest(questId);
     if (success) {
-      soundscapeService.playSuccessChime();
+      soundscapeService.playCompletionChime();
     }
   };
 
