@@ -224,3 +224,29 @@
 .ws-focus-work-actions button{min-height:42px;}
 .ws-focus-work-actions button:disabled{opacity:.48;cursor:not-allowed;}
 @media(max-width:640px){.ws-focus-work{padding:11px;}.ws-focus-work-fields{grid-template-columns:minmax(0,1fr);}.ws-focus-work-field:first-child{grid-column:auto;}.ws-focus-work-actions button{min-height:44px;}}
+
+/* Original Notes reminders: read-only native planner/horizon with source controls. */
+.ws-notes-reminder-continuity,.ws-notes-reminder-horizon{display:grid;gap:11px;padding:14px;border:1px solid var(--ws-line);background:var(--ws-surface);border-radius:7px;min-width:0;}
+.ws-notes-reminder-continuity>header,.ws-notes-reminder-horizon>header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 14px;}
+.ws-notes-reminder-continuity h3{font-size:16px;}
+.ws-notes-reminder-horizon h4{font-size:13px;font-weight:700;}
+.ws-notes-reminder-continuity p,.ws-notes-reminder-horizon p{color:var(--ws-muted);font-size:11px;line-height:1.6;}
+.ws-notes-reminder-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.ws-notes-reminder-actions button{min-height:40px;}
+.ws-notes-reminder-actions a,.ws-notes-reminder-item a{font-size:11px;color:var(--ws-accent);padding:8px;display:inline-flex;align-items:center;min-height:36px;text-decoration:none;}
+.ws-notes-reminder-actions a:hover,.ws-notes-reminder-item a:hover{text-decoration:underline;}
+.ws-notes-reminder-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;}
+.ws-notes-reminder-days>section{display:grid;align-content:start;gap:8px;min-width:0;background:var(--ws-soft);border:1px solid var(--ws-line);border-radius:5px;padding:9px;}
+.ws-notes-reminder-days>section>header{display:grid;gap:5px;}
+.ws-notes-reminder-days>section>header strong{font-size:11px;}
+.ws-notes-reminder-days>section>header small,.ws-notes-reminder-horizon header small{color:var(--ws-muted);font-size:10px;line-height:1.4;}
+.ws-notes-reminder-days ul,.ws-notes-reminder-horizon ul,.ws-notes-reminder-earlier ul{margin:0;padding:0;list-style:none;display:grid;gap:0;}
+.ws-notes-reminder-item{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 0;border-top:1px solid var(--ws-line);min-width:0;}
+.ws-notes-reminder-item>div{flex:1 1 150px;min-width:0;display:grid;gap:4px;}
+.ws-notes-reminder-item strong{font-size:11px;overflow-wrap:anywhere;}
+.ws-notes-reminder-item small{font-size:10px;line-height:1.45;color:var(--ws-muted);overflow-wrap:anywhere;}
+.ws-notes-reminder-earlier{display:grid;gap:6px;}
+.ws-notes-reminder-earlier h4,.ws-notes-reminder-earlier h5{font-size:12px;font-weight:700;}
+.ws-notes-reminder-provenance{border-top:1px solid var(--ws-line);padding-top:10px;margin:0;}
+@media(max-width:1150px){.ws-notes-reminder-days{grid-template-columns:repeat(4,minmax(0,1fr));}}
+@media(max-width:680px){.ws-notes-reminder-days{grid-template-columns:repeat(2,minmax(0,1fr));}.ws-notes-reminder-continuity,.ws-notes-reminder-horizon{padding:11px;}.ws-notes-reminder-actions button,.ws-notes-reminder-actions a,.ws-notes-reminder-item a{min-height:44px;}}

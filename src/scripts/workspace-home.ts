@@ -42,6 +42,7 @@ import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type 
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
+import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -197,6 +198,13 @@ async function setup(root: HTMLElement) {
         folioStatus = 'disconnected';
         folioOwner = null;
     }
+    function authorizedNotesPlanningSnapshot():NotesDeviceSummary|null {
+        if(!state || locked || privacyHeld || state.preferences.hidden ||
+           notesSourceStatus!=='ready')return null;
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return scope&&notesSourceOwner===scope?notesSource:null;
+    }
     function authorizedFolioPlanningSnapshot():FolioDeviceSnapshot|null {
         if(!state || locked || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
         const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
@@ -285,7 +293,12 @@ async function setup(root: HTMLElement) {
         }
         const sourceWorkbench=root.querySelector<HTMLElement>('[data-today-workbench]');
         if(sourceWorkbench && view==='home' && state && !privacyHeld && !state.preferences.hidden) {
-            sourceWorkbench.outerHTML=renderTodayWorkbench(state,today(),authorizedFolioPlanningSnapshot());
+            sourceWorkbench.outerHTML=renderTodayWorkbench(state,today(),authorizedFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot());
+        }
+        const notesReminderPanel=root.querySelector<HTMLElement>('[data-notes-reminder-continuity]');
+        if(notesReminderPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden){
+            notesReminderPanel.outerHTML=renderNotesCalendarContinuity(
+                selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
         }
         const folioPlannerPanel=root.querySelector<HTMLElement>('[data-folio-continuity]');
         if (folioPlannerPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden) {
@@ -805,13 +818,13 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,authorizedFolioPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,authorizedFolioPlanningSnapshot())}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus(),authorizedFolioPlanningSnapshot())+
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus(),authorizedFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot())+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},

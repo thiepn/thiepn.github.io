@@ -7,6 +7,8 @@ import { addDays, formatTrackerValue, trackerTotal } from './model';
 import { reviewDay } from './planning-review';
 import { freshFolioPlanningShare, folioDayLoad, folioConflictActions } from './folio-continuity';
 import type { FolioDeviceSnapshot } from './folio-device';
+import type { NotesDeviceSummary } from './notes-device';
+import {renderNotesTodayHorizon} from './notes-reminder-continuity';
 import type { WorkspaceState, Task, Note, Tracker } from './types';
 
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({
@@ -92,6 +94,7 @@ const btn=(action:string,name:string,id:string)=>'<button type="button" data-act
   action+'" data-id="'+esc(id)+'" class="ws-unified-action">'+esc(name)+'</button>';
 export function renderTodayWorkbench(
   state:WorkspaceState,day:string,shared:FolioDeviceSnapshot|null=null,now=Date.now(),
+  notes:NotesDeviceSummary|null=null,
 ):string {
   const data=projectTodayWorkbench(state,day);
   const approved=freshFolioPlanningShare(shared,now);
@@ -159,7 +162,7 @@ export function renderTodayWorkbench(
     (shared?'<button type="button" data-action="disconnect-folio" class="ws-unified-action">Clear share</button>':'')+
     '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>'+
     '<ol class="ws-workbench-week" aria-label="Next seven calendar days">'+days+'</ol>'+
-    conflictPanel+'<div class="ws-workbench-panels">'+
+    conflictPanel+renderNotesTodayHorizon(day,state.preferences.timezone,notes,now)+'<div class="ws-workbench-panels">'+
     '<section aria-labelledby="ws-next-tasks"><header><h4 id="ws-next-tasks">Coming up</h4><a href="/home/tasks/?filter=upcoming">All upcoming ('+
     data.upcomingCount+')</a></header>'+(tasks?'<ul>'+tasks+'</ul>':
       '<p class="ws-unified-empty">No additional Hub task deadlines over the next six days.</p>')+
