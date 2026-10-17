@@ -121,13 +121,13 @@
 
 /* P1: one action-first owner queue. Existing source cards remain the detailed
    review surface; no cross-owner data is saved by the presentation. */
-.ws-source-queue{display:grid;gap:12px;padding:18px 20px;border:1px solid var(--ws-border);background:var(--ws-surface);min-width:0;}
+.ws-source-queue{display:grid;gap:12px;padding:18px 20px;border:1px solid var(--ws-line);background:var(--ws-surface);min-width:0;}
 .ws-source-queue>header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
 .ws-source-queue h3{font-size:17px;line-height:1.35;letter-spacing:-.025em;margin:0;}
 .ws-source-queue-eyebrow{font-size:11px;color:var(--ws-muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 5px;}
 .ws-source-queue>header>small{color:var(--ws-muted);font-size:11px;}
 .ws-source-queue>ul{list-style:none;margin:0;padding:0;display:grid;gap:0;}
-.ws-source-queue-item{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:10px 0;border-top:1px solid var(--ws-border);}
+.ws-source-queue-item{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:10px 0;border-top:1px solid var(--ws-line);}
 .ws-source-queue-item>div{display:grid;min-width:0;gap:3px;}
 .ws-source-queue-item strong{font-size:13px;line-height:1.35;overflow-wrap:anywhere;}
 .ws-source-queue-item small{font-size:11px;color:var(--ws-muted);line-height:1.5;overflow-wrap:anywhere;}
