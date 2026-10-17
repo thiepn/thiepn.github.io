@@ -8,9 +8,9 @@ describe('FD1 owner-approved action source revision',()=>{
    habits:[{id:'original-habit-1',title:'Prayer',target:1,value:0,
      status:'open',updatedAt:new Date(now-1000).toISOString()}]};
  it('retains optional original habit revision without fabricating it',()=>{
-   expect(parseFolioDeviceSnapshot(v,now).habits[0].updatedAt).toBe(v.habits[0].updatedAt);
+   expect(parseFolioDeviceSnapshot(v,now).habits[0]!.updatedAt).toBe(v.habits[0]!.updatedAt);
    const old={...v,habits:[{id:'id',title:'Practice',target:1,value:0,status:'open'}]};
-   expect(parseFolioDeviceSnapshot(old,now).habits[0].updatedAt).toBeUndefined();
+   expect(parseFolioDeviceSnapshot(old,now).habits[0]!.updatedAt).toBeUndefined();
  });
  it('refuses malformed CAS metadata before rendering owner actions',()=>{
    expect(()=>parseFolioDeviceSnapshot({...v,habits:[{...v.habits[0],updatedAt:'fake'}]},now)).toThrow();
