@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Offline-only source-qualified builder for ORIGINAL KEEP B3.
- * Run: node scripts/build-original-keep.mjs /path/to/extracted/K6/source
+ * Run: node scripts/build-original-keep.mjs /path/to/checked-out KEEP PR #1 source
  * The original source is not silently downloaded, installed or migrated.
  * Generated public assets remain gitignored until separately authorized.
  */
@@ -24,11 +24,11 @@ const check=(filename)=>{
 };
 const digest=data=>createHash('sha256').update(data).digest('hex');
 const manifestBytes=check('hub-embed/SOURCE_SHA256.json');
-if(digest(manifestBytes)!=='415ae18e0c1ca2ca4ac8e424a2f13fa7ff2717edcebdfc8e02c933a54ee4ee58')
+if(digest(manifestBytes)!=='de1dd047ecf0e1d3ae5456c5a26663fae3966fdf1122c5d86f5544811c527e90')
   throw new Error('This is not the pinned original KEEP B3 source tree.');
 const originals=JSON.parse(manifestBytes.toString('utf8'));
 const names=Object.keys(originals);
-if(names.length!==1269||!names.includes('src/App.tsx')||
+if(names.length!==1271||!names.includes('src/App.tsx')||
    !names.includes('src/pkm/workspace/NoteWorkspaceView.tsx')||
    !names.includes('src/pkm/encryption/vaultEncryptionService.ts')||
    !names.includes('src/services/storage.ts'))throw new Error('Not the complete original KEEP B3 source.');
@@ -39,7 +39,7 @@ for(const [name,checksum] of Object.entries(originals)){
 }
 const pinnedInputs={
   'hub-embed/entry.tsx':'f4148f9940a892295d64fe993344eaa173ba6ddbc6f19d05c46cd0d269988fe8',
-  'hub-embed/vite.config.ts':'084560c67eb08f0413c97edafc04f16b4f1e15bb7e9c9ceea5aad8eb375581c7',
+  'hub-embed/vite.config.ts':'7d1ca4bf20954164fdf03a646dbe2bfd6476ce7b26a5f4ece0130c2668114c08',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
 };
