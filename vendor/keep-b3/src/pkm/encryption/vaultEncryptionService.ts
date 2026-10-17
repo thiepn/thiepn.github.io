@@ -50,7 +50,10 @@ export class VaultEncryptionService {
 
   constructor() {
     this.loadPersistedHeader();
-    this.attachAutoLockListeners();
+    // Standalone KEEP retains its original global lifecycle. In native Hub,
+    // wait until the authenticated React mount explicitly owns this session.
+    if (typeof document === 'undefined' || !document.querySelector('[data-keep-native-host]'))
+      this.attachAutoLockListeners();
   }
 
   // --- State & Status Queries ---
@@ -497,6 +500,20 @@ export class VaultEncryptionService {
     return await decryptAesGcm(this.activeVaultKey, ciphertext, iv);
   }
 
+  /**
+   * Original KEEP vault lifecycle under a native Hub React mount.
+   * The keys remain owned by this service; no Hub passphrase/key handling.
+   */
+  beginHubSession(): void {
+    this.attachAutoLockListeners();
+  }
+
+  endHubSession(): void {
+    // lockVault invalidates in-flight Argon2id operations even without a header.
+    this.lockVault();
+    this.detachAutoLockListeners();
+  }
+
   // --- Auto-Lock Settings & Timers ---
 
   updateAutoLockMinutes(minutes: number): void {
@@ -526,6 +543,11 @@ export class VaultEncryptionService {
     }, timeoutMs);
   }
 
+  private onBeforeUnload = () => {
+    ++this.keyOperationEpoch;
+    this.activeVaultKey = null;
+  };
+
   private recordUserActivity = () => {
     this.lastActivityTimestamp = Date.now();
     if (this.securityStatus === 'unlocked') {
@@ -539,12 +561,17 @@ export class VaultEncryptionService {
     window.addEventListener('mousemove', this.recordUserActivity, { passive: true });
     window.addEventListener('keydown', this.recordUserActivity, { passive: true });
     window.addEventListener('touchstart', this.recordUserActivity, { passive: true });
-    window.addEventListener('beforeunload', () => {
-      // In-memory key will be cleared when page unloads
-      this.activeVaultKey = null;
-    });
-
+    window.addEventListener('beforeunload', this.onBeforeUnload);
     this.isAutoLockListenerAttached = true;
+  }
+
+  private detachAutoLockListeners(): void {
+    if (typeof window === 'undefined' || !this.isAutoLockListenerAttached) return;
+    window.removeEventListener('mousemove', this.recordUserActivity);
+    window.removeEventListener('keydown', this.recordUserActivity);
+    window.removeEventListener('touchstart', this.recordUserActivity);
+    window.removeEventListener('beforeunload', this.onBeforeUnload);
+    this.isAutoLockListenerAttached = false;
   }
 }
 
