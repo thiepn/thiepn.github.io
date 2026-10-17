@@ -33,6 +33,7 @@ import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type R
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
+import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
 import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
@@ -96,7 +97,7 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
-    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number;folio:FolioDeviceSnapshot|null}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
@@ -182,6 +183,12 @@ async function setup(root: HTMLElement) {
         folioSnapshot = null;
         folioStatus = 'disconnected';
         folioOwner = null;
+    }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        if(!state || locked || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+          hubIdentity.status==='signed-out'?'guest':null;
+        return scope && folioOwner===scope ? freshFolioPlanningShare(folioSnapshot):null;
     }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
@@ -772,7 +779,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,activeFolioPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
@@ -1199,14 +1206,18 @@ async function setup(root: HTMLElement) {
         const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
         try {
             if(date<today())throw new Error('Choose today or a future starting date.');
-            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw));
+            const useFolio=dialog.querySelector<HTMLInputElement>('[name=includeFolio]')?.checked===true;
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio sharing changed or expired. Refresh and reopen the review.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw),useFolio?pinned:null);
             panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
               <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
                 ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
-              <p>Existing Hub workload counts for these days:</p>
+              <p>${prepared.folioConsidered?'Hub workload plus explicitly shared Folio hints':'Existing Hub workload'} for these days:</p>
               <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
               ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
-              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}</li>`).join('')}</ul>
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}${prepared.folioConsidered?', '+row.folioTasks+' Folio task hints, '+row.folioTimed+' timed and '+row.folioAllDay+' all-day Folio blocks':''}</li>`).join('')}</ul>
               <p>Distribution balances record counts, not task duration or calendar availability.
               It does not create appointments or change imported/owner-app data.</p>`;
         } catch(error) {
@@ -1228,13 +1239,15 @@ async function setup(root: HTMLElement) {
         const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
         const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
         const own=epoch,source=store;
-        activeSpreadReview={snapshots,epoch:own};
+        const availableFolio=activeFolioPlanningSnapshot();
+        activeSpreadReview={snapshots,epoch:own,folio:availableFolio};
         const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
           <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
           <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
             and dates with fewer existing Hub deadlines/events are considered first.</p>
           ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
           ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          ${availableFolio?'<label class="ws-week-confirm"><input type="checkbox" name="includeFolio"/>Consider this one-time Folio snapshot as *partial* day-load hints. The planner changes only Hub task due dates; refresh if the source share expires.</label>':'<p class="ws-muted">Share from Folio separately to optionally include its workload in this task review.</p>'}
           <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
           <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed every proposed due date and authorize changes to these Hub tasks only,
@@ -1251,9 +1264,16 @@ async function setup(root: HTMLElement) {
             if(!validDate(requestedStart) || requestedStart<today())
                 throw new Error('Select a current or future distribution date.');
             const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
-            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon);
+            const useFolio=data.has('includeFolio');
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio share changed or expired. Review the distribution again.');
+            const hint=useFolio?pinned:null;
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon,hint);
             await mutate(next=>{
-                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon);
+                if(useFolio && pinned!==activeFolioPlanningSnapshot())
+                    throw new Error('Folio share changed while saving. No Hub task dates were changed.');
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon,hint);
                 activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
             },'Reviewed multi-day task plan updated');
             if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
