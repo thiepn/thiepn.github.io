@@ -18,9 +18,9 @@ describe('FD1 review provenance without fabricated weekly spiritual metrics',()=
    const rows=buildFaithReviewSignals({folio,mdd,tms},now);
    expect(rows).toHaveLength(3);
    expect(rows.every(row=>row.status==='available')).toBe(true);
-   expect(rows[0].detail).toContain('Not a weekly total');
-   expect(rows[1].detail).toContain('One-day snapshot');
-   expect(rows[2].detail).toContain('not a weekly-completion measure');
+   expect(rows[0]!.detail).toContain('Not a weekly total');
+   expect(rows[1]!.detail).toContain('One-day snapshot');
+   expect(rows[2]!.detail).toContain('not a weekly-completion measure');
    expect(JSON.stringify(rows)).not.toContain('holinessScore');
  });
  it('fails closed on missing or expired owner authorization',()=>{
