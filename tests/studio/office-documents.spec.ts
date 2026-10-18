@@ -1210,3 +1210,25 @@ test('O16 mobile privacy clears section title and disables keyboard insertion an
  await expect(page.locator('[data-office-heading-next]')).toBeDisabled();
  await expect(page.locator('[data-office-heading-previous]')).toBeDisabled();
 });
+
+test('O16 longer code fences never reveal fake section or heading navigation targets',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const tick=String.fromCharCode(96);
+ const content=['# Real',tick.repeat(4)+'md',tick.repeat(3),'## Fake inner heading',tick.repeat(4),'## Actual','Body'].join('\n');
+ await page.locator('[data-office-body]').fill(content);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await expect(page.locator('[data-office-outline] button')).toHaveCount(2);
+ await expect(page.locator('[data-office-outline]')).not.toContainText('Fake inner heading');
+ await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>{el.focus();el.setSelectionRange(0,0);});
+ await page.locator('[data-office-body]').press('Control+Alt+ArrowDown');
+ const start=await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart);
+ expect(start).toBe(content.indexOf('## Actual'));
+ await page.locator('[data-office-section-title]').fill('Proof');
+ await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>{el.focus();el.setSelectionRange(el.value.indexOf('Body'),el.value.indexOf('Body'));});
+ await page.locator('[data-office-body]').press('Control+Shift+Enter');
+ await expect(page.locator('[data-office-body]')).toHaveValue(/## Actual\nBody\n\n## Proof\n$/);
+ await expect(page.locator('[data-office-preview] pre code')).toContainText('## Fake inner heading');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+});
