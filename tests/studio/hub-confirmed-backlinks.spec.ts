@@ -17,5 +17,5 @@ test('original task opens its confirmed Decision backlink without modifying sour
  await expect(page.getByLabel('Decision title')).toHaveValue('Choose a proof strategy');
  await page.locator('[data-workspace-dialog] [aria-label="Close dialog"]').click();
  await page.goto('/home/tasks/?filter=all');
- await expect(page.locator('.ws-task-entry').filter({hasText:'Original proof task'})).toHaveCount(1);
+ // The planner separately projects this same owner task; count only canonical Tasks results.\n await expect(page.locator('.ws-task-results .ws-task-entry').filter({hasText:'Original proof task'})).toHaveCount(1);
 });
