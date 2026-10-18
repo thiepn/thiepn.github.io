@@ -8,6 +8,7 @@ import {getOfficeTemplate} from '../lib/office/templates';
 import {standaloneHtml} from '../lib/office/portable';
 import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport} from '../lib/office/import';
 import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOfficeBackup} from '../lib/office/restore';
+import {exportOfficeBundle} from '../lib/office/bundle';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -16,6 +17,10 @@ if(root && shell){
   const search=pick<HTMLInputElement>('[data-office-search]');
   const sort=pick<HTMLSelectElement>('[data-office-sort]');
   const count=pick<HTMLElement>('[data-office-count]');
+  const bundleCount=pick<HTMLElement>('[data-office-bundle-count]');
+  const bundleButton=pick<HTMLButtonElement>('[data-office-bundle]');
+  const selectVisible=pick<HTMLButtonElement>('[data-office-select-visible]');
+  const clearSelection=pick<HTMLButtonElement>('[data-office-clear-selection]');
   const backup=pick<HTMLButtonElement>('[data-office-backup]');
   const outline=pick<HTMLElement>('[data-office-outline]');
   const outlineEmpty=pick<HTMLElement>('[data-office-outline-empty]');
@@ -50,6 +55,7 @@ if(root && shell){
   function renderPreview(){renderMarkdown(body.value,preview);}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let savedDocuments:OfficeDocument[]=[];
+  const selectedBundle=new Set<string>();
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -83,6 +89,10 @@ if(root && shell){
     restoreConfirm.disabled=!pendingRestore||!restoreNew||!store||blocked||!allowed()||busy;
     restoreCancel.disabled=!pendingRestore||busy;
     search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
+    const canSelect=!!store&&allowed()&&!busy;
+    selectVisible.disabled=!canSelect||!savedDocuments.length;
+    clearSelection.disabled=!canSelect||!selectedBundle.size;
+    bundleButton.disabled=!canSelect||!selectedBundle.size||dirty||!!heldDraft||blocked;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
@@ -118,11 +128,17 @@ if(root && shell){
     for(const rev of [...(active?.history??[])].reverse())
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
   }
+  function selectionStatus(){
+    bundleCount.textContent=selectedBundle.size+' document'+(selectedBundle.size===1?'':'s')+' selected';
+    enable();
+  }
   function renderList(){
     list.replaceChildren();
-    if(!allowed()){count.textContent='Documents hidden';return;}
+    if(!allowed()){count.textContent='Documents hidden';selectionStatus();return;}
     const results=findDocuments(savedDocuments,search.value,sort.value as DocumentSort);
     count.textContent=results.length+' of '+savedDocuments.length+' documents';
+    for(const id of [...selectedBundle])if(!savedDocuments.some(doc=>doc.id===id))selectedBundle.delete(id);
+    selectionStatus();
     if(!results.length){
       const empty=document.createElement('p');empty.className='ws-muted';
       empty.textContent=search.value.trim()?'No documents match this search.':'No documents yet.';
@@ -139,7 +155,17 @@ if(root && shell){
         if(search.value.trim()&&hit.match==='body'&&hit.snippet){
           const excerpt=document.createElement('span');excerpt.className='office-match';excerpt.textContent=hit.snippet;button.append(excerpt);
         }
-        button.addEventListener('click',()=>void select(doc.id));list.append(button);
+        button.addEventListener('click',()=>void select(doc.id));
+        const wrapper=document.createElement('div');wrapper.className='office-entry-row';
+        const checkbox=document.createElement('input');checkbox.type='checkbox';
+        checkbox.dataset.officeSelectId=doc.id;checkbox.setAttribute('aria-label','Select '+doc.title+' for Markdown ZIP');
+        checkbox.checked=selectedBundle.has(doc.id);
+        checkbox.addEventListener('change',()=>{
+          if(!allowed()||!store)return;
+          if(checkbox.checked)selectedBundle.add(doc.id);else selectedBundle.delete(doc.id);
+          selectionStatus();
+        });
+        wrapper.append(checkbox,button);list.append(wrapper);
       }
     };
     if(sort.value==='recent'&&!search.value.trim()&&results.length>5){
@@ -210,7 +236,9 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    clearImport();clearRestore();savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
+    clearImport();clearRestore();selectedBundle.clear();
+    bundleCount.textContent='0 documents selected';
+    savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
     if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
     const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
     // A changed owner must never inherit another owner's in-memory draft.
@@ -340,6 +368,32 @@ if(root && shell){
   })());
   search.addEventListener('input',renderList);
   sort.addEventListener('change',renderList);
+  selectVisible.addEventListener('click',()=>{
+    if(!store||!allowed()||busy)return;
+    for(const result of findDocuments(savedDocuments,search.value,sort.value as DocumentSort))selectedBundle.add(result.doc.id);
+    renderList();
+  });
+  clearSelection.addEventListener('click',()=>{
+    if(!store||!allowed()||busy)return;
+    selectedBundle.clear();renderList();
+  });
+  bundleButton.addEventListener('click',()=>void (async()=>{
+    if(!store||!allowed()||busy||blocked||dirty||heldDraft||!selectedBundle.size)return;
+    const opened=store,ticket=epoch,selection=[...selectedBundle];
+    busy=true;enable();
+    try{
+      const docs=await opened.list();
+      if(ticket!==epoch||opened!==store||!allowed()||dirty||blocked||heldDraft)return;
+      const wanted=new Set(selection),chosen=docs.filter(doc=>wanted.has(doc.id));
+      if(chosen.length!==selection.length)throw new Error('Some selected documents are no longer saved. Choose again.');
+      const archive=exportOfficeBundle(chosen,new Date().toISOString());
+      if(ticket!==epoch||opened!==store||!allowed()||dirty||blocked||heldDraft)return;
+      const bytes=new Uint8Array(archive.byteLength);bytes.set(archive.bytes);
+      downloadBlob(new Blob([bytes],{type:'application/zip'}),'thiepn-office-markdown-'+new Date().toISOString().slice(0,10)+'.zip');
+      message('Exported '+archive.documentCount+' saved Markdown documents in one ZIP. Full revision history is in JSON backups.');
+    }catch(error){if(ticket===epoch)message(error instanceof Error?error.message:'Markdown bundle export failed.');}
+    finally{if(ticket===epoch){busy=false;enable();}}
+  })());
   backup.addEventListener('click',()=>void (async()=>{
     if(!store||!allowed()||busy)return;
     if(dirty||heldDraft||blocked){
