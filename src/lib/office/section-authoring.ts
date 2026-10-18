@@ -22,7 +22,7 @@ export function adjacentDocumentHeading(source:string,caret:number,direction:'pr
 export function documentSectionAt(source:string,caret:number):EditorSection{
  if(source.length>MAX_BODY||!Number.isSafeInteger(caret)||caret<0||caret>source.length)
   throw new Error('Invalid source position.');
- const candidates=documentSections(source).filter(section=>section.offset<=caret&&caret<section.end);
+ const candidates=documentSections(source).filter(section=>section.offset<=caret&&caret<=section.end);
  const chosen=candidates[candidates.length-1];
  if(!chosen)throw new Error('Place the cursor inside a document heading section.');
  return chosen;

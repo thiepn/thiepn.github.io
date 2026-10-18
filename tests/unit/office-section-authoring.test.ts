@@ -40,6 +40,7 @@ describe('Office O16 source-owned section insertion and heading keyboard navigat
   expect(adjacentDocumentHeading(source,target,'previous')).toBe(source.indexOf('### Inner'));
   expect(adjacentDocumentHeading(source,target,'next')).toBe(source.indexOf('# Later'));
   expect(documentSectionAt(source,source.indexOf('detail')).title).toBe('Inner');
+  expect(documentSectionAt(source,source.length).title).toBe('Later');
   expect(()=>adjacentDocumentHeading(source,source.length,'next')).toThrow('No next');
  });
  it('fails closed on invalid title, depth, stale offset and size without partial edits',()=>{

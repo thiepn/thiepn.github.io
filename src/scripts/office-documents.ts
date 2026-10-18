@@ -251,7 +251,7 @@ if(root && shell){
     for(const checkbox of list.querySelectorAll<HTMLInputElement>('input[data-office-select-id]'))checkbox.disabled=!canSelect;
     const sectionsForAuthoring=editing?documentSections(body.value):[];
     const atSelection=sectionsForAuthoring.find(entry=>String(entry.offset)===sectionSelect.value)||
-      (sectionsForAuthoring.length?sectionsForAuthoring.filter(entry=>entry.offset<=body.selectionStart&&body.selectionStart<entry.end).at(-1):null);
+      (sectionsForAuthoring.length?sectionsForAuthoring.filter(entry=>entry.offset<=body.selectionStart&&body.selectionStart<=entry.end).at(-1):null);
     sectionTitle.disabled=!editing;
     sectionAddSibling.disabled=!editing||!atSelection||!sectionTitle.value.trim();
     sectionAddChild.disabled=!editing||!atSelection||atSelection.level>=6||!sectionTitle.value.trim();
