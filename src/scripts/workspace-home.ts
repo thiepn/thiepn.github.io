@@ -48,6 +48,7 @@ import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type H
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
 import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
 import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained,duplicatePresentationLayout} from '../lib/workspace/widget-metadata-safety';
+import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
 import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
@@ -2026,23 +2027,7 @@ async function setup(root: HTMLElement) {
                     Object.assign(s, clone(imported), { revision });
                     return;
                 }
-                const copy = clone(imported), ids = new Map<string, string>();
-            copy.trackers.forEach(t => ids.set(t.id,uid()));
-                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
-                    for (const record of list) {
-                        const id = uid();
-                        ids.set(record.id, id);
-                        record.id = id;
-                    }
-                for (const w of copy.workspaces) {
-                    w.widgets.forEach(widget => {
-                        widget.id = uid();
-                        if (Array.isArray(widget.config.trackerIds))
-                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
-                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
-                    });
-                }
-                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
+                const copy=rebaseAddedHubBackup(imported);
                 s.workspaces.push(...copy.workspaces);
                 s.tasks.push(...copy.tasks);
                 s.notes.push(...copy.notes);
