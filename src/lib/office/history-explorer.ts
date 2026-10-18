@@ -21,7 +21,7 @@ export function searchOfficeHistory(value:OfficeDocument,query:string,caseSensit
  if(query.length>MAX_HISTORY_QUERY)throw new Error('History search is limited to 120 characters.');
  const trimmed=query.trim();
  const needle=caseSensitive?trimmed:trimmed.toLocaleLowerCase();
- return actualRevisions(value).reverse().flatMap((rev,index)=>{
+ return actualRevisions(value).reverse().flatMap<HistorySearchHit>((rev,index)=>{
   if(!needle)return [{
    revision:rev.revision,title:rev.title,updatedAt:rev.updatedAt,
    historical:index!==0,match:'all' as const,snippet:''
