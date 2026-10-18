@@ -560,11 +560,11 @@ test('O9 find and replace literals in the original Markdown editor with revision
  await page.locator('[data-office-replace-value]').fill('$& safe');
  page.once('dialog',dialog=>dialog.accept());
  await page.locator('[data-office-replace-all]').click();
- await expect(page.locator('[data-office-body]')).toHaveValue(/A\.b\? safe A\.b\? safe/);
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\$& safe \$& safe/);
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.reload();
- await expect(page.locator('[data-office-body]')).toHaveValue(/A\.b\? safe A\.b\? safe/);
- await expect(page.locator('[data-office-history] option').count()).resolves.toBeGreaterThan(1);
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\$& safe \$& safe/);
+ expect(await page.locator('[data-office-history] option').count()).toBeGreaterThan(1);
 });
 test('O9 moves sibling Markdown sections with children, preserving preamble and recoverable history',async({page})=>{
  await page.goto('/home/documents/');
@@ -584,7 +584,7 @@ test('O9 moves sibling Markdown sections with children, preserving preamble and 
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.reload();
  await expect(page.locator('[data-office-body]')).toHaveValue('# Course\nPreamble\n## Second\nTwo\n## First\nOne\n### Nested\nInner\n# End\n');
- await expect(page.locator('[data-office-history] option').count()).resolves.toBeGreaterThan(1);
+ expect(await page.locator('[data-office-history] option').count()).toBeGreaterThan(1);
 });
 test('O9 mobile privacy clears find terms, replacement and section selectors',async({page})=>{
  await page.setViewportSize({width:390,height:844});
