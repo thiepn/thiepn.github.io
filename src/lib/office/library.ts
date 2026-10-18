@@ -23,14 +23,16 @@ export function findDocuments(input:readonly OfficeDocument[],rawQuery:string,so
 }
 export function outlineFor(source:string):OutlineHeading[]{
   const lines=source.split('\n');const outline:OutlineHeading[]=[];
-  let offset=0,fence:string|null=null;
+  let offset=0,fence:{marker:string;length:number}|null=null;
   for(let i=0;i<lines.length;i++){
-    const line=lines[i]!,match=line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if(match){
-      const marker=match[1]![0]!;
-      if(!fence)fence=marker;
-      else if(fence===marker)fence=null;
-    }else if(!fence){
+    const line=lines[i]!;
+    const opener=line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if(fence){
+      const closer=line.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
+      if(closer&&closer[1]![0]===fence.marker&&closer[1]!.length>=fence.length)fence=null;
+    }else if(opener){
+      fence={marker:opener[1]![0]!,length:opener[1]!.length};
+    }else{
       const h=line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
       if(h)outline.push({level:h[1]!.length,title:h[2]!.trim(),offset,line:i});
     }

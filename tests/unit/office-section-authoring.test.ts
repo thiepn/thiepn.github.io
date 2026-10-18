@@ -35,6 +35,14 @@ describe('Office O16 source-owned section insertion and heading keyboard navigat
   expect(()=>adjacentDocumentHeading(original,0,'previous')).toThrow('No previous');
   expect(()=>insertOfficeSection(original,original.indexOf('## not a heading'),'Forbidden','child')).toThrow('no longer');
  });
+ it('ignores pseudoheadings behind a shorter delimiter inside a longer code fence',()=>{
+  const tick=String.fromCharCode(96);
+  const document=['# Real',tick.repeat(4)+'md',tick.repeat(3),'## Fake code heading',tick.repeat(4),'## Actual','body'].join('\n');
+  const real=document.indexOf('## Actual');
+  expect(documentSections(document).map(s=>s.title)).toEqual(['Real','Actual']);
+  expect(adjacentDocumentHeading(document,0,'next')).toBe(real);
+  expect(documentSectionAt(document,document.indexOf('Fake')).title).toBe('Real');
+ });
  it('navigates genuine previous/next headings without stepping into fenced Markdown',()=>{
   const target=source.indexOf('## Second');
   expect(adjacentDocumentHeading(source,target,'previous')).toBe(source.indexOf('### Inner'));

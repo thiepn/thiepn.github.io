@@ -29,6 +29,10 @@ describe('Office O9 original Markdown editor navigation',()=>{
   expect(a.end).toBe(b.offset);
   expect(sections[2]?.parent).toBe(a.offset);
  });
+ it('keeps longer Markdown fences open across shorter fake delimiters',()=>{
+   const tick=String.fromCharCode(96),doc=['# Real',tick.repeat(4)+'md',tick.repeat(3),'## Fake',tick.repeat(4),'## Actual','Text'].join('\n');
+   expect(documentSections(doc).map(section=>section.title)).toEqual(['Real','Actual']);
+ });
  it('moves complete same-parent sections, preserving nested source exactly',()=>{
   const doc=['# Root','preamble','## First','F','### Inner','I','## Second','S','# Later',''].join('\n');
   const second=documentSections(doc).find(s=>s.title==='Second')!;
