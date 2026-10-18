@@ -65,7 +65,7 @@
   box-shadow: inset 2px 0 var(--ws-ink);
 }
 .ws .ws-nav a:hover, .ws .ws-nav-link:hover { background: var(--ws-soft); color: var(--ws-ink); }
-.ws .ws-nav-index { margin-left: auto; font-size: 10px; color: var(--ws-meta); }
+.ws .ws-nav a::after { content: attr(data-index); margin-left: auto; font: 400 11px/1.3 'IBM Plex Mono', monospace; color: var(--ws-meta); }
 .ws .ws-workspace-list { border-top: 1px solid var(--ws-line); margin-top: 28px; padding-top: 22px; }
 .ws .ws-workspace-list .ws-label { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; }
 .ws .ws-nav-bottom { border-top: 1px solid var(--ws-line); padding-top: 14px; gap: 2px; }
@@ -167,7 +167,7 @@
 @media (min-width:768px) and (max-width:1279px) {
   [data-workspace-page] .ws { --rail: 64px; }
   .ws .ws-navigation { padding: 0 7px 16px; }
-  .ws .ws-brand-type, .ws .ws-nav-index { display: none; }
+  .ws .ws-brand-type, .ws .ws-nav a::after { display: none; }
   .ws .ws-nav a,.ws .ws-nav-link { justify-content: center; padding: 10px 8px; }
   .ws .ws-main { padding: 25px 22px; }
 }

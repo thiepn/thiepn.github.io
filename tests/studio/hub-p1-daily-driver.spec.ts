@@ -27,19 +27,21 @@ test('desktop P1 Today prioritizes real work and preserves native planning navig
   await expect(page.locator('.ws-nav a[href="/home/calendar/"]')).toHaveAttribute('aria-current','page');
 });
 
-test('mobile retains Today, Apps and Tasks as direct navigation, with Plan in More',async ({page})=>{
+test('mobile PI-04 MENU exposes all original sections with source-safe links',async ({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
   await expect(page.locator('[data-unified-today]')).toBeVisible();
   await expect(page.locator('[data-source-queue]')).toBeVisible();
   const primary=page.locator('.ws-mobile-nav');
-  await expect(primary.locator('a[href="/"]')).toContainText('Today');
-  await expect(primary.locator('a[href="/apps/"]')).toContainText('Apps');
-  await expect(primary.locator('a[href="/home/tasks/"]')).toContainText('Tasks');
+  await expect(primary).toHaveCSS('position','static');
+  await expect(primary.locator('a')).toHaveCount(0);
+  await expect(primary.locator('[data-more-trigger]')).toContainText('MENU');
   await primary.locator('[data-more-trigger]').click();
   await expect(page.locator('#ws-more')).toBeVisible();
   await expect(page.locator('#ws-more a[href="/home/calendar/"]')).toContainText('Plan');
+  for (const section of ['/', '/home/tasks/', '/home/trackers/', '/apps/'])
+    await expect(page.locator('#ws-more a[href="'+section+'"]')).toHaveCount(1);
   await page.locator('[data-more-close]').click();
   await expect(page.locator('#ws-more')).not.toBeVisible();
   const widths=await page.evaluate(()=>({

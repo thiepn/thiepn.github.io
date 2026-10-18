@@ -21,7 +21,26 @@ test('the catalogue stays usable when local storage is blocked',async({page})=>{
  await page.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{get(){throw new DOMException('Blocked','SecurityError');}});});await page.goto('/apps/');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hub.expectedCount);await page.locator('[data-hub-category=tools]').click();await expect(page.locator('[data-hub-item]:visible')).toHaveCount(hub.expectedCategoryCounts.tools);
 });
 test('mobile navigation and search behave the same on Home and Apps',async({page})=>{
- await page.setViewportSize({width:375,height:812});await ready(page,'/apps/');await expect(page.locator('.ws-mobile-nav a')).toHaveCount(3);await expect(page.locator('.ws-mobile-nav>button')).toHaveCount(1);await page.locator('[data-action=search]').click();await expect(page.locator('#workspace-search')).toBeFocused();await page.locator('#workspace-search').fill('PDF');await expect(page.locator('.ws-search-result').first()).toContainText('PDF Studio');await page.keyboard.press('Escape');await expect(page.locator('[data-action=search]')).toBeFocused();await page.locator('.ws-mobile-nav').getByRole('link',{name:'Today',exact:true}).click();await expect(page.locator('.ws-mobile-nav a[aria-current=page]')).toHaveText('Today');await page.locator('.ws-mobile-nav').getByRole('link',{name:'Apps',exact:true}).click();await expect(page.locator('.ws-mobile-nav a[aria-current=page]')).toHaveText('Apps');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+ await page.setViewportSize({width:375,height:812});await ready(page,'/apps/');
+  const menu=page.locator('[data-more-trigger]');
+  await expect(page.locator('.ws-mobile-nav')).toHaveCSS('position','static');
+  await expect(page.locator('.ws-mobile-nav a')).toHaveCount(0);
+  await expect(menu).toContainText('MENU');
+  await page.locator('.ws-topbar [data-action=search]').click();
+  await expect(page.locator('#workspace-search')).toBeFocused();
+  await page.locator('#workspace-search').fill('PDF');
+  await expect(page.locator('.ws-search-result').first()).toContainText('PDF Studio');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.ws-topbar [data-action=search]')).toBeFocused();
+  await menu.click();
+  const sheet=page.locator('[data-more-dialog]');
+  await expect(sheet.getByRole('navigation',{name:'Personal Index sections'}).getByRole('link',{name:'Apps',exact:true})).toHaveAttribute('aria-current','page');
+  await sheet.getByRole('navigation',{name:'Personal Index sections'}).getByRole('link',{name:'Today',exact:true}).click();
+  await expect(page.locator('h1')).toHaveText('Today');
+  await menu.click();
+  await sheet.getByRole('navigation',{name:'Personal Index sections'}).getByRole('link',{name:'Apps',exact:true}).click();
+  await expect(page.locator('h1')).toHaveText('Apps');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
 test('a theme chosen in settings carries across both views',async({page})=>{
  await ready(page,'/apps/');await page.goto('/home/settings/');await page.getByLabel('Theme',{exact:true}).selectOption('dark');await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');const apps=await shell(page);await page.locator('.ws-nav').getByRole('link',{name:'Today',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');const today=await shell(page);expect(today.planner).toBe(0);expect({...today,planner:apps.planner}).toEqual(apps);
@@ -50,7 +69,7 @@ test('core tabs retain the document, shell and capture draft through Back and Fo
 test('mobile More provides secondary destinations and keyboard dismissal',async({page})=>{
  await page.setViewportSize({width:375,height:812});await ready(page);
  const more=page.locator('[data-more-trigger]');await more.click();await expect(page.locator('[data-more-dialog]')).toBeVisible();await page.keyboard.press('Escape');await expect(more).toBeFocused();
- await more.click();await page.locator('[data-more-dialog]').getByRole('link',{name:'Plan',exact:true}).click();await expect(page.locator('h1')).toHaveText('Calendar');await expect(more).toHaveAttribute('aria-current','page');await expect(page.locator('[data-more-dialog]')).not.toBeVisible();await expect(page.locator('h1')).toBeFocused();
+ await more.click();await page.locator('[data-more-dialog]').getByRole('link',{name:'Plan',exact:true}).click();await expect(page.locator('h1')).toHaveText('Calendar');await expect(more).not.toHaveAttribute('aria-current','page');await expect(page.locator('[data-more-dialog]')).not.toBeVisible();await expect(page.locator('h1')).toBeFocused();await more.click();await expect(page.locator('[data-more-dialog] a[href="/home/calendar/"]')).toHaveAttribute('aria-current','page');await page.keyboard.press('Escape');
 });
 test('blocked storage retains in-memory work when switching core tabs',async({page})=>{
  await page.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{get(){throw new DOMException('Blocked','SecurityError');}});});await page.goto('/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toContainText('Unsaved');
