@@ -23,3 +23,23 @@ test('original decision record cannot be silently removed through Customize widg
  await page.goto('/');
  await expect(page.locator('[data-today-decisions]')).toContainText('Keep source decision');
 });
+
+test('duplicating a workspace copies presentation but keeps original decision records in their source workspace',async({page})=>{
+ await page.goto('/');
+ await page.locator('[data-today-decisions] [data-action=new-decision]').click();
+ await page.getByLabel('Decision title').fill('Original choice only');
+ await page.getByLabel('Options, one per line').fill('Continue\\nChange'.replace('\\n','\n'));
+ await page.locator('[data-dialog-submit]').click();
+ await expect(page.locator('[data-today-decisions]')).toContainText('Original choice only');
+ await page.goto('/home/settings/');
+ await page.locator('[data-action=duplicate-workspace]').first().click();
+ await expect(page.locator('[data-workspace-dialog]')).toContainText('stay with the original workspace');
+ await page.getByLabel('Name',{exact:true}).fill('Secondary layout');
+ await page.locator('[data-dialog-submit]').click();
+ await page.goto('/');
+ await expect(page.locator('[data-today-decisions]')).not.toContainText('Original choice only');
+ await page.goto('/?mode=workspace');
+ await page.locator('[data-workspace-id]').first().click();
+ await page.goto('/');
+ await expect(page.locator('[data-today-decisions]')).toContainText('Original choice only');
+});
