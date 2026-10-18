@@ -1626,6 +1626,14 @@ async function setup(root: HTMLElement) {
                 if (!note) s.captureDraft = '';
                 activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
             }, 'Note saved');
+            // Keep the same original Hub note in view after a successful edit.
+            // The previous search may no longer match the new text; never claim
+            // a saved note vanished, and never retain this private query in a URL.
+            if (view==='home' && homeMode==='workspace' && !locked && !privacyHeld &&
+                state && !state.preferences.hidden && !dirty && !conflict &&
+                state.notes.some(n=>n.id===next.id)) {
+                knowledgeQuery='';knowledgeNoteId=next.id;render();
+            }
         });
     }
     function editTracker(id = '') {
