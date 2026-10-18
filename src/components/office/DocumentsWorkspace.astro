@@ -17,11 +17,19 @@ import '../../styles/office-documents.css';
       </div>
       <div data-office-list></div>
       <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
+<div class="office-multi-picker"><label for="office-multi-files">Import multiple Markdown documents</label><input id="office-multi-files" data-office-multi-files type="file" accept=".md,.markdown,text/markdown" multiple disabled/><p class="ws-muted">Select up to 20 files; each 256 KB maximum, 4 MB combined. All files must pass validation before importing any.</p></div>
       <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
       <div class="office-restore-picker"><label for="office-restore-file">Restore an Office backup</label><input id="office-restore-file" type="file" accept=".json,application/json" data-office-restore-file disabled/><p class="ws-muted">Only missing original document IDs will be added. Existing records are never replaced.</p></div>
       <p class="ws-muted">A backup includes saved versions and revision history. Unsaved drafts must be exported separately.</p>
     </nav>
     <section class="office-editor" aria-label="Document editor">
+      <section class="office-multi-review" data-office-multi-panel hidden aria-label="Review multiple Markdown documents">
+        <h3>Review multi-document import</h3>
+        <p class="ws-muted" data-office-multi-summary></p>
+        <p class="ws-muted">Each file becomes a separate new document with a new internal ID. Similar titles are allowed; existing documents and revision histories are never overwritten.</p>
+        <div class="office-multi-list" data-office-multi-list></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-multi-confirm disabled>Import all as new documents</button><button type="button" class="ws-button" data-office-multi-cancel disabled>Cancel</button></div>
+      </section>
       <section class="office-backup-review" data-office-restore-panel hidden aria-label="Review Office backup restoration">
         <h3>Review backup restoration</h3>
         <p data-office-restore-summary class="ws-muted"></p>

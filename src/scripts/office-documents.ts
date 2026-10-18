@@ -9,6 +9,7 @@ import {standaloneHtml} from '../lib/office/portable';
 import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport} from '../lib/office/import';
 import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOfficeBackup} from '../lib/office/restore';
 import {exportOfficeBundle} from '../lib/office/bundle';
+import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -43,6 +44,12 @@ if(root && shell){
   const importRender=pick<HTMLElement>('[data-office-import-render]');
   const importConfirm=pick<HTMLButtonElement>('[data-office-import-confirm]');
   const importCancel=pick<HTMLButtonElement>('[data-office-import-cancel]');
+  const multiFiles=pick<HTMLInputElement>('[data-office-multi-files]');
+  const multiPanel=pick<HTMLElement>('[data-office-multi-panel]');
+  const multiSummary=pick<HTMLElement>('[data-office-multi-summary]');
+  const multiList=pick<HTMLElement>('[data-office-multi-list]');
+  const multiConfirm=pick<HTMLButtonElement>('[data-office-multi-confirm]');
+  const multiCancel=pick<HTMLButtonElement>('[data-office-multi-cancel]');
   const restoreFile=pick<HTMLInputElement>('[data-office-restore-file]');
   const restorePanel=pick<HTMLElement>('[data-office-restore-panel]');
   const restoreSummary=pick<HTMLElement>('[data-office-restore-summary]');
@@ -60,6 +67,11 @@ if(root && shell){
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
   let importNonce=0,pendingImport:({scope:string}&MarkdownImport)|null=null;
+  let multiNonce=0,pendingMulti:{scope:string;docs:readonly MarkdownImport[]}|null=null;
+  function clearMulti(){
+    multiNonce++;pendingMulti=null;multiFiles.value='';
+    multiSummary.textContent='';multiList.replaceChildren();multiPanel.hidden=true;
+  }
   let restoreNonce=0,pendingRestore:({scope:string;filename:string}&ValidatedOfficeBackup)|null=null;
   let restoreNew=0;
   function clearImport(){
@@ -85,6 +97,10 @@ if(root && shell){
     importFile.disabled=!store||blocked||!allowed()||busy;
     importTitle.disabled=importConfirm.disabled=!pendingImport||!store||blocked||!allowed()||busy;
     importCancel.disabled=!pendingImport||busy;
+    multiFiles.disabled=!store||blocked||!allowed()||busy;
+    multiConfirm.disabled=!pendingMulti||!store||blocked||!allowed()||busy;
+    multiCancel.disabled=!pendingMulti||busy;
+    for(const field of multiList.querySelectorAll<HTMLInputElement>('input[data-office-multi-title]'))field.disabled=!pendingMulti||busy||!allowed();
     restoreFile.disabled=!store||blocked||!allowed()||busy;
     restoreConfirm.disabled=!pendingRestore||!restoreNew||!store||blocked||!allowed()||busy;
     restoreCancel.disabled=!pendingRestore||busy;
@@ -238,7 +254,7 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    clearImport();clearRestore();selectedBundle.clear();
+    clearImport();clearMulti();clearRestore();selectedBundle.clear();
     bundleCount.textContent='0 documents selected';
     savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
     if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
@@ -269,6 +285,75 @@ if(root && shell){
       opened.close();if(ticket===epoch){store=null;enable();message(e instanceof Error?e.message:'Office storage is unavailable.');}
     }
   }
+  multiFiles.addEventListener('change',()=>void (async()=>{
+    const chosen=[...(multiFiles.files??[])];
+    clearMulti();
+    if(!chosen.length||!store||blocked||busy||!allowed())return;
+    const opened=store,ticket=epoch,nonce=multiNonce;
+    if(chosen.length>MAX_MULTI_IMPORT_FILES){
+      message('Choose no more than 20 Markdown files. Nothing imported.');return;
+    }
+    if(chosen.some(file=>file.size>MAX_IMPORT_BYTES)||chosen.reduce((sum,file)=>sum+file.size,0)>MAX_MULTI_IMPORT_BYTES){
+      message('Batch exceeds the Markdown size limits. Nothing imported.');return;
+    }
+    try{
+      const inputs=await Promise.all(chosen.map(async file=>({name:file.name,data:await file.arrayBuffer()})));
+      if(ticket!==epoch||nonce!==multiNonce||opened!==store||!allowed())return;
+      const batch=parseMarkdownBatch(inputs);
+      if(ticket!==epoch||nonce!==multiNonce||opened!==store||!allowed())return;
+      pendingMulti={scope:opened.scope,docs:batch.documents};
+      multiSummary.textContent=batch.documents.length+' files · '+batch.bytes+' UTF-8 bytes · each file will receive a new Office document ID';
+      multiList.replaceChildren();
+      for(const [index,doc] of batch.documents.entries()){
+        const section=document.createElement('section');section.className='office-multi-entry';
+        const filename=document.createElement('p');filename.textContent=(index+1)+'. '+doc.sourceName+' · '+doc.bytes+' bytes';
+        const label=document.createElement('label'),id='office-multi-title-'+index;
+        label.htmlFor=id;label.textContent='Document title';
+        const field=document.createElement('input');field.id=id;field.maxLength=120;
+        field.dataset.officeMultiTitle=String(index);field.value=doc.title;
+        const sample=document.createElement('div');sample.className='office-preview office-multi-sample';
+        renderMarkdown(doc.body.slice(0,800),sample);
+        section.append(filename,label,field,sample);multiList.append(section);
+      }
+      multiPanel.hidden=false;enable();
+      message('Review all files and their proposed titles before importing. No records have been written.');
+    }catch(error){
+      if(ticket!==epoch||nonce!==multiNonce||opened!==store||!allowed())return;
+      clearMulti();enable();message(error instanceof Error?error.message:'Markdown batch was rejected. Nothing imported.');
+    }
+  })());
+  multiCancel.addEventListener('click',()=>{
+    clearMulti();enable();message('Multi-document import cancelled. Existing records unchanged.');
+  });
+  multiConfirm.addEventListener('click',()=>void (async()=>{
+    if(!pendingMulti||!store||!allowed()||busy||blocked)return;
+    const plan=pendingMulti,opened=store,ticket=epoch;
+    if(plan.scope!==opened.scope)return;
+    const inputs=[...multiList.querySelectorAll<HTMLInputElement>('input[data-office-multi-title]')];
+    if(inputs.length!==plan.docs.length){message('Review list changed; cancel and select files again.');return;}
+    const records=inputs.map((input,i)=>({title:input.value.trim(),body:plan.docs[i]!.body}));
+    if(records.some(item=>!item.title||item.title.length>120)){
+      message('Every document must have a title of 1–120 characters. Nothing imported.');return;
+    }
+    if(dirty){await persist();if(dirty||blocked||ticket!==epoch||opened!==store||!allowed())return;}
+    if(pendingMulti!==plan||plan.scope!==opened.scope)return;
+    busy=true;enable();
+    try{
+      const created=await opened.createBatch(records);
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      active=created[0]??active;
+      if(created[0]){
+        title.value=created[0].title;body.value=created[0].body;dirty=false;
+        renderPreview();renderOutline();renderHistory();
+      }
+      await refreshList();
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      clearMulti();
+      message('Imported '+created.length+' new Office documents atomically. Existing records and histories unchanged.');
+    }catch(error){
+      if(ticket===epoch)message(error instanceof Error?error.message:'Whole import batch rolled back. No documents imported.');
+    }finally{if(ticket===epoch){busy=false;enable();}}
+  })());
   importFile.addEventListener('change',()=>void (async()=>{
     const file=importFile.files?.[0];
     clearImport();

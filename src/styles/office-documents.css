@@ -83,3 +83,18 @@
 .office-entry-row{display:flex;align-items:flex-start;gap:7px;min-width:0}
 .office-entry-row>input[type=checkbox]{flex:none;margin-top:12px;accent-color:currentColor}
 .office-entry-row>.office-entry{flex:1;min-width:0}
+
+/* O8: bounded, explicit per-file import review. Staged bytes never leave memory. */
+.office-multi-picker{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--ws-line)}
+.office-multi-picker label{font-size:12px;font-weight:650}
+.office-multi-picker input{font-size:12px;max-width:100%}
+.office-multi-picker p{font-size:11px;margin:0;line-height:1.5}
+.office-multi-review{display:grid;gap:12px;padding:16px;background:var(--ws-soft);border:1px solid var(--ws-line);min-width:0}
+.office-multi-review[hidden]{display:none}
+.office-multi-review h3{font-size:16px;margin:0}
+.office-multi-list{display:grid;gap:12px;max-height:470px;overflow-y:auto}
+.office-multi-entry{display:grid;gap:7px;min-width:0;padding:12px;background:var(--ws-surface);border:1px solid var(--ws-line)}
+.office-multi-entry p{font-size:12px;margin:0;overflow-wrap:anywhere}
+.office-multi-entry label{font-size:12px}
+.office-multi-entry input{padding:8px;min-width:0;max-width:100%}
+.office-multi-sample{max-height:160px;overflow:auto;font-size:12px}
