@@ -106,7 +106,14 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
       while(i<lines.length){
         const match=lines[i]!.match(pattern);
         if(!match)break;
-        const li=doc.createElement('li');inline(doc,li,match[1]!);list.append(li);i++;
+        const li=doc.createElement('li'),task=listKind==='ul'?match[1]!.match(/^\[([ xX])\]\s+(.*)$/):null;
+        if(task){
+          const check=doc.createElement('input');
+          check.type='checkbox';check.checked=task[1]!.toLowerCase()==='x';check.disabled=true;
+          check.setAttribute('aria-label',check.checked?'Completed task':'Open task');
+          li.append(check);inline(doc,li,task[2]!);
+        }else inline(doc,li,match[1]!);
+        list.append(li);i++;
       }
       fragment.append(list);continue;
     }
