@@ -73,3 +73,13 @@
 .office-restore-list{max-height:260px;overflow-y:auto;padding:6px 10px;background:var(--ws-surface);border:1px solid var(--ws-line)}
 .office-restore-entry{padding:8px 0;margin:0;border-bottom:1px solid var(--ws-line);font-size:12px;overflow-wrap:anywhere}
 .office-restore-entry:last-child{border:0}
+
+/* O7: explicit saved-document multi-selection with no implicit export. */
+.office-bundle-controls{display:grid;gap:8px;border-top:1px solid var(--ws-line);padding:12px 0}
+.office-bundle-controls p{font-size:11px;margin:0}
+.office-bundle-shortcuts{display:flex;gap:8px;flex-wrap:wrap}
+.office-bundle-shortcuts button{font-size:12px;border:1px solid var(--ws-line);border-radius:4px;background:var(--ws-surface);color:inherit;padding:7px 9px}
+.office-bundle-controls>.ws-button{width:100%}
+.office-entry-row{display:flex;align-items:flex-start;gap:7px;min-width:0}
+.office-entry-row>input[type=checkbox]{flex:none;margin-top:12px;accent-color:currentColor}
+.office-entry-row>.office-entry{flex:1;min-width:0}
