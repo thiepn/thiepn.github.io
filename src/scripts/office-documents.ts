@@ -9,6 +9,7 @@ import {standaloneHtml} from '../lib/office/portable';
 import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport} from '../lib/office/import';
 import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOfficeBackup} from '../lib/office/restore';
 import {exportOfficeBundle} from '../lib/office/bundle';
+import {findEditorText,replaceEditorText,documentSections,moveDocumentSection,type TextMatch} from '../lib/office/navigation';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -25,6 +26,17 @@ if(root && shell){
   const backup=pick<HTMLButtonElement>('[data-office-backup]');
   const outline=pick<HTMLElement>('[data-office-outline]');
   const outlineEmpty=pick<HTMLElement>('[data-office-outline-empty]');
+  const findQuery=pick<HTMLInputElement>('[data-office-find-query]');
+  const findCase=pick<HTMLInputElement>('[data-office-find-case]');
+  const findCount=pick<HTMLElement>('[data-office-find-count]');
+  const findPrevious=pick<HTMLButtonElement>('[data-office-find-previous]');
+  const findNext=pick<HTMLButtonElement>('[data-office-find-next]');
+  const replaceValue=pick<HTMLInputElement>('[data-office-replace-value]');
+  const replaceAll=pick<HTMLButtonElement>('[data-office-replace-all]');
+  const sectionSelect=pick<HTMLSelectElement>('[data-office-section-select]');
+  const sectionFocus=pick<HTMLButtonElement>('[data-office-section-focus]');
+  const sectionUp=pick<HTMLButtonElement>('[data-office-section-up]');
+  const sectionDown=pick<HTMLButtonElement>('[data-office-section-down]');
   const status=pick<HTMLElement>('[data-office-status]');
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
@@ -63,6 +75,7 @@ if(root && shell){
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
+  let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -105,6 +118,12 @@ if(root && shell){
     restoreConfirm.disabled=!pendingRestore||!restoreNew||!store||blocked||!allowed()||busy;
     restoreCancel.disabled=!pendingRestore||busy;
     search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
+    findQuery.disabled=findCase.disabled=replaceValue.disabled=!editing;
+    findPrevious.disabled=findNext.disabled=!editing||matches.length===0;
+    replaceAll.disabled=!editing||matches.length===0||findTruncated;
+    sectionSelect.disabled=!editing||documentSections(body.value).length===0;
+    const selectedSection=documentSections(body.value).find(section=>String(section.offset)===sectionSelect.value);
+    sectionFocus.disabled=sectionUp.disabled=sectionDown.disabled=!editing||!selectedSection;
     const canSelect=!!store&&allowed()&&!busy;
     selectVisible.disabled=!canSelect||!savedDocuments.length;
     clearSelection.disabled=!canSelect||!selectedBundle.size;
@@ -113,14 +132,21 @@ if(root && shell){
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
-    title.value='';body.value='';renderPreview();renderOutline();printSheet.replaceChildren();
-    history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
+    active=null;dirty=false;title.value='';body.value='';
+    renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
+    history.replaceChildren(new Option('History',''));enable();
   }
   function renderOutline(){
     outline.replaceChildren();
     if(!active||!allowed()){outlineEmpty.hidden=false;return;}
     const headings=outlineFor(body.value);
     outlineEmpty.hidden=headings.length>0;
+    const oldSelection=sectionSelect.value;
+    sectionSelect.replaceChildren(new Option('Choose heading',''));
+    for(const heading of documentSections(body.value)){
+      sectionSelect.add(new Option('  '.repeat(heading.level-1)+heading.title,String(heading.offset)));
+    }
+    if(oldSelection&&documentSections(body.value).some(section=>String(section.offset)===oldSelection))sectionSelect.value=oldSelection;
     for(const heading of headings){
       const link=document.createElement('button');link.type='button';
       link.className='office-heading-link';link.dataset.officeHeading=String(heading.offset);
@@ -139,6 +165,35 @@ if(root && shell){
       });
       outline.append(link);
     }
+  }
+  function renderFind(){
+    matches=[];findTruncated=false;
+    if(!active||!allowed()){
+      matchCursor=-1;findCount.textContent='No search';return;
+    }
+    try{
+      const result=findEditorText(body.value,findQuery.value,findCase.checked);
+      matches=result.matches;findTruncated=result.truncated;
+      if(!matches.length)matchCursor=-1;
+      else if(matchCursor>=matches.length)matchCursor=matches.length-1;
+      findCount.textContent=!findQuery.value?'No search':matches.length+(findTruncated?'+':'')+' match'+(matches.length===1&&!findTruncated?'':'es')+(matchCursor>=0?' · '+(matchCursor+1)+' selected':'');
+    }catch(error){matchCursor=-1;findCount.textContent=error instanceof Error?error.message:'Search unavailable';}
+  }
+  function focusEditor(start:number,end:number){
+    if(!active||!allowed()||body.disabled)return;
+    if(root.dataset.officeMode==='preview'){
+      root.dataset.officeMode='write';
+      for(const mode of layoutButtons)mode.setAttribute('aria-pressed',String(mode.dataset.officeMode==='write'));
+    }
+    body.focus();body.setSelectionRange(start,end);
+    const line=body.value.slice(0,start).split('\n').length;
+    body.scrollTop=Math.max(0,(line-3)*22);
+  }
+  function jumpMatch(delta:number){
+    if(!matches.length||body.disabled||!allowed())return;
+    matchCursor=matchCursor<0?(delta>0?0:matches.length-1):(matchCursor+delta+matches.length)%matches.length;
+    const match=matches[matchCursor]!;
+    focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
     history.replaceChildren(new Option('History',''));
@@ -255,6 +310,7 @@ if(root && shell){
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
     clearImport();clearMulti();clearRestore();selectedBundle.clear();
+    findQuery.value='';replaceValue.value='';findCase.checked=false;matches=[];matchCursor=-1;
     bundleCount.textContent='0 documents selected';
     savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
     if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
@@ -508,8 +564,44 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;renderPreview();renderOutline();enable();message('Unsaved edits · autosave pending');queueAutosave();
+    dirty=true;renderPreview();renderOutline();renderFind();enable();message('Unsaved edits · autosave pending');queueAutosave();
   });
+  findQuery.addEventListener('input',()=>{matchCursor=-1;renderFind();enable();});
+  findCase.addEventListener('change',()=>{matchCursor=-1;renderFind();enable();});
+  findNext.addEventListener('click',()=>jumpMatch(1));
+  findPrevious.addEventListener('click',()=>jumpMatch(-1));
+  replaceAll.addEventListener('click',()=>{
+    if(!active||!allowed()||body.disabled||!findQuery.value||findTruncated)return;
+    if(!confirm('Replace all '+matches.length+' occurrences in this document? The previous version remains in Office revision history after saving.'))return;
+    try{
+      const result=replaceEditorText(body.value,findQuery.value,replaceValue.value,findCase.checked);
+      if(!result.count){message('No matches to replace.');return;}
+      body.value=result.value;matchCursor=-1;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Replaced '+result.count+' matches. Autosave pending; prior revisions remain recoverable.');
+    }catch(error){message(error instanceof Error?error.message:'Replacement refused; document unchanged.');}
+  });
+  sectionSelect.addEventListener('change',()=>enable());
+  sectionFocus.addEventListener('click',()=>{
+    if(!active||!allowed()||body.disabled)return;
+    const section=documentSections(body.value).find(entry=>String(entry.offset)===sectionSelect.value);
+    if(section)focusEditor(section.offset,section.end);
+  });
+  function moveSelectedSection(direction:'earlier'|'later'){
+    if(!active||!allowed()||body.disabled)return;
+    const offset=Number(sectionSelect.value);
+    if(!sectionSelect.value||!Number.isSafeInteger(offset))return;
+    try{
+      const result=moveDocumentSection(body.value,offset,direction);
+      body.value=result.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      sectionSelect.value=String(result.offset);
+      enable();focusEditor(result.offset,result.offset);
+      message('Section moved '+direction+'. Autosave pending; original revisions are preserved.');
+    }catch(error){message(error instanceof Error?error.message:'Section cannot be moved.');}
+  }
+  sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
+  sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
   for(const button of formatButtons)button.addEventListener('click',()=>{
     if(button.disabled||!active||!allowed())return;
     const action=button.dataset.officeFormat as FormatAction;

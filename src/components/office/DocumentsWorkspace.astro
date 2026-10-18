@@ -50,9 +50,19 @@ import '../../styles/office-documents.css';
       <div class="office-format" role="toolbar" aria-label="Markdown formatting">
         <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>
       </div>
+      <section class="office-find" aria-label="Find and replace in document">
+        <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
+        <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>
+        <div class="office-find-row"><label for="office-replace-value">Replace with</label><input id="office-replace-value" data-office-replace-value type="text" maxlength="120" autocomplete="off" disabled/><button type="button" data-office-replace-all disabled>Replace all…</button></div>
+      </section>
       <div class="office-modes" role="group" aria-label="Editor layout"><button type="button" data-office-mode="write" aria-pressed="false">Write</button><button type="button" data-office-mode="split" aria-pressed="true">Split</button><button type="button" data-office-mode="preview" aria-pressed="false">Preview</button></div>
       <div class="office-compose"><div class="office-source"><label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea></div><section class="office-preview-panel" aria-label="Markdown preview"><h3>Preview</h3><div data-office-preview class="office-preview" aria-live="off"></div></section></div>
-      <aside class="office-outline" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav></aside>
+      <aside class="office-outline" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav>
+        <div class="office-section-controls" aria-label="Section actions">
+          <label for="office-section-select">Edit a heading section</label><select id="office-section-select" data-office-section-select disabled><option value="">Choose heading</option></select>
+          <div class="office-section-buttons"><button type="button" data-office-section-focus disabled>Select full section</button><button type="button" data-office-section-up disabled>Move earlier</button><button type="button" data-office-section-down disabled>Move later</button></div>
+          <p class="ws-muted">Moves the complete heading and its nested subsections. Changes are saved through the normal revision history.</p>
+        </div></aside>
       <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
     </section>
   </div>
