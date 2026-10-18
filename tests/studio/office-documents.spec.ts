@@ -264,3 +264,104 @@ test('O5 privacy hides staged import contents and disables owner-sensitive contr
  await expect(page.locator('[data-office-import-file]')).toBeDisabled();
  await expect(page.locator('[data-office-import-confirm]')).toBeDisabled();
 });
+
+test('O6 explicitly restores only missing original IDs with intact history and skips collisions',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-title]').fill('Keep original');
+ await page.locator('[data-office-body]').fill('Original data');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ const currentId=await page.locator('[data-office-list] .office-entry').first().getAttribute('data-office-id');
+ expect(currentId).toBeTruthy();
+ const at='2026-10-18T18:00:00.000Z';
+ const first={schemaVersion:1,id:currentId,title:'Malicious overwrite',body:'DO NOT WRITE',revision:0,updatedAt:at,history:[]};
+ const second={schemaVersion:1,id:'restored-original-001',title:'Restored report',body:'# Recovered',revision:2,updatedAt:at,history:[
+   {revision:0,title:'Initial report',body:'Draft zero',updatedAt:at},
+   {revision:1,title:'Revised report',body:'Draft one',updatedAt:at}
+ ]};
+ const data={kind:'thiepn-hub-office-backup',schemaVersion:1,createdAt:at,documents:[first,second]};
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'thiepn-office-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+ await expect(page.locator('[data-office-restore-panel]')).toBeVisible();
+ await expect(page.locator('[data-office-restore-summary]')).toContainText('1 new · 1 same-ID skipped');
+ await expect(page.locator('[data-office-restore-list]')).toContainText('Skip existing ID: Malicious overwrite');
+ await expect(page.locator('[data-office-restore-list]')).toContainText('Add: Restored report');
+ await page.locator('[data-office-restore-cancel]').click();
+ await expect(page.locator('[data-office-restore-panel]')).toBeHidden();
+ await expect(page.locator('[data-office-count]')).toContainText('1 of 1');
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'restore.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+ await expect(page.locator('[data-office-restore-confirm]')).toBeEnabled();
+ await page.locator('[data-office-restore-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('1 added, 1 existing IDs skipped');
+ await expect(page.locator('[data-office-count]')).toContainText('2 of 2');
+ await expect(page.locator('[data-office-body]')).toHaveValue('Original data');
+ await page.locator('[data-office-list] .office-entry').filter({hasText:'Restored report'}).click();
+ await expect(page.locator('[data-office-body]')).toHaveValue('# Recovered');
+ await expect(page.locator('[data-office-history] option')).toHaveCount(3);
+ await page.reload();
+ await expect(page.locator('[data-office-count]')).toContainText('2 of 2');
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'again.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+ await expect(page.locator('[data-office-restore-summary]')).toContainText('0 new · 2 same-ID skipped');
+ await expect(page.locator('[data-office-restore-confirm]')).toBeDisabled();
+});
+test('O6 rejects malformed backup and clears staged review with mobile privacy mask',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-restore-file]')).toBeEnabled();
+ const at='2026-10-18T18:00:00.000Z';
+ const record={schemaVersion:1,id:'safe-backup-1',title:'Sensitive backup',body:'# Private',revision:0,updatedAt:at,history:[]};
+ const backup={kind:'thiepn-hub-office-backup',schemaVersion:1,createdAt:at,documents:[record]};
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({...backup,documents:[record,record]}))});
+ await expect(page.locator('[data-office-status]')).toContainText('duplicate IDs');
+ await expect(page.locator('[data-office-restore-panel]')).toBeHidden();
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'private.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
+ await expect(page.locator('[data-office-restore-panel]')).toBeVisible();
+ await expect(page.locator('[data-office-restore-list]')).toContainText('Sensitive backup');
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-restore-panel]')).toBeHidden();
+ await expect(page.locator('[data-office-restore-list]')).toBeEmpty();
+ await expect(page.locator('[data-office-restore-file]')).toBeDisabled();
+ await expect(page.locator('[data-office-restore-confirm]')).toBeDisabled();
+});
+test('O6 atomic capacity rollback rejects all records after concurrent destination growth',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ const at='2026-10-18T18:00:00.000Z';
+ const entry=(id:string)=>({schemaVersion:1,id,title:id,body:'# Recovered',revision:0,updatedAt:at,history:[]});
+ const data={kind:'thiepn-hub-office-backup',schemaVersion:1,createdAt:at,documents:[entry('recovery-one'),entry('recovery-two')]};
+ await page.locator('[data-office-restore-file]').setInputFiles({name:'overflow.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+ await expect(page.locator('[data-office-restore-confirm]')).toBeEnabled();
+ await page.evaluate(async ({at})=>{
+   await new Promise<void>((resolve,reject)=>{
+     const request=indexedDB.open('thiepn-hub-office-v1',1);
+     request.onerror=()=>reject(request.error);
+     request.onsuccess=()=>{
+       const db=request.result,tx=db.transaction('documents','readwrite'),store=tx.objectStore('documents');
+       for(let i=0;i<100;i++){
+         const id='capacity-'+i;
+         store.add({schemaVersion:1,id,title:id,body:'',revision:0,updatedAt:at,history:[]},'guest:'+id);
+       }
+       tx.oncomplete=()=>{db.close();resolve();};
+       tx.onabort=()=>reject(tx.error);
+     };
+   });
+ },{at});
+ await page.locator('[data-office-restore-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('capacity exceeded');
+ const result=await page.evaluate(async()=>{
+   return await new Promise<{a:unknown;b:unknown}>((resolve,reject)=>{
+     const r=indexedDB.open('thiepn-hub-office-v1',1);
+     r.onerror=()=>reject(r.error);
+     r.onsuccess=()=>{
+       const db=r.result,tx=db.transaction('documents','readonly'),store=tx.objectStore('documents');
+       const a=store.get('guest:recovery-one'),b=store.get('guest:recovery-two');
+       tx.oncomplete=()=>{db.close();resolve({a:a.result,b:b.result});};
+       tx.onabort=()=>reject(tx.error);
+     };
+   });
+ });
+ expect(result.a).toBeUndefined();
+ expect(result.b).toBeUndefined();
+});
