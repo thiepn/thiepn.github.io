@@ -871,6 +871,7 @@ test('O13 timeline previews immutable versions and compares without changing the
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
  await page.locator('[data-office-title]').fill('History example');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally · revision 1');
  await page.locator('[data-office-body]').fill('# Before\n<em>untrusted</em>');
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.locator('[data-office-body]').fill('# After\nSafe current text');
@@ -915,6 +916,7 @@ test('O13 changing document clears previous document historical excerpt',async({
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
  await page.locator('[data-office-title]').fill('Original');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally · revision 1');
  await page.locator('[data-office-body]').fill('Unique timeline secret');
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.locator('[data-office-body]').fill('Current text');
