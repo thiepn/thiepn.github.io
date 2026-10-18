@@ -28,7 +28,7 @@ export function revisionHunks(historical:string,current:string):RevisionHunkResu
   const n=old.length,m=now.length,stride=m+1,dp=new Uint16Array((n+1)*stride);
   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--){
     const idx=i*stride+j;
-    dp[idx]=old[i]===now[j]?1+dp[idx+stride+1]:Math.max(dp[idx+stride],dp[idx+1]);
+    dp[idx]=old[i]===now[j]?1+dp[idx+stride+1]!:Math.max(dp[idx+stride]!,dp[idx+1]!);
   }
   const hunks:RevisionHunk[]=[];
   let totalHunks=0,i=0,j=0,oldStart=-1,newStart=-1;
@@ -49,7 +49,7 @@ export function revisionHunks(historical:string,current:string):RevisionHunkResu
   while(i<n||j<m){
     if(i<n&&j<m&&old[i]===now[j]){flush();i++;j++;continue;}
     if(oldStart<0){oldStart=i;newStart=j;}
-    if(j<m&&(i===n||dp[i*stride+j+1]>=dp[(i+1)*stride+j]))j++;
+    if(j<m&&(i===n||dp[i*stride+j+1]!>=dp[(i+1)*stride+j]!))j++;
     else i++;
   }
   flush();
