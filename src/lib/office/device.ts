@@ -59,6 +59,36 @@ export class OfficeDeviceStore {
       tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Document was not saved'));
     });
   }
+  async createBatch(initial:readonly {title:string;body:string}[]):Promise<OfficeDocument[]>{
+    if(!initial.length||initial.length>20)throw new Error('Choose between 1 and 20 documents.');
+    const ids=new Set<string>(),now=new Date().toISOString();
+    const records=initial.map(item=>{
+      let id=crypto.randomUUID();
+      while(ids.has(id))id=crypto.randomUUID();
+      ids.add(id);
+      return validateDocument({...newDocument(id,now),title:item.title,body:item.body});
+    });
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite'),table=tx.objectStore('documents');
+      const request=table.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null;
+      request.onsuccess=()=>{
+        try{
+          if(request.result.length+records.length>MAX_DOCUMENTS)
+            throw new Error('Insufficient Office capacity for the entire batch. Nothing imported.');
+          const occupied=new Set(request.result.map(key=>String(key)));
+          for(const doc of records){
+            const key=this.key(doc.id);
+            if(occupied.has(key))throw new Error('Generated Office document ID collision. Batch cancelled.');
+            occupied.add(key);
+            table.add(doc,key); // all or nothing; never put() or replace source records
+          }
+        }catch(error){fault=error;tx.abort();}
+      };
+      tx.oncomplete=()=>resolve(records);
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office batch creation rolled back.'));
+    });
+  }
   async save(previous:OfficeDocument,title:string,body:string):Promise<OfficeDocument>{
     const key=this.key(previous.id);
     return new Promise((resolve,reject)=>{
