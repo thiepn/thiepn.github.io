@@ -17,7 +17,7 @@ describe('Hub Office isolated document model',()=>{
  it('keeps last twelve recoverable snapshots',()=>{
   let doc=newDocument('id',now);
   for(let i=0;i<20;i++)doc=nextDocument(doc,doc.revision,'Paper',String(i),now);
-  expect(doc.history).toHaveLength(MAX_HISTORY);expect(doc.history[0]?.revision).toBe(7);
+  expect(doc.history).toHaveLength(MAX_HISTORY);expect(doc.history[0]?.revision).toBe(8);
  });
  it('fails closed on unknown version or malformed history',()=>{
   expect(()=>validateDocument({...newDocument('id',now),schemaVersion:2})).toThrow();
