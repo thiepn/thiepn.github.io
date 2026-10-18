@@ -988,6 +988,8 @@ async function setup(root: HTMLElement) {
     if (!root.querySelector('[data-reading-shell]')) {
         root.addEventListener('click', event => {
             const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]');
+            // Office has its own editor lifecycle: use real navigation so beforeunload protects drafts.
+            if (view === 'documents') return;
             if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
             const url = new URL(link.href);
             if (url.origin !== location.origin || !routes[url.pathname] || url.hash) return;
