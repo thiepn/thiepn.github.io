@@ -194,7 +194,7 @@ test('O4 mobile paper sheet contains current safe document and clears on privacy
  await page.locator('[data-office-body]').fill('# Print heading\n\n<iframe src="https://example.com"></iframe>');
  await page.locator('[data-office-print]').click();
  expect(await page.evaluate(()=>(window as any).__printCount)).toBe(1);
- await expect(page.locator('[data-office-print-sheet] h1')).toHaveText('Study notes');
+ await expect(page.locator('[data-office-print-sheet] > h1')).toHaveText('Study notes');
  await expect(page.locator('[data-office-print-sheet]')).toContainText('<iframe src="https://example.com"></iframe>');
  await expect(page.locator('[data-office-print-sheet] iframe')).toHaveCount(0);
  await page.locator('.ws-topbar-actions [data-action=account]').click();

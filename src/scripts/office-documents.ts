@@ -160,15 +160,19 @@ if(root && shell){
     if(!store||busy||blocked||!allowed())return;
     if(dirty){await persist();if(dirty)return;}
     const opened=store,ticket=epoch;
+    busy=true;enable(); // Do not allow filling the previous document while the new IDB record is being created.
     try{
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      await refreshList();await select(doc.id);
+      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      renderPreview();renderOutline();renderHistory();
+      await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
       templatePicker.value='blank';title.focus();
-      if(chosen.id!=='blank')message('New '+chosen.label.toLowerCase()+' created locally. Edit the placeholders before sharing.');
+      message(chosen.id==='blank'?'Revision 0 · saved on this device':'New '+chosen.label.toLowerCase()+' created locally. Edit the placeholders before sharing.');
     }catch(e){if(ticket===epoch)message(e instanceof Error?e.message:'Cannot create document');}
+    finally{if(ticket===epoch){busy=false;enable();}}
   }
   async function start(){
     const ticket=++epoch;
