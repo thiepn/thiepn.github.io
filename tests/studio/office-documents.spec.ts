@@ -13,8 +13,8 @@ test('Office native Markdown autosave, reload, history restore and export',async
  await page.reload();
  await expect(page.locator('[data-office-body]')).toHaveValue('# Revised draft');
  await page.locator('[data-office-history]').selectOption('1');
- await page.locator('[data-office-restore]').click();
  page.once('dialog',dialog=>void dialog.accept());
+ await page.locator('[data-office-restore]').click();
  await expect(page.locator('[data-office-body]')).toHaveValue('# First draft');
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  const downloaded=page.waitForEvent('download');
