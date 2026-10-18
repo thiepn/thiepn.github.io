@@ -13,6 +13,7 @@ import {findEditorText,replaceEditorText,documentSections,moveDocumentSection,ty
 import {compareOfficeRevision,recoverRevisionLines,applyRevisionExcerpt} from '../lib/office/revision-review';
 import {revisionHunks,type RevisionHunk} from '../lib/office/revision-hunks';
 import {previewMultiRevisionRecovery,MAX_MULTI_RECOVERY_HUNKS} from '../lib/office/multi-recovery';
+import {officeRevisionTimeline,timelineExcerpt} from '../lib/office/revision-timeline';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -44,6 +45,15 @@ if(root && shell){
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
   const history=pick<HTMLSelectElement>('[data-office-history]');
+  const timelineList=pick<HTMLElement>('[data-office-timeline-list]');
+  const timelineNote=pick<HTMLElement>('[data-office-timeline-note]');
+  const timelinePreview=pick<HTMLElement>('[data-office-timeline-preview]');
+  const timelineSummary=pick<HTMLElement>('[data-office-timeline-summary]');
+  const timelineExcerptNode=pick<HTMLElement>('[data-office-timeline-excerpt]');
+  const timelineTruncated=pick<HTMLElement>('[data-office-timeline-truncated]');
+  const timelineCompare=pick<HTMLButtonElement>('[data-office-timeline-compare]');
+  const timelineRestore=pick<HTMLButtonElement>('[data-office-timeline-restore]');
+  const timelineClose=pick<HTMLButtonElement>('[data-office-timeline-close]');
   const add=pick<HTMLButtonElement>('[data-office-new]');
   const templatePicker=pick<HTMLSelectElement>('[data-office-template]');
   const htmlButton=pick<HTMLButtonElement>('[data-office-html]');
@@ -106,6 +116,7 @@ if(root && shell){
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
+  let timelineChosen:{scope:string;id:string;currentRevision:number;selectedRevision:number}|null=null;
   let compared:{scope:string;id:string;revision:number;historical:number}|null=null;
   let changeHunks:RevisionHunk[]=[],hunkIndex=-1,hunkTotal=0,hunkLimited=false,hunkSummaryOnly=false;
   const selectedHistoricalHunks=new Set<number>();
@@ -143,6 +154,14 @@ if(root && shell){
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     compareButton.disabled=!editing||!history.value||!active?.history.some(rev=>String(rev.revision)===history.value);
+    const timelineValid=!!active&&!!store&&!!timelineChosen&&allowed()&&
+      timelineChosen.scope===store.scope&&timelineChosen.id===active.id&&
+      timelineChosen.currentRevision===active.revision;
+    const historicalSelected=timelineValid&&active.history.some(entry=>entry.revision===timelineChosen!.selectedRevision);
+    timelineCompare.disabled=!editing||!historicalSelected;
+    timelineRestore.disabled=!editing||dirty||!historicalSelected;
+    for(const control of timelineList.querySelectorAll<HTMLButtonElement>('button[data-office-timeline-revision]'))
+      control.disabled=!editing;
     const reviewActive=!!compared&&editing&&compared.scope===store?.scope&&compared.id===active?.id&&compared.revision===active?.revision;
     recoverStart.disabled=recoverEnd.disabled=!reviewActive;
     const from=Number(recoverStart.value),to=Number(recoverEnd.value);
@@ -290,8 +309,73 @@ if(root && shell){
     }
     renderSelectedHunk();previewRecovery();enable();
   }
+  function clearTimeline(){
+    timelineChosen=null;timelinePreview.hidden=true;
+    timelineSummary.textContent='';timelineExcerptNode.textContent='';
+    timelineTruncated.textContent='';timelineList.replaceChildren();
+    timelineNote.textContent='Create or open a document to inspect saved revisions.';
+  }
+  function timelineRevision(){
+    if(!store||!active||!timelineChosen||!allowed()||
+       timelineChosen.scope!==store.scope||timelineChosen.id!==active.id||
+       timelineChosen.currentRevision!==active.revision)return null;
+    const selected=timelineChosen.selectedRevision;
+    return selected===active.revision?
+      {revision:active.revision,title:active.title,body:active.body,updatedAt:active.updatedAt}:
+      active.history.find(entry=>entry.revision===selected)??null;
+  }
+  function inspectTimeline(revision:number){
+    if(!active||!store||!allowed()||busy||blocked)return;
+    const entry=officeRevisionTimeline(active).find(row=>row.revision===revision);
+    const source=revision===active.revision?
+      {title:active.title,body:active.body,updatedAt:active.updatedAt}:
+      active.history.find(row=>row.revision===revision);
+    if(!entry||!source)return;
+    clearComparison();
+    timelineChosen={scope:store.scope,id:active.id,currentRevision:active.revision,selectedRevision:revision};
+    const excerpt=timelineExcerpt(source.body);
+    timelineSummary.textContent='Revision '+revision+' · '+source.title+' · '+
+      new Date(source.updatedAt).toLocaleString()+' · '+entry.lines+' lines · '+entry.characters+' characters'+
+      (entry.historical?' · historical snapshot':' · latest saved version');
+    timelineExcerptNode.textContent=excerpt.text;
+    timelineTruncated.textContent=excerpt.truncated?
+      'Showing '+excerpt.shownLines+' of '+excerpt.totalLines+' lines (at most 5,000 characters). Original saved record is not modified.':
+      'Complete source preview. Original saved record is not modified.';
+    timelinePreview.hidden=false;
+    if(entry.historical)history.value=String(revision);
+    else history.value='';
+    for(const item of timelineList.querySelectorAll<HTMLButtonElement>('button[data-office-timeline-revision]'))
+      item.setAttribute('aria-pressed',String(item.dataset.officeTimelineRevision===String(revision)));
+    enable();
+  }
+  function renderTimeline(){
+    timelineList.replaceChildren();timelinePreview.hidden=true;
+    if(!active||!allowed()||!store){
+      clearTimeline();enable();return;
+    }
+    const rows=officeRevisionTimeline(active);
+    const first=rows[0]?.revision??0,last=rows[rows.length-1]?.revision??0;
+    timelineNote.textContent=rows.length+' retained version'+(rows.length===1?'':'s')+
+      ' · revision '+last+'–'+first+' · older snapshots may have expired under the 12-history limit.';
+    for(const item of rows){
+      const wrapper=document.createElement('div');wrapper.className='office-timeline-row';wrapper.setAttribute('role','listitem');
+      const button=document.createElement('button');button.type='button';button.dataset.officeTimelineRevision=String(item.revision);
+      button.setAttribute('aria-pressed','false');
+      const heading=document.createElement('strong');heading.textContent='Revision '+item.revision+(item.historical?'':' · current');
+      const detail=document.createElement('span');detail.textContent=item.title+' · '+new Date(item.updatedAt).toLocaleString();
+      const changes=document.createElement('small');changes.textContent=item.historical?
+        item.changedSpan+' lines in changed span'+(item.titleChanged?' · title changed':''):
+        item.lines+' lines · latest saved version';
+      button.append(heading,detail,changes);
+      button.addEventListener('click',()=>inspectTimeline(item.revision));
+      wrapper.append(button);timelineList.append(wrapper);
+    }
+    // Never retain a stale or private historical preview across revision changes or Account switches.
+    timelineChosen=null;timelineSummary.textContent='';timelineExcerptNode.textContent='';
+    timelineTruncated.textContent='';enable();
+  }
   function clearEditor(){
-    clearComparison();active=null;dirty=false;title.value='';body.value='';
+    clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
@@ -361,6 +445,7 @@ if(root && shell){
     history.replaceChildren(new Option('History',''));
     for(const rev of [...(active?.history??[])].reverse())
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
+    renderTimeline();
   }
   function selectionStatus(){
     bundleCount.textContent=selectedBundle.size+' document'+(selectedBundle.size===1?'':'s')+' selected';
@@ -823,6 +908,24 @@ if(root && shell){
     if(!active||!allowed())return;
     downloadBlob(new Blob([body.value],{type:'text/markdown;charset=utf-8'}),documentFilename(title.value||active.title));
     message(dirty?'Exported current unsaved Markdown. Local save is still pending.':'Markdown export prepared.');
+  });
+  timelineClose.addEventListener('click',()=>{
+    timelineChosen=null;timelinePreview.hidden=true;
+    timelineSummary.textContent='';timelineExcerptNode.textContent='';timelineTruncated.textContent='';
+    for(const item of timelineList.querySelectorAll<HTMLButtonElement>('button[data-office-timeline-revision]'))
+      item.setAttribute('aria-pressed','false');
+    enable();
+  });
+  timelineCompare.addEventListener('click',()=>{
+    if(!timelineRevision()||!active||!timelineChosen||timelineChosen.selectedRevision===active.revision||compareButton.disabled)return;
+    history.value=String(timelineChosen.selectedRevision);
+    compareButton.click();
+  });
+  timelineRestore.addEventListener('click',()=>{
+    if(!timelineRevision()||!active||!timelineChosen||timelineChosen.selectedRevision===active.revision||
+       dirty||restore.disabled)return;
+    history.value=String(timelineChosen.selectedRevision);
+    restore.click(); // Existing confirmation and CAS writer remain authoritative.
   });
   history.addEventListener('change',()=>{clearComparison();enable();});
   compareButton.addEventListener('click',()=>{

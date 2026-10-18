@@ -46,6 +46,20 @@ import '../../styles/office-documents.css';
         <div class="office-import-actions"><button type="button" class="ws-button" data-office-import-confirm disabled>Import as new document</button><button type="button" class="ws-button" data-office-import-cancel disabled>Cancel</button></div>
       </section>
       <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button><button type="button" class="ws-button" data-office-compare disabled>Compare selected revision</button></div>
+      <section class="office-timeline" aria-label="Office revision timeline" data-office-timeline>
+        <div class="office-timeline-heading"><h3>Document history</h3><p data-office-timeline-note class="ws-muted">Create or open a document to inspect saved revisions.</p></div>
+        <div class="office-timeline-list" data-office-timeline-list role="list"></div>
+        <section data-office-timeline-preview hidden class="office-timeline-preview" aria-label="Selected saved revision">
+          <p class="ws-muted" data-office-timeline-summary></p>
+          <pre data-office-timeline-excerpt></pre>
+          <p class="ws-muted" data-office-timeline-truncated></p>
+          <div class="office-import-actions">
+            <button type="button" class="ws-button" data-office-timeline-compare disabled>Compare with current</button>
+            <button type="button" class="ws-button" data-office-timeline-restore disabled>Restore this revision…</button>
+            <button type="button" class="ws-button" data-office-timeline-close>Close preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-revision-review" data-office-compare-panel hidden aria-label="Revision comparison and selective recovery">
         <h3>Compare revision with current draft</h3>
         <p class="ws-muted" data-office-compare-summary></p>
