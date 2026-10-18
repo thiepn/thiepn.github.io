@@ -127,7 +127,31 @@ test('concurrent new tabs share a single rotating refresh instead of reconnectin
  }));
  await a.page.close();const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
- expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+ // Preserve the strict rotating-token invariant. Diagnostic metadata deliberately
+ // excludes token values and can distinguish a stale store from an unlocked refresh.
+ const diagnostics=await Promise.all(pages.map(page=>page.evaluate(async()=>{
+   const locks=!!navigator.locks,manager=locks?await navigator.locks.query().catch(()=>null):null;
+   const db=await new Promise<IDBDatabase|null>(resolve=>{
+     const request=indexedDB.open('thiepn-hub-account');
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>resolve(null);
+   });
+   const record=await new Promise<{expired:boolean;hasValue:boolean;legacyMatch:boolean}|null>(resolve=>{
+     if(!db)return resolve(null);
+     const request=db.transaction('session','readonly').objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     request.onsuccess=()=>{
+       const row=request.result;let expired=false;
+       try{expired=JSON.parse(row?.value??'null')?.expiresAt<=Date.now()}catch{}
+       resolve({expired,hasValue:typeof row?.value==='string',
+         legacyMatch:!!row&&row.legacy===localStorage.getItem('thiepn:hub-sso:v1:tokens')});
+       db.close();
+     };
+     request.onerror=()=>{db.close();resolve(null);};
+   });
+   return {locks,held:manager?.held?.map(x=>x.name),pending:manager?.pending?.map(x=>x.name),record};
+ })));
+ expect(api.exchanges()).toBe(1);
+ expect(api.refreshes(),JSON.stringify({diagnostics})).toBe(1);
+ await a.context.close();
 });
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');

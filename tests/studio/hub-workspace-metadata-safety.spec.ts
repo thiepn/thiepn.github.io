@@ -11,8 +11,14 @@ test('original decision record cannot be silently removed through Customize widg
  await page.locator('[data-widget-type=decision-register] [data-action=configure-widget]').click();
  await page.locator('[data-workspace-dialog] [data-action=remove-widget]').click();
  await expect(page.locator('[data-widget-type=decision-register]')).toContainText('Keep source decision');
- await page.locator('[data-workspace-dialog] [data-action=close-dialog]').click();
+ await page.locator('[data-workspace-dialog] [data-action=close-dialog][aria-label="Close dialog"]').click();
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await page.locator('[data-action=presets]').click();
+ await page.getByLabel('Apply as').selectOption('replace');
+ await page.locator('[data-dialog-submit]').click();
+ await expect(page.locator('[data-workspace-dialog]')).toBeVisible();
+ await expect(page.locator('[data-workspace-dialog]')).toContainText('original Hub groupings or relationships');
+ await page.locator('[data-workspace-dialog] [data-action=close-dialog][aria-label="Close dialog"]').click();
  await page.reload();
  await page.goto('/');
  await expect(page.locator('[data-today-decisions]')).toContainText('Keep source decision');
