@@ -53,5 +53,6 @@ test('connection controls stay busy during a delayed check and exit cancels it',
  await expect(page.locator('[data-library-items]')).toBeEmpty();await expect(page.locator('iframe')).toHaveCount(0);
 });
 test('closing the reading dialog clears its snapshot and owner frame',async({page})=>{
- await fixture(page);await seed(page);await connect(page);await page.locator('[data-account-dialog] [data-action=close-account]').click();await expect(page.locator('iframe')).toHaveCount(0);await expect(page.locator('[data-library-items]')).toBeEmpty();await page.locator('.ws-topbar [data-action=account]').click();await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();
+ await fixture(page);await seed(page);await connect(page);await page.locator('[data-account-dialog] [data-action=close-account]').click();await expect(page.locator('iframe')).toHaveCount(0);await expect(page.locator('[data-library-items]')).toBeEmpty();if(await page.locator('.ws-topbar [data-action=account]').isVisible()) await page.locator('.ws-topbar [data-action=account]').click();
+ else {await page.locator('[data-more-trigger]').click();await page.getByRole('button',{name:'Account and sharing'}).click();}await expect(page.locator('[data-private-library]')).toBeHidden();await expect(page.locator('[data-library-items]')).toBeEmpty();
 });
