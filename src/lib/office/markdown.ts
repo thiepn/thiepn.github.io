@@ -76,9 +76,13 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
     const line=lines[i]!;
     if(!line.trim()){i++;continue;}
     if(line.startsWith(tick)||line.startsWith('~~~')){
-      const fence=line.slice(0,3);i++;
+      const fence=line.match(/^(\x60{3,}|~{3,})/)![1]!;i++;
       const parts:string[]=[];
-      while(i<lines.length&&!lines[i]!.startsWith(fence))parts.push(lines[i++]!);
+      while(i<lines.length){
+        const close=lines[i]!.match(/^ {0,3}(\x60{3,}|~{3,})\s*$/);
+        if(close&&close[1]![0]===fence[0]&&close[1]!.length>=fence.length)break;
+        parts.push(lines[i++]!);
+      }
       if(i<lines.length)i++;
       const pre=doc.createElement('pre'),code=doc.createElement('code');
       code.textContent=parts.join('\n');pre.append(code);fragment.append(pre);continue;
