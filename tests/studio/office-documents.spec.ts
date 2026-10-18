@@ -856,7 +856,7 @@ test('O12 mobile privacy clears combined recovery preview and prevents confirmat
  await page.locator('[data-office-batch-index="0"]').check();
  await page.locator('[data-office-batch-index="1"]').check();
  await page.locator('[data-office-batch-preview]').click();
- await expect(page.locator('[data-office-batch-document]')).toContainText('private old');
+ await expect(page.locator('[data-office-batch-document]')).toHaveValue(/private old/);
  await page.locator('.ws-topbar-actions [data-action=account]').click();
  await page.locator('[data-account-dialog] [data-action=privacy]').click();
  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
