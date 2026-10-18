@@ -45,7 +45,23 @@ import '../../styles/office-documents.css';
         <div class="office-import-render office-preview" data-office-import-render></div>
         <div class="office-import-actions"><button type="button" class="ws-button" data-office-import-confirm disabled>Import as new document</button><button type="button" class="ws-button" data-office-import-cancel disabled>Cancel</button></div>
       </section>
-      <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button></div>
+      <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button><button type="button" class="ws-button" data-office-compare disabled>Compare selected revision</button></div>
+      <section class="office-revision-review" data-office-compare-panel hidden aria-label="Revision comparison and selective recovery">
+        <h3>Compare revision with current draft</h3>
+        <p class="ws-muted" data-office-compare-summary></p>
+        <div class="office-revision-diffs" data-office-compare-diffs aria-label="Changed historical and current lines"></div>
+        <fieldset class="office-recover-range"><legend>Recover specific historical lines</legend>
+          <label for="office-recover-start">From line</label><input id="office-recover-start" data-office-recover-start type="number" min="1" step="1" disabled/>
+          <label for="office-recover-end">To line</label><input id="office-recover-end" data-office-recover-end type="number" min="1" step="1" disabled/>
+          <p class="ws-muted" data-office-recover-info></p><pre data-office-recover-preview></pre>
+        </fieldset>
+        <p class="ws-muted">Recovery modifies only the open editor. It cannot change the historical snapshot. Autosave creates a new revision and may reject concurrent edits.</p>
+        <div class="office-import-actions">
+          <button type="button" class="ws-button" data-office-recover-insert disabled>Insert at cursor…</button>
+          <button type="button" class="ws-button" data-office-recover-replace disabled>Replace current selection…</button>
+          <button type="button" class="ws-button" data-office-compare-close disabled>Close comparison</button>
+        </div>
+      </section>
       <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
       <div class="office-format" role="toolbar" aria-label="Markdown formatting">
         <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>

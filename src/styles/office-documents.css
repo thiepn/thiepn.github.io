@@ -113,3 +113,19 @@
 .office-section-buttons{display:flex;gap:8px;flex-wrap:wrap}
 .office-section-controls p{font-size:11px;line-height:1.5;margin:0}
 @media(max-width:720px){.office-find-row>input[type=text],.office-find-row>input[type=search]{min-width:0;width:100%;flex:1 1 100%}}
+
+/* O10: bounded, inert side-by-side historical text, not a shadow revision store. */
+.office-revision-review{display:grid;gap:12px;border:1px solid var(--ws-line);background:var(--ws-soft);padding:16px;min-width:0}
+.office-revision-review[hidden]{display:none}
+.office-revision-review h3{font-size:16px;margin:0}
+.office-revision-review p{font-size:12px;line-height:1.5}
+.office-revision-diffs{max-height:290px;overflow:auto;display:grid;gap:6px}
+.office-revision-diff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.office-revision-diff pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;padding:9px;margin:0;border:1px solid var(--ws-line);background:var(--ws-surface);min-width:0}
+.office-recover-range{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:1px solid var(--ws-line);min-width:0}
+.office-recover-range legend{font-size:12px;font-weight:650}
+.office-recover-range label{font-size:12px}
+.office-recover-range input{width:75px;padding:7px}
+.office-recover-range p{width:100%;margin:0}
+.office-recover-range pre{width:100%;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:12px;background:var(--ws-surface);border:1px solid var(--ws-line);margin:0}
+@media(max-width:720px){.office-revision-diff{grid-template-columns:1fr}.office-revision-review{padding:12px}}

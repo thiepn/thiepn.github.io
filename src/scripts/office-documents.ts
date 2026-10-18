@@ -10,6 +10,7 @@ import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport
 import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOfficeBackup} from '../lib/office/restore';
 import {exportOfficeBundle} from '../lib/office/bundle';
 import {findEditorText,replaceEditorText,documentSections,moveDocumentSection,type TextMatch} from '../lib/office/navigation';
+import {compareOfficeRevision,recoverRevisionLines,applyRevisionExcerpt} from '../lib/office/revision-review';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -49,6 +50,17 @@ if(root && shell){
   const save=pick<HTMLButtonElement>('[data-office-save]');
   const download=pick<HTMLButtonElement>('[data-office-export]');
   const restore=pick<HTMLButtonElement>('[data-office-restore]');
+  const compareButton=pick<HTMLButtonElement>('[data-office-compare]');
+  const comparePanel=pick<HTMLElement>('[data-office-compare-panel]');
+  const compareSummary=pick<HTMLElement>('[data-office-compare-summary]');
+  const compareDiffs=pick<HTMLElement>('[data-office-compare-diffs]');
+  const recoverStart=pick<HTMLInputElement>('[data-office-recover-start]');
+  const recoverEnd=pick<HTMLInputElement>('[data-office-recover-end]');
+  const recoverInfo=pick<HTMLElement>('[data-office-recover-info]');
+  const recoverPreview=pick<HTMLElement>('[data-office-recover-preview]');
+  const recoverInsert=pick<HTMLButtonElement>('[data-office-recover-insert]');
+  const recoverReplace=pick<HTMLButtonElement>('[data-office-recover-replace]');
+  const compareClose=pick<HTMLButtonElement>('[data-office-compare-close]');
   const importFile=pick<HTMLInputElement>('[data-office-import-file]');
   const importPanel=pick<HTMLElement>('[data-office-import-panel]');
   const importTitle=pick<HTMLInputElement>('[data-office-import-title]');
@@ -76,6 +88,7 @@ if(root && shell){
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
+  let compared:{scope:string;id:string;revision:number;historical:number}|null=null;
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -105,6 +118,12 @@ if(root && shell){
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
+    compareButton.disabled=!editing||!history.value||!active?.history.some(rev=>String(rev.revision)===history.value);
+    const reviewActive=!!compared&&editing&&compared.scope===store?.scope&&compared.id===active?.id&&compared.revision===active?.revision;
+    recoverStart.disabled=recoverEnd.disabled=!reviewActive;
+    const from=Number(recoverStart.value),to=Number(recoverEnd.value);
+    const validRange=reviewActive&&Number.isSafeInteger(from)&&from>=1&&Number.isSafeInteger(to)&&to>=from&&to-from<200;
+    recoverInsert.disabled=recoverReplace.disabled=!validRange;
     add.disabled=!store||blocked||!allowed()||busy;
     templatePicker.disabled=!store||blocked||!allowed()||busy;
     importFile.disabled=!store||blocked||!allowed()||busy;
@@ -131,8 +150,48 @@ if(root && shell){
     for(const checkbox of list.querySelectorAll<HTMLInputElement>('input[data-office-select-id]'))checkbox.disabled=!canSelect;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
+  function clearComparison(){
+    compared=null;comparePanel.hidden=true;compareSummary.textContent='';
+    compareDiffs.replaceChildren();recoverPreview.textContent='';recoverInfo.textContent='';
+    recoverStart.value='';recoverEnd.value='';
+  }
+  function comparedHistory(){
+    if(!active||!store||!compared||!allowed()||compared.scope!==store.scope||
+       compared.id!==active.id||compared.revision!==active.revision)return null;
+    return active.history.find(entry=>entry.revision===compared!.historical)??null;
+  }
+  function previewRecovery(){
+    const rev=comparedHistory();
+    recoverPreview.textContent='';
+    if(!rev){recoverInfo.textContent='Select a saved revision first.';return;}
+    const from=Number(recoverStart.value),to=Number(recoverEnd.value);
+    try{
+      const excerpt=recoverRevisionLines(rev,from,to);
+      recoverPreview.textContent=excerpt;
+      recoverInfo.textContent='Revision '+rev.revision+' · historical lines '+from+'–'+to+' · '+excerpt.length+' characters';
+    }catch(error){recoverInfo.textContent=error instanceof Error?error.message:'Range unavailable';}
+    enable();
+  }
+  function renderComparison(){
+    const rev=comparedHistory();
+    if(!rev){clearComparison();enable();return;}
+    const result=compareOfficeRevision(rev.body,body.value);
+    compareSummary.textContent='Historical revision '+rev.revision+' (“'+rev.title+'”) vs '+(dirty?'unsaved current draft':'saved current revision '+active!.revision)+
+      ' (“'+title.value+'”) · '+result.changedRows+' differing lines'+(result.truncated?' (first 80 shown)':'');
+    compareDiffs.replaceChildren();
+    if(!result.differences.length){
+      const same=document.createElement('p');same.textContent='Bodies are identical. Titles may still differ.';compareDiffs.append(same);
+    }
+    for(const difference of result.differences){
+      const row=document.createElement('div');row.className='office-revision-diff';
+      const older=document.createElement('pre');older.textContent='History line '+difference.line+': '+(difference.historical??'—');
+      const newer=document.createElement('pre');newer.textContent='Current line '+difference.line+': '+(difference.current??'—');
+      row.append(older,newer);compareDiffs.append(row);
+    }
+    previewRecovery();enable();
+  }
   function clearEditor(){
-    active=null;dirty=false;title.value='';body.value='';
+    clearComparison();active=null;dirty=false;title.value='';body.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
@@ -263,7 +322,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();renderFind();
+      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -274,6 +333,7 @@ if(root && shell){
     try{
       const saved=await store.save(current,wantedTitle,wantedBody);
       if(stamp!==epoch||!allowed())return;
+      if(saved.revision!==current.revision)clearComparison();
       active=saved;
       dirty=title.value!==saved.title||body.value!==saved.body;
       renderHistory();await refreshList();
@@ -312,7 +372,7 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    clearImport();clearMulti();clearRestore();selectedBundle.clear();
+    clearComparison();clearImport();clearMulti();clearRestore();selectedBundle.clear();
     findQuery.value='';replaceValue.value='';findCase.checked=false;matches=[];matchCursor=-1;
     bundleCount.textContent='0 documents selected';
     savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
@@ -567,7 +627,9 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;renderPreview();renderOutline();renderFind();enable();message('Unsaved edits · autosave pending');queueAutosave();
+    dirty=true;renderPreview();renderOutline();renderFind();
+    if(compared)renderComparison();enable();
+    message('Unsaved edits · autosave pending');queueAutosave();
   });
   findQuery.addEventListener('input',()=>{matchCursor=-1;renderFind();enable();});
   findCase.addEventListener('change',()=>{matchCursor=-1;renderFind();enable();});
@@ -662,6 +724,38 @@ if(root && shell){
     downloadBlob(new Blob([body.value],{type:'text/markdown;charset=utf-8'}),documentFilename(title.value||active.title));
     message(dirty?'Exported current unsaved Markdown. Local save is still pending.':'Markdown export prepared.');
   });
+  history.addEventListener('change',()=>{clearComparison();enable();});
+  compareButton.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||!history.value)return;
+    const old=active.history.find(item=>String(item.revision)===history.value);
+    if(!old)return;
+    compared={scope:store.scope,id:active.id,revision:active.revision,historical:old.revision};
+    recoverStart.value='1';recoverEnd.value='1';comparePanel.hidden=false;
+    renderComparison();
+  });
+  recoverStart.addEventListener('input',previewRecovery);
+  recoverEnd.addEventListener('input',previewRecovery);
+  compareClose.addEventListener('click',()=>{clearComparison();enable();});
+  function recoverSelected(mode:'insert'|'replace'){
+    const rev=comparedHistory();
+    if(!rev||body.disabled||busy||blocked||!allowed())return;
+    const from=Number(recoverStart.value),to=Number(recoverEnd.value);
+    try{
+      const excerpt=recoverRevisionLines(rev,from,to);
+      const start=body.selectionStart,end=body.selectionEnd;
+      const updated=applyRevisionExcerpt(body.value,excerpt,start,end,mode);
+      const verb=mode==='insert'?'insert at the current cursor':'replace selected current text';
+      if(!confirm('Recover '+(to-from+1)+' lines from revision '+rev.revision+' and '+verb+'? The historical snapshot will stay unchanged, and the edit will use normal CAS autosave.'))return;
+      if(!comparedHistory()||body.disabled||busy||blocked)return;
+      body.value=updated;
+      clearComparison();
+      body.setSelectionRange(start+excerpt.length,start+excerpt.length);
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Recovered historical lines into the current editor. Autosave pending; original history unchanged.');
+    }catch(error){message(error instanceof Error?error.message:'Recovery refused; document unchanged.');}
+  }
+  recoverInsert.addEventListener('click',()=>recoverSelected('insert'));
+  recoverReplace.addEventListener('click',()=>recoverSelected('replace'));
   restore.addEventListener('click',()=>void (async()=>{
     if(!active||!store||blocked||busy||!allowed()||!history.value)return;
     if(dirty){message('Save or export current edits before restoring history.');return;}
