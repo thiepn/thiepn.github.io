@@ -431,3 +431,112 @@ test('O7 never exports unsaved contents and clears selection on mobile privacy h
  await expect(page.locator('[data-office-bundle-count]')).toContainText('0 documents selected');
  await expect(page.locator('[data-office-list]')).not.toContainText('Private study');
 });
+
+test('O8 batch Markdown review, cancel, editable titles and collision-safe reload',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-title]').fill('Original chapter');
+ await page.locator('[data-office-body]').fill('# Original content');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ const originals=await page.locator('[data-office-list] .office-entry').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-office-id')));
+ const upload=()=>page.locator('[data-office-multi-files]').setInputFiles([
+  {name:'part.md',mimeType:'text/markdown',buffer:Buffer.from('# Chapter 1\n\n**Bold**')},
+  {name:'part.md',mimeType:'text/markdown',buffer:Buffer.from('# Chapter 2\n\n한국어')}
+ ]);
+ await upload();
+ await expect(page.locator('[data-office-multi-panel]')).toBeVisible();
+ await expect(page.locator('[data-office-multi-list] .office-multi-entry')).toHaveCount(2);
+ await expect(page.locator('[data-office-multi-list] h1')).toHaveText(['Chapter 1','Chapter 2']);
+ await expect(page.locator('[data-office-count]')).toContainText('1 of 1');
+ await page.locator('[data-office-multi-cancel]').click();
+ await expect(page.locator('[data-office-multi-panel]')).toBeHidden();
+ await expect(page.locator('[data-office-count]')).toContainText('1 of 1');
+ await upload();
+ await expect(page.locator('[data-office-multi-panel]')).toBeVisible();
+ await page.locator('[data-office-multi-title="0"]').fill('Imported first');
+ await page.locator('[data-office-multi-title="1"]').fill('Imported second');
+ await page.locator('[data-office-multi-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('Imported 2 new Office documents atomically');
+ await expect(page.locator('[data-office-count]')).toContainText('3 of 3');
+ const ids=await page.locator('[data-office-list] .office-entry').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-office-id')));
+ expect(new Set(ids).size).toBe(3);
+ expect(ids).toContain(originals[0]);
+ await page.locator('[data-office-list] .office-entry').filter({hasText:'Original chapter'}).click();
+ await expect(page.locator('[data-office-body]')).toHaveValue('# Original content');
+ await page.reload();
+ await expect(page.locator('[data-office-count]')).toContainText('3 of 3');
+ await page.locator('[data-office-list] .office-entry').filter({hasText:'Imported second'}).click();
+ await expect(page.locator('[data-office-body]')).toHaveValue('# Chapter 2\n\n한국어');
+});
+test('O8 rejects a mixed valid and invalid batch without writing any file',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-multi-files]')).toBeEnabled();
+ await page.locator('[data-office-multi-files]').setInputFiles([
+  {name:'valid.md',mimeType:'text/markdown',buffer:Buffer.from('# Valid')},
+  {name:'danger.md',mimeType:'text/markdown',buffer:Buffer.from('<!doctype html><script>alert(1)</script>')}
+ ]);
+ await expect(page.locator('[data-office-status]')).toContainText('File 2 (danger.md)');
+ await expect(page.locator('[data-office-multi-panel]')).toBeHidden();
+ await expect(page.locator('[data-office-count]')).toContainText('0 of 0');
+});
+test('O8 concurrent capacity growth rolls back entire multi-document transaction',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-multi-files]')).toBeEnabled();
+ await page.locator('[data-office-multi-files]').setInputFiles([
+  {name:'first.md',mimeType:'text/markdown',buffer:Buffer.from('# First')},
+  {name:'second.md',mimeType:'text/markdown',buffer:Buffer.from('# Second')}
+ ]);
+ await expect(page.locator('[data-office-multi-confirm]')).toBeEnabled();
+ const stamp='2026-10-18T18:00:00.000Z';
+ await page.evaluate(async (stamp)=>{
+  await new Promise<void>((resolve,reject)=>{
+   const req=indexedDB.open('thiepn-hub-office-v1',1);
+   req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    const db=req.result,tx=db.transaction('documents','readwrite'),store=tx.objectStore('documents');
+    for(let i=0;i<99;i++){
+     const id='preexisting-'+i;
+     store.add({schemaVersion:1,id,title:'Original '+i,body:'Original data',revision:0,updatedAt:stamp,history:[]},'guest:'+id);
+    }
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onabort=()=>reject(tx.error);
+   };
+  });
+ },stamp);
+ await page.locator('[data-office-multi-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('Insufficient Office capacity for the entire batch');
+ const saved=await page.evaluate(async()=>{
+  return await new Promise<{count:number;imported:number}>((resolve,reject)=>{
+   const req=indexedDB.open('thiepn-hub-office-v1',1);
+   req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    const db=req.result,tx=db.transaction('documents','readonly');
+    const all=tx.objectStore('documents').getAll();
+    tx.oncomplete=()=>{
+      const docs=all.result;
+      db.close();resolve({count:docs.length,imported:docs.filter(d=>d.body==='# First'||d.body==='# Second').length});
+    };
+    tx.onabort=()=>reject(tx.error);
+   };
+  });
+ });
+ expect(saved).toEqual({count:99,imported:0});
+});
+test('O8 mobile privacy masks staged file previews and cancels multi-import confirmation',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-multi-files]')).toBeEnabled();
+ await page.locator('[data-office-multi-files]').setInputFiles([
+  {name:'private.md',mimeType:'text/markdown',buffer:Buffer.from('# Private content')},
+  {name:'second.md',mimeType:'text/markdown',buffer:Buffer.from('# Second private')}
+ ]);
+ await expect(page.locator('[data-office-multi-list]')).toContainText('Private content');
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-multi-panel]')).toBeHidden();
+ await expect(page.locator('[data-office-multi-list]')).toBeEmpty();
+ await expect(page.locator('[data-office-multi-files]')).toBeDisabled();
+ await expect(page.locator('[data-office-multi-confirm]')).toBeDisabled();
+});
