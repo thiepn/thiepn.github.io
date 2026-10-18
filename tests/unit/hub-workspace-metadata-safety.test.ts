@@ -33,14 +33,14 @@ describe('layout never erases Hub-owned metadata masquerading as widget content'
   });
  }
  it('duplicates display settings without duplicating record identity or mutating its source',()=>{
-  const original=original(),oldId=original.widgets[0]!.id;
-  original.widgets[0]!.config.title='My customized home';
-  const clone=duplicatePresentationLayout(original,'Alternative layout');
-  expect(clone.title).toBe('Alternative layout');
-  expect(clone.widgets[0]!.config.title).toBe('My customized home');
-  expect(clone.widgets[0]!.id).not.toBe(oldId);
-  expect(original.widgets[0]!.id).toBe(oldId);
-  expect(()=>duplicatePresentationLayout(original,'')).toThrow();
+  const base=original(),oldId=base.widgets[0]!.id;
+  base.widgets[0]!.config.title='My customized home';
+  const cloned=duplicatePresentationLayout(base,'Alternative layout');
+  expect(cloned.title).toBe('Alternative layout');
+  expect(cloned.widgets[0]!.config.title).toBe('My customized home');
+  expect(cloned.widgets[0]!.id).not.toBe(oldId);
+  expect(base.widgets[0]!.id).toBe(oldId);
+  expect(()=>duplicatePresentationLayout(base,'')).toThrow();
  });
  it('does not prevent removal of empty widgets or unrelated presentation widgets',()=>{
   const w=original(),empty:Widget={id:'empty',type:'task-event-links',typeVersion:1,
