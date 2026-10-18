@@ -46,6 +46,7 @@ import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type 
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
 import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained} from '../lib/workspace/widget-metadata-safety';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
@@ -1126,6 +1127,7 @@ async function setup(root: HTMLElement) {
             </div>
             ${renderTaskKnowledgeContext(state!,task,knowledgeOwnerContext())}
             ${renderTaskEventContext(state!,'task',id)}
+            ${renderConfirmedHubBacklinks(state!,'task',id)}
           </div>`;
         openForm('Next actions · Hub task',details,()=>{});
         $('[data-dialog-submit]').hidden=true;
@@ -1144,6 +1146,7 @@ async function setup(root: HTMLElement) {
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
           </div>
           ${renderNoteWorkContext(state!,note,knowledgeOwnerContext())}
+          ${renderConfirmedHubBacklinks(state!,'note',id)}
           </div>`;
         openForm('Next actions · Hub note',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
