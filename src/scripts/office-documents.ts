@@ -17,6 +17,8 @@ if(root && shell){
   const restore=pick<HTMLButtonElement>('[data-office-restore]');
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
+  // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
+  let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
   const allowed=()=>shell.dataset.calendarPrivate==='false' &&
     (hubIdentity.status==='signed-out'||hubIdentity.status==='signed-in');
   const message=(value:string)=>{status.textContent=value;};
@@ -97,10 +99,13 @@ if(root && shell){
   }
   async function start(){
     const ticket=++epoch;
+    if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
     list.replaceChildren();clearEditor();
     if(!allowed()){message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
     const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
+    // A changed owner must never inherit another owner's in-memory draft.
+    if(heldDraft&&heldDraft.scope!==scope)heldDraft=null;
     const opened=new OfficeDeviceStore(scope);
     try{
       await opened.open();
@@ -109,8 +114,18 @@ if(root && shell){
       const docs=await store.list();
       if(ticket!==epoch)return;
       renderList(docs);enable();
-      if(docs.length)await select(docs[0]!.id);
-      else message('Ready · your Office documents stay in a separate local database.');
+      if(docs.length){
+        const id=heldDraft&&docs.some(doc=>doc.id===heldDraft!.id)?heldDraft.id:docs[0]!.id;
+        await select(id);
+        if(ticket!==epoch||!active||!heldDraft||active.id!==heldDraft.id)return;
+        title.value=heldDraft.title;body.value=heldDraft.body;
+        dirty=title.value!==active.title||body.value!==active.body;
+        blocked=active.revision!==heldDraft.revision;
+        heldDraft=null;
+        enable();
+        if(blocked)message('Another tab changed this document while it was hidden. Export this draft before reopening.');
+        else if(dirty){message('Recovered unsaved edits after privacy change · autosave pending');queueAutosave();}
+      }else message('Ready · your Office documents stay in a separate local database.');
     }catch(e){
       opened.close();if(ticket===epoch){store=null;enable();message(e instanceof Error?e.message:'Office storage is unavailable.');}
     }
@@ -136,7 +151,7 @@ if(root && shell){
     if(!rev||!confirm('Restore this older revision? Current content will remain in revision history.'))return;
     title.value=rev.title;body.value=rev.body;dirty=true;await persist();
   })());
-  window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+  window.addEventListener('beforeunload',event=>{if(dirty||heldDraft){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});
   let authority='';
   function authorityChange(){
