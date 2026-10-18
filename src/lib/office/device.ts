@@ -79,5 +79,32 @@ export class OfficeDeviceStore {
       tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office save failed'));
     });
   }
+  async restoreMissing(documents:readonly OfficeDocument[]):Promise<{added:number;skipped:number}>{
+    if(documents.length>MAX_DOCUMENTS)throw new Error('Backup exceeds 100 documents.');
+    const ids=new Set<string>();
+    for(const candidate of documents){
+      const doc=validateDocument(candidate);
+      if(ids.has(doc.id))throw new Error('Backup contains duplicate IDs.');
+      ids.add(doc.id);
+    }
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite'),records=tx.objectStore('documents');
+      const keys=records.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null,added=0,skipped=0;
+      keys.onsuccess=()=>{
+        try{
+          const existing=new Set(keys.result.map(k=>String(k)));
+          if(existing.size>MAX_DOCUMENTS)throw new Error('Office capacity is damaged. No records restored.');
+          const missing=documents.filter(doc=>!existing.has(this.key(doc.id)));
+          skipped=documents.length-missing.length;
+          if(existing.size+missing.length>MAX_DOCUMENTS)throw new Error('Office document capacity exceeded. No records restored.');
+          for(const doc of missing)records.add(doc,this.key(doc.id)); // Never put() existing IDs.
+          added=missing.length;
+        }catch(error){fault=error;tx.abort();}
+      };
+      tx.oncomplete=()=>resolve({added,skipped});
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office restore rolled back without changes.'));
+    });
+  }
   close(){this.db?.close();this.db=null;}
 }
