@@ -11,7 +11,7 @@ describe('Office O13 native source revision timeline',()=>{
   expect(rows.map(row=>row.revision)).toEqual([2,1,0]);
   expect(rows[0]).toMatchObject({historical:false,title:'Changed title',lines:2});
   expect(rows[1]).toMatchObject({historical:true,title:'Old title',changedSpan:2,titleChanged:true});
-  expect(rows[2].revision).toBe(0);
+  expect(rows[2]!.revision).toBe(0);
   expect(second.history.map(row=>row.revision)).toEqual([0,1]);
  });
  it('does not invent missing older history after canonical retention',()=>{
@@ -19,7 +19,7 @@ describe('Office O13 native source revision timeline',()=>{
   for(let i=1;i<=20;i++)doc=nextDocument(doc,doc.revision,'Title '+i,'body '+i,stamp);
   const rows=officeRevisionTimeline(doc);
   expect(rows).toHaveLength(13);
-  expect(rows[0].revision).toBe(20);
+  expect(rows[0]!.revision).toBe(20);
   expect(rows[rows.length-1]?.revision).toBe(8);
  });
  it('presents literal Markdown without interpreting malicious source',()=>{

@@ -157,7 +157,7 @@ if(root && shell){
     const timelineValid=!!active&&!!store&&!!timelineChosen&&allowed()&&
       timelineChosen.scope===store.scope&&timelineChosen.id===active.id&&
       timelineChosen.currentRevision===active.revision;
-    const historicalSelected=timelineValid&&active.history.some(entry=>entry.revision===timelineChosen!.selectedRevision);
+    const historicalSelected=timelineValid&&!!active&&active.history.some(entry=>entry.revision===timelineChosen!.selectedRevision);
     timelineCompare.disabled=!editing||!historicalSelected;
     timelineRestore.disabled=!editing||dirty||!historicalSelected;
     for(const control of timelineList.querySelectorAll<HTMLButtonElement>('button[data-office-timeline-revision]'))
