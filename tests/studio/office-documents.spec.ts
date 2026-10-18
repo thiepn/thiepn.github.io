@@ -680,7 +680,7 @@ test('O10 mobile privacy hides historical comparison, excerpts, titles and recov
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.locator('[data-office-history]').selectOption('1');
  await page.locator('[data-office-compare]').click();
- await expect(page.locator('[data-office-compare-summary]')).toContainText('Confidential');
+ await expect(page.locator('[data-office-compare-diffs]')).toContainText('Confidential');
  await expect(page.locator('[data-office-compare-panel]')).toBeVisible();
  await page.locator('.ws-topbar-actions [data-action=account]').click();
  await page.locator('[data-account-dialog] [data-action=privacy]').click();
