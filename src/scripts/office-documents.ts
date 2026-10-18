@@ -7,6 +7,7 @@ import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib
 import {getOfficeTemplate} from '../lib/office/templates';
 import {standaloneHtml} from '../lib/office/portable';
 import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport} from '../lib/office/import';
+import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOfficeBackup} from '../lib/office/restore';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -37,6 +38,12 @@ if(root && shell){
   const importRender=pick<HTMLElement>('[data-office-import-render]');
   const importConfirm=pick<HTMLButtonElement>('[data-office-import-confirm]');
   const importCancel=pick<HTMLButtonElement>('[data-office-import-cancel]');
+  const restoreFile=pick<HTMLInputElement>('[data-office-restore-file]');
+  const restorePanel=pick<HTMLElement>('[data-office-restore-panel]');
+  const restoreSummary=pick<HTMLElement>('[data-office-restore-summary]');
+  const restoreList=pick<HTMLElement>('[data-office-restore-list]');
+  const restoreConfirm=pick<HTMLButtonElement>('[data-office-restore-confirm]');
+  const restoreCancel=pick<HTMLButtonElement>('[data-office-restore-cancel]');
   const preview=pick<HTMLElement>('[data-office-preview]');
   const formatButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-format]')];
   const layoutButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-mode]')];
@@ -47,9 +54,15 @@ if(root && shell){
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
   let importNonce=0,pendingImport:({scope:string}&MarkdownImport)|null=null;
+  let restoreNonce=0,pendingRestore:({scope:string;filename:string}&ValidatedOfficeBackup)|null=null;
+  let restoreNew=0;
   function clearImport(){
     importNonce++;pendingImport=null;importFile.value='';importTitle.value='';
     importInfo.textContent='';importRender.replaceChildren();importPanel.hidden=true;
+  }
+  function clearRestore(){
+    restoreNonce++;pendingRestore=null;restoreNew=0;
+    restoreFile.value='';restoreSummary.textContent='';restoreList.replaceChildren();restorePanel.hidden=true;
   }
   const allowed=()=>shell.dataset.calendarPrivate==='false' &&
     (hubIdentity.status==='signed-out'||hubIdentity.status==='signed-in');
@@ -66,6 +79,9 @@ if(root && shell){
     importFile.disabled=!store||blocked||!allowed()||busy;
     importTitle.disabled=importConfirm.disabled=!pendingImport||!store||blocked||!allowed()||busy;
     importCancel.disabled=!pendingImport||busy;
+    restoreFile.disabled=!store||blocked||!allowed()||busy;
+    restoreConfirm.disabled=!pendingRestore||!restoreNew||!store||blocked||!allowed()||busy;
+    restoreCancel.disabled=!pendingRestore||busy;
     search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
@@ -194,7 +210,7 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    clearImport();savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
+    clearImport();clearRestore();savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
     if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
     const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
     // A changed owner must never inherit another owner's in-memory draft.
@@ -268,6 +284,58 @@ if(root && shell){
       message('Imported '+pending.sourceName+' as a new local document. Original documents unchanged.');
     }catch(error){
       if(ticket===epoch)message(error instanceof Error?error.message:'Import failed; existing documents unchanged.');
+    }finally{if(ticket===epoch){busy=false;enable();}}
+  })());
+  restoreFile.addEventListener('change',()=>void (async()=>{
+    const file=restoreFile.files?.[0];clearRestore();
+    if(!file||!store||!allowed()||blocked||busy)return;
+    const opened=store,ticket=epoch,nonce=restoreNonce;
+    if(!/\.json$/i.test(file.name)||file.size<1||file.size>MAX_BACKUP_BYTES){
+      message('Choose a nonempty Office .json backup no larger than 20 MB.');return;
+    }
+    try{
+      const bytes=await file.arrayBuffer();
+      if(ticket!==epoch||nonce!==restoreNonce||opened!==store||!allowed())return;
+      const parsed=parseOfficeBackup(bytes);
+      const existing=await opened.list();
+      if(ticket!==epoch||nonce!==restoreNonce||opened!==store||!allowed())return;
+      const plan=previewBackupRestore(parsed.documents,existing);
+      pendingRestore={...parsed,scope:opened.scope,filename:file.name};
+      restoreNew=plan.full?0:plan.add;
+      restorePanel.hidden=false;
+      restoreSummary.textContent=file.name+' · '+parsed.documents.length+' records · '+plan.add+' new · '+plan.skip+' same-ID skipped'+(plan.full?' · insufficient capacity':'');
+      const occupied=new Set(existing.map(doc=>doc.id));
+      restoreList.replaceChildren();
+      for(const doc of parsed.documents){
+        const row=document.createElement('p');row.className='office-restore-entry';
+        row.textContent=(occupied.has(doc.id)?'Skip existing ID: ':'Add: ')+doc.title+' · revision '+doc.revision+' · '+doc.history.length+' historical snapshots';
+        restoreList.append(row);
+      }
+      enable();message('Review every entry before confirming. Existing IDs cannot be replaced.');
+    }catch(error){
+      if(ticket!==epoch||nonce!==restoreNonce||opened!==store||!allowed())return;
+      clearRestore();enable();message(error instanceof Error?error.message:'Office backup could not be validated.');
+    }
+  })());
+  restoreCancel.addEventListener('click',()=>{
+    clearRestore();enable();message('Backup restoration cancelled. Existing documents unchanged.');
+  });
+  restoreConfirm.addEventListener('click',()=>void (async()=>{
+    if(!pendingRestore||!store||!allowed()||blocked||busy||!restoreNew)return;
+    const selected=pendingRestore,opened=store,ticket=epoch;
+    if(selected.scope!==opened.scope)return;
+    if(dirty){await persist();if(dirty||blocked||ticket!==epoch||opened!==store||!allowed())return;}
+    if(selected!==pendingRestore||selected.scope!==opened.scope)return;
+    busy=true;enable();
+    try{
+      const receipt=await opened.restoreMissing(selected.documents);
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      await refreshList();
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      clearRestore();
+      message('Restore complete: '+receipt.added+' added, '+receipt.skipped+' existing IDs skipped. All existing histories unchanged.');
+    }catch(error){
+      if(ticket===epoch)message(error instanceof Error?error.message:'Restore rolled back without modifying existing records.');
     }finally{if(ticket===epoch){busy=false;enable();}}
   })());
   search.addEventListener('input',renderList);
