@@ -53,7 +53,7 @@ if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
     let view = root.dataset.view ?? 'home';
-    const staticView=()=>['apps','connections','search','inbox','flows'].includes(view);
+    const staticView=()=>['apps','connections','search','inbox','flows','documents'].includes(view);
     const welcomeKey='thiepn:hub:welcome-dismissed';
     let welcomeDismissed=false;
     try { welcomeDismissed=localStorage.getItem(welcomeKey)==='1'; } catch { /* A UI preference must not block local work. */ }
@@ -849,7 +849,7 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {

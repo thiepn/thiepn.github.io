@@ -1,0 +1,136 @@
+import {hubIdentity} from './portal-auth';
+import {namespace} from '../lib/workspace/store';
+import {OfficeDeviceStore} from '../lib/office/device';
+import {documentFilename,type OfficeDocument} from '../lib/office/documents';
+const root=document.querySelector<HTMLElement>('[data-office]');
+const shell=document.querySelector<HTMLElement>('[data-workspace]');
+if(root && shell){
+  const pick=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
+  const list=pick<HTMLElement>('[data-office-list]');
+  const status=pick<HTMLElement>('[data-office-status]');
+  const title=pick<HTMLInputElement>('[data-office-title]');
+  const body=pick<HTMLTextAreaElement>('[data-office-body]');
+  const history=pick<HTMLSelectElement>('[data-office-history]');
+  const add=pick<HTMLButtonElement>('[data-office-new]');
+  const save=pick<HTMLButtonElement>('[data-office-save]');
+  const download=pick<HTMLButtonElement>('[data-office-export]');
+  const restore=pick<HTMLButtonElement>('[data-office-restore]');
+  let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
+  let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
+  const allowed=()=>shell.dataset.calendarPrivate==='false' &&
+    (hubIdentity.status==='signed-out'||hubIdentity.status==='signed-in');
+  const message=(value:string)=>{status.textContent=value;};
+  const enable=()=>{
+    const editing=!!store && !!active && !blocked && allowed();
+    title.disabled=body.disabled=download.disabled=!editing;
+    save.disabled=!editing||busy;
+    history.disabled=restore.disabled=!editing||busy||!active?.history.length;
+    add.disabled=!store||blocked||!allowed()||busy;
+  };
+  function clearEditor(){
+    title.value='';body.value='';history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
+  }
+  function renderHistory(){
+    history.replaceChildren(new Option('History',''));
+    for(const rev of [...(active?.history??[])].reverse())
+      history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
+  }
+  function renderList(docs:OfficeDocument[]){
+    list.replaceChildren();
+    if(!docs.length){const empty=document.createElement('p');empty.className='ws-muted';empty.textContent='No documents yet.';list.append(empty);return;}
+    for(const doc of docs){
+      const button=document.createElement('button');button.type='button';button.className='office-entry';
+      button.textContent=doc.title;button.dataset.officeId=doc.id;
+      button.setAttribute('aria-current',doc.id===active?.id?'page':'false');
+      button.addEventListener('click',()=>void select(doc.id));
+      list.append(button);
+    }
+  }
+  async function refreshList(){if(!store)return;renderList(await store.list());}
+  async function select(id:string){
+    if(!store||busy||blocked||!allowed())return;
+    if(dirty){await persist();if(dirty)return;}
+    try{
+      const doc=await store.read(id);
+      if(!doc)throw new Error('Document no longer exists.');
+      if(!allowed())return;
+      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
+    }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
+  }
+  async function persist(){
+    if(!dirty||!active||!store||blocked||!allowed()||busy)return;
+    clearTimeout(auto);busy=true;enable();
+    const current=active,stamp=epoch,wantedTitle=title.value,wantedBody=body.value;
+    try{
+      const saved=await store.save(current,wantedTitle,wantedBody);
+      if(stamp!==epoch||!allowed())return;
+      active=saved;
+      dirty=title.value!==saved.title||body.value!==saved.body;
+      renderHistory();await refreshList();
+      message(dirty?'New edits waiting to save':'Saved locally · revision '+saved.revision);
+    }catch(e){
+      if(stamp!==epoch)return;
+      blocked=true;message((e instanceof Error?e.message:'Could not save')+' Export your current text before reloading.');
+    }finally{
+      busy=false;enable();
+      if(dirty&&!blocked&&stamp===epoch)queueAutosave();
+    }
+  }
+  function queueAutosave(){
+    clearTimeout(auto);
+    auto=setTimeout(()=>void persist(),600);
+  }
+  async function create(){
+    if(!store||busy||blocked||!allowed())return;
+    if(dirty){await persist();if(dirty)return;}
+    try{const doc=await store.create();await refreshList();await select(doc.id);title.focus();}
+    catch(e){message(e instanceof Error?e.message:'Cannot create document');}
+  }
+  async function start(){
+    const ticket=++epoch;
+    clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
+    list.replaceChildren();clearEditor();
+    if(!allowed()){message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
+    const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
+    const opened=new OfficeDeviceStore(scope);
+    try{
+      await opened.open();
+      if(ticket!==epoch||!allowed()){opened.close();return;}
+      store=opened;
+      const docs=await store.list();
+      if(ticket!==epoch)return;
+      renderList(docs);enable();
+      if(docs.length)await select(docs[0]!.id);
+      else message('Ready · your Office documents stay in a separate local database.');
+    }catch(e){
+      opened.close();if(ticket===epoch){store=null;enable();message(e instanceof Error?e.message:'Office storage is unavailable.');}
+    }
+  }
+  add.addEventListener('click',()=>void create());
+  save.addEventListener('click',()=>void persist());
+  for(const input of [title,body])input.addEventListener('input',()=>{
+    if(!active||blocked||!allowed())return;
+    dirty=true;message('Unsaved edits · autosave pending');queueAutosave();
+  });
+  download.addEventListener('click',()=>{
+    if(!active||!allowed())return;
+    const file=new Blob([body.value],{type:'text/markdown;charset=utf-8'});
+    const url=URL.createObjectURL(file),anchor=document.createElement('a');
+    anchor.href=url;anchor.download=documentFilename(title.value||active.title);anchor.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    message(dirty?'Exported current unsaved Markdown. Local save is still pending.':'Markdown export prepared.');
+  });
+  restore.addEventListener('click',()=>void (async()=>{
+    if(!active||!store||blocked||busy||!allowed()||!history.value)return;
+    if(dirty){message('Save or export current edits before restoring history.');return;}
+    const rev=active.history.find(entry=>String(entry.revision)===history.value);
+    if(!rev||!confirm('Restore this older revision? Current content will remain in revision history.'))return;
+    title.value=rev.title;body.value=rev.body;dirty=true;await persist();
+  })());
+  window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+  window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});
+  window.addEventListener('hub:identity',()=>void start());
+  new MutationObserver(()=>void start()).observe(shell,{attributes:true,attributeFilter:['data-calendar-private']});
+  void start();
+}

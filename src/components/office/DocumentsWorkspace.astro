@@ -1,0 +1,17 @@
+---
+import '../../styles/office-documents.css';
+---
+<section class="office-root ws-surface" data-office aria-labelledby="office-heading">
+  <header class="office-intro"><div><h2 id="office-heading">Documents</h2><p>Local Markdown drafts · no cloud sync or import from Manuscript</p></div><button type="button" class="ws-button" data-office-new disabled>New document</button></header>
+  <div class="office-grid">
+    <nav class="office-list" aria-label="Your documents"><p class="ws-muted">Documents on this device</p><div data-office-list></div></nav>
+    <section class="office-editor" aria-label="Document editor">
+      <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button></div>
+      <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
+      <label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea>
+      <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
+    </section>
+  </div>
+  <p data-office-status role="status" aria-live="polite">Checking Hub privacy and local storage…</p>
+</section>
+<script>import '../../scripts/office-documents';</script>
