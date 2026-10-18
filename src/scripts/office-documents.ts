@@ -615,6 +615,7 @@ if(root && shell){
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      sectionTitle.value='';
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -766,6 +767,7 @@ if(root && shell){
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      sectionTitle.value='';
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
