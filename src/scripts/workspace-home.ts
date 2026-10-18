@@ -36,6 +36,7 @@ import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import {renderTaskKnowledgeContext,renderNoteWorkContext} from '../lib/workspace/knowledge-work-context';
+import {renderHubKnowledge,renderHubKnowledgeList} from '../lib/workspace/personal-index-knowledge';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
 import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
@@ -116,6 +117,7 @@ async function setup(root: HTMLElement) {
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
+    let knowledgeNoteId:string|null=null,knowledgeQuery=''; // private, session-only; no URL or storage.
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
@@ -846,7 +848,7 @@ async function setup(root: HTMLElement) {
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
             if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,authorizedFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
-            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
+            return menu+(editing?'':renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery))+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
 
@@ -902,6 +904,7 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
+        if(knowledgeNoteId&&!state.notes.some(n=>n.id===knowledgeNoteId))knowledgeNoteId=null;
         pruneWeekSelection();
         if (privacyHeld || state.preferences.hidden) { focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
@@ -1610,7 +1613,7 @@ async function setup(root: HTMLElement) {
     }
     function editNote(id = '', seed?: {title:string;body:string}) {
         const note = state!.notes.find(n => n.id === id);
-        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
+        openForm(note ? 'Edit local note' : 'Capture a note', '<div data-note-editor>'+field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft)+'</div>' + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
             const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
             if (!next.title)
                 throw new Error('Enter a title.');
@@ -2168,6 +2171,11 @@ async function setup(root: HTMLElement) {
         if (action === 'palette-execute') {
             executePalette(target.dataset.command ?? '',id);
             return;
+        }
+        if(action==='knowledge-open'){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!state.notes.some(n=>n.id===id))return;
+            knowledgeNoteId=id;render();
+            root.querySelector<HTMLElement>('#ws-knowledge-preview-title')?.focus({preventScroll:true});return;
         }
         if (action === 'export') {
             exportWorkspace();
@@ -3098,6 +3106,13 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
+        if(el.hasAttribute('data-knowledge-query')){
+            if(!state||locked||privacyHeld||state.preferences.hidden)return;
+            knowledgeQuery=el.value.slice(0,100);
+            const results=root.querySelector<HTMLElement>('[data-knowledge-results]');
+            if(results)results.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,knowledgeNoteId);
+            return;
+        }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
             renderSearch();
@@ -3291,6 +3306,7 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        knowledgeNoteId=null;knowledgeQuery=''; // Never carry private note search across owners.
         weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage';
         if(homeModeRestorePending) {
             homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
