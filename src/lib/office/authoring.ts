@@ -30,7 +30,8 @@ export function insertAuthoringBlock(
  let left=start,right=end,insert='',caretStart=0,caretEnd=0;
  if(kind==='tasks'){
   left=source.lastIndexOf('\n',Math.max(0,start-1))+1;
-  const after=source.indexOf('\n',end);right=after<0?source.length:after;
+  const lineEnd=end>start&&source[end-1]==='\n'?end-1:end;
+  const after=source.indexOf('\n',lineEnd);right=after<0?source.length:after;
   const raw=source.slice(left,right);
   insert=raw?raw.split('\n').map(line=>line.trim()?'- [ ] '+line.replace(/^\s*(?:[-*+]|\d+[.)])\s+|^\s*-\s+\[[xX ]\]\s+/,''):'').join('\n'):'- [ ] Task';
   caretStart=caretEnd=left+insert.length;

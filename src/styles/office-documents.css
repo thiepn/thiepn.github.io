@@ -179,3 +179,14 @@
 .office-timeline-pair-diffs pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;border:1px solid var(--ws-line);padding:9px;margin:0}
 [data-office-timeline-pair-panel]{display:grid;gap:9px;min-width:0}
 [data-office-timeline-pair-panel][hidden]{display:none}
+
+/* O15: original-source long-document navigation and safe Markdown block authoring. */
+.office-writing-tools{display:grid;gap:11px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-writing-stats{font-size:12px;font-variant-numeric:tabular-nums}
+.office-writing-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.office-writing-controls label{font-size:12px;font-weight:600}
+.office-writing-controls input,.office-writing-controls select{min-height:34px;border:1px solid var(--ws-line);border-radius:3px;background:var(--ws-surface);color:inherit;padding:6px 9px}
+.office-writing-controls input[type=number]{width:72px}
+.office-writing-controls input[data-office-writing-language]{width:112px}
+.office-writing-controls button{padding:7px 10px;min-height:34px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-writing-tools>p{font-size:11px;line-height:1.5;margin:0}

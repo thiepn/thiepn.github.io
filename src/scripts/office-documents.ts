@@ -15,6 +15,7 @@ import {revisionHunks,type RevisionHunk} from '../lib/office/revision-hunks';
 import {previewMultiRevisionRecovery,MAX_MULTI_RECOVERY_HUNKS} from '../lib/office/multi-recovery';
 import {officeRevisionTimeline,timelineExcerpt} from '../lib/office/revision-timeline';
 import {searchOfficeHistory,compareOfficeSavedVersions} from '../lib/office/history-explorer';
+import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type AuthoringBlock} from '../lib/office/authoring';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -45,6 +46,14 @@ if(root && shell){
   const status=pick<HTMLElement>('[data-office-status]');
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
+  const writingStats=pick<HTMLElement>('[data-office-writing-stats]');
+  const writingLine=pick<HTMLInputElement>('[data-office-writing-line]');
+  const writingGo=pick<HTMLButtonElement>('[data-office-writing-go]');
+  const writingBlock=pick<HTMLSelectElement>('[data-office-writing-block]');
+  const writingRows=pick<HTMLInputElement>('[data-office-writing-rows]');
+  const writingColumns=pick<HTMLInputElement>('[data-office-writing-columns]');
+  const writingLanguage=pick<HTMLInputElement>('[data-office-writing-language]');
+  const writingInsert=pick<HTMLButtonElement>('[data-office-writing-insert]');
   const history=pick<HTMLSelectElement>('[data-office-history]');
   const timelineList=pick<HTMLElement>('[data-office-timeline-list]');
   const timelineSearch=pick<HTMLInputElement>('[data-office-history-search]');
@@ -121,7 +130,16 @@ if(root && shell){
   const preview=pick<HTMLElement>('[data-office-preview]');
   const formatButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-format]')];
   const layoutButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-mode]')];
-  function renderPreview(){renderMarkdown(body.value,preview);}
+  function renderWritingStats(){
+    if(!active||!allowed()){
+      writingStats.textContent='Open a document for writing statistics.';
+      return;
+    }
+    const stats=sourceWritingStats(body.value);
+    writingStats.textContent=stats.words+' words · '+stats.characters+' characters · '+
+      stats.lines+' lines · '+stats.paragraphs+' paragraphs';
+  }
+  function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
@@ -166,6 +184,9 @@ if(root && shell){
     // A concurrent-edit conflict must never prevent exporting the unsaved text.
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
+    writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
+    writingRows.disabled=writingColumns.disabled=!editing||writingBlock.value!=='table';
+    writingLanguage.disabled=!editing||writingBlock.value!=='code';
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     compareButton.disabled=!editing||!history.value||!active?.history.some(rev=>String(rev.revision)===history.value);
     const timelineValid=!!active&&!!store&&!!timelineChosen&&allowed()&&
@@ -411,6 +432,7 @@ if(root && shell){
   }
   function clearEditor(){
     clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
+    writingLine.value='';writingLanguage.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
@@ -542,7 +564,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();renderFind();
+      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -887,6 +909,25 @@ if(root && shell){
   }
   sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
   sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
+  writingBlock.addEventListener('change',()=>enable());
+  writingGo.addEventListener('click',()=>{
+    if(!active||body.disabled||!allowed())return;
+    try{
+      const offset=sourcePositionAtLine(body.value,Number(writingLine.value));
+      focusEditor(offset,offset);
+      message('Focused line '+writingLine.value+' in the original Markdown editor.');
+    }catch(error){message(error instanceof Error?error.message:'Line navigation unavailable.');}
+  });
+  writingInsert.addEventListener('click',()=>{
+    if(!active||body.disabled||blocked||busy||!allowed())return;
+    try{
+      const result=insertAuthoringBlock(body.value,body.selectionStart,body.selectionEnd,
+        writingBlock.value as AuthoringBlock,Number(writingRows.value),Number(writingColumns.value),writingLanguage.value);
+      body.value=result.value;focusEditor(result.start,result.end);
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Markdown block inserted into the original document. Autosave pending.');
+    }catch(error){message(error instanceof Error?error.message:'Block not inserted. Original source unchanged.');}
+  });
   for(const button of formatButtons)button.addEventListener('click',()=>{
     if(button.disabled||!active||!allowed())return;
     const action=button.dataset.officeFormat as FormatAction;

@@ -116,6 +116,20 @@ import '../../styles/office-documents.css';
       <div class="office-format" role="toolbar" aria-label="Markdown formatting">
         <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>
       </div>
+      <section class="office-writing-tools" aria-label="Long document writing tools">
+        <div class="office-writing-stats" data-office-writing-stats role="status" aria-live="polite">Open a document for writing statistics.</div>
+        <div class="office-writing-controls">
+          <label for="office-writing-line">Go to line</label><input id="office-writing-line" data-office-writing-line type="number" min="1" step="1" disabled placeholder="1"/>
+          <button type="button" data-office-writing-go disabled>Go to line</button>
+          <label for="office-writing-block">Insert Markdown block</label>
+          <select id="office-writing-block" data-office-writing-block disabled><option value="code">Fenced code</option><option value="table">Markdown table</option><option value="tasks">Task checklist</option><option value="rule">Horizontal divider</option></select>
+          <label for="office-writing-rows">Rows</label><input id="office-writing-rows" data-office-writing-rows type="number" min="1" max="12" step="1" value="2" disabled/>
+          <label for="office-writing-columns">Columns</label><input id="office-writing-columns" data-office-writing-columns type="number" min="2" max="6" step="1" value="2" disabled/>
+          <label for="office-writing-language">Code language</label><input id="office-writing-language" data-office-writing-language maxlength="24" placeholder="Optional" disabled/>
+          <button type="button" data-office-writing-insert disabled>Insert at selection</button>
+        </div>
+        <p class="ws-muted">Inserts safe Markdown into the existing editor, using the same original revision-checked autosave. Existing selected text may be replaced.</p>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>
