@@ -46,6 +46,7 @@ import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type 
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained} from '../lib/workspace/widget-metadata-safety';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
 import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
@@ -1688,7 +1689,12 @@ async function setup(root: HTMLElement) {
             notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
             return;
         }
-        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
+        await mutate(s => {
+            const index = s.workspaces.findIndex(w => w.id === draft.workspaceId);
+            if(index<0)throw Error('Original workspace is unavailable. Preserve the edit draft.');
+            assertWorkspaceMetadataRetained(s.workspaces[index]!,draft.workspace);
+            draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace;
+        }, 'Layout saved', false);
         if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
             editing = null;
             recoveryDraft = null;
@@ -1968,6 +1974,8 @@ async function setup(root: HTMLElement) {
                 }
                 else {
                     const index = s.workspaces.findIndex(w => w.id === s.active);
+                    if(workspaceOwnedSummary(s.workspaces[index]!).length)
+                        throw Error('This layout contains original Hub groupings or relationships. Remove them explicitly before replacing its layout, or create a new workspace.');
                     next.id = s.active;
                     next.title = s.workspaces[index]!.title;
                     next.revision = s.workspaces[index]!.revision + 1;
@@ -2737,6 +2745,10 @@ async function setup(root: HTMLElement) {
                 configureWidget(id);
                 break;
             case 'remove-widget':
+                if(hasWidgetOwnedRecords((editing?.workspace??current()).widgets.find(x=>x.id===id)!)){
+                    toast('This widget owns saved records or relationships. Remove or unlink those items explicitly first.');
+                    break;
+                }
                 changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
                 dialog.close();
                 toast('Widget removed; its content is kept.');
@@ -2787,7 +2799,10 @@ async function setup(root: HTMLElement) {
                     toast('Keep at least one workspace. You can apply the blank layout instead.');
                     break;
                 }
-                confirmRemoval('Delete this workspace?', 'Only its layout will be removed. Tasks, notes, events and trackers stay.', s => {
+                confirmRemoval('Delete this workspace?', 'Hub tasks, notes, events and trackers stay. Workspace-owned groupings and relationships must be emptied first.', s => {
+                    const source=s.workspaces.find(w=>w.id===id);
+                    if(source&&workspaceOwnedSummary(source).length)
+                        throw Error('This workspace still owns saved records or relationships. Unlink or remove them explicitly before deleting the workspace.');
                     s.workspaces = s.workspaces.filter(w => w.id !== id);
                     if (s.active === id)
                         s.active = s.workspaces[0]!.id;
