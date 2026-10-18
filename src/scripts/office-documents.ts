@@ -11,6 +11,7 @@ import {parseOfficeBackup,previewBackupRestore,MAX_BACKUP_BYTES,type ValidatedOf
 import {exportOfficeBundle} from '../lib/office/bundle';
 import {findEditorText,replaceEditorText,documentSections,moveDocumentSection,type TextMatch} from '../lib/office/navigation';
 import {compareOfficeRevision,recoverRevisionLines,applyRevisionExcerpt} from '../lib/office/revision-review';
+import {revisionHunks,type RevisionHunk} from '../lib/office/revision-hunks';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -54,6 +55,13 @@ if(root && shell){
   const comparePanel=pick<HTMLElement>('[data-office-compare-panel]');
   const compareSummary=pick<HTMLElement>('[data-office-compare-summary]');
   const compareDiffs=pick<HTMLElement>('[data-office-compare-diffs]');
+  const hunkPrevious=pick<HTMLButtonElement>('[data-office-hunk-prev]');
+  const hunkNext=pick<HTMLButtonElement>('[data-office-hunk-next]');
+  const hunkPosition=pick<HTMLElement>('[data-office-hunk-position]');
+  const hunkDetails=pick<HTMLElement>('[data-office-hunk-details]');
+  const hunkPreview=pick<HTMLElement>('[data-office-hunk-preview]');
+  const hunkHistorical=pick<HTMLButtonElement>('[data-office-hunk-historical]');
+  const hunkCurrent=pick<HTMLButtonElement>('[data-office-hunk-current]');
   const recoverStart=pick<HTMLInputElement>('[data-office-recover-start]');
   const recoverEnd=pick<HTMLInputElement>('[data-office-recover-end]');
   const recoverInfo=pick<HTMLElement>('[data-office-recover-info]');
@@ -89,6 +97,7 @@ if(root && shell){
   const selectedBundle=new Set<string>();
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
   let compared:{scope:string;id:string;revision:number;historical:number}|null=null;
+  let changeHunks:RevisionHunk[]=[],hunkIndex=-1,hunkTotal=0,hunkLimited=false,hunkSummaryOnly=false;
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -124,6 +133,10 @@ if(root && shell){
     const from=Number(recoverStart.value),to=Number(recoverEnd.value);
     const validRange=reviewActive&&Number.isSafeInteger(from)&&from>=1&&Number.isSafeInteger(to)&&to>=from&&to-from<200;
     recoverInsert.disabled=recoverReplace.disabled=!validRange;
+    const chosenHunk=hunkIndex>=0?changeHunks[hunkIndex]:null;
+    hunkPrevious.disabled=hunkNext.disabled=!reviewActive||changeHunks.length<2;
+    hunkHistorical.disabled=!reviewActive||!chosenHunk||chosenHunk.removed===0;
+    hunkCurrent.disabled=!reviewActive||!chosenHunk;
     add.disabled=!store||blocked||!allowed()||busy;
     templatePicker.disabled=!store||blocked||!allowed()||busy;
     importFile.disabled=!store||blocked||!allowed()||busy;
@@ -153,7 +166,9 @@ if(root && shell){
   function clearComparison(){
     compared=null;comparePanel.hidden=true;compareSummary.textContent='';
     compareDiffs.replaceChildren();recoverPreview.textContent='';recoverInfo.textContent='';
-    recoverStart.value='';recoverEnd.value='';
+    changeHunks=[];hunkIndex=-1;hunkTotal=0;hunkLimited=false;hunkSummaryOnly=false;
+    hunkPosition.textContent='No differences selected';hunkDetails.textContent='';
+    hunkPreview.replaceChildren();recoverStart.value='';recoverEnd.value='';
   }
   function comparedHistory(){
     if(!active||!store||!compared||!allowed()||compared.scope!==store.scope||
@@ -172,10 +187,39 @@ if(root && shell){
     }catch(error){recoverInfo.textContent=error instanceof Error?error.message:'Range unavailable';}
     enable();
   }
+  function renderSelectedHunk(){
+    const hunk=changeHunks[hunkIndex];
+    hunkPreview.replaceChildren();
+    if(!hunk||!comparedHistory()){
+      hunkPosition.textContent='No changed sections';
+      hunkDetails.textContent='Historical and current source match.';
+      enable();return;
+    }
+    hunkPosition.textContent='Change '+(hunkIndex+1)+' of '+hunkTotal+
+      (hunkLimited?' · first '+changeHunks.length+' navigable':'');
+    hunkDetails.textContent='History lines '+hunk.historicalFrom+'–'+hunk.historicalTo+
+      ' ('+hunk.removed+' removed), current lines '+hunk.currentFrom+'–'+hunk.currentTo+
+      ' ('+hunk.added+' added).'+
+      (hunkSummaryOnly?' Large document: a single bounded summary, not an exact changed-hunk diff.':'')+
+      (hunk.removed>200?' Historical recovery is limited to the first 200 lines.':'');
+    const historical=document.createElement('pre'),current=document.createElement('pre');
+    historical.textContent='Historical excerpt:\n'+(hunk.historicalSample.length?hunk.historicalSample.join('\n'):'(no historical lines)');
+    current.textContent='Current excerpt:\n'+(hunk.currentSample.length?hunk.currentSample.join('\n'):'(no current lines)');
+    hunkPreview.append(historical,current);enable();
+  }
+  function focusHunk(delta:number){
+    if(!changeHunks.length||!comparedHistory()||body.disabled)return;
+    hunkIndex=(hunkIndex+delta+changeHunks.length)%changeHunks.length;
+    renderSelectedHunk();
+  }
   function renderComparison(){
     const rev=comparedHistory();
     if(!rev){clearComparison();enable();return;}
     const result=compareOfficeRevision(rev.body,body.value);
+    const detailed=revisionHunks(rev.body,body.value);
+    changeHunks=detailed.hunks;hunkTotal=detailed.totalHunks;hunkLimited=detailed.truncated;hunkSummaryOnly=detailed.summaryOnly;
+    if(!changeHunks.length)hunkIndex=-1;
+    else if(hunkIndex<0||hunkIndex>=changeHunks.length)hunkIndex=0;
     compareSummary.textContent='Historical revision '+rev.revision+' (“'+rev.title+'”) vs '+(dirty?'unsaved current draft':'saved current revision '+active!.revision)+
       ' (“'+title.value+'”) · '+result.changedRows+' differing lines'+(result.truncated?' (first 80 shown)':'');
     compareDiffs.replaceChildren();
@@ -188,7 +232,7 @@ if(root && shell){
       const newer=document.createElement('pre');newer.textContent='Current line '+difference.line+': '+(difference.current??'—');
       row.append(older,newer);compareDiffs.append(row);
     }
-    previewRecovery();enable();
+    renderSelectedHunk();previewRecovery();enable();
   }
   function clearEditor(){
     clearComparison();active=null;dirty=false;title.value='';body.value='';
@@ -732,6 +776,29 @@ if(root && shell){
     compared={scope:store.scope,id:active.id,revision:active.revision,historical:old.revision};
     recoverStart.value='1';recoverEnd.value='1';comparePanel.hidden=false;
     renderComparison();
+  });
+  hunkPrevious.addEventListener('click',()=>focusHunk(-1));
+  hunkNext.addEventListener('click',()=>focusHunk(1));
+  hunkHistorical.addEventListener('click',()=>{
+    const hunk=changeHunks[hunkIndex];
+    if(!hunk||!comparedHistory()||hunk.removed===0||body.disabled)return;
+    recoverStart.value=String(hunk.historicalFrom);
+    recoverEnd.value=String(Math.min(hunk.historicalTo,hunk.historicalFrom+199));
+    previewRecovery();
+    message('Selected original historical lines. Review the exact text before confirming recovery.');
+  });
+  hunkCurrent.addEventListener('click',()=>{
+    const hunk=changeHunks[hunkIndex];
+    if(!hunk||!comparedHistory()||body.disabled)return;
+    const lines=body.value.split('\n');
+    if(hunk.currentFrom<1||hunk.currentFrom>lines.length+1)return;
+    let start=0;
+    for(let i=0;i<hunk.currentFrom-1;i++)start+=(lines[i]?.length??0)+1;
+    let end=start;
+    for(let i=hunk.currentFrom-1;i<hunk.currentTo;i++)end+=(lines[i]?.length??0)+(i<hunk.currentTo-1?1:0);
+    if(hunk.added===0)end=start;
+    body.focus();body.setSelectionRange(start,Math.min(end,body.value.length));
+    message('Selected current changed text in the source editor. Review before replacing any content.');
   });
   recoverStart.addEventListener('input',previewRecovery);
   recoverEnd.addEventListener('input',previewRecovery);

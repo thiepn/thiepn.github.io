@@ -49,6 +49,15 @@ import '../../styles/office-documents.css';
       <section class="office-revision-review" data-office-compare-panel hidden aria-label="Revision comparison and selective recovery">
         <h3>Compare revision with current draft</h3>
         <p class="ws-muted" data-office-compare-summary></p>
+        <section class="office-hunk-navigation" aria-label="Navigate changed sections of revision">
+          <div class="office-hunk-toolbar"><button type="button" data-office-hunk-prev disabled>Previous change</button><p data-office-hunk-position role="status" aria-live="polite">No differences selected</p><button type="button" data-office-hunk-next disabled>Next change</button></div>
+          <p class="ws-muted" data-office-hunk-details></p>
+          <div class="office-revision-diff" data-office-hunk-preview></div>
+          <div class="office-hunk-toolbar">
+            <button type="button" data-office-hunk-historical disabled>Choose historical lines</button>
+            <button type="button" data-office-hunk-current disabled>Focus current change</button>
+          </div>
+        </section>
         <div class="office-revision-diffs" data-office-compare-diffs aria-label="Changed historical and current lines"></div>
         <fieldset class="office-recover-range"><legend>Recover specific historical lines</legend>
           <label for="office-recover-start">From line</label><input id="office-recover-start" data-office-recover-start type="number" min="1" step="1" disabled/>
