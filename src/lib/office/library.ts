@@ -38,7 +38,7 @@ export function outlineFor(source:string):OutlineHeading[]{
   }
   return outline;
 }
-export interface OfficeBackup {kind:'thiepn-hub-office-backup';schemaVersion:1;createdAt:string;documents:OfficeDocument[]}
+export interface OfficeBackup {kind:'thiepn-hub-office-backup';schemaVersion:1;createdAt:string;documents:readonly OfficeDocument[]}
 export function backupDocuments(input:readonly OfficeDocument[],date:string):string{
   if(!Number.isFinite(Date.parse(date))||input.length>MAX_DOCUMENTS)throw new Error('Invalid backup request.');
   const ids=new Set<string>();let size=100;
