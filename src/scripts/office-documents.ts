@@ -138,7 +138,10 @@ if(root && shell){
   }
   function renderOutline(){
     outline.replaceChildren();
-    if(!active||!allowed()){outlineEmpty.hidden=false;return;}
+    if(!active||!allowed()){
+      sectionSelect.replaceChildren(new Option('Choose heading',''));
+      outlineEmpty.hidden=false;return;
+    }
     const headings=outlineFor(body.value);
     outlineEmpty.hidden=headings.length>0;
     const oldSelection=sectionSelect.value;
@@ -260,7 +263,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();
+      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -297,7 +300,7 @@ if(root && shell){
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
-      renderPreview();renderOutline();renderHistory();
+      renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
       templatePicker.value='blank';title.focus();
@@ -329,7 +332,7 @@ if(root && shell){
         const id=heldDraft&&docs.some(doc=>doc.id===heldDraft!.id)?heldDraft.id:docs[0]!.id;
         await select(id);
         if(ticket!==epoch||!active||!heldDraft||active.id!==heldDraft.id)return;
-        title.value=heldDraft.title;body.value=heldDraft.body;renderPreview();renderOutline();
+        title.value=heldDraft.title;body.value=heldDraft.body;renderPreview();renderOutline();renderFind();
         dirty=title.value!==active.title||body.value!==active.body;
         blocked=active.revision!==heldDraft.revision;
         heldDraft=null;
@@ -400,7 +403,7 @@ if(root && shell){
       active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
-        renderPreview();renderOutline();renderHistory();
+        renderPreview();renderOutline();renderFind();renderHistory();
       }
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -448,7 +451,7 @@ if(root && shell){
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
-      renderPreview();renderOutline();renderHistory();
+      renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
       clearImport();
@@ -664,7 +667,7 @@ if(root && shell){
     if(dirty){message('Save or export current edits before restoring history.');return;}
     const rev=active.history.find(entry=>String(entry.revision)===history.value);
     if(!rev||!confirm('Restore this older revision? Current content will remain in revision history.'))return;
-    title.value=rev.title;body.value=rev.body;renderPreview();renderOutline();dirty=true;await persist();
+    title.value=rev.title;body.value=rev.body;renderPreview();renderOutline();renderFind();dirty=true;enable();await persist();
   })());
   window.addEventListener('beforeunload',event=>{if(dirty||heldDraft){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});
