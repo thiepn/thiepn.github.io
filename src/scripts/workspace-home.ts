@@ -47,7 +47,7 @@ import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type Focu
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
 import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
-import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained} from '../lib/workspace/widget-metadata-safety';
+import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained,duplicatePresentationLayout} from '../lib/workspace/widget-metadata-safety';
 import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
 import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
 import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
@@ -1947,14 +1947,14 @@ async function setup(root: HTMLElement) {
             toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
             return;
         }
-        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
+        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '<p class="ws-muted">Copies this layout and display settings only. Saved outcomes, decisions, pins and task–calendar links stay with the original workspace.</p>' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
             const title = String(data.get('title')).trim();
             if (!title)
                 throw new Error('Choose a name.');
             await mutate(s => {
-                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
-                if (original)
-                    workspace.widgets.forEach(w => w.id = uid());
+                const existing=original?s.workspaces.find(w=>w.id===original.id):undefined;
+                if(original&&!existing)throw Error('Original workspace changed. Open the current layout again.');
+                const workspace = existing ? duplicatePresentationLayout(existing,title) : preset(title, pins(), Number(data.get('preset')));
                 s.workspaces.push(workspace);
                 s.active = workspace.id;
             }, 'Workspace created');
@@ -2927,12 +2927,8 @@ async function setup(root: HTMLElement) {
                 const draft=clone(recoveryDraft);
                 const original=state.workspaces.find(w=>w.id===draft.workspaceId);
                 if(!original) {toast('Original layout is unavailable. Export and review the saved draft.');break;}
-                const source=store, own=epoch, copy=clone(draft.workspace);
-                copy.id=uid();
-                copy.title=(original.title.slice(0,68)+' recovered').slice(0,80);
-                copy.revision=0;
-                copy.updatedAt=stamp();
-                copy.widgets.forEach(w=>{w.id=uid();});
+                const source=store, own=epoch;
+                const copy=duplicatePresentationLayout(draft.workspace,(original.title.slice(0,68)+' recovered').slice(0,80));
                 void mutate(s=>{
                     if(s.workspaces.length>=10) throw new Error('At most 10 workspaces are supported.');
                     s.workspaces.push(copy);
@@ -2973,11 +2969,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'save-draft-as':
                 if (editing && state.workspaces.length < 10) {
-                    const w = clone(editing.workspace);
-                    w.id = uid();
-                    w.title += ' recovered';
-                    w.revision = 0;
-                    w.widgets.forEach(x => x.id = uid());
+                    const w = duplicatePresentationLayout(editing.workspace,(editing.workspace.title.slice(0,68)+' recovered').slice(0,80));
                     editing = null;
                     conflict = false;
                     void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
