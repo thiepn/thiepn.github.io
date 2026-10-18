@@ -21,5 +21,6 @@ describe('P3 native Hub Knowledge',()=>{
   s.notes=Array.from({length:90},(_,i)=>note('N'+i,'test'));
   const p=projectHubKnowledge(s,'test',null);
   expect(p.total).toBe(90);expect(p.notes).toHaveLength(60);expect(p.truncated).toBe(true);
+  expect(projectHubKnowledge(s,'not-found','N5').selected).toBeNull();
  });
 });

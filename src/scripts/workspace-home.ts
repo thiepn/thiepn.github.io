@@ -36,7 +36,7 @@ import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import {renderTaskKnowledgeContext,renderNoteWorkContext} from '../lib/workspace/knowledge-work-context';
-import {renderHubKnowledge,renderHubKnowledgeList} from '../lib/workspace/personal-index-knowledge';
+import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
 import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
@@ -2821,7 +2821,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { knowledgeNoteId=null;knowledgeQuery=''; focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -3109,8 +3109,13 @@ async function setup(root: HTMLElement) {
         if(el.hasAttribute('data-knowledge-query')){
             if(!state||locked||privacyHeld||state.preferences.hidden)return;
             knowledgeQuery=el.value.slice(0,100);
+            const projection=projectHubKnowledge(state,knowledgeQuery,knowledgeNoteId);
+            knowledgeNoteId=projection.selected?.id??null;
             const results=root.querySelector<HTMLElement>('[data-knowledge-results]');
             if(results)results.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,knowledgeNoteId);
+            const documentView=root.querySelector<HTMLElement>('[data-knowledge-document]');
+            if(documentView)documentView.innerHTML=projection.selected?renderHubKnowledgePreview(state,projection.selected):
+                '<div class="ws-knowledge-blank"><h3>No matching Hub notes</h3><p>Refine the local search; your originals remain unchanged.</p></div>';
             return;
         }
         if (el.id === 'workspace-search') {

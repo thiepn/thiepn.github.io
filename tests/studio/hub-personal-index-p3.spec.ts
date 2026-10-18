@@ -10,8 +10,11 @@ test('P3 edits the same original note and preserves it across reload',async({pag
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-knowledge-original]')).toContainText('Readable text');
  const original=await page.locator('[data-knowledge-original]').getAttribute('data-knowledge-original');
+ await page.locator('[data-knowledge-query]').fill('not in any Hub note');
+ await expect(page.locator('[data-knowledge-document]')).toContainText('No matching Hub notes');
  await page.locator('[data-knowledge-query]').fill('Readable text');
  await expect(page.locator('.ws-knowledge-items .ws-knowledge-item')).toHaveCount(1);
+ await expect(page.locator('[data-knowledge-document]')).toContainText('Readable text');
  await page.locator('[data-knowledge-original] [data-action=edit-note]').click();
  await expect(page.getByLabel('Note',{exact:true})).toHaveValue(/Readable text/);
  await page.getByLabel('Note',{exact:true}).fill('Changed in original note editor');

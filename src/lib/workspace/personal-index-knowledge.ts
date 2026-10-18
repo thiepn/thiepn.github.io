@@ -9,7 +9,7 @@ export function projectHubKnowledge(state:WorkspaceState,query:string,selectedId
  const originals=[...state.notes].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)||a.id.localeCompare(b.id));
  const matched=search?originals.filter(n=>(n.title+'\n'+n.body).toLocaleLowerCase().includes(search)):originals;
  const visible=matched.slice(0,KNOWLEDGE_PAGE_SIZE);
- const selected=(selectedId?originals.find(n=>n.id===selectedId):null)??visible[0]??null;
+ const selected=(selectedId?visible.find(n=>n.id===selectedId):null)??visible[0]??null;
  return {total:originals.length,count:matched.length,notes:visible,selected,truncated:matched.length>visible.length};
 }
 export function renderHubKnowledgeList(state:WorkspaceState,query:string,selectedId:string|null){
@@ -33,6 +33,7 @@ export function renderHubKnowledgePreview(state:WorkspaceState,note:Note){
 export function renderHubKnowledge(state:WorkspaceState,selectedId:string|null,query:string){
  const data=projectHubKnowledge(state,query,selectedId);
  const content=data.selected?renderHubKnowledgePreview(state,data.selected):
+ data.total?'<div class="ws-knowledge-blank"><h3>No matching Hub notes</h3><p>Refine your search. No original record was changed.</p></div>':
  '<div class="ws-knowledge-blank"><h3>No Hub notes yet</h3><p>Capture a local Hub note. KEEP and Notes remain separate source owners.</p>'+btn('edit-note','Create Hub note')+'</div>';
  return '<section class="ws-knowledge-native" data-hub-knowledge aria-labelledby="ws-knowledge-title">'+
  '<header class="ws-knowledge-header"><div><p class="ws-knowledge-kicker">03 / KNOWLEDGE · HUB ORIGINALS</p><h2 id="ws-knowledge-title">Knowledge</h2>'+
