@@ -7,7 +7,7 @@ function crc32(data:Uint8Array):number{
  return (crc^0xffffffff)>>>0;
 }
 function safeName(title:string,id:string,encode:TextEncoder):string{
- const normalized=title.normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f\x7f]/g,'-').replace(/[. ]+$/g,'').trim();
+ const normalized=title.normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f\x7f]/g,'-').replace(/\.{2,}/g,'.').replace(/^[. -]+|[. ]+$/g,'').trim();
  const suffix='-'+id+'.md';
  let stem=(normalized||'document').slice(0,55);
  while(stem.length>0&&encode.encode('docs/'+stem+suffix).length>240)stem=stem.slice(0,-1);
