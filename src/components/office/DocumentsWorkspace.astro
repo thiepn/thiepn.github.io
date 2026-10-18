@@ -4,7 +4,15 @@ import '../../styles/office-documents.css';
 <section class="office-root ws-surface" data-office data-office-mode="split" aria-labelledby="office-heading">
   <header class="office-intro"><div><h2 id="office-heading">Documents</h2><p>Local Markdown drafts · no cloud sync or import from Manuscript</p></div><button type="button" class="ws-button" data-office-new disabled>New document</button></header>
   <div class="office-grid">
-    <nav class="office-list" aria-label="Your documents"><p class="ws-muted">Documents on this device</p><div data-office-list></div></nav>
+    <nav class="office-list" aria-label="Your documents">
+      <label for="office-search">Find documents</label>
+      <input id="office-search" type="search" data-office-search maxlength="120" placeholder="Search titles and contents" autocomplete="off" disabled/>
+      <div class="office-library-tools"><label for="office-sort">Order</label><select id="office-sort" data-office-sort disabled><option value="recent">Recently edited</option><option value="title">Title A–Z</option></select></div>
+      <p class="ws-muted" data-office-count aria-live="polite">Documents on this device</p>
+      <div data-office-list></div>
+      <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
+      <p class="ws-muted">A backup includes saved versions and revision history. Unsaved drafts must be exported separately.</p>
+    </nav>
     <section class="office-editor" aria-label="Document editor">
       <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button></div>
       <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
@@ -13,6 +21,7 @@ import '../../styles/office-documents.css';
       </div>
       <div class="office-modes" role="group" aria-label="Editor layout"><button type="button" data-office-mode="write" aria-pressed="false">Write</button><button type="button" data-office-mode="split" aria-pressed="true">Split</button><button type="button" data-office-mode="preview" aria-pressed="false">Preview</button></div>
       <div class="office-compose"><div class="office-source"><label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea></div><section class="office-preview-panel" aria-label="Markdown preview"><h3>Preview</h3><div data-office-preview class="office-preview" aria-live="off"></div></section></div>
+      <aside class="office-outline" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav></aside>
       <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
     </section>
   </div>

@@ -15,3 +15,22 @@
 @media(max-width:720px){.office-root{padding:14px}.office-grid{grid-template-columns:1fr}.office-list{border-right:0;border-bottom:1px solid var(--ws-line);padding:0 0 10px}.office-editor textarea{min-height:48vh}}
 
 .office-format{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}.office-format button,.office-modes button{border:1px solid var(--ws-line);border-radius:6px;background:var(--ws-surface);color:var(--ws-ink);padding:7px 10px;min-height:35px}.office-format button:disabled{opacity:.45}.office-format button:hover:not(:disabled),.office-modes button[aria-pressed=true]{background:var(--ws-soft)}.office-modes{display:flex;gap:6px;align-items:center;justify-content:flex-end}.office-compose{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px;min-width:0}.office-source{display:flex;flex-direction:column;gap:9px;min-width:0}.office-preview-panel{border:1px solid var(--ws-line);background:var(--ws-surface);border-radius:7px;min-width:0;overflow:auto;padding:14px}.office-preview-panel h3{font-size:12px;margin:0 0 12px;color:var(--ws-muted)}.office-preview{overflow-wrap:anywhere;line-height:1.65;font-size:14px}.office-preview > *{margin:0 0 12px}.office-preview h1{font-size:26px}.office-preview h2{font-size:21px}.office-preview h3{font-size:17px}.office-preview h4,.office-preview h5,.office-preview h6{font-size:14px}.office-preview pre{overflow:auto;background:var(--ws-soft);padding:12px;border-radius:5px;white-space:pre}.office-preview code{font-family:ui-monospace,Consolas,monospace}.office-preview table{border-collapse:collapse;max-width:100%;display:block;overflow-x:auto}.office-preview td,.office-preview th{border:1px solid var(--ws-line);padding:7px 10px;text-align:left}.office-preview blockquote{border-left:3px solid var(--ws-accent);padding-left:12px;color:var(--ws-muted)}.office-preview a{color:var(--ws-accent);text-decoration:underline}.office-root[data-office-mode=write] .office-compose,.office-root[data-office-mode=preview] .office-compose{grid-template-columns:minmax(0,1fr)}.office-root[data-office-mode=write] .office-preview-panel{display:none}.office-root[data-office-mode=preview] .office-source{display:none}@media(max-width:1100px){.office-compose{grid-template-columns:minmax(0,1fr)}}
+
+/* O3: searchable library and native long-document outline; do not imitate the KEEP vault. */
+.office-list{display:flex;flex-direction:column;gap:8px}
+.office-list label{font-size:12px;font-weight:600}
+.office-list input[type=search]{width:100%;min-width:0;padding:10px}
+.office-library-tools{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.office-library-tools select{min-width:0;max-width:155px}
+.office-list-heading{font-size:11px;text-transform:uppercase;letter-spacing:.065em;margin:12px 0 4px;color:var(--ws-muted)}
+.office-entry{display:flex;flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer}
+.office-entry strong{font-size:13px;line-height:1.35}
+.office-entry small,.office-match{font-size:11px;color:var(--ws-muted);line-height:1.35}
+.office-entry:focus-visible,.office-heading-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.office-backup-button{width:100%;margin-top:12px}
+.office-outline{border-top:1px solid var(--ws-line);padding-top:14px;margin-top:10px}
+.office-outline h3{font-size:13px;margin:0 0 9px}
+.office-outline nav{display:flex;flex-wrap:wrap;gap:5px}
+.office-heading-link{border:1px solid var(--ws-line);border-radius:3px;color:inherit;background:transparent;cursor:pointer;font-size:12px;min-height:32px;text-align:left}
+.office-heading-link:hover{background:var(--ws-soft)}
+@media(max-width:720px){.office-list{max-width:100%}.office-list>p{margin:4px 0}.office-outline nav{flex-direction:column}.office-heading-link{width:100%}}

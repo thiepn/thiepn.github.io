@@ -3,11 +3,18 @@ import {namespace} from '../lib/workspace/store';
 import {OfficeDeviceStore} from '../lib/office/device';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
 import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/markdown';
+import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib/office/library';
 const root=document.querySelector<HTMLElement>('[data-office]');
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
   const pick=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
   const list=pick<HTMLElement>('[data-office-list]');
+  const search=pick<HTMLInputElement>('[data-office-search]');
+  const sort=pick<HTMLSelectElement>('[data-office-sort]');
+  const count=pick<HTMLElement>('[data-office-count]');
+  const backup=pick<HTMLButtonElement>('[data-office-backup]');
+  const outline=pick<HTMLElement>('[data-office-outline]');
+  const outlineEmpty=pick<HTMLElement>('[data-office-outline-empty]');
   const status=pick<HTMLElement>('[data-office-status]');
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
@@ -21,6 +28,7 @@ if(root && shell){
   const layoutButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-mode]')];
   function renderPreview(){renderMarkdown(body.value,preview);}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
+  let savedDocuments:OfficeDocument[]=[];
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -35,32 +43,76 @@ if(root && shell){
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     add.disabled=!store||blocked||!allowed()||busy;
+    search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
-    title.value='';body.value='';renderPreview();history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
+    title.value='';body.value='';renderPreview();renderOutline();
+    history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
+  }
+  function renderOutline(){
+    outline.replaceChildren();
+    if(!active||!allowed()){outlineEmpty.hidden=false;return;}
+    const headings=outlineFor(body.value);
+    outlineEmpty.hidden=headings.length>0;
+    for(const heading of headings){
+      const link=document.createElement('button');link.type='button';
+      link.className='office-heading-link';link.dataset.officeHeading=String(heading.offset);
+      link.style.paddingInlineStart=String((heading.level-1)*12+8)+'px';
+      link.textContent=heading.title;
+      link.title='Jump to '+heading.title;
+      link.addEventListener('click',()=>{
+        if(!active||!allowed()||body.disabled)return;
+        if(root.dataset.officeMode==='preview'){
+          root.dataset.officeMode='write';
+          for(const option of layoutButtons)option.setAttribute('aria-pressed',String(option.dataset.officeMode==='write'));
+        }
+        body.focus();
+        body.setSelectionRange(heading.offset,heading.offset);
+        body.scrollTop=Math.max(0,(heading.line-3)*22);
+      });
+      outline.append(link);
+    }
   }
   function renderHistory(){
     history.replaceChildren(new Option('History',''));
     for(const rev of [...(active?.history??[])].reverse())
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
   }
-  function renderList(docs:OfficeDocument[]){
+  function renderList(){
     list.replaceChildren();
-    if(!docs.length){const empty=document.createElement('p');empty.className='ws-muted';empty.textContent='No documents yet.';list.append(empty);return;}
-    for(const doc of docs){
-      const button=document.createElement('button');button.type='button';button.className='office-entry';
-      button.textContent=doc.title;button.dataset.officeId=doc.id;
-      button.setAttribute('aria-current',doc.id===active?.id?'page':'false');
-      button.addEventListener('click',()=>void select(doc.id));
-      list.append(button);
+    if(!allowed()){count.textContent='Documents hidden';return;}
+    const results=findDocuments(savedDocuments,search.value,sort.value as DocumentSort);
+    count.textContent=results.length+' of '+savedDocuments.length+' documents';
+    if(!results.length){
+      const empty=document.createElement('p');empty.className='ws-muted';
+      empty.textContent=search.value.trim()?'No documents match this search.':'No documents yet.';
+      list.append(empty);return;
     }
+    const appendGroup=(label:string,items:typeof results)=>{
+      if(!items.length)return;
+      const heading=document.createElement('h3');heading.className='office-list-heading';heading.textContent=label;list.append(heading);
+      for(const hit of items){
+        const doc=hit.doc,button=document.createElement('button');button.type='button';button.className='office-entry';
+        button.dataset.officeId=doc.id;button.setAttribute('aria-current',doc.id===active?.id?'page':'false');
+        const name=document.createElement('strong');name.textContent=doc.title;button.append(name);
+        const meta=document.createElement('small');meta.textContent='Edited '+new Date(doc.updatedAt).toLocaleDateString()+' · revision '+doc.revision;button.append(meta);
+        if(search.value.trim()&&hit.match==='body'&&hit.snippet){
+          const excerpt=document.createElement('span');excerpt.className='office-match';excerpt.textContent=hit.snippet;button.append(excerpt);
+        }
+        button.addEventListener('click',()=>void select(doc.id));list.append(button);
+      }
+    };
+    if(sort.value==='recent'&&!search.value.trim()&&results.length>5){
+      appendGroup('Recently edited',results.slice(0,5));
+      appendGroup('Earlier documents',results.slice(5));
+    }else appendGroup(search.value.trim()?'Search results':sort.value==='title'?'All documents · A–Z':'Recently edited',results);
   }
   async function refreshList(){
-    const current=store,ticket=epoch;
-    if(!current)return;
-    const docs=await current.list();
-    if(ticket===epoch&&store===current)renderList(docs);
+    const opened=store,ticket=epoch;
+    if(!opened)return;
+    const docs=await opened.list();
+    if(ticket===epoch&&opened===store&&allowed()){savedDocuments=docs;renderList();}
   }
   async function select(id:string){
     if(!store||busy||blocked||!allowed())return;
@@ -70,7 +122,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;
+      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;renderOutline();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -107,8 +159,8 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    list.replaceChildren();clearEditor();
-    if(!allowed()){message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
+    savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
+    if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
     const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
     // A changed owner must never inherit another owner's in-memory draft.
     if(heldDraft&&heldDraft.scope!==scope)heldDraft=null;
@@ -119,12 +171,12 @@ if(root && shell){
       store=opened;
       const docs=await store.list();
       if(ticket!==epoch)return;
-      renderList(docs);enable();
+      savedDocuments=docs;renderList();enable();
       if(docs.length){
         const id=heldDraft&&docs.some(doc=>doc.id===heldDraft!.id)?heldDraft.id:docs[0]!.id;
         await select(id);
         if(ticket!==epoch||!active||!heldDraft||active.id!==heldDraft.id)return;
-        title.value=heldDraft.title;body.value=heldDraft.body;renderPreview();
+        title.value=heldDraft.title;body.value=heldDraft.body;renderPreview();renderOutline();
         dirty=title.value!==active.title||body.value!==active.body;
         blocked=active.revision!==heldDraft.revision;
         heldDraft=null;
@@ -136,11 +188,35 @@ if(root && shell){
       opened.close();if(ticket===epoch){store=null;enable();message(e instanceof Error?e.message:'Office storage is unavailable.');}
     }
   }
+  search.addEventListener('input',renderList);
+  sort.addEventListener('change',renderList);
+  backup.addEventListener('click',()=>void (async()=>{
+    if(!store||!allowed()||busy)return;
+    if(dirty||heldDraft||blocked){
+      message('Export unsaved document text as .md first. Backup includes only saved revisions.');
+      return;
+    }
+    const opened=store,ticket=epoch;
+    backup.disabled=true;
+    try{
+      const documents=await opened.list();
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      const stamp=new Date().toISOString();
+      const json=backupDocuments(documents,stamp);
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='thiepn-office-backup-'+stamp.slice(0,10)+'.json';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+      message('Office backup exported: '+documents.length+' saved documents and their revision histories.');
+    }catch(e){if(ticket===epoch)message(e instanceof Error?e.message:'Backup failed. No saved records changed.');}
+    finally{if(ticket===epoch)enable();}
+  })());
   add.addEventListener('click',()=>void create());
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;renderPreview();message('Unsaved edits · autosave pending');queueAutosave();
+    dirty=true;renderPreview();renderOutline();message('Unsaved edits · autosave pending');queueAutosave();
   });
   for(const button of formatButtons)button.addEventListener('click',()=>{
     if(button.disabled||!active||!allowed())return;
@@ -178,7 +254,7 @@ if(root && shell){
     if(dirty){message('Save or export current edits before restoring history.');return;}
     const rev=active.history.find(entry=>String(entry.revision)===history.value);
     if(!rev||!confirm('Restore this older revision? Current content will remain in revision history.'))return;
-    title.value=rev.title;body.value=rev.body;renderPreview();dirty=true;await persist();
+    title.value=rev.title;body.value=rev.body;renderPreview();renderOutline();dirty=true;await persist();
   })());
   window.addEventListener('beforeunload',event=>{if(dirty||heldDraft){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});
