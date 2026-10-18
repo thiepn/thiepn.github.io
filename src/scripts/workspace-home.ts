@@ -981,10 +981,10 @@ async function setup(root: HTMLElement) {
     }
     const more = $<HTMLDialogElement>('[data-more-dialog]');
     const moreTrigger = $('[data-more-trigger]');
-    moreTrigger.addEventListener('click', () => more.showModal());
+    moreTrigger.addEventListener('click', () => { more.showModal(); moreTrigger.setAttribute('aria-expanded', 'true'); more.querySelector<HTMLElement>('a.ws-more-link')?.focus(); });
     $('[data-more-close]').addEventListener('click', () => more.close());
     let moreNavigation = false;
-    more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
+    more.addEventListener('close', () => { moreTrigger.setAttribute('aria-expanded', 'false'); if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
     const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
     const documents = new Map<string, Document>();
     let navigationTicket = 0;
@@ -995,8 +995,9 @@ async function setup(root: HTMLElement) {
             link.classList.toggle('active', active);
             if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
         });
-        if (['calendar','trackers','settings','connections','inbox'].includes(view)) moreTrigger.setAttribute('aria-current','page');
-        else moreTrigger.removeAttribute('aria-current');
+        // MENU is an action, not a page: current-page semantics stay on its links.
+        moreTrigger.dataset.hasCurrent = String(view !== 'home');
+        moreTrigger.removeAttribute('aria-current');
     }
     async function navigateWorkspace(url: URL, pop = false) {
         const next = routes[url.pathname];
@@ -2147,6 +2148,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'account') {
+            if (more.open) { moreNavigation = true; more.close(); }
             account.showModal();
             syncReadingPanels();
             return;
