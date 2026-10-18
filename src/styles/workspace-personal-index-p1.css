@@ -228,3 +228,6 @@
 @media (prefers-reduced-motion:reduce) {
   .ws .ws-more-dialog, .ws .ws-topbar, .ws .ws-nav a { scroll-behavior: auto; transition: none; }
 }
+/* The Personal Index compact shortcut tiles must stay within the original
+   fixed-height user-layout widget, including fractional font measurements. */
+.ws [data-widget-type="app-shortcuts"] .ws-app { padding-block: 9px; }

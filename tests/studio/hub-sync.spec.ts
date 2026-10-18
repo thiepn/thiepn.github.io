@@ -99,7 +99,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  await Promise.all([a.context.close(),b.context.close()]);
 });
 test('mobile account dialog exposes cloud status and recovery actions',async({browser})=>{
- const api=backend(),a=await api.device(browser,OWNER,{width:390,height:844});await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-account-dialog] [data-cloud-status]')).toHaveText('Synced with your account');await expect(a.page.locator('[data-account-dialog] [data-action=cloud-retry]')).toBeVisible();await a.context.close();
+ const api=backend(),a=await api.device(browser,OWNER,{width:390,height:844});await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');await a.page.locator('[data-more-trigger]').click();await expect(a.page.locator('[data-more-dialog]')).toBeVisible();await a.page.getByRole('button',{name:'Account and sharing'}).click();await expect(a.page.locator('[data-account-dialog] [data-cloud-status]')).toHaveText('Synced with your account');await expect(a.page.locator('[data-account-dialog] [data-action=cloud-retry]')).toBeVisible();await a.context.close();
 });
 
 test('the shared SDK completes explicit PKCE sign-in and consumes the callback once',async({browser})=>{

@@ -17,7 +17,8 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
         await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
         if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       } else {
-        await expect(page.locator('.ws-brand')).toContainText('THIEPN HUB');
+        await expect(page.locator('.ws-brand .ws-brand-type strong')).toHaveText('THIEPN.');
+        await expect(page.locator('.ws-brand .ws-brand-type small')).toHaveText('PERSONAL INDEX');
         if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       }
     }
