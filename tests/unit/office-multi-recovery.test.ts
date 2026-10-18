@@ -34,7 +34,7 @@ describe('Office O12 atomic multi-change recovery preparation',()=>{
   expect(()=>previewMultiRevisionRecovery(old,current,[0,0])).toThrow('invalid or repeated');
   expect(()=>previewMultiRevisionRecovery(old,current,[4])).toThrow('invalid or repeated');
   expect(()=>previewMultiRevisionRecovery(old,current,Array.from({length:MAX_MULTI_RECOVERY_HUNKS+1},(_,i)=>i))).toThrow('between 1 and 20');
-  const older='a\n'+'x'.repeat(199998),now='a\nshort';
+  const older='x'.repeat(199980)+'\nkeep\nA',now='short\nkeep\n'+'y'.repeat(200);
   expect(()=>previewMultiRevisionRecovery(older,now,[0])).toThrow('200,000');
  });
  it('refuses approximate large-document summaries and truncated hunk sets',()=>{

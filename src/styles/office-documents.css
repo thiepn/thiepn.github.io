@@ -137,3 +137,16 @@
 .office-hunk-toolbar button{min-height:34px;padding:6px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
 .office-hunk-navigation>.office-revision-diff pre{max-height:170px;overflow:auto}
 .office-hunk-navigation>p{overflow-wrap:anywhere;margin:0}
+
+/* O12: selected historical change groups and full combined-text preview. */
+.office-batch-recovery{display:grid;gap:10px;border:1px solid var(--ws-line);padding:12px;min-width:0}
+.office-batch-recovery h4{font-size:14px;margin:0}
+.office-batch-recovery p{font-size:12px;line-height:1.5;margin:0}
+.office-batch-change-list{display:grid;gap:4px;max-height:240px;overflow:auto}
+.office-batch-choice{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--ws-line);font-size:12px}
+.office-batch-choice input{flex:none;margin-top:2px}
+.office-batch-choice span{min-width:0;overflow-wrap:anywhere}
+.office-batch-recovery [data-office-batch-result]{display:grid;gap:10px}
+.office-batch-recovery [data-office-batch-result][hidden]{display:none}
+.office-batch-recovery label{font-size:12px}
+.office-batch-recovery textarea{display:block;width:100%;min-height:170px;max-height:320px;overflow:auto;font:12px/1.55 ui-monospace,monospace;background:var(--ws-surface);padding:12px;border:1px solid var(--ws-line);resize:vertical}

@@ -59,6 +59,19 @@ import '../../styles/office-documents.css';
           </div>
         </section>
         <div class="office-revision-diffs" data-office-compare-diffs aria-label="Changed historical and current lines"></div>
+        <section class="office-batch-recovery" data-office-batch-panel aria-label="Recover several historical changes">
+          <h4>Recover several changes</h4>
+          <p class="ws-muted">Select up to 20 precise change groups below. Preview the complete resulting Markdown before one revision-checked save. This does not overwrite the original history.</p>
+          <div class="office-batch-change-list" data-office-batch-list></div>
+          <p class="ws-muted" data-office-batch-selection>0 changes selected</p>
+          <div class="office-import-actions"><button type="button" class="ws-button" data-office-batch-preview disabled>Preview combined recovery</button><button type="button" class="ws-button" data-office-batch-cancel disabled>Clear selection</button></div>
+          <div data-office-batch-result hidden>
+            <p data-office-batch-summary class="ws-muted"></p>
+            <label for="office-batch-document">Resulting Markdown — review before confirming</label>
+            <textarea id="office-batch-document" data-office-batch-document readonly spellcheck="false" rows="10"></textarea>
+            <div class="office-import-actions"><button type="button" class="ws-button" data-office-batch-confirm disabled>Confirm and save one new revision…</button><button type="button" class="ws-button" data-office-batch-dismiss>Dismiss preview</button></div>
+          </div>
+        </section>
         <fieldset class="office-recover-range"><legend>Recover specific historical lines</legend>
           <label for="office-recover-start">From line</label><input id="office-recover-start" data-office-recover-start type="number" min="1" step="1" disabled/>
           <label for="office-recover-end">To line</label><input id="office-recover-end" data-office-recover-end type="number" min="1" step="1" disabled/>

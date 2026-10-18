@@ -12,6 +12,7 @@ import {exportOfficeBundle} from '../lib/office/bundle';
 import {findEditorText,replaceEditorText,documentSections,moveDocumentSection,type TextMatch} from '../lib/office/navigation';
 import {compareOfficeRevision,recoverRevisionLines,applyRevisionExcerpt} from '../lib/office/revision-review';
 import {revisionHunks,type RevisionHunk} from '../lib/office/revision-hunks';
+import {previewMultiRevisionRecovery,MAX_MULTI_RECOVERY_HUNKS} from '../lib/office/multi-recovery';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -62,6 +63,15 @@ if(root && shell){
   const hunkPreview=pick<HTMLElement>('[data-office-hunk-preview]');
   const hunkHistorical=pick<HTMLButtonElement>('[data-office-hunk-historical]');
   const hunkCurrent=pick<HTMLButtonElement>('[data-office-hunk-current]');
+  const batchList=pick<HTMLElement>('[data-office-batch-list]');
+  const batchSelection=pick<HTMLElement>('[data-office-batch-selection]');
+  const batchPreview=pick<HTMLButtonElement>('[data-office-batch-preview]');
+  const batchCancel=pick<HTMLButtonElement>('[data-office-batch-cancel]');
+  const batchResult=pick<HTMLElement>('[data-office-batch-result]');
+  const batchSummary=pick<HTMLElement>('[data-office-batch-summary]');
+  const batchDocument=pick<HTMLTextAreaElement>('[data-office-batch-document]');
+  const batchConfirm=pick<HTMLButtonElement>('[data-office-batch-confirm]');
+  const batchDismiss=pick<HTMLButtonElement>('[data-office-batch-dismiss]');
   const recoverStart=pick<HTMLInputElement>('[data-office-recover-start]');
   const recoverEnd=pick<HTMLInputElement>('[data-office-recover-end]');
   const recoverInfo=pick<HTMLElement>('[data-office-recover-info]');
@@ -98,6 +108,11 @@ if(root && shell){
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
   let compared:{scope:string;id:string;revision:number;historical:number}|null=null;
   let changeHunks:RevisionHunk[]=[],hunkIndex=-1,hunkTotal=0,hunkLimited=false,hunkSummaryOnly=false;
+  const selectedHistoricalHunks=new Set<number>();
+  let batchPlan:{scope:string;id:string;revision:number;historical:number;body:string;title:string;selected:number[];value:string}|null=null;
+  function discardBatchPreview(){
+    batchPlan=null;batchResult.hidden=true;batchDocument.value='';batchSummary.textContent='';
+  }
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
@@ -137,6 +152,12 @@ if(root && shell){
     hunkPrevious.disabled=hunkNext.disabled=!reviewActive||changeHunks.length<2;
     hunkHistorical.disabled=!reviewActive||!chosenHunk||chosenHunk.removed===0;
     hunkCurrent.disabled=!reviewActive||!chosenHunk;
+    const exactRecovery=reviewActive&&!dirty&&!hunkLimited&&!hunkSummaryOnly;
+    batchPreview.disabled=!exactRecovery||!selectedHistoricalHunks.size||selectedHistoricalHunks.size>MAX_MULTI_RECOVERY_HUNKS;
+    batchCancel.disabled=!reviewActive||!selectedHistoricalHunks.size;
+    batchConfirm.disabled=!exactRecovery||!batchPlan||batchPlan.scope!==store?.scope||batchPlan.id!==active?.id||
+      batchPlan.revision!==active?.revision||batchPlan.body!==body.value||batchPlan.title!==title.value;
+    for(const item of batchList.querySelectorAll<HTMLInputElement>('input[data-office-batch-index]'))item.disabled=!exactRecovery;
     add.disabled=!store||blocked||!allowed()||busy;
     templatePicker.disabled=!store||blocked||!allowed()||busy;
     importFile.disabled=!store||blocked||!allowed()||busy;
@@ -169,6 +190,8 @@ if(root && shell){
     changeHunks=[];hunkIndex=-1;hunkTotal=0;hunkLimited=false;hunkSummaryOnly=false;
     hunkPosition.textContent='No differences selected';hunkDetails.textContent='';
     hunkPreview.replaceChildren();recoverStart.value='';recoverEnd.value='';
+    selectedHistoricalHunks.clear();batchList.replaceChildren();batchSelection.textContent='0 changes selected';
+    discardBatchPreview();
   }
   function comparedHistory(){
     if(!active||!store||!compared||!allowed()||compared.scope!==store.scope||
@@ -212,12 +235,45 @@ if(root && shell){
     hunkIndex=(hunkIndex+delta+changeHunks.length)%changeHunks.length;
     renderSelectedHunk();
   }
+  function renderBatchSelection(){
+    batchSelection.textContent=selectedHistoricalHunks.size+' of '+changeHunks.length+' changes selected'+
+      (hunkLimited?' (truncated source; batch recovery unavailable)':'')+
+      (hunkSummaryOnly?' (summary only; batch recovery unavailable)':'');
+    enable();
+  }
+  function renderBatchChoices(){
+    batchList.replaceChildren();
+    for(let i=0;i<changeHunks.length;i++){
+      const hunk=changeHunks[i]!;
+      const label=document.createElement('label');label.className='office-batch-choice';
+      const input=document.createElement('input');input.type='checkbox';input.dataset.officeBatchIndex=String(i);
+      input.checked=selectedHistoricalHunks.has(i);
+      const note=document.createElement('span');
+      note.textContent='Change '+(i+1)+' · history '+hunk.historicalFrom+'–'+hunk.historicalTo+
+        ' → current '+hunk.currentFrom+'–'+hunk.currentTo;
+      input.addEventListener('change',()=>{
+        if(!comparedHistory()||busy||dirty||blocked||!allowed()){input.checked=selectedHistoricalHunks.has(i);return;}
+        if(input.checked){
+          if(selectedHistoricalHunks.size>=MAX_MULTI_RECOVERY_HUNKS){
+            input.checked=false;message('Choose at most 20 changes in one recovery.');return;
+          }
+          selectedHistoricalHunks.add(i);
+        }else selectedHistoricalHunks.delete(i);
+        discardBatchPreview();renderBatchSelection();
+      });
+      label.append(input,note);batchList.append(label);
+    }
+    renderBatchSelection();
+  }
   function renderComparison(){
     const rev=comparedHistory();
     if(!rev){clearComparison();enable();return;}
     const result=compareOfficeRevision(rev.body,body.value);
     const detailed=revisionHunks(rev.body,body.value);
     changeHunks=detailed.hunks;hunkTotal=detailed.totalHunks;hunkLimited=detailed.truncated;hunkSummaryOnly=detailed.summaryOnly;
+    discardBatchPreview();
+    for(const index of [...selectedHistoricalHunks])if(index>=changeHunks.length)selectedHistoricalHunks.delete(index);
+    renderBatchChoices();
     if(!changeHunks.length)hunkIndex=-1;
     else if(hunkIndex<0||hunkIndex>=changeHunks.length)hunkIndex=0;
     compareSummary.textContent='Historical revision '+rev.revision+' (“'+rev.title+'”) vs '+(dirty?'unsaved current draft':'saved current revision '+active!.revision)+
@@ -671,7 +727,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;renderPreview();renderOutline();renderFind();
+    dirty=true;discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -777,6 +833,56 @@ if(root && shell){
     recoverStart.value='1';recoverEnd.value='1';comparePanel.hidden=false;
     renderComparison();
   });
+  batchPreview.addEventListener('click',()=>{
+    const rev=comparedHistory();
+    if(!rev||!store||!active||dirty||busy||blocked||hunkLimited||hunkSummaryOnly||
+      !selectedHistoricalHunks.size)return;
+    try{
+      const indexes=[...selectedHistoricalHunks].sort((a,b)=>a-b);
+      const result=previewMultiRevisionRecovery(rev.body,body.value,indexes);
+      batchPlan={scope:store.scope,id:active.id,revision:active.revision,historical:rev.revision,
+        body:body.value,title:title.value,selected:indexes,value:result.value};
+      batchDocument.value=result.value;
+      batchSummary.textContent='Preview of '+result.selected+' historical changes · '+
+        result.removedCurrentLines+' current lines removed · '+result.restoredHistoricalLines+
+        ' historical lines restored · '+result.value.length+' characters. Nothing saved yet.';
+      batchResult.hidden=false;enable();
+    }catch(error){
+      discardBatchPreview();enable();
+      message(error instanceof Error?error.message:'Historical changes cannot be combined.');
+    }
+  });
+  batchCancel.addEventListener('click',()=>{
+    selectedHistoricalHunks.clear();discardBatchPreview();
+    renderBatchChoices();enable();
+  });
+  batchDismiss.addEventListener('click',()=>{discardBatchPreview();enable();});
+  batchConfirm.addEventListener('click',()=>void (async()=>{
+    const plan=batchPlan,rev=comparedHistory(),opened=store,current=active,stamp=epoch;
+    if(!plan||!rev||!opened||!current||dirty||busy||blocked||!allowed()||
+       plan.scope!==opened.scope||plan.id!==current.id||plan.revision!==current.revision||
+       plan.historical!==rev.revision||plan.body!==body.value||plan.title!==title.value)return;
+    if(!confirm('Restore '+plan.selected.length+' selected historical changes in one new Office revision? The current document will change, but original historical snapshots will remain under the existing retention policy.'))return;
+    if(plan!==batchPlan||opened!==store||current!==active||stamp!==epoch||!allowed()||
+      blocked||dirty||busy||plan.body!==body.value||plan.title!==title.value)return;
+    busy=true;enable();
+    try{
+      // The original Office writer performs a single atomic CAS. Never write to the UI first.
+      const saved=await opened.save(current,plan.title,plan.value);
+      if(stamp!==epoch||opened!==store||!allowed())return;
+      active=saved;body.value=saved.body;title.value=saved.title;dirty=false;
+      clearComparison();renderPreview();renderOutline();renderFind();renderHistory();
+      await refreshList();
+      if(stamp!==epoch||opened!==store||!allowed())return;
+      message('Recovered '+plan.selected.length+' historical changes in one saved revision '+saved.revision+'.');
+    }catch(error){
+      if(stamp===epoch&&opened===store){
+        blocked=true;discardBatchPreview();
+        message((error instanceof Error?error.message:'Historical recovery failed')+
+          ' Current document was not replaced. Export the current text before reloading.');
+      }
+    }finally{if(stamp===epoch){busy=false;enable();}}
+  })());
   hunkPrevious.addEventListener('click',()=>focusHunk(-1));
   hunkNext.addEventListener('click',()=>focusHunk(1));
   hunkHistorical.addEventListener('click',()=>{
