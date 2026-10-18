@@ -22,7 +22,9 @@ if(root && shell){
   const message=(value:string)=>{status.textContent=value;};
   const enable=()=>{
     const editing=!!store && !!active && !blocked && allowed();
-    title.disabled=body.disabled=download.disabled=!editing;
+    title.disabled=body.disabled=!editing;
+    // A concurrent-edit conflict must never prevent exporting the unsaved text.
+    download.disabled=!active||!allowed();
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     add.disabled=!store||blocked||!allowed()||busy;
@@ -46,14 +48,20 @@ if(root && shell){
       list.append(button);
     }
   }
-  async function refreshList(){if(!store)return;renderList(await store.list());}
+  async function refreshList(){
+    const current=store,ticket=epoch;
+    if(!current)return;
+    const docs=await current.list();
+    if(ticket===epoch&&store===current)renderList(docs);
+  }
   async function select(id:string){
     if(!store||busy||blocked||!allowed())return;
     if(dirty){await persist();if(dirty)return;}
+    const opened=store,ticket=epoch;
     try{
-      const doc=await store.read(id);
+      const doc=await opened.read(id);
+      if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      if(!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -130,7 +138,14 @@ if(root && shell){
   })());
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});
-  window.addEventListener('hub:identity',()=>void start());
-  new MutationObserver(()=>void start()).observe(shell,{attributes:true,attributeFilter:['data-calendar-private']});
-  void start();
+  let authority='';
+  function authorityChange(){
+    const value=shell.dataset.calendarPrivate+'|'+hubIdentity.status+'|'+(hubIdentity.status==='signed-in'?hubIdentity.id:'');
+    if(value===authority)return;
+    authority=value;
+    void start();
+  }
+  window.addEventListener('hub:identity',authorityChange);
+  new MutationObserver(authorityChange).observe(shell,{attributes:true,attributeFilter:['data-calendar-private']});
+  authorityChange();
 }
