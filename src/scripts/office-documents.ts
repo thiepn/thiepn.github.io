@@ -74,7 +74,7 @@ if(root && shell){
     (hubIdentity.status==='signed-out'||hubIdentity.status==='signed-in');
   const message=(value:string)=>{status.textContent=value;};
   const enable=()=>{
-    const editing=!!store && !!active && !blocked && allowed();
+    const editing=!!store && !!active && !blocked && allowed() && !busy;
     title.disabled=body.disabled=!editing;
     // A concurrent-edit conflict must never prevent exporting the unsaved text.
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
@@ -93,6 +93,7 @@ if(root && shell){
     selectVisible.disabled=!canSelect||!savedDocuments.length;
     clearSelection.disabled=!canSelect||!selectedBundle.size;
     bundleButton.disabled=!canSelect||!selectedBundle.size||dirty||!!heldDraft||blocked;
+    for(const checkbox of list.querySelectorAll<HTMLInputElement>('input[data-office-select-id]'))checkbox.disabled=!canSelect;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
@@ -160,6 +161,7 @@ if(root && shell){
         const checkbox=document.createElement('input');checkbox.type='checkbox';
         checkbox.dataset.officeSelectId=doc.id;checkbox.setAttribute('aria-label','Select '+doc.title+' for Markdown ZIP');
         checkbox.checked=selectedBundle.has(doc.id);
+        checkbox.disabled=!store||!allowed()||busy;
         checkbox.addEventListener('change',()=>{
           if(!allowed()||!store)return;
           if(checkbox.checked)selectedBundle.add(doc.id);else selectedBundle.delete(doc.id);
