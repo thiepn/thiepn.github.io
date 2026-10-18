@@ -11,6 +11,7 @@ import { expect, test } from 'vitest';
 test('Hub launch manifest importer also works in native Node ESM', () => {
   const source = readFileSync('src/lib/hub.ts', 'utf8');
   const declaration = source.split(/\r?\n/u)[0];
+  if (!declaration) throw new Error('Hub manifest import declaration is absent.');
   expect(declaration).toBe("import manifest from '../generated/launch-manifest.json' with { type: 'json' };");
 
   const originalManifest = readFileSync('src/generated/launch-manifest.json', 'utf8');
