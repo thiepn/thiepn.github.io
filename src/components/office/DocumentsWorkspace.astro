@@ -12,9 +12,17 @@ import '../../styles/office-documents.css';
       <div data-office-list></div>
       <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
       <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
+      <div class="office-restore-picker"><label for="office-restore-file">Restore an Office backup</label><input id="office-restore-file" type="file" accept=".json,application/json" data-office-restore-file disabled/><p class="ws-muted">Only missing original document IDs will be added. Existing records are never replaced.</p></div>
       <p class="ws-muted">A backup includes saved versions and revision history. Unsaved drafts must be exported separately.</p>
     </nav>
     <section class="office-editor" aria-label="Document editor">
+      <section class="office-backup-review" data-office-restore-panel hidden aria-label="Review Office backup restoration">
+        <h3>Review backup restoration</h3>
+        <p data-office-restore-summary class="ws-muted"></p>
+        <p class="ws-muted">Records are added to the current local Office owner only. Backups have no verified owner identity; all existing IDs and history remain untouched.</p>
+        <div class="office-restore-list" data-office-restore-list></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-restore-confirm disabled>Restore missing documents</button><button type="button" class="ws-button" data-office-restore-cancel disabled>Cancel</button></div>
+      </section>
       <section class="office-import-preview" data-office-import-panel hidden aria-label="Review Markdown import">
         <h3>Review before importing</h3>
         <p data-office-import-info class="ws-muted"></p>
