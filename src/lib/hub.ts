@@ -1,4 +1,4 @@
-import manifest from '../generated/launch-manifest.json';
+import manifest from '../generated/launch-manifest.json' with { type: 'json' };
 const hubData = {schemaVersion:1,expectedCount:manifest.entries.length,categories:manifest.categories,excluded:manifest.excluded,projects:manifest.entries.map((entry,index)=>({slug:entry.id,order:index+1,category:entry.category,description:entry.description,badge:entry.badge}))};
 import { HUB_BADGES, HUB_CATEGORIES, type HubBadge, type HubCategory } from '../data/taxonomy';
 import { getAllProjects, type ProjectEntry } from './catalogue';
