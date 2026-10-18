@@ -9,6 +9,12 @@ import '../../styles/office-documents.css';
       <input id="office-search" type="search" data-office-search maxlength="120" placeholder="Search titles and contents" autocomplete="off" disabled/>
       <div class="office-library-tools"><label for="office-sort">Order</label><select id="office-sort" data-office-sort disabled><option value="recent">Recently edited</option><option value="title">Title A–Z</option></select></div>
       <p class="ws-muted" data-office-count aria-live="polite">Documents on this device</p>
+      <div class="office-bundle-controls">
+        <p class="ws-muted" data-office-bundle-count aria-live="polite">0 documents selected</p>
+        <div class="office-bundle-shortcuts"><button type="button" data-office-select-visible disabled>Select visible</button><button type="button" data-office-clear-selection disabled>Clear selection</button></div>
+        <button type="button" class="ws-button" data-office-bundle disabled>Export selected Markdown (.zip)</button>
+        <p class="ws-muted">Exports saved Markdown only. For document history use the separate JSON backup; unsaved work is excluded.</p>
+      </div>
       <div data-office-list></div>
       <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
       <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
