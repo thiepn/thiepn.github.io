@@ -1103,3 +1103,19 @@ test('O15 mobile privacy clears source statistics and blocks authoring and line 
  await expect(page.locator('[data-office-writing-go]')).toBeDisabled();
  await expect(page.locator('[data-office-body]')).toHaveValue('');
 });
+
+test('O15 long fenced-code preview does not end on shorter internal delimiters',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const fence=String.fromCharCode(96);
+ const markdown=fence.repeat(4)+'md\n'+fence.repeat(3)+'\n<em>inside code</em>\n'+fence.repeat(4)+'\nOutside';
+ await page.locator('[data-office-body]').fill(markdown);
+ await expect(page.locator('[data-office-preview] pre code')).toContainText('<em>inside code</em>');
+ await expect(page.locator('[data-office-preview] pre code')).toContainText(fence.repeat(3));
+ await expect(page.locator('[data-office-preview] em')).toHaveCount(0);
+ await expect(page.locator('[data-office-preview] p')).toContainText('Outside');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.reload();
+ await expect(page.locator('[data-office-body]')).toHaveValue(markdown);
+});
