@@ -44,15 +44,19 @@ export class OfficeDeviceStore {
     });
   }
   async create(initial?:{title:string;body:string}):Promise<OfficeDocument>{
-    if((await this.list()).length>=MAX_DOCUMENTS)throw new Error('Limit of 100 local Office documents reached.');
     const blank=newDocument(crypto.randomUUID(),new Date().toISOString());
-    // Template title and body enter the original schema in one atomic add, not a second write.
     const doc=initial?validateDocument({...blank,title:initial.title,body:initial.body}):blank;
     return new Promise((resolve,reject)=>{
-      const tx=this.database.transaction('documents','readwrite');
-      tx.objectStore('documents').add(doc,this.key(doc.id));
+      const tx=this.database.transaction('documents','readwrite'),records=tx.objectStore('documents');
+      const keys=records.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null;
+      keys.onsuccess=()=>{
+        if(keys.result.length>=MAX_DOCUMENTS){fault=new Error('Limit of 100 local Office documents reached.');tx.abort();return;}
+        // add() is collision-safe and never overwrites an existing document.
+        records.add(doc,this.key(doc.id));
+      };
       tx.oncomplete=()=>resolve(doc);
-      tx.onabort=tx.onerror=()=>reject(tx.error??new Error('Document was not saved'));
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Document was not saved'));
     });
   }
   async save(previous:OfficeDocument,title:string,body:string):Promise<OfficeDocument>{

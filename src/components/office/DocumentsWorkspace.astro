@@ -10,10 +10,19 @@ import '../../styles/office-documents.css';
       <div class="office-library-tools"><label for="office-sort">Order</label><select id="office-sort" data-office-sort disabled><option value="recent">Recently edited</option><option value="title">Title A–Z</option></select></div>
       <p class="ws-muted" data-office-count aria-live="polite">Documents on this device</p>
       <div data-office-list></div>
+      <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
       <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
       <p class="ws-muted">A backup includes saved versions and revision history. Unsaved drafts must be exported separately.</p>
     </nav>
     <section class="office-editor" aria-label="Document editor">
+      <section class="office-import-preview" data-office-import-panel hidden aria-label="Review Markdown import">
+        <h3>Review before importing</h3>
+        <p data-office-import-info class="ws-muted"></p>
+        <label for="office-import-title">New document title</label><input id="office-import-title" data-office-import-title maxlength="120" autocomplete="off" disabled/>
+        <p class="ws-muted">A separate new Office document will be created. This preview shows only the first part of the file.</p>
+        <div class="office-import-render office-preview" data-office-import-render></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-import-confirm disabled>Import as new document</button><button type="button" class="ws-button" data-office-import-cancel disabled>Cancel</button></div>
+      </section>
       <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button></div>
       <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
       <div class="office-format" role="toolbar" aria-label="Markdown formatting">

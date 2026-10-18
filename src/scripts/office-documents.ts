@@ -6,6 +6,7 @@ import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/ma
 import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib/office/library';
 import {getOfficeTemplate} from '../lib/office/templates';
 import {standaloneHtml} from '../lib/office/portable';
+import {decodeMarkdownImport,MAX_IMPORT_BYTES,PREVIEW_LENGTH,type MarkdownImport} from '../lib/office/import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -29,6 +30,13 @@ if(root && shell){
   const save=pick<HTMLButtonElement>('[data-office-save]');
   const download=pick<HTMLButtonElement>('[data-office-export]');
   const restore=pick<HTMLButtonElement>('[data-office-restore]');
+  const importFile=pick<HTMLInputElement>('[data-office-import-file]');
+  const importPanel=pick<HTMLElement>('[data-office-import-panel]');
+  const importTitle=pick<HTMLInputElement>('[data-office-import-title]');
+  const importInfo=pick<HTMLElement>('[data-office-import-info]');
+  const importRender=pick<HTMLElement>('[data-office-import-render]');
+  const importConfirm=pick<HTMLButtonElement>('[data-office-import-confirm]');
+  const importCancel=pick<HTMLButtonElement>('[data-office-import-cancel]');
   const preview=pick<HTMLElement>('[data-office-preview]');
   const formatButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-format]')];
   const layoutButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-mode]')];
@@ -38,6 +46,11 @@ if(root && shell){
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
+  let importNonce=0,pendingImport:({scope:string}&MarkdownImport)|null=null;
+  function clearImport(){
+    importNonce++;pendingImport=null;importFile.value='';importTitle.value='';
+    importInfo.textContent='';importRender.replaceChildren();importPanel.hidden=true;
+  }
   const allowed=()=>shell.dataset.calendarPrivate==='false' &&
     (hubIdentity.status==='signed-out'||hubIdentity.status==='signed-in');
   const message=(value:string)=>{status.textContent=value;};
@@ -50,6 +63,9 @@ if(root && shell){
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     add.disabled=!store||blocked||!allowed()||busy;
     templatePicker.disabled=!store||blocked||!allowed()||busy;
+    importFile.disabled=!store||blocked||!allowed()||busy;
+    importTitle.disabled=importConfirm.disabled=!pendingImport||!store||blocked||!allowed()||busy;
+    importCancel.disabled=!pendingImport||busy;
     search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
@@ -178,7 +194,7 @@ if(root && shell){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
     clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
-    savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
+    clearImport();savedDocuments=[];list.replaceChildren();count.textContent='Documents hidden';clearEditor();
     if(!allowed()){search.value='';message('Documents hidden while Hub privacy or Account identity is unavailable.');return;}
     const scope=namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null);
     // A changed owner must never inherit another owner's in-memory draft.
@@ -207,6 +223,53 @@ if(root && shell){
       opened.close();if(ticket===epoch){store=null;enable();message(e instanceof Error?e.message:'Office storage is unavailable.');}
     }
   }
+  importFile.addEventListener('change',()=>void (async()=>{
+    const file=importFile.files?.[0];
+    clearImport();
+    if(!file||!store||!allowed()||blocked||busy)return;
+    const opened=store,ticket=epoch,nonce=importNonce;
+    if(file.size>MAX_IMPORT_BYTES){message('Markdown import exceeds 256 KB. No records created.');return;}
+    try{
+      const data=await file.arrayBuffer();
+      if(ticket!==epoch||nonce!==importNonce||opened!==store||!allowed())return;
+      const parsed=decodeMarkdownImport(file.name,data);
+      if(ticket!==epoch||nonce!==importNonce||opened!==store||!allowed())return;
+      pendingImport={...parsed,scope:opened.scope};
+      importTitle.value=parsed.title;
+      importInfo.textContent=parsed.sourceName+' · '+parsed.bytes+' bytes · '+parsed.body.length+' characters';
+      renderMarkdown(parsed.body.slice(0,PREVIEW_LENGTH),importRender);
+      importPanel.hidden=false;enable();
+      message('Review this Markdown file before creating a new document.');
+    }catch(error){
+      if(ticket!==epoch||nonce!==importNonce||opened!==store||!allowed())return;
+      clearImport();enable();message(error instanceof Error?error.message:'Markdown could not be opened.');
+    }
+  })());
+  importCancel.addEventListener('click',()=>{
+    clearImport();enable();message('Import cancelled; existing documents unchanged.');
+  });
+  importConfirm.addEventListener('click',()=>void (async()=>{
+    if(!pendingImport||!store||!allowed()||blocked||busy)return;
+    const pending=pendingImport,opened=store,ticket=epoch;
+    if(pending.scope!==opened.scope)return;
+    const name=importTitle.value.trim();
+    if(!name||name.length>120){message('Enter a valid title (up to 120 characters).');return;}
+    if(dirty){await persist();if(dirty||blocked||ticket!==epoch||opened!==store||!allowed())return;}
+    if(pending!==pendingImport||pending.scope!==opened.scope)return;
+    busy=true;enable();
+    try{
+      const doc=await opened.create({title:name,body:pending.body});
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      renderPreview();renderOutline();renderHistory();
+      await refreshList();
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      clearImport();
+      message('Imported '+pending.sourceName+' as a new local document. Original documents unchanged.');
+    }catch(error){
+      if(ticket===epoch)message(error instanceof Error?error.message:'Import failed; existing documents unchanged.');
+    }finally{if(ticket===epoch){busy=false;enable();}}
+  })());
   search.addEventListener('input',renderList);
   sort.addEventListener('change',renderList);
   backup.addEventListener('click',()=>void (async()=>{

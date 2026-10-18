@@ -52,3 +52,13 @@
  .office-print-sheet pre,.office-print-sheet table{break-inside:avoid;max-width:100%}
  .office-print-sheet th,.office-print-sheet td{border-color:#555!important}
 }
+
+.office-import-picker{border-top:1px solid var(--ws-line);padding-top:14px;margin-top:8px;display:grid;gap:8px}
+.office-import-picker label{font-size:12px;font-weight:650}
+.office-import-picker input{max-width:100%;font-size:12px}
+.office-import-preview{border:1px solid var(--ws-line);padding:16px;display:grid;gap:10px;background:var(--ws-soft);min-width:0}
+.office-import-preview[hidden]{display:none}
+.office-import-preview h3{font-size:16px;margin:0}
+.office-import-preview input{min-width:0;padding:9px}
+.office-import-render{border:1px solid var(--ws-line);padding:14px;background:var(--ws-surface);max-height:260px;overflow:auto;min-width:0}
+.office-import-actions{display:flex;gap:10px;flex-wrap:wrap}
