@@ -21,7 +21,7 @@ describe('Office O8 multi-Markdown preflight',()=>{
  it('limits item count and total size without partial results',()=>{
   expect(()=>parseMarkdownBatch([])).toThrow('between 1 and 20');
   expect(()=>parseMarkdownBatch(Array.from({length:MAX_MULTI_IMPORT_FILES+1},(_,i)=>entry('a'+i+'.md','x')))).toThrow('between 1 and 20');
-  expect(()=>parseMarkdownBatch(Array.from({length:20},(_,i)=>entry('p'+i+'.md','x'.repeat(220000))))).toThrow('4 MB');
+  expect(()=>parseMarkdownBatch(Array.from({length:20},(_,i)=>entry('p'+i+'.md','ü'.repeat(120000))))).toThrow('4 MB');
   expect(MAX_MULTI_IMPORT_BYTES).toBe(4_000_000);
  });
 });
