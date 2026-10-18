@@ -113,3 +113,36 @@ describe("C1-B signed-out contract and availability guards",()=>{
   expect(()=>parseAcademic(x,now)).toThrow();
  });
 });
+
+describe("C1-B source-owned academic attention and original ID continuity",()=>{
+ it("shows immediate due work separately from week presentation without creating Hub tasks",()=>{
+  const x=sample();
+  x.commitments[0]!.dueAt="2026-10-17T20:30:00Z";
+  const data=parseAcademic(x,now);
+  const todayHtml=renderAcademic({kind:"ready",data},origin,"today",now);
+  const weekHtml=renderAcademic({kind:"ready",data},origin,"week",now);
+  expect(todayHtml).toContain('aria-label="Academic attention now"');
+  expect(todayHtml).toContain("1 due today");
+  expect(todayHtml).toContain('data-study-source-id="studyos:commitment:'+id+'"');
+  expect(todayHtml).toContain('data-study-source-id="studyos:review:'+skill+'"');
+  expect(todayHtml).not.toContain('data-action="save-task"');
+  expect(weekHtml).not.toContain('aria-label="Academic attention now"');
+  expect(weekHtml).toContain('data-study-source-id="studyos:course:'+id+'"');
+ });
+ it("refuses foreign or inconsistent original source routes rather than opening unrelated academic work",()=>{
+  const x=sample();
+  x.reviews.items[0]!.sourceRoute="/practice?mode=repair&course="+id+"&skill="+id;
+  expect(()=>parseAcademic(x,now)).toThrow("Invalid academic review");
+  const y=sample();
+  y.commitments[0]!.sourceRoute="/courses/"+skill;
+  expect(()=>parseAcademic(y,now)).toThrow("Invalid academic commitment");
+  const z=sample();z.courses[0]!.source="foreign";
+  expect(()=>parseAcademic(z,now)).toThrow("Invalid academic course");
+ });
+ it("identifies coursework and exams by original provider keys, not generated Hub task IDs",()=>{
+  const html=renderAcademic({kind:"ready",data:parseAcademic(sample(),now)},origin,"week",now);
+  expect(html).toContain('data-study-source-id="studyos:exam:'+id+'"');
+  expect(html).toContain('data-study-source-id="studyos:commitment:'+id+'"');
+  expect(html).not.toContain('data-task-toggle');
+ });
+});

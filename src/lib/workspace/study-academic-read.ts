@@ -86,39 +86,39 @@ export function parseAcademic(v:unknown,now=Date.now()):AcademicRead{
     r.actionableSkillCount>r.items.length||r.dueSkillCount<r.items.length)throw Error("Invalid academic scope");
   const courses=new Set<string>(),commitments=new Set<string>(),skills=new Set<string>();
   for(const x of v.courses){
-    if(!obj(x)||!uuid(x.courseId)||courses.has(x.courseId)||!str(x.name,160)||
+    if(!obj(x)||x.source!=="studyos"||!uuid(x.courseId)||courses.has(x.courseId)||!str(x.name,160)||
       !optional(x.shortName,y=>str(y,120))||!number(x.sortOrder,100000)||
       !optional(x.examAt,instant)||!["owner_configured","unknown"].includes(String(x.examVerification))||
       (x.examAt!==null&&x.examVerification!=="owner_configured")||
       !optional(x.durableMasteryPercent,y=>number(y,100))||
       !optional(x.totalSkills,y=>Number.isSafeInteger(y)&&number(y))||
       !optional(x.unresolvedErrors,y=>Number.isSafeInteger(y)&&number(y))||
-      !optional(x.sourceRoute,y=>str(y,320)&&studyAction("https://study.thiepn.dev",y)!==null))
+      !optional(x.sourceRoute,y=>y==="/courses/"+x.courseId&&studyAction("https://study.thiepn.dev",y)!==null))
       throw Error("Invalid academic course");
     courses.add(x.courseId);
   }
   for(const x of v.exams){
-    if(!obj(x)||!uuid(x.courseId)||!courses.has(x.courseId)||!str(x.courseName,160)||
+    if(!obj(x)||x.source!=="studyos"||!uuid(x.courseId)||!courses.has(x.courseId)||!str(x.courseName,160)||
       !instant(x.examAt)||x.verification!=="owner_configured"||
-      !optional(x.sourceRoute,y=>str(y,320)&&studyAction("https://study.thiepn.dev",y)!==null))
+      !optional(x.sourceRoute,y=>y==="/courses/"+x.courseId&&studyAction("https://study.thiepn.dev",y)!==null))
       throw Error("Invalid academic exam");
   }
   for(const x of v.commitments){
-    if(!obj(x)||!uuid(x.commitmentId)||commitments.has(x.commitmentId)||
+    if(!obj(x)||x.source!=="studyos"||!uuid(x.commitmentId)||commitments.has(x.commitmentId)||
       !optional(x.courseId,y=>uuid(y)&&courses.has(y))||
       !optional(x.resourceId,uuid)||!str(x.title)||!str(x.kind,40)||!instant(x.dueAt)||
       !number(x.estimatedMinutes)||!number(x.priority)||x.status!=="open"||
       !optional(x.originalUpdatedAt,instant)||
       !optional(x.calendarIdentity,y=>obj(y)&&str(y.calendarId,250)&&str(y.eventId,250))||
-      !optional(x.sourceRoute,y=>str(y,320)&&studyAction("https://study.thiepn.dev",y)!==null))
+      !optional(x.sourceRoute,y=>y===(x.courseId===null?"/courses":"/courses/"+x.courseId)&&studyAction("https://study.thiepn.dev",y)!==null))
       throw Error("Invalid academic commitment");
     commitments.add(x.commitmentId);
   }
   for(const x of r.items){
-    if(!obj(x)||!uuid(x.skillId)||skills.has(x.skillId)||!uuid(x.courseId)||
+    if(!obj(x)||x.source!=="studyos"||!uuid(x.skillId)||skills.has(x.skillId)||!uuid(x.courseId)||
       !courses.has(x.courseId)||!str(x.title,160)||!optional(x.nextReviewAt,instant)||
       !number(x.priorityScore)||!(x.actionable===true||x.actionable===false||x.actionable===null)||
-      !optional(x.sourceRoute,y=>str(y,320)&&studyAction("https://study.thiepn.dev",y)!==null))
+      !optional(x.sourceRoute,y=>y==="/practice?mode=repair&course="+x.courseId+"&skill="+x.skillId&&studyAction("https://study.thiepn.dev",y)!==null))
       throw Error("Invalid academic review");
     skills.add(x.skillId);
   }
@@ -145,10 +145,12 @@ export async function fetchAcademic(origin:string,token:string,from:string,signa
 const action=(origin:string|null,path:string|null)=>origin&&path?studyAction(origin,path):null;
 const when=(v:string,zone:string)=>new Intl.DateTimeFormat("de-DE",{timeZone:zone,day:"2-digit",month:"2-digit",
   year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(v));
-function rows(items:{title:string;detail:string;href:string|null}[],empty:string){
+type AcademicRowDisplay = {title:string;detail:string;href:string|null;sourceId?:string};
+function rows(items:AcademicRowDisplay[],empty:string){
   if(!items.length)return "<p>"+esc(empty)+"</p>";
-  return "<ul>"+items.map(i=>'<li><div><strong>'+esc(i.title)+'</strong><small>'+esc(i.detail)+
-    '</small></div>'+(i.href?'<a href="'+esc(i.href)+'" rel="noopener noreferrer">Open StudyOS</a>':"")+"</li>").join("")+"</ul>";
+  return "<ul>"+items.map(i=>'<li'+(i.sourceId?' data-study-source-id="'+esc(i.sourceId)+'"':'')+'><div><strong>'+
+    esc(i.title)+'</strong><small>'+esc(i.detail)+'</small></div>'+
+    (i.href?'<a href="'+esc(i.href)+'" rel="noopener noreferrer">Open StudyOS</a>':"")+"</li>").join("")+"</ul>";
 }
 export function renderAcademic(state:AcademicState,origin:string|null,mode:"today"|"week",now=Date.now()):string{
   const header='<section class="ws-surface ws-study-c1" aria-label="StudyOS academic overview">'+
@@ -177,9 +179,11 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
     const day=addAcademicDays(selected,index);
     const deadlines=x.commitments.filter(c=>localAcademicDay(c.dueAt,zone)===day);
     const exams=upcoming.filter(e=>localAcademicDay(e.examAt,zone)===day);
-    const dayRows=[
-      ...exams.map(e=>({title:e.courseName+" exam",detail:when(e.examAt,zone)+" · owner-configured, not university-verified",href:action(origin,e.sourceRoute)})),
-      ...deadlines.map(c=>({title:c.title,detail:c.kind+" · "+when(c.dueAt,zone)+" · "+c.estimatedMinutes+" min estimate",href:action(origin,c.sourceRoute)}))
+    const dayRows:AcademicRowDisplay[]=[
+      ...exams.map(e=>({title:e.courseName+" exam",detail:when(e.examAt,zone)+" · owner-configured, not university-verified",
+        href:action(origin,e.sourceRoute),sourceId:"studyos:exam:"+e.courseId})),
+      ...deadlines.map(c=>({title:c.title,detail:c.kind+" · "+when(c.dueAt,zone)+" · "+c.estimatedMinutes+" min estimate",
+        href:action(origin,c.sourceRoute),sourceId:"studyos:commitment:"+c.commitmentId}))
     ];
     return "<section class=\"ws-study-c1-day\"><h4>"+esc(day)+" · "+(exams.length+deadlines.length)+
       " academic dates</h4>"+rows(dayRows,"No source deadlines for this day.")+"</section>";
@@ -187,16 +191,34 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
   const futureExams=x.exams.filter(e=>localAcademicDay(e.examAt,zone)>=limit)
     .sort((a,b)=>a.examAt.localeCompare(b.examAt)).slice(0,8).map(e=>({
       title:e.courseName,detail:when(e.examAt,zone)+" · owner-configured, not university-verified",
-      href:action(origin,e.sourceRoute)
+      href:action(origin,e.sourceRoute),sourceId:"studyos:exam:"+e.courseId
     }));
   const dueReviews=x.reviews.items.map(r=>({title:r.title,detail:r.actionable===true?
     "Original eligible question · source-owned mastery":r.actionable===null?
     "Question availability unknown — source read is partial":"No eligible original question confirmed",
-    href:r.actionable===true?action(origin,r.sourceRoute):null}));
+    href:r.actionable===true?action(origin,r.sourceRoute):null,sourceId:"studyos:review:"+r.skillId}));
   const courses=x.courses.map(c=>({title:c.name,detail:
     (c.durableMasteryPercent===null?"Mastery not established":c.durableMasteryPercent+"% durable mastery")+
     " · "+(c.totalSkills===null?"Skills unknown":c.totalSkills+" skills")+
-    (c.unresolvedErrors===null?"":" · "+c.unresolvedErrors+" unresolved errors"),href:action(origin,c.sourceRoute)}));
+    (c.unresolvedErrors===null?"":" · "+c.unresolvedErrors+" unresolved errors"),href:action(origin,c.sourceRoute),sourceId:"studyos:course:"+c.courseId}));
+  const todayDue=x.commitments.filter(c=>localAcademicDay(c.dueAt,zone)===selected)
+    .sort((a,b)=>a.dueAt.localeCompare(b.dueAt));
+  const immediate:AcademicRowDisplay[]=[
+    ...overdue.slice(0,4).map(c=>({title:c.title,detail:"Overdue · "+when(c.dueAt,zone),
+      href:action(origin,c.sourceRoute),sourceId:"studyos:commitment:"+c.commitmentId})),
+    ...todayDue.slice(0,4).map(c=>({title:c.title,detail:"Due today · "+when(c.dueAt,zone),
+      href:action(origin,c.sourceRoute),sourceId:"studyos:commitment:"+c.commitmentId})),
+    ...dueReviews.filter(r=>r.href).slice(0,3),
+    ...dueReviews.filter(r=>!r.href).slice(0,1)
+  ].slice(0,8);
+  const immediateHtml=mode==="today"?'<section class="ws-study-c1-focus" aria-label="Academic attention now">'+
+    '<h3>Academic attention now</h3>'+
+    '<p>'+overdue.length+' overdue · '+todayDue.length+' due today · '+
+      x.reviews.dueSkillCount+' due review topics</p>'+
+    rows(immediate,x.coverage.status==="partial"?
+      "No immediate academic items confirmed in this partial source snapshot.":
+      "No immediate academic items in the current source snapshot.")+
+    '</section>':"";
   return header+'<button type="button" data-action="study-connect">Refresh</button>'+
     '<button type="button" data-action="study-disconnect">Disconnect</button></header>'+
     "<p>"+esc(x.semester.name)+" · "+esc(zone)+" · original source checked "+esc(when(x.generatedAt,zone))+
@@ -204,8 +226,9 @@ export function renderAcademic(state:AcademicState,origin:string|null,mode:"toda
     (x.coverage.status==="partial"?'<p class="ws-study-c1-warning" role="status">Partial academic coverage: '+
       esc(x.coverage.reasons.join(", "))+"</p>":"")+
     '<p class="ws-study-c1-disclosure">Academic dates are not free/busy reservations. Exams are owner-configured; source counts may be limited. Original IDs, academic mastery and changes stay in StudyOS.</p>'+
+    immediateHtml+
     (overdue.length?'<section class="ws-study-c1-overdue"><h3>Overdue assignments ('+overdue.length+')</h3>'+
-      rows(overdue.map(c=>({title:c.title,detail:c.kind+" · due "+when(c.dueAt,zone),href:action(origin,c.sourceRoute)})),"")+"</section>":"")+
+      rows(overdue.map(c=>({title:c.title,detail:c.kind+" · due "+when(c.dueAt,zone),href:action(origin,c.sourceRoute),sourceId:"studyos:commitment:"+c.commitmentId})),"")+"</section>":"")+
     '<div class="ws-study-c1-grid"><section><h3>'+ (mode==="week"?"Academic week":"Next seven days")+
     "</h3><div class=\"ws-study-c1-days\">"+daySections.join("")+"</div>"+
     (futureExams.length?'<section class="ws-study-c1-later"><h3>Later configured exams</h3>'+

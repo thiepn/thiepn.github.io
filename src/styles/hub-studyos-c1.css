@@ -18,3 +18,10 @@
 @media(max-width:1050px){.ws-study-c1 .ws-study-c1-grid{grid-template-columns:1fr 1fr}.ws-study-c1 .ws-study-c1-grid>section:first-child{grid-column:span 2}}
 @media(max-width:650px){.ws-study-c1{padding:.8rem}.ws-study-c1 .ws-study-c1-grid{grid-template-columns:1fr}.ws-study-c1 .ws-study-c1-grid>section:first-child{grid-column:auto}.ws-study-c1-days{grid-template-columns:1fr}}
 [data-hub-study-panel][hidden]{display:none!important}
+
+/* Distinguish urgent original academic commitments from the seven-day source calendar. */
+.ws-study-c1-focus{border-block:1px solid var(--ws-border,#d1d5db);padding:.8rem 0;margin-top:.8rem}
+.ws-study-c1-focus h3{margin:0 0 .35rem;font-size:1rem}
+.ws-study-c1-focus>p{margin:.2rem 0 .5rem;font-size:.86rem;opacity:.85}
+.ws-study-c1-focus ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));column-gap:1.3rem}
+.ws-study-c1 [data-study-source-id]{scroll-margin-block:1rem}

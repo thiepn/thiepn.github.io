@@ -67,6 +67,8 @@ test('C1-B desktop source-owner projection: exam, overdue, original repair, no l
   await expect(panel.getByText('Previously due work')).toBeVisible();
   await expect(panel.getByRole('heading',{name:'Later configured exams'})).toBeVisible();
   await expect(panel.getByText('42% durable mastery')).toBeVisible();
+  await expect(panel.locator('[data-study-source-id="studyos:exam:'+course+'"]')).toHaveCount(1);
+  await expect(panel.locator('[data-study-source-id="studyos:commitment:'+assignment+'"]')).toHaveCount(1);
   await expect(panel.locator('img')).toHaveCount(0);
   await expect(panel.locator('a[href*="/practice?mode=repair"]')).toHaveCount(1);
   expect(await panel.locator('a[href*="/practice?mode=repair"]').first().getAttribute('href'))
@@ -87,6 +89,10 @@ test('C1-B stale, signed-out, unavailable states do not leak academic details',a
 test('C1-B synthetic smartphone 390px Today and Week are readable without horizontal overflow @mobile-cert',async({page})=>{
   for(const mode of ['today','week'] as const){
     await render(page,markup('ready',mode),390);
+    if(mode==='today'){
+      await expect(page.getByRole('region',{name:'Academic attention now'})).toBeVisible();
+      await expect(page.getByText('Previously due work').first()).toBeVisible();
+    }
     await expect(page.getByRole('region',{name:'StudyOS academic overview'})).toBeVisible();
     await expect(page.getByRole('heading',{name:/University today|Study in your week/})).toBeVisible();
     await expect(page.getByText('Variation der Konstanten')).toBeVisible();
