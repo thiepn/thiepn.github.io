@@ -48,13 +48,27 @@ import '../../styles/office-documents.css';
       <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button><button type="button" class="ws-button" data-office-compare disabled>Compare selected revision</button></div>
       <section class="office-timeline" aria-label="Office revision timeline" data-office-timeline>
         <div class="office-timeline-heading"><h3>Document history</h3><p data-office-timeline-note class="ws-muted">Create or open a document to inspect saved revisions.</p></div>
+        <div class="office-history-search">
+          <label for="office-history-search">Search retained history</label>
+          <input id="office-history-search" type="search" maxlength="120" data-office-history-search disabled autocomplete="off" placeholder="Find titles or saved Markdown"/>
+          <label class="office-history-case"><input type="checkbox" data-office-history-case disabled/> Match case</label>
+          <p data-office-history-count aria-live="polite" role="status">No versions available</p>
+        </div>
         <div class="office-timeline-list" data-office-timeline-list role="list"></div>
         <section data-office-timeline-preview hidden class="office-timeline-preview" aria-label="Selected saved revision">
           <p class="ws-muted" data-office-timeline-summary></p>
           <pre data-office-timeline-excerpt></pre>
           <p class="ws-muted" data-office-timeline-truncated></p>
+          <p class="ws-muted" data-office-timeline-baseline-note>No baseline selected</p>
+          <section data-office-timeline-pair-panel hidden aria-label="Two saved revisions comparison">
+            <h4>Compare two retained revisions</h4>
+            <p data-office-timeline-pair-summary></p>
+            <div data-office-timeline-pair-diffs class="office-timeline-pair-diffs"></div>
+          </section>
           <div class="office-import-actions">
             <button type="button" class="ws-button" data-office-timeline-compare disabled>Compare with current</button>
+            <button type="button" class="ws-button" data-office-timeline-baseline disabled>Set comparison baseline</button>
+            <button type="button" class="ws-button" data-office-timeline-pair disabled>Compare two saved revisions</button>
             <button type="button" class="ws-button" data-office-timeline-restore disabled>Restore this revision…</button>
             <button type="button" class="ws-button" data-office-timeline-close>Close preview</button>
           </div>
