@@ -19,6 +19,7 @@
   line-height: 1.55;
 }
 [data-workspace-page][data-theme=dark] .ws { color-scheme: dark; }
+[data-workspace-page] .ws[data-rail=collapsed] { --rail: 64px; }
 .ws :is(button,a,input,textarea,select) { border-radius: var(--ws-radius); }
 .ws :is(.ws-widget,.ws-surface,.ws-unified-today,.ws-unified-group,.ws-unified-nav,
        .ws-home-panel,.ws-brief-card,.ws-dialog,.ws-workspace-list button) {
@@ -164,6 +165,7 @@
 }
 .ws .ws-menu-note { margin: 20px 0 0; font-size: 11px; line-height: 1.6; color: var(--ws-meta); letter-spacing: 0; text-transform: none; }
 @media (min-width:768px) and (max-width:1279px) {
+  [data-workspace-page] .ws { --rail: 64px; }
   .ws .ws-navigation { padding: 0 7px 16px; }
   .ws .ws-brand-type, .ws .ws-nav-index { display: none; }
   .ws .ws-nav a,.ws .ws-nav-link { justify-content: center; padding: 10px 8px; }
@@ -185,10 +187,10 @@
   .ws .ws-topbar-actions { margin-left: auto; gap: 6px; }
   .ws .ws-capture-trigger {
     min-width: 44px; height: 44px; min-height: 44px; padding: 0 8px;
-    flex-direction: column; gap: 0; justify-content: center;
+    flex-direction: row; gap: 4px; justify-content: center;
   }
   .ws .ws-capture-trigger>.ws-icon { height: 18px; }
-  .ws .ws-capture-word { font-size: 8px; line-height: 1.35; letter-spacing: 0; }
+  .ws .ws-capture-word { font-size: 12px; line-height: 1.35; letter-spacing: 0; }
   .ws .ws-header-account { display: none !important; }
   .ws .ws-mobile-nav {
     position: static; inset: auto; z-index: auto; display: flex;
@@ -199,7 +201,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 54px; min-height: 44px; padding: 0 7px;
     border: 1px solid var(--ws-line); border-radius: 4px;
-    background: transparent; color: var(--ws-ink); font-size: 11px;
+    background: transparent; color: var(--ws-ink); font-size: 14px;
   }
   .ws .ws-menu-trigger:hover, .ws .ws-menu-trigger[aria-expanded=true] { background: var(--ws-soft); }
   .ws .ws-main { padding: 24px 16px 30px; }
@@ -213,7 +215,6 @@
   .ws .ws-topbar { padding: 0 9px; gap: 5px; }
   .ws .ws-mobile-brand { min-width: 70px; }
   .ws .ws-topbar-actions { gap: 4px; }
-  .ws .ws-capture-word { font-size: 7px; }
   .ws .ws-main { padding: 20px 12px 28px; }
 }
 @media (max-width:767px) {

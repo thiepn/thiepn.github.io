@@ -7,6 +7,17 @@ for(const width of [320,390,768,1024,1440,1920]){
     await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     const mobile=page.getByRole('navigation',{name:'Mobile workspace navigation'});
+    if(width>=768&&width<=1024){
+      const rail=await page.locator('.ws-navigation').evaluate(node=>node.getBoundingClientRect().width);
+      expect(rail).toBeGreaterThanOrEqual(60);
+      expect(rail).toBeLessThanOrEqual(68);
+    }
+    if(width===1440){
+      await page.getByRole('button',{name:'Collapse sidebar'}).click();
+      const collapsed=await page.locator('.ws-navigation').evaluate(node=>node.getBoundingClientRect().width);
+      expect(collapsed).toBeGreaterThanOrEqual(60);
+      expect(collapsed).toBeLessThanOrEqual(68);
+    }
     if(width<768){
       await expect(mobile).toBeVisible();
       await expect(page.locator('.ws-mobile-nav')).toHaveCSS('position','static');
