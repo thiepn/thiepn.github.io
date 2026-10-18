@@ -190,3 +190,12 @@
 .office-writing-controls input[data-office-writing-language]{width:112px}
 .office-writing-controls button{padding:7px 10px;min-height:34px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
 .office-writing-tools>p{font-size:11px;line-height:1.5;margin:0}
+
+/* O16: accessible source-section insertion and keyboard navigation. */
+.office-section-create{display:grid;gap:8px;margin-top:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-section-create>label{font-size:12px;font-weight:650}
+.office-section-create>input{width:100%;min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-section-create .ws-muted,.office-section-navigation .ws-muted{margin:0;line-height:1.5;font-size:11px}
+.office-section-navigation{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.office-section-navigation>button{min-height:34px;padding:6px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-section-navigation>p{width:100%}

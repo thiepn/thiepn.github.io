@@ -16,6 +16,7 @@ import {previewMultiRevisionRecovery,MAX_MULTI_RECOVERY_HUNKS} from '../lib/offi
 import {officeRevisionTimeline,timelineExcerpt} from '../lib/office/revision-timeline';
 import {searchOfficeHistory,compareOfficeSavedVersions} from '../lib/office/history-explorer';
 import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type AuthoringBlock} from '../lib/office/authoring';
+import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -43,6 +44,11 @@ if(root && shell){
   const sectionFocus=pick<HTMLButtonElement>('[data-office-section-focus]');
   const sectionUp=pick<HTMLButtonElement>('[data-office-section-up]');
   const sectionDown=pick<HTMLButtonElement>('[data-office-section-down]');
+  const sectionTitle=pick<HTMLInputElement>('[data-office-section-title]');
+  const sectionAddSibling=pick<HTMLButtonElement>('[data-office-section-add-sibling]');
+  const sectionAddChild=pick<HTMLButtonElement>('[data-office-section-add-child]');
+  const headingPrevious=pick<HTMLButtonElement>('[data-office-heading-previous]');
+  const headingNext=pick<HTMLButtonElement>('[data-office-heading-next]');
   const status=pick<HTMLElement>('[data-office-status]');
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
@@ -243,6 +249,13 @@ if(root && shell){
     clearSelection.disabled=!canSelect||!selectedBundle.size;
     bundleButton.disabled=!canSelect||!selectedBundle.size||dirty||!!heldDraft||blocked;
     for(const checkbox of list.querySelectorAll<HTMLInputElement>('input[data-office-select-id]'))checkbox.disabled=!canSelect;
+    const sectionsForAuthoring=editing?documentSections(body.value):[];
+    const atSelection=sectionsForAuthoring.find(entry=>String(entry.offset)===sectionSelect.value)||
+      (sectionsForAuthoring.length?sectionsForAuthoring.filter(entry=>entry.offset<=body.selectionStart&&body.selectionStart<entry.end).at(-1):null);
+    sectionTitle.disabled=!editing;
+    sectionAddSibling.disabled=!editing||!atSelection||!sectionTitle.value.trim();
+    sectionAddChild.disabled=!editing||!atSelection||atSelection.level>=6||!sectionTitle.value.trim();
+    headingPrevious.disabled=headingNext.disabled=!editing||!sectionsForAuthoring.length;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearComparison(){
@@ -432,7 +445,7 @@ if(root && shell){
   }
   function clearEditor(){
     clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
-    writingLine.value='';writingLanguage.value='';
+    writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
@@ -564,7 +577,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';renderPreview();dirty=false;renderOutline();renderFind();
+      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -887,6 +900,46 @@ if(root && shell){
       body.dispatchEvent(new Event('input',{bubbles:true}));
       message('Replaced '+result.count+' matches. Autosave pending; prior revisions remain recoverable.');
     }catch(error){message(error instanceof Error?error.message:'Replacement refused; document unchanged.');}
+  });
+  sectionTitle.addEventListener('input',enable);
+  function targetSection(useCaret=false){
+    if(!body.disabled&&useCaret)return documentSectionAt(body.value,body.selectionStart);
+    const selected=documentSections(body.value).find(entry=>String(entry.offset)===sectionSelect.value);
+    return selected??documentSectionAt(body.value,body.selectionStart);
+  }
+  function insertSection(placement:SectionPlacement,useCaret=false){
+    if(!active||!allowed()||body.disabled||busy||blocked)return;
+    try{
+      const target=targetSection(useCaret);
+      const result=insertOfficeSection(body.value,target.offset,sectionTitle.value,placement);
+      body.value=result.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      sectionSelect.value=String(result.offset);
+      focusEditor(result.start,result.end);
+      message('New '+(placement==='child'?'subsection':'section')+' inserted into original Markdown. Autosave pending.');
+    }catch(error){message(error instanceof Error?error.message:'Cannot insert section. Original Markdown unchanged.');}
+  }
+  function jumpHeading(direction:'previous'|'next'){
+    if(!active||!allowed()||body.disabled)return;
+    try{
+      const offset=adjacentDocumentHeading(body.value,body.selectionStart,direction);
+      focusEditor(offset,offset);
+      const chosen=documentSections(body.value).find(s=>s.offset===offset);
+      if(chosen)sectionSelect.value=String(chosen.offset);
+      message('Focused '+direction+' original document heading.');
+    }catch(error){message(error instanceof Error?error.message:'Heading navigation unavailable.');}
+  }
+  sectionAddSibling.addEventListener('click',()=>insertSection('sibling'));
+  sectionAddChild.addEventListener('click',()=>insertSection('child'));
+  headingPrevious.addEventListener('click',()=>jumpHeading('previous'));
+  headingNext.addEventListener('click',()=>jumpHeading('next'));
+  body.addEventListener('keydown',event=>{
+    if(!(event.ctrlKey||event.metaKey)||body.disabled||!active||!allowed()||blocked||busy)return;
+    if(event.shiftKey&&!event.altKey&&event.key==='Enter'){
+      event.preventDefault();insertSection('sibling',true);
+    }else if(event.altKey&&!event.shiftKey&&(event.key==='ArrowUp'||event.key==='ArrowDown')){
+      event.preventDefault();jumpHeading(event.key==='ArrowUp'?'previous':'next');
+    }
   });
   sectionSelect.addEventListener('change',()=>enable());
   sectionFocus.addEventListener('click',()=>{

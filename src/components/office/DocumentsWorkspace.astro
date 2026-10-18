@@ -141,6 +141,19 @@ import '../../styles/office-documents.css';
         <div class="office-section-controls" aria-label="Section actions">
           <label for="office-section-select">Edit a heading section</label><select id="office-section-select" data-office-section-select disabled><option value="">Choose heading</option></select>
           <div class="office-section-buttons"><button type="button" data-office-section-focus disabled>Select full section</button><button type="button" data-office-section-up disabled>Move earlier</button><button type="button" data-office-section-down disabled>Move later</button></div>
+          <div class="office-section-create" aria-label="Insert an original Markdown section">
+            <label for="office-section-title">New section title</label><input id="office-section-title" data-office-section-title maxlength="100" disabled autocomplete="off" placeholder="e.g. Key findings"/>
+            <div class="office-section-buttons">
+              <button type="button" data-office-section-add-sibling disabled>Insert following section</button>
+              <button type="button" data-office-section-add-child disabled>Insert nested subsection</button>
+            </div>
+            <p class="ws-muted">Choose a heading above or place your cursor in a section. Ctrl/⌘ + Shift + Enter inserts a following section using this title.</p>
+          </div>
+          <div class="office-section-navigation" aria-label="Document heading navigation">
+            <button type="button" data-office-heading-previous disabled>Previous heading</button>
+            <button type="button" data-office-heading-next disabled>Next heading</button>
+            <p class="ws-muted">In the editor, Ctrl/⌘ + Alt + ↑ or ↓ navigates genuine headings (fenced-code headings are ignored).</p>
+          </div>
           <p class="ws-muted">Moves the complete heading and its nested subsections. Changes are saved through the normal revision history.</p>
         </div></aside>
       <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
