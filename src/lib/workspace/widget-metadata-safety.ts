@@ -13,7 +13,8 @@ const labels:Record<string,string>={
  'record-pinboard':'pinned original records','outcome-board':'outcomes',
  'decision-register':'decision records','task-event-links':'task–calendar relationships',
 };
-export function hasWidgetOwnedRecords(widget:Widget):boolean{
+export function hasWidgetOwnedRecords(widget:Widget|undefined):boolean{
+ if(!widget)return false;
  const key=ownerKeys[widget.type];
  return !!key&&Array.isArray(widget.config[key])&&(widget.config[key] as unknown[]).length>0;
 }
