@@ -2,6 +2,7 @@ import {hubIdentity} from './portal-auth';
 import {namespace} from '../lib/workspace/store';
 import {OfficeDeviceStore} from '../lib/office/device';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
+import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/markdown';
 const root=document.querySelector<HTMLElement>('[data-office]');
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -15,6 +16,10 @@ if(root && shell){
   const save=pick<HTMLButtonElement>('[data-office-save]');
   const download=pick<HTMLButtonElement>('[data-office-export]');
   const restore=pick<HTMLButtonElement>('[data-office-restore]');
+  const preview=pick<HTMLElement>('[data-office-preview]');
+  const formatButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-format]')];
+  const layoutButtons=[...root.querySelectorAll<HTMLButtonElement>('[data-office-mode]')];
+  function renderPreview(){renderMarkdown(body.value,preview);}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
@@ -30,9 +35,10 @@ if(root && shell){
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     add.disabled=!store||blocked||!allowed()||busy;
+    for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
-    title.value='';body.value='';history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
+    title.value='';body.value='';renderPreview();history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
   }
   function renderHistory(){
     history.replaceChildren(new Option('History',''));
@@ -64,7 +70,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      active=doc;title.value=doc.title;body.value=doc.body;renderPreview();dirty=false;
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -118,7 +124,7 @@ if(root && shell){
         const id=heldDraft&&docs.some(doc=>doc.id===heldDraft!.id)?heldDraft.id:docs[0]!.id;
         await select(id);
         if(ticket!==epoch||!active||!heldDraft||active.id!==heldDraft.id)return;
-        title.value=heldDraft.title;body.value=heldDraft.body;
+        title.value=heldDraft.title;body.value=heldDraft.body;renderPreview();
         dirty=title.value!==active.title||body.value!==active.body;
         blocked=active.revision!==heldDraft.revision;
         heldDraft=null;
@@ -134,7 +140,30 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;message('Unsaved edits · autosave pending');queueAutosave();
+    dirty=true;renderPreview();message('Unsaved edits · autosave pending');queueAutosave();
+  });
+  for(const button of formatButtons)button.addEventListener('click',()=>{
+    if(button.disabled||!active||!allowed())return;
+    const action=button.dataset.officeFormat as FormatAction;
+    const result=formatSelection(body.value,body.selectionStart,body.selectionEnd,action);
+    body.value=result.value;body.focus();body.setSelectionRange(result.start,result.end);
+    body.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  for(const button of layoutButtons)button.addEventListener('click',()=>{
+    const mode=button.dataset.officeMode;
+    if(mode!=='write'&&mode!=='split'&&mode!=='preview')return;
+    root.dataset.officeMode=mode;
+    for(const option of layoutButtons)option.setAttribute('aria-pressed',String(option===button));
+    if(mode==='preview')renderPreview();
+  });
+  body.addEventListener('keydown',event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+    const action=event.key.toLowerCase()==='b'?'bold':event.key.toLowerCase()==='i'?'italic':null;
+    if(!action||!active||body.disabled)return;
+    event.preventDefault();
+    const result=formatSelection(body.value,body.selectionStart,body.selectionEnd,action);
+    body.value=result.value;body.setSelectionRange(result.start,result.end);
+    body.dispatchEvent(new Event('input',{bubbles:true}));
   });
   download.addEventListener('click',()=>{
     if(!active||!allowed())return;
@@ -149,7 +178,7 @@ if(root && shell){
     if(dirty){message('Save or export current edits before restoring history.');return;}
     const rev=active.history.find(entry=>String(entry.revision)===history.value);
     if(!rev||!confirm('Restore this older revision? Current content will remain in revision history.'))return;
-    title.value=rev.title;body.value=rev.body;dirty=true;await persist();
+    title.value=rev.title;body.value=rev.body;renderPreview();dirty=true;await persist();
   })());
   window.addEventListener('beforeunload',event=>{if(dirty||heldDraft){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{clearTimeout(auto);store?.close();store=null;},{once:true});

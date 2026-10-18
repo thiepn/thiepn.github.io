@@ -35,7 +35,7 @@ test('Office concurrent edits fail closed and retain local export',async({page,c
  await page.locator('[data-office-save]').click();
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await other.locator('[data-office-body]').fill('Second editor');
- await other.locator('[data-office-save]').click();
+ // Autosave may start before manual Save becomes actionable; observe its atomic CAS result.
  await expect(other.locator('[data-office-status]')).toContainText('changed in another tab');
  await expect(other.locator('[data-office-export]')).toBeEnabled();
  await page.reload();
@@ -51,9 +51,36 @@ test('Office stays in Hub shell on narrow viewport and hides during Hub privacy 
  await page.locator('[data-office-save]').click();
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
- await page.locator('[data-workspace] [data-action=account]').first().click();
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
  await page.locator('[data-account-dialog] [data-action=privacy]').click();
  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
  await expect(page.locator('[data-office-body]')).toBeDisabled();
  await expect(page.locator('[data-office-body]')).toHaveValue('');
+});
+
+test('O2 formatting actions update Markdown and escaped live preview without HTML execution',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('Research');
+ await page.locator('[data-office-body]').evaluate((node:HTMLTextAreaElement)=>node.setSelectionRange(0,8));
+ await page.locator('[data-office-format=heading]').click();
+ await expect(page.locator('[data-office-body]')).toHaveValue('# Research');
+ await expect(page.locator('[data-office-preview] h1')).toHaveText('Research');
+ await page.locator('[data-office-format=table]').click();
+ await expect(page.locator('[data-office-preview] table th')).toHaveText(['Column 1','Column 2']);
+ await page.locator('[data-office-body]').fill('# Safe\n\n<script>window.hacked=1</script>\n\n**Bold** [Link](https://example.com)');
+ await expect(page.locator('[data-office-preview] h1')).toHaveText('Safe');
+ await expect(page.locator('[data-office-preview] strong')).toHaveText('Bold');
+ await expect(page.locator('[data-office-preview] a')).toHaveAttribute('rel','noopener noreferrer');
+ await expect(page.locator('[data-office-preview] script')).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).hacked)).toBeUndefined();
+ await page.locator('[data-office-mode=preview]').click();
+ await expect(page.locator('.office-source')).toBeHidden();
+ await expect(page.locator('[data-office-preview]')).toContainText('<script>window.hacked=1</script>');
+ await page.locator('[data-office-mode=write]').click();
+ await expect(page.locator('[data-office-body]')).toBeVisible();
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.reload();
+ await expect(page.locator('[data-office-preview] strong')).toHaveText('Bold');
 });
