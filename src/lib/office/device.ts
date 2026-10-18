@@ -43,9 +43,11 @@ export class OfficeDeviceStore {
       request.onerror=()=>reject(request.error);
     });
   }
-  async create():Promise<OfficeDocument>{
+  async create(initial?:{title:string;body:string}):Promise<OfficeDocument>{
     if((await this.list()).length>=MAX_DOCUMENTS)throw new Error('Limit of 100 local Office documents reached.');
-    const doc=newDocument(crypto.randomUUID(),new Date().toISOString());
+    const blank=newDocument(crypto.randomUUID(),new Date().toISOString());
+    // Template title and body enter the original schema in one atomic add, not a second write.
+    const doc=initial?validateDocument({...blank,title:initial.title,body:initial.body}):blank;
     return new Promise((resolve,reject)=>{
       const tx=this.database.transaction('documents','readwrite');
       tx.objectStore('documents').add(doc,this.key(doc.id));

@@ -34,3 +34,21 @@
 .office-heading-link{border:1px solid var(--ws-line);border-radius:3px;color:inherit;background:transparent;cursor:pointer;font-size:12px;min-height:32px;text-align:left}
 .office-heading-link:hover{background:var(--ws-soft)}
 @media(max-width:720px){.office-list{max-width:100%}.office-list>p{margin:4px 0}.office-outline nav{flex-direction:column}.office-heading-link{width:100%}}
+
+/* O4: template entry and print-only sheet, no additional document engine. */
+.office-create{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.office-create label{font-size:12px;color:var(--ws-muted)}
+.office-create select{max-width:210px;min-height:36px}
+.office-print-sheet{display:none}
+@media(max-width:720px){.office-create{width:100%;justify-content:flex-start}.office-create select{max-width:58vw}}
+@media print{
+ @page{margin:18mm}
+ body *{visibility:hidden!important}
+ .office-print-sheet,.office-print-sheet *{visibility:visible!important}
+ .office-print-sheet{display:block!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;background:#fff!important;color:#000!important;padding:0!important;margin:0!important;font:12pt/1.55 Georgia,serif!important;overflow:visible!important}
+ .office-print-sheet>h1{font-size:22pt;line-height:1.2;margin:0 0 22pt}
+ .office-print-sheet article{font:inherit!important;color:inherit!important}
+ .office-print-sheet article a{color:inherit!important}
+ .office-print-sheet pre,.office-print-sheet table{break-inside:avoid;max-width:100%}
+ .office-print-sheet th,.office-print-sheet td{border-color:#555!important}
+}

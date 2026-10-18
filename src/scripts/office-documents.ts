@@ -4,6 +4,8 @@ import {OfficeDeviceStore} from '../lib/office/device';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
 import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/markdown';
 import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib/office/library';
+import {getOfficeTemplate} from '../lib/office/templates';
+import {standaloneHtml} from '../lib/office/portable';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -20,6 +22,10 @@ if(root && shell){
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
   const history=pick<HTMLSelectElement>('[data-office-history]');
   const add=pick<HTMLButtonElement>('[data-office-new]');
+  const templatePicker=pick<HTMLSelectElement>('[data-office-template]');
+  const htmlButton=pick<HTMLButtonElement>('[data-office-html]');
+  const printButton=pick<HTMLButtonElement>('[data-office-print]');
+  const printSheet=pick<HTMLElement>('[data-office-print-sheet]');
   const save=pick<HTMLButtonElement>('[data-office-save]');
   const download=pick<HTMLButtonElement>('[data-office-export]');
   const restore=pick<HTMLButtonElement>('[data-office-restore]');
@@ -39,15 +45,16 @@ if(root && shell){
     const editing=!!store && !!active && !blocked && allowed();
     title.disabled=body.disabled=!editing;
     // A concurrent-edit conflict must never prevent exporting the unsaved text.
-    download.disabled=!active||!allowed();
+    download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
     add.disabled=!store||blocked||!allowed()||busy;
+    templatePicker.disabled=!store||blocked||!allowed()||busy;
     search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearEditor(){
-    title.value='';body.value='';renderPreview();renderOutline();
+    title.value='';body.value='';renderPreview();renderOutline();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));active=null;dirty=false;enable();
   }
   function renderOutline(){
@@ -152,8 +159,16 @@ if(root && shell){
   async function create(){
     if(!store||busy||blocked||!allowed())return;
     if(dirty){await persist();if(dirty)return;}
-    try{const doc=await store.create();await refreshList();await select(doc.id);title.focus();}
-    catch(e){message(e instanceof Error?e.message:'Cannot create document');}
+    const opened=store,ticket=epoch;
+    try{
+      const chosen=getOfficeTemplate(templatePicker.value);
+      const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      await refreshList();await select(doc.id);
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      templatePicker.value='blank';title.focus();
+      if(chosen.id!=='blank')message('New '+chosen.label.toLowerCase()+' created locally. Edit the placeholders before sharing.');
+    }catch(e){if(ticket===epoch)message(e instanceof Error?e.message:'Cannot create document');}
   }
   async function start(){
     const ticket=++epoch;
@@ -242,12 +257,38 @@ if(root && shell){
     body.value=result.value;body.setSelectionRange(result.start,result.end);
     body.dispatchEvent(new Event('input',{bubbles:true}));
   });
+  function downloadBlob(blob:Blob,filename:string){
+    const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+    anchor.href=url;anchor.download=filename;anchor.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+  function buildPrintSheet(){
+    printSheet.replaceChildren();
+    if(!allowed()||!active)return;
+    const heading=document.createElement('h1');heading.textContent=title.value||active.title;
+    const article=document.createElement('article');article.className='office-preview';
+    renderMarkdown(body.value,article);
+    printSheet.append(heading,article);
+  }
+  htmlButton.addEventListener('click',()=>{
+    if(!active||!allowed())return;
+    try{
+      const markup=standaloneHtml(title.value||active.title,body.value,document);
+      if(!allowed())return;
+      downloadBlob(new Blob([markup],{type:'text/html;charset=utf-8'}),documentFilename(title.value||active.title).replace(/\.md$/,'.html'));
+      message(dirty?'HTML exported with unsaved edits. Local save is still pending.':'Portable HTML exported with scripts and external resources disabled.');
+    }catch(e){message(e instanceof Error?e.message:'HTML export unavailable.');}
+  });
+  printButton.addEventListener('click',()=>{
+    if(!active||!allowed())return;
+    buildPrintSheet();window.print();
+    message(dirty?'Print uses current unsaved edits. Local save is still pending.':'Print prepared. Select Save as PDF in the browser to export PDF.');
+  });
+  window.addEventListener('beforeprint',buildPrintSheet);
+  window.addEventListener('afterprint',()=>printSheet.replaceChildren());
   download.addEventListener('click',()=>{
     if(!active||!allowed())return;
-    const file=new Blob([body.value],{type:'text/markdown;charset=utf-8'});
-    const url=URL.createObjectURL(file),anchor=document.createElement('a');
-    anchor.href=url;anchor.download=documentFilename(title.value||active.title);anchor.click();
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    downloadBlob(new Blob([body.value],{type:'text/markdown;charset=utf-8'}),documentFilename(title.value||active.title));
     message(dirty?'Exported current unsaved Markdown. Local save is still pending.':'Markdown export prepared.');
   });
   restore.addEventListener('click',()=>void (async()=>{
