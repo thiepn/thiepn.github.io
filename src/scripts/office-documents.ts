@@ -421,7 +421,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;renderPreview();renderOutline();message('Unsaved edits · autosave pending');queueAutosave();
+    dirty=true;renderPreview();renderOutline();enable();message('Unsaved edits · autosave pending');queueAutosave();
   });
   for(const button of formatButtons)button.addEventListener('click',()=>{
     if(button.disabled||!active||!allowed())return;
