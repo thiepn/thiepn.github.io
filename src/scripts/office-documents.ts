@@ -3,7 +3,7 @@ import {namespace} from '../lib/workspace/store';
 import {OfficeDeviceStore} from '../lib/office/device';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
 const root=document.querySelector<HTMLElement>('[data-office]');
-const shell=document.querySelector<HTMLElement>('[data-workspace]');
+const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
   const pick=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
   const list=pick<HTMLElement>('[data-office-list]');
