@@ -1,4 +1,4 @@
-import manifest from '../../generated/launch-manifest.json';
+import manifest from '../../generated/launch-manifest.json' with { type: 'json' };
 export type Launch = (typeof manifest.entries)[number];
 export const launches: readonly Launch[] = manifest.entries;
 export function resolveLaunch(id: string): Launch | undefined {

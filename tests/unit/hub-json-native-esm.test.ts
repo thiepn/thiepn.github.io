@@ -29,3 +29,20 @@ test('Hub launch manifest importer also works in native Node ESM', () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+/** Actual Playwright test imports traverse workspace/model -> registry -> commands -> resolver.
+ * The resolver must load in native Node ESM, not only through Astro's JSON plugin.
+ */
+test('original launch resolver is directly importable by native Node ESM', () => {
+  const statement = readFileSync('src/lib/launches/resolver.ts', 'utf8').split(/\r?\n/u)[0];
+  expect(statement).toBe("import manifest from '../../generated/launch-manifest.json' with { type: 'json' };");
+  const code = "import { resolveLaunch } from './src/lib/launches/resolver.ts';" +
+    "const notes=resolveLaunch('notes'); if(!notes || notes.id!=='notes') throw Error('Missing original launch');" +
+    "console.log(notes.id);";
+  const run = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '--eval', code], {
+    cwd: process.cwd(), encoding: 'utf8', timeout: 10_000,
+  });
+  expect(run.error).toBeUndefined();
+  expect(run.status, run.stderr).toBe(0);
+  expect(run.stdout.trim()).toBe('notes');
+});
