@@ -4,7 +4,7 @@ import {OfficeDeviceStore} from '../lib/office/device';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
 import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/markdown';
 import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib/office/library';
-const root=document.querySelector<HTMLElement>('[data-office]');
+const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
   const pick=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
@@ -201,6 +201,7 @@ if(root && shell){
     try{
       const documents=await opened.list();
       if(ticket!==epoch||opened!==store||!allowed())return;
+      if(dirty||heldDraft||blocked){message('Export the unsaved draft as .md before downloading the saved-document backup.');return;}
       const stamp=new Date().toISOString();
       const json=backupDocuments(documents,stamp);
       if(ticket!==epoch||opened!==store||!allowed())return;
