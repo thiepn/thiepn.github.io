@@ -386,3 +386,11 @@
 @media(max-width:480px){.ws-visitor-welcome{padding:18px;border-radius:16px;}.ws-visitor-actions>*{white-space:normal;}.ws-visitor-intro h2{font-size:26px;}}
 
 [data-workspace-date]:empty{display:none;}
+
+/* Four native Home modes must reflow inside a 320px viewport; no page-wide overflow. */
+@media(max-width:480px){
+ .ws-mode-bar{min-width:0;align-items:stretch;}
+ .ws-mode-bar>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0;}
+ .ws-mode-bar button{min-width:0;padding:9px 7px;min-height:44px;white-space:normal;overflow-wrap:anywhere;}
+ .ws-mode-bar>a{min-height:40px;display:inline-flex;align-items:center;}
+}
