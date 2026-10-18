@@ -7,10 +7,10 @@ test('original task opens its confirmed Decision backlink without modifying sour
  await page.goto('/');
  await page.locator('[data-today-decisions] [data-action=new-decision]').click();
  await page.getByLabel('Decision title').fill('Choose a proof strategy');
- await page.getByLabel('Options, one per line').fill('Direct\\nInduction'.replace('\\n','\n'));
+ await page.getByLabel('Options, one per line').fill('Direct\nInduction');
  await page.getByLabel('Related original task').selectOption({label:'Original proof task'});
  await page.locator('[data-dialog-submit]').click();
- await page.locator('[data-unified-task] [data-action=context-task]').first().click();
+ await page.locator('.ws-unified-task [data-action=context-task]').first().click();
  const backlinks=page.locator('[data-workspace-dialog] [data-confirmed-backlinks]');
  await expect(backlinks).toContainText('Choose a proof strategy');
  await backlinks.locator('[data-action=edit-decision]').click();
