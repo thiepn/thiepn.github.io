@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -416,6 +416,70 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const longKeep=inspectOfficeDuplicateFootnotes(long).groups[0]!.definitions[0]!;
   expect(()=>previewOfficeDuplicateResolution(long,'x',longKeep.offset)).toThrow('single-line text');
   expect(inspectOfficeDuplicateFootnotes('x'.repeat(200001)).limited).toBe(true);
+ });
+
+
+ it('O28 audits exact genuine citation use sites including repeated lines, Unicode, CRLF and fences',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const source='# 결과\r\nSentence[^a] and again[^a]\r\n'+
+    'Sentence[^a] and again[^a]\r\n'+tick+'\r\nFake[^a]\r\n'+tick+
+    '\r\n[^a]: 한국어 research source\r\n';
+  const impact=inspectOfficeCitationUseImpact(source);
+  expect(impact).toMatchObject({compared:false,currentCount:4,changed:0});
+  expect(impact.entries.map(x=>x.id)).toEqual(['a']);
+  const a=impact.entries[0]!;
+  expect(a.currentUses.map(row=>row.line)).toEqual([2,2,3,3]);
+  expect(a.currentUses.map(row=>row.ordinal)).toEqual([1,2,3,4]);
+  expect(a.currentUses[0]?.offset).toBe(source.indexOf('[^a]'));
+  expect(a.currentProblems).toEqual([]);
+  expect(a.currentDefinition?.content).toBe('한국어 research source');
+ });
+ it('O28 compares use passage multiset without falsely treating earlier line insertion as new citation uses',()=>{
+  const previous='Line[^x]\nLine[^x]\n[^x]: Source';
+  const current='# Start\nLine[^x]\nLine[^x]\n[^x]: Source';
+  const r=inspectOfficeCitationUseImpact(current,previous);
+  expect(r).toMatchObject({compared:true,currentCount:2,historicalCount:2,changed:0});
+  expect(r.entries[0]).toMatchObject({definitionChanged:false,addedUses:[],removedUses:[]});
+  const changed=inspectOfficeCitationUseImpact(current.replace('Line[^x]','Changed[^x]'),previous);
+  expect(changed.changed).toBe(1);
+  expect(changed.entries[0]?.addedUses).toHaveLength(1);
+  expect(changed.entries[0]?.removedUses).toHaveLength(1);
+  expect(changed.entries[0]?.addedUses[0]?.excerpt).toBe('Changed[^x]');
+  expect(changed.entries[0]?.removedUses[0]?.excerpt).toBe('Line[^x]');
+ });
+ it('O28 identifies changed definition and deleted genuine uses, while ignoring code pseudoreferences',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const before='A[^a] B[^b]\n[^a]: Old\n[^b]: Keep';
+  const now='A[^a]\n[^a]: New\n'+tick+'\nB[^b]\n'+tick+'\n[^b]: Keep';
+  const impact=inspectOfficeCitationUseImpact(now,before);
+  expect(impact.currentCount).toBe(1);
+  expect(impact.historicalCount).toBe(2);
+  const a=impact.entries.find(row=>row.id==='a')!,b=impact.entries.find(row=>row.id==='b')!;
+  expect(a.definitionChanged).toBe(true);
+  expect(a.addedUses).toHaveLength(1);
+  expect(a.removedUses).toHaveLength(1);
+  expect(b.currentUses).toHaveLength(0);
+  expect(b.removedUses).toHaveLength(1);
+  expect(b.currentProblems).toContain('unused-footnote');
+ });
+ it('O28 exports portable original-use audit with explicit non-verification and exact saved revisions',()=>{
+  const historical='Claim[^s]\n[^s]: Old',current='Claim[^s]\nOther[^s]\n[^s]: New';
+  const report=inspectOfficeCitationUseImpact(current,historical);
+  const result=formatOfficeCitationUseAudit(report,'Draft\nunsafe header',7,2);
+  expect(result).toContain('Document: Draft unsafe header');
+  expect(result).toContain('Current saved revision: 7');
+  expect(result).toContain('Compared retained revision: 2');
+  expect(result).toContain('citation claims and external sources are not verified');
+  expect(result).toContain('Other[^s]');
+  expect(result).toContain('Historical definition: Old');
+  expect(result).not.toContain('Draft\nunsafe header');
+  expect(()=>formatOfficeCitationUseAudit(report,'Draft',7,-1)).toThrow('Invalid');
+ });
+ it('O28 refuses excessive reference identities and source volume instead of silently truncating audit',()=>{
+  expect(()=>inspectOfficeCitationUseImpact('x'.repeat(200001))).toThrow('limits');
+  const many=Array.from({length:161},(_,i)=>'[^id'+i+']').join('\n');
+  expect(()=>inspectOfficeCitationUseImpact(many)).toThrow('160 distinct original IDs');
+  expect(()=>inspectOfficeCitationUseImpact('ok',many)).toThrow('160 distinct original IDs');
  });
 
 });

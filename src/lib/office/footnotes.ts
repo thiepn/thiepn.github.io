@@ -478,6 +478,122 @@ export function previewOfficeDuplicateResolution(
  return {value,id,start,end:start+kept.rawLine.length,kept,removed,usesPreserved:group.uses};
 }
 
+
+export interface OfficeCitationImpactUse{
+ line:number;offset:number;excerpt:string;ordinal:number;
+}
+export interface OfficeCitationImpactEntry{
+ id:string;
+ currentDefinition:OfficeFootnoteDefinition|null;
+ historicalDefinition:OfficeFootnoteDefinition|null;
+ currentUses:OfficeCitationImpactUse[];
+ historicalUses:OfficeCitationImpactUse[];
+ addedUses:OfficeCitationImpactUse[];
+ removedUses:OfficeCitationImpactUse[];
+ currentProblems:ReferenceProblem['kind'][];
+ historicalProblems:ReferenceProblem['kind'][];
+ definitionChanged:boolean;
+}
+export interface OfficeCitationImpactReport{
+ compared:boolean;currentCount:number;historicalCount:number;
+ entries:OfficeCitationImpactEntry[];changed:number;
+}
+/** Source-only citation-use impact. Context is actual authored line text (never a guessed
+ * bibliography); exact line matches are compared as multisets, not line numbers.
+ */
+export function inspectOfficeCitationUseImpact(
+ current:string,historical?:string
+):OfficeCitationImpactReport{
+ const now=analyzeOfficeReferences(current),before=historical===undefined?null:analyzeOfficeReferences(historical);
+ if(now.limited||before?.limited)
+  throw new Error('Citation use audit exceeds original source reference limits.');
+ const ids=[...new Set([
+  ...now.definitions.map(row=>row.id),
+  ...now.references.filter(row=>row.kind==='footnote').map(row=>row.id),
+  ...(before?.definitions.map(row=>row.id)??[]),
+  ...(before?.references.filter(row=>row.kind==='footnote').map(row=>row.id)??[])
+ ])].sort();
+ if(ids.length>160)throw new Error('Citation use audit exceeds 160 distinct original IDs.');
+ function uses(source:string,report:ReferenceReport,id:string){
+  const seen=new Map<string,number>();
+  return report.references.filter(row=>row.kind==='footnote'&&row.id===id).map(ref=>{
+   const from=Math.max(source.lastIndexOf('\n',ref.offset-1),source.lastIndexOf('\r',ref.offset-1))+1;
+   const nextLf=source.indexOf('\n',ref.offset),nextCr=source.indexOf('\r',ref.offset);
+   const to=Math.min(nextLf<0?source.length:nextLf,nextCr<0?source.length:nextCr);
+   const line=source.slice(from,to);
+   const ordinal=(seen.get(line)??0)+1;seen.set(line,ordinal);
+   return {line:ref.line,offset:ref.offset,excerpt:line.trim().slice(0,240),ordinal,raw:line};
+  });
+ }
+ const entries:OfficeCitationImpactEntry[]=[];
+ let changed=0;
+ for(const id of ids){
+  const curDef=now.definitions.find(row=>row.id===id)??null;
+  const oldDef=before?.definitions.find(row=>row.id===id)??null;
+  const curr=uses(current,now,id),old=before?uses(historical!,before,id):[];
+  const known=new Set(old.map(x=>x.raw+'\x00'+x.ordinal));
+  const present=new Set(curr.map(x=>x.raw+'\x00'+x.ordinal));
+  const toPublic=(rows:typeof curr):OfficeCitationImpactUse[]=>rows.map(({line,offset,excerpt,ordinal})=>({line,offset,excerpt,ordinal}));
+  const added=before?curr.filter(row=>!known.has(row.raw+'\x00'+row.ordinal)):[];
+  const removed=before?old.filter(row=>!present.has(row.raw+'\x00'+row.ordinal)):[];
+  const nowProblems=[...new Set(now.problems.filter(p=>p.id===id&&p.kind!=='broken-heading').map(p=>p.kind))].sort();
+  const oldProblems=before?[...new Set(before.problems.filter(p=>p.id===id&&p.kind!=='broken-heading').map(p=>p.kind))].sort():[];
+  const definitionChanged=!!before&&
+   (curDef?.content!==oldDef?.content||curDef?.count!==oldDef?.count);
+  if(definitionChanged||added.length||removed.length||
+     (before!==null&&nowProblems.join('|')!==oldProblems.join('|')))changed++;
+  entries.push({
+   id,currentDefinition:curDef,historicalDefinition:oldDef,
+   currentUses:toPublic(curr),historicalUses:toPublic(old),
+   addedUses:toPublic(added),removedUses:toPublic(removed),
+   currentProblems:nowProblems,historicalProblems:oldProblems,definitionChanged
+  });
+ }
+ return {compared:before!==null,currentCount:now.references.filter(x=>x.kind==='footnote').length,
+  historicalCount:before?.references.filter(x=>x.kind==='footnote').length??0,
+  entries,changed};
+}
+/** Explicit portable plain-text snapshot, never a citation authority or a database export. */
+export function formatOfficeCitationUseAudit(
+ report:OfficeCitationImpactReport,documentTitle:string,currentRevision:number,
+ historicalRevision:number|null
+):string{
+ if(!Number.isSafeInteger(currentRevision)||currentRevision<0||
+    (historicalRevision!==null&&(!Number.isSafeInteger(historicalRevision)||historicalRevision<0)))
+  throw new Error('Invalid original citation audit revision identity.');
+ const title=documentTitle.replace(/[\r\n\t\x00-\x1f]/g,' ').trim().slice(0,120);
+ const lines=['Office citation use audit','Document: '+(title||'Untitled document'),
+  'Current saved revision: '+currentRevision,
+  'Compared retained revision: '+(historicalRevision??'none'),
+  'Source-derived use sites only; citation claims and external sources are not verified.',
+  'Offsets are UTF-16 positions in each original Markdown revision.',
+  'Citation IDs: '+report.entries.length+'; current uses: '+report.currentCount+
+    (report.compared?'; previous uses: '+report.historicalCount:''),
+  ''];
+ for(const row of report.entries){
+  lines.push('[^'+row.id+']','Current definitions: '+(row.currentDefinition?.count??0),
+   'Current definition: '+(row.currentDefinition?.content??'(missing)'),
+   'Current problems: '+(row.currentProblems.join(', ')||'none'),
+   'Current uses: '+row.currentUses.length);
+  for(const site of row.currentUses)
+   lines.push('  line '+site.line+'; offset '+site.offset+'; occurrence '+site.ordinal+'; '+site.excerpt);
+  if(report.compared){
+   lines.push('Historical definitions: '+(row.historicalDefinition?.count??0),
+    'Historical definition: '+(row.historicalDefinition?.content??'(missing)'),
+    'Historical problems: '+(row.historicalProblems.join(', ')||'none'),
+    'Definition changed: '+(row.definitionChanged?'yes':'no'),
+    'Added or changed use passages: '+row.addedUses.length);
+   for(const site of row.addedUses)
+    lines.push('  current line '+site.line+'; offset '+site.offset+'; '+site.excerpt);
+   lines.push('Removed or changed use passages: '+row.removedUses.length);
+   for(const site of row.removedUses)
+    lines.push('  historical line '+site.line+'; offset '+site.offset+'; '+site.excerpt);
+  }
+  lines.push('');
+ }
+ return lines.join('\n');
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);
