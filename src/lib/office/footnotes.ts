@@ -391,6 +391,92 @@ export function traceOfficeReferenceIssues(sources:readonly OfficeIssueRevisionS
   resolved:rows.filter(row=>row.current===null).length,rows};
 }
 
+
+export interface OfficeDuplicateDefinition{
+ id:string;offset:number;line:number;content:string;rawLine:string;lineEnding:string;
+}
+export interface OfficeDuplicateGroup{
+ id:string;definitions:OfficeDuplicateDefinition[];uses:number;
+}
+export interface OfficeDuplicateInspection{
+ limited:boolean;groups:OfficeDuplicateGroup[];
+}
+export interface OfficeDuplicateRepair extends FootnoteInsertion{
+ kept:OfficeDuplicateDefinition;removed:OfficeDuplicateDefinition[];usesPreserved:number;
+}
+export const MAX_DUPLICATE_CHOICES=20;
+/** Derive duplicate candidates from genuine original definition lines, not rendered HTML or code. */
+export function inspectOfficeDuplicateFootnotes(source:string):OfficeDuplicateInspection{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)return {limited:true,groups:[]};
+ const groups=new Map<string,OfficeDuplicateDefinition[]>();
+ visibleLines(source,(line,offset,number)=>{
+  const match=line.match(definition);
+  if(!match)return;
+  const end=offset+line.length;
+  const ending=source.slice(end).match(/^(\r\n|\r|\n)/)?.[1]??'';
+  const entry:OfficeDuplicateDefinition={
+   id:match[1]!,offset,line:number,content:match[2]!,rawLine:line,lineEnding:ending
+  };
+  const rows=groups.get(entry.id)??[];rows.push(entry);groups.set(entry.id,rows);
+ });
+ const result:OfficeDuplicateGroup[]=[];
+ for(const [id,definitions] of groups){
+  if(definitions.length<=1)continue;
+  if(definitions.length>MAX_DUPLICATE_CHOICES)return {limited:true,groups:[]};
+  const original=report.definitions.find(row=>row.id===id);
+  if(!original||original.count!==definitions.length)return {limited:true,groups:[]};
+  result.push({id,definitions,uses:report.references.filter(ref=>
+    ref.kind==='footnote'&&ref.id===id).length});
+ }
+ return {limited:false,groups:result};
+}
+/** Remove ONLY complete competing original definition lines for one ID.
+ * The explicitly selected line remains byte-for-byte unchanged. No markers are retargeted.
+ */
+export function previewOfficeDuplicateResolution(
+ source:string,id:string,keepOffset:number
+):OfficeDuplicateRepair{
+ if(!footnoteId.test(id)||!Number.isSafeInteger(keepOffset)||keepOffset<0)
+  throw new Error('Invalid original duplicate definition selection.');
+ const inspection=inspectOfficeDuplicateFootnotes(source);
+ if(inspection.limited)throw new Error('Duplicate inspection exceeds the original source limits.');
+ const group=inspection.groups.find(item=>item.id===id);
+ if(!group)throw new Error('Choose a citation ID with multiple genuine definitions.');
+ const kept=group.definitions.find(row=>row.offset===keepOffset);
+ if(!kept)throw new Error('Selected definition offset is stale or not an original candidate.');
+ if(!kept.content.trim()||kept.content.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(kept.content))
+  throw new Error('The preserved definition must contain supported single-line text.');
+ // A following indented block can extend a Markdown footnote; never delete a
+ // definition header and silently reinterpret its original continuation.
+ for(const row of group.definitions){
+  const next=source.slice(row.offset+row.rawLine.length+row.lineEnding.length)
+    .split(/\r\n|\r|\n/,1)[0]??'';
+  if(row.lineEnding&&/^(?: {4,}|\t)/.test(next))
+   throw new Error('Possible multiline definition continuation. Edit this original source manually.');
+  if(source.slice(row.offset,row.offset+row.rawLine.length+row.lineEnding.length)!==
+     row.rawLine+row.lineEnding)
+   throw new Error('Original definition source changed. Review duplicates again.');
+ }
+ const removed=group.definitions.filter(row=>row.offset!==keepOffset);
+ let value=source;
+ for(const row of [...removed].sort((a,b)=>b.offset-a.offset))
+  value=value.slice(0,row.offset)+value.slice(row.offset+row.rawLine.length+row.lineEnding.length);
+ const after=analyzeOfficeReferences(value),before=analyzeOfficeReferences(source);
+ const canonical=after.definitions.find(row=>row.id===id);
+ if(after.limited||!canonical||canonical.count!==1||canonical.content!==kept.content)
+  throw new Error('Original duplicate resolution cannot be validated.');
+ if(before.references.length!==after.references.length||before.references.some((ref,i)=>
+   ref.id!==after.references[i]?.id||ref.kind!==after.references[i]?.kind))
+  throw new Error('Original citation uses would change. Source unchanged.');
+ const start=keepOffset-removed.filter(row=>row.offset<keepOffset)
+   .reduce((total,row)=>total+row.rawLine.length+row.lineEnding.length,0);
+ if(canonical.offset!==start||value.slice(start,start+kept.rawLine.length)!==kept.rawLine)
+  throw new Error('Preserved original definition changed during preview.');
+ return {value,id,start,end:start+kept.rawLine.length,kept,removed,usesPreserved:group.uses};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

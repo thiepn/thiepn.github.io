@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -348,6 +348,71 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const many=Array.from({length:161},(_,i)=>'[^x'+i+']').join('\n');
   expect(()=>traceOfficeReferenceIssues([{revision:1,body:many}])).toThrow('Too many distinct');
   expect(()=>traceOfficeReferenceIssues(Array.from({length:14},(_,i)=>({revision:i,body:''})))).toThrow('between 1 and 13');
+ });
+
+
+ it('O27 inspects only genuine competing source definitions and exposes exact CRLF offsets',()=>{
+  const tick=String.fromCharCode(96).repeat(4);
+  const source='See[^cite] again[^cite]\r\n'+
+    '[^cite]: Original 한국어\r\n'+tick+'md\r\n[^cite]: Code fake\r\n'+tick+'\r\n'+
+    '  [^cite]: Alternative 日本語\r\n[^unique]: Single\r\n';
+  const report=inspectOfficeDuplicateFootnotes(source);
+  expect(report.limited).toBe(false);
+  expect(report.groups).toHaveLength(1);
+  const group=report.groups[0]!;
+  expect(group).toMatchObject({id:'cite',uses:2});
+  expect(group.definitions.map(row=>[row.line,row.offset,row.content,row.lineEnding])).toEqual([
+   [2,source.indexOf('[^cite]: Original'), 'Original 한국어','\r\n'],
+   [6,source.indexOf('  [^cite]: Alternative'),'Alternative 日本語','\r\n']
+  ]);
+ });
+ it('O27 preserves chosen original line and every citation use while deleting only competing lines',()=>{
+  const source='First[^a] & again[^a]\n[^a]: Alpha\nA paragraph\n  [^a]: Beta\n[^a]: Gamma\nEnding';
+  const candidates=inspectOfficeDuplicateFootnotes(source).groups[0]!.definitions;
+  const keep=candidates[1]!;
+  const preview=previewOfficeDuplicateResolution(source,'a',keep.offset);
+  expect(preview.removed.map(row=>row.content)).toEqual(['Alpha','Gamma']);
+  expect(preview.usesPreserved).toBe(2);
+  expect(preview.value).toBe('First[^a] & again[^a]\nA paragraph\n  [^a]: Beta\nEnding');
+  expect(preview.start).toBe(preview.value.indexOf('  [^a]: Beta'));
+  expect(analyzeOfficeReferences(preview.value).problems).toHaveLength(0);
+  expect(previewOfficeDuplicateResolution(preview.value,'a',keep.offset)).toThrow('multiple genuine');
+ });
+ it('O27 handles code fences, CR only, Unicode and definition at EOF without altering neighboring Markdown',()=>{
+  const tilde='~~~~';
+  const source='Claim[^x]\r'+tilde+'\r[^x]: Fake\r'+tilde+
+    '\r[^x]: 선택한 원본\r## Heading\r  [^x]: Другой';
+  const group=inspectOfficeDuplicateFootnotes(source).groups[0]!;
+  const chosen=group.definitions[1]!;
+  const result=previewOfficeDuplicateResolution(source,'x',chosen.offset);
+  expect(result.value).toBe('Claim[^x]\r'+tilde+'\r[^x]: Fake\r'+tilde+'\r## Heading\r  [^x]: Другой');
+  expect(result.start).toBe(result.value.indexOf('  [^x]: Другой'));
+  expect(result.removed[0]?.lineEnding).toBe('\r');
+  expect(result.value).toContain('[^x]: Fake'); // genuine code-fenced pseudo-definition remains untouched
+ });
+ it('O27 rejects selection against a different original source, nonexistent ID or unbounded candidates',()=>{
+  const source='Cite[^x]\n[^x]: First\n[^x]: Second';
+  const rows=inspectOfficeDuplicateFootnotes(source).groups[0]!.definitions;
+  expect(()=>previewOfficeDuplicateResolution(source,'x',rows[1]!.offset+1)).toThrow('stale');
+  expect(()=>previewOfficeDuplicateResolution(source,'other',rows[0]!.offset)).toThrow('multiple genuine');
+  expect(()=>previewOfficeDuplicateResolution(source,'Bad ID',0)).toThrow('Invalid original');
+  expect(()=>previewOfficeDuplicateResolution(source.replace('First','Edited first'),'x',rows[0]!.offset))
+   .toThrow('stale');
+  const many='Claim[^x]\n'+Array.from({length:21},(_,i)=>'[^x]: '+i).join('\n');
+  expect(inspectOfficeDuplicateFootnotes(many).limited).toBe(true);
+  expect(()=>previewOfficeDuplicateResolution(many,'x',many.indexOf('[^x]:'))).toThrow('limits');
+ });
+ it('O27 refuses ambiguous continuation blocks and malformed retained definition text',()=>{
+  const multiline='Claim[^x]\n[^x]: First\n    extra context\n[^x]: Second';
+  const keep=inspectOfficeDuplicateFootnotes(multiline).groups[0]!.definitions[1]!;
+  expect(()=>previewOfficeDuplicateResolution(multiline,'x',keep.offset)).toThrow('Possible multiline');
+  const empty='Claim[^x]\n[^x]: \n[^x]: Valid';
+  const emptyKeep=inspectOfficeDuplicateFootnotes(empty).groups[0]!.definitions[0]!;
+  expect(()=>previewOfficeDuplicateResolution(empty,'x',emptyKeep.offset)).toThrow('single-line text');
+  const long='Claim[^x]\n[^x]: '+('a'.repeat(1001))+'\n[^x]: OK';
+  const longKeep=inspectOfficeDuplicateFootnotes(long).groups[0]!.definitions[0]!;
+  expect(()=>previewOfficeDuplicateResolution(long,'x',longKeep.offset)).toThrow('single-line text');
+  expect(inspectOfficeDuplicateFootnotes('x'.repeat(200001)).limited).toBe(true);
  });
 
 });
