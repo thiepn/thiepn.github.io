@@ -232,6 +232,30 @@ export function previewOfficeCitationRecovery(historical:string,current:string,i
  return {...result,previousText:now.content,historicalText:earlier.content,usesPreserved:oldRefs.length};
 }
 
+
+export const MAX_CITATION_RECONCILIATION=12;
+export interface OfficeCitationReconciliation{
+ value:string;ids:string[];changes:OfficeCitationRecovery[];usesPreserved:number;
+}
+/** All-or-nothing in-memory preview of explicit historical definition choices. */
+export function previewOfficeCitationReconciliation(historical:string,current:string,chosenIds:readonly string[]):OfficeCitationReconciliation{
+ if(!Array.isArray(chosenIds)||chosenIds.length<1||chosenIds.length>MAX_CITATION_RECONCILIATION)
+  throw new Error('Choose between 1 and 12 changed original footnotes.');
+ if(chosenIds.some(id=>typeof id!=='string'||!footnoteId.test(id))||
+    new Set(chosenIds).size!==chosenIds.length)
+  throw new Error('Selected citation IDs must be valid and unique.');
+ if(historical.length>MAX_BODY||current.length>MAX_BODY)
+  throw new Error('Source reference inspection is limited; shorten original source first.');
+ const ids=[...chosenIds].sort();
+ const changes:OfficeCitationRecovery[]=[];
+ let value=current,usesPreserved=0;
+ for(const id of ids){
+  const next=previewOfficeCitationRecovery(historical,value,id);
+  changes.push(next);usesPreserved+=next.usesPreserved;value=next.value;
+ }
+ return {value,ids,changes,usesPreserved};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

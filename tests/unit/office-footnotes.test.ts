@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -212,6 +212,41 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(()=>previewOfficeCitationRecovery(original,original,'a')).toThrow('unchanged');
   expect(()=>previewOfficeCitationRecovery(original,now+'x'.repeat(200001),'a')).toThrow('limited');
   expect(()=>previewOfficeCitationRecovery(original.replace('Old','z'.repeat(1001)),now,'a')).toThrow('supported single line');
+ });
+
+
+ it('O24 reconciles selected original citations together without reverting other writing or references',()=>{
+  const historical='# Report\r\nA[^a] B[^b] C[^c]\r\n[^a]: Old 한국어\r\n[^b]: Previous 日本語\r\n[^c]: Keep\r\nOther';
+  const now='# Report\r\nA[^a] B[^b] C[^c]\r\n[^a]: New alpha\r\n[^b]: New beta\r\n[^c]: Keep\r\nOther current';
+  const recovered=previewOfficeCitationReconciliation(historical,now,['b','a']);
+  expect(recovered.ids).toEqual(['a','b']);
+  expect(recovered.value).toBe(now.replace('New alpha','Old 한국어').replace('New beta','Previous 日本語'));
+  expect(recovered.usesPreserved).toBe(2);
+  expect(recovered.changes.map(row=>row.id)).toEqual(['a','b']);
+  expect(analyzeOfficeReferences(recovered.value).problems).toHaveLength(0);
+  const one=previewOfficeCitationReconciliation(historical,now,['a']);
+  expect(one.value).toContain('[^b]: New beta');
+  expect(one.value).toContain('Other current');
+ });
+ it('O24 rejects duplicate, invalid, empty or excessive choices without applying partial edits',()=>{
+  const historical='A[^a] B[^b]\n[^a]: Historical\n[^b]: Old',current='A[^a] B[^b]\n[^a]: Current\n[^b]: New';
+  expect(()=>previewOfficeCitationReconciliation(historical,current,[])).toThrow('between 1 and 12');
+  expect(()=>previewOfficeCitationReconciliation(historical,current,['a','a'])).toThrow('valid and unique');
+  expect(()=>previewOfficeCitationReconciliation(historical,current,['Bad'])).toThrow('valid and unique');
+  expect(()=>previewOfficeCitationReconciliation(historical,current,Array.from({length:13},(_,i)=>'a'+i))).toThrow('between 1 and 12');
+  expect(()=>previewOfficeCitationReconciliation(historical,current,['a','missing'])).toThrow('unique original');
+  expect(()=>previewOfficeCitationReconciliation(historical,current+'\n[^b]: Duplicate',['a','b'])).toThrow('unique original');
+  expect(()=>previewOfficeCitationReconciliation(historical,current,['b','a','missing'])).toThrow('unique original');
+ });
+ it('O24 preserves source fences and fails closed when a selected historical definition is invalid',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const historic='Claim[^a]\n[^a]: History\n'+tick+'\n[^hidden]: Fake\n'+tick;
+  const current='Claim[^a]\n[^a]: Current\n'+tick+'\n[^hidden]: Different\n'+tick;
+  const p=previewOfficeCitationReconciliation(historic,current,['a']);
+  expect(p.value).toContain('[^hidden]: Different');
+  expect(()=>previewOfficeCitationReconciliation(historic,current,['hidden'])).toThrow('unique original');
+  expect(()=>previewOfficeCitationReconciliation(historic.replace('History','x'.repeat(1001)),current,['a'])).toThrow('supported single line');
+  expect(()=>previewOfficeCitationReconciliation(historic,current+'x'.repeat(200001),['a'])).toThrow('limited');
  });
 
 });
