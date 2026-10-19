@@ -594,6 +594,79 @@ export function formatOfficeCitationUseAudit(
  return lines.join('\n');
 }
 
+
+export const MAX_CITATION_SECTIONS=120;
+export interface OfficeSectionUse{
+ id:string;offset:number;line:number;excerpt:string;
+}
+export interface OfficeCitationSection{
+ key:string;title:string;path:string;level:number;offset:number;end:number;
+ headingLine:number|null;uses:OfficeSectionUse[];citationIds:string[];
+}
+export interface OfficeSectionCitation{
+ id:string;uses:number;definitionCount:number;definitionOffset:number|null;
+ definitionLine:number|null;sectionKeys:string[];
+}
+export interface OfficeCitationSectionMap{
+ sections:OfficeCitationSection[];citations:OfficeSectionCitation[];totalUses:number;
+}
+/** One in-memory, source-derived view of authentic citation routes through headings.
+ * Original footnote parser owns use offsets; original heading parser owns section boundaries.
+ * No generated index is stored and no guessed citations or external authorities are added.
+ */
+export function mapOfficeCitationSections(source:string):OfficeCitationSectionMap{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Citation section navigation exceeds original reference limits.');
+ const headings=officeHeadingReferences(source);
+ if(headings.length>MAX_CITATION_SECTIONS)
+  throw new Error('Citation navigation supports up to 120 original Markdown headings.');
+ const stack:{level:number;title:string}[]=[];
+ const sections:OfficeCitationSection[]=[{
+  key:'preamble',title:'Before first heading',path:'Before first heading',
+  level:0,offset:0,end:source.length,headingLine:null,uses:[],citationIds:[]
+ }];
+ for(let i=0;i<headings.length;i++){
+  const heading=headings[i]!;
+  while(stack.length&&stack[stack.length-1]!.level>=heading.level)stack.pop();
+  const title=heading.title.slice(0,160);
+  stack.push({level:heading.level,title});
+  const section:OfficeCitationSection={
+   key:'section-'+i,title,path:stack.map(entry=>entry.title).join(' › '),
+   level:heading.level,offset:heading.offset,end:source.length,
+   headingLine:heading.line+1,uses:[],citationIds:[]
+  };
+  sections[sections.length-1]!.end=heading.offset;
+  sections.push(section);
+ }
+ let cursor=0;
+ const footnotes=report.references.filter(row=>row.kind==='footnote');
+ for(const ref of footnotes){
+  while(cursor+1<sections.length&&sections[cursor+1]!.offset<=ref.offset)cursor++;
+  const endLf=source.indexOf('\n',ref.offset),endCr=source.indexOf('\r',ref.offset);
+  const begin=Math.max(source.lastIndexOf('\n',ref.offset-1),source.lastIndexOf('\r',ref.offset-1))+1;
+  const finish=Math.min(endLf<0?source.length:endLf,endCr<0?source.length:endCr);
+  sections[cursor]!.uses.push({
+   id:ref.id,offset:ref.offset,line:ref.line,excerpt:source.slice(begin,finish).trim().slice(0,180)
+  });
+ }
+ const citationIds=new Set<string>([
+  ...report.definitions.map(row=>row.id),...footnotes.map(row=>row.id)
+ ]);
+ if(citationIds.size>160)
+  throw new Error('Citation section navigation exceeds 160 distinct original IDs.');
+ for(const section of sections)section.citationIds=[...new Set(section.uses.map(row=>row.id))].sort();
+ const citations:OfficeSectionCitation[]=[...citationIds].sort().map(id=>{
+  const definition=report.definitions.find(row=>row.id===id);
+  return {
+   id,uses:footnotes.filter(row=>row.id===id).length,
+   definitionCount:definition?.count??0,definitionOffset:definition?.offset??null,
+   definitionLine:definition?.line??null,
+   sectionKeys:sections.filter(row=>row.citationIds.includes(id)).map(row=>row.key)
+  };
+ });
+ return {sections,citations,totalUses:footnotes.length};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

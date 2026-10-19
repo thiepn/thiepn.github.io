@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -480,6 +480,69 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const many=Array.from({length:161},(_,i)=>'[^id'+i+']').join('\n');
   expect(()=>inspectOfficeCitationUseImpact(many)).toThrow('160 distinct original IDs');
   expect(()=>inspectOfficeCitationUseImpact('ok',many)).toThrow('160 distinct original IDs');
+ });
+
+
+ it('O29 maps authentic footnote uses to original nested section paths without moving text or inventing identities',()=>{
+  const source='# Introduction\nEarly[^a]\n## Methods\nStudy[^a] and[^b]\n### Detail\nMore[^b]\n## Results\nResult[^a]\n[^a]: Alpha\n[^b]: Beta';
+  const mapped=mapOfficeCitationSections(source);
+  expect(mapped.totalUses).toBe(5);
+  expect(mapped.sections.map(s=>s.path)).toEqual([
+   'Before first heading','Introduction','Introduction › Methods',
+   'Introduction › Methods › Detail','Introduction › Results'
+  ]);
+  expect(mapped.sections.map(s=>s.uses.length)).toEqual([0,1,2,1,1]);
+  expect(mapped.sections[2]?.uses.map(row=>[row.id,row.line,row.offset])).toEqual([
+   ['a',4,source.indexOf('Study[^a]')+5],
+   ['b',4,source.indexOf('and[^b]')+3]
+  ]);
+  expect(mapped.citations).toEqual([
+   {id:'a',uses:3,definitionCount:1,definitionOffset:source.indexOf('[^a]: Alpha'),
+    definitionLine:9,sectionKeys:['section-0','section-1','section-3']},
+   {id:'b',uses:2,definitionCount:1,definitionOffset:source.indexOf('[^b]: Beta'),
+    definitionLine:10,sectionKeys:['section-1','section-2']}
+  ]);
+ });
+ it('O29 counts repeated authentic inline references, preamble, genuine Unicode and CRLF offsets',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const src='Intro[^x] again[^x]\r\n# 한글\r\nData[^x] and '+tick+'[^fake]'+tick+'\r\n'+
+   '## 方法\r\nDetails[^x]\r\n'+tick+'\r\nHidden[^fake]\r\n'+tick+'\r\n[^x]: Source';
+  const map=mapOfficeCitationSections(src);
+  expect(map.citations.map(x=>x.id)).toEqual(['x']);
+  expect(map.sections.map(x=>x.uses.length)).toEqual([2,1,1]);
+  expect(map.sections[0]?.uses.map(x=>x.offset)).toEqual([
+   src.indexOf('Intro[^x]')+5,src.indexOf('again[^x]')+5
+  ]);
+  expect(map.sections[1]?.headingLine).toBe(2);
+  expect(map.sections[2]?.path).toBe('한글 › 方法');
+  expect(map.sections[2]?.uses[0]?.offset).toBe(src.indexOf('Details[^x]')+7);
+  expect(map.sections[2]?.uses.every(x=>x.id==='x')).toBe(true);
+ });
+ it('O29 distinguishes missing, duplicate, unused and cross-section shared sources',()=>{
+  const src='# A\nClaim[^shared] [^missing]\n[^shared]: One\n# B\nClaim[^shared]\n[^shared]: Duplicate\n[^unused]: Orphan';
+  const result=mapOfficeCitationSections(src);
+  const cited=(id:string)=>result.citations.find(x=>x.id===id)!;
+  expect(cited('shared')).toMatchObject({uses:2,definitionCount:2,sectionKeys:['section-0','section-1']});
+  expect(cited('missing')).toMatchObject({uses:1,definitionCount:0,definitionOffset:null});
+  expect(cited('unused')).toMatchObject({uses:0,definitionCount:1,sectionKeys:[]});
+  expect(result.sections[1]?.citationIds).toEqual(['missing','shared']);
+ });
+ it('O29 preserves duplicate genuine heading identities and ignores longer code-fence pseudoheadings',()=>{
+  const tick=String.fromCharCode(96).repeat(4);
+  const src='# Intro\nClaim[^a]\n'+tick+'\n# Fake\nFake[^a]\n'+tick+
+   '\n# Intro\nSecond[^a]\n[^a]: Text';
+  const result=mapOfficeCitationSections(src);
+  expect(result.sections).toHaveLength(3);
+  expect(result.sections[1]?.key).toBe('section-0');
+  expect(result.sections[2]?.key).toBe('section-1');
+  expect(result.sections[2]?.uses.map(x=>x.excerpt)).toEqual(['Second[^a]']);
+ });
+ it('O29 refuses oversized source, identity and heading counts rather than truncating citations',()=>{
+  expect(()=>mapOfficeCitationSections('a'.repeat(200001))).toThrow('limits');
+  const headings=Array.from({length:121},(_,i)=>'# Heading '+i).join('\n');
+  expect(()=>mapOfficeCitationSections(headings)).toThrow('120 original Markdown headings');
+  const refs=Array.from({length:161},(_,i)=>'[^id'+i+']').join('\n');
+  expect(()=>mapOfficeCitationSections(refs)).toThrow('160 distinct original IDs');
  });
 
 });
