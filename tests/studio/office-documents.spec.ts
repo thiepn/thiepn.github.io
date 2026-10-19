@@ -1748,3 +1748,54 @@ test('O21 original CAS refuses cross-tab citation-definition overwrite',async({p
  await expect(peer.locator('[data-office-body]')).toHaveValue(/\[\^a\]: Peer correction/);
  await peer.close();
 });
+
+test('O22 compares retained original citations to the current revision and navigates to both sources',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Report\nEvidence[^a]\n[^a]: Old evidence 한국어');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('# Report\nEvidence[^a] and more[^a]\n[^a]: New evidence 日本語\nAnother[^missing]');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-citation-audit-base]').selectOption('1');
+ await page.locator('[data-office-citation-audit-compare]').click();
+ await expect(page.locator('[data-office-citation-audit-summary]')).toContainText('2 changed citations');
+ await expect(page.locator('[data-office-citation-audit-changes]')).toContainText('Old evidence 한국어');
+ await expect(page.locator('[data-office-citation-audit-changes]')).toContainText('New evidence 日本語');
+ const entry=page.locator('[data-office-citation-audit-id="a"]');
+ await expect(entry).toContainText('Uses 1 → 2');
+ await entry.locator('[data-office-citation-audit-current="a"]').click();
+ expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart))
+  .toBe((await page.locator('[data-office-body]').inputValue()).indexOf('[^a]:'));
+ await entry.locator('[data-office-citation-audit-history="a"]').click();
+ await expect(page.locator('[data-office-timeline-preview]')).toBeVisible();
+ await expect(page.locator('[data-office-timeline-excerpt]')).toContainText('Old evidence 한국어');
+ await page.reload();
+ await expect(page.locator('[data-office-citation-audit-summary]')).toHaveText('No comparison selected.');
+});
+test('O22 stale comparison is cleared on source edit and original privacy mask',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Private\nSensitive[^a]\n[^a]: Original');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('# Private\nSensitive[^a]\n[^a]: New');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-citation-audit-base]').selectOption('1');
+ await page.locator('[data-office-citation-audit-compare]').click();
+ await expect(page.locator('[data-office-citation-audit-changes]')).toContainText('Original');
+ await page.locator('[data-office-body]').fill('# Private\nSensitive[^a]\n[^a]: Updated again');
+ await expect(page.locator('[data-office-citation-audit-changes]')).toBeEmpty();
+ await expect(page.locator('[data-office-citation-audit-summary]')).toHaveText('No comparison selected.');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-citation-audit-compare]').click();
+ await expect(page.locator('[data-office-citation-audit-changes]')).toContainText('Updated again');
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-citation-audit-changes]')).toBeEmpty();
+ await expect(page.locator('[data-office-citation-audit-summary]')).toHaveText('No comparison selected.');
+ await expect(page.locator('[data-office-citation-audit-base] option')).toHaveCount(1);
+ await expect(page.locator('[data-office-citation-audit-compare]')).toBeDisabled();
+});

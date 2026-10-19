@@ -250,3 +250,11 @@
 .office-citation-actions input[data-office-citation-edit]{flex:1;min-width:min(220px,100%)}
 .office-preview [data-office-footnote-backref]{min-height:32px;margin-inline-start:8px;padding:3px 8px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font:inherit;cursor:pointer}
 .office-preview [data-office-footnote-backref]:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+
+.office-citation-audit{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:10px}
+.office-citation-audit h4{font-size:13px;margin:0}
+.office-citation-audit-changes{display:grid;gap:9px;max-height:360px;overflow-y:auto}
+.office-citation-audit-row{display:grid;gap:6px;padding:10px;border:1px solid var(--ws-line);min-width:0}
+.office-citation-audit-row strong{font-size:13px;overflow-wrap:anywhere}
+.office-citation-audit-row p{margin:0;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.office-citation-audit-row button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}

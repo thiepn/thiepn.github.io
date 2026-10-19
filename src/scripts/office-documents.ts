@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -95,6 +95,17 @@ if(root && shell){
   const citationEditApply=pick<HTMLButtonElement>('[data-office-citation-edit-apply]');
   const citationEditCancel=pick<HTMLButtonElement>('[data-office-citation-edit-cancel]');
   const citationEditStatus=pick<HTMLElement>('[data-office-citation-edit-status]');
+  const citationAuditBase=pick<HTMLSelectElement>('[data-office-citation-audit-base]');
+  const citationAuditCompare=pick<HTMLButtonElement>('[data-office-citation-audit-compare]');
+  const citationAuditSummary=pick<HTMLElement>('[data-office-citation-audit-summary]');
+  const citationAuditChanges=pick<HTMLElement>('[data-office-citation-audit-changes]');
+  let citationAuditSnapshot:{scope:string;documentId:string;revision:number;body:string;baselineRevision:number}|null=null;
+  function clearCitationAudit(resetBaseline=false){
+    citationAuditSnapshot=null;
+    citationAuditChanges.replaceChildren();
+    citationAuditSummary.textContent='No comparison selected.';
+    if(resetBaseline)citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
+  }
   type CitationEditDraft={scope:string;documentId:string;revision:number;id:string;offset:number;content:string;source:string};
   let citationEditDraft:CitationEditDraft|null=null;
   let citationOwnerKey:string|null=null,citationUsageCursor=0;
@@ -346,6 +357,8 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    citationAuditBase.disabled=!editing||!active?.history.length;
+    citationAuditCompare.disabled=!editing||!active?.history.some(row=>String(row.revision)===citationAuditBase.value);
     const citation=editing?officeCitationInventory(body.value).entries.find(row=>row.id===citationSelect.value):undefined;
     citationSelect.disabled=!editing;
     citationDefinition.disabled=!citation;
@@ -629,6 +642,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
+    clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -707,9 +721,15 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
+    clearCitationAudit();
+    const chosen=citationAuditBase.value;
+    citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
-    for(const rev of [...(active?.history??[])].reverse())
+    for(const rev of [...(active?.history??[])].reverse()){
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
+      citationAuditBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
+    }
+    if(chosen&&active?.history.some(rev=>String(rev.revision)===chosen))citationAuditBase.value=chosen;
     renderTimeline();
   }
   function selectionStatus(){
@@ -772,6 +792,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
+      clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1081,7 +1102,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1212,6 +1233,79 @@ if(root && shell){
   }
   sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
   sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
+
+  citationAuditBase.addEventListener('change',()=>{clearCitationAudit();enable();});
+  citationAuditCompare.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||blocked||busy||body.disabled)return;
+    const baseline=active.history.find(row=>String(row.revision)===citationAuditBase.value);
+    if(!baseline)return;
+    clearCitationAudit();
+    const report=compareOfficeCitationRevisions(baseline.body,body.value);
+    if(report.limited){
+      citationAuditSummary.textContent='Citation comparison exceeds source reference or identity limits.';
+      return;
+    }
+    const snapshot={scope:store.scope,documentId:active.id,revision:active.revision,
+      body:body.value,baselineRevision:baseline.revision};
+    citationAuditSnapshot=snapshot;
+    citationAuditSummary.textContent='Revision '+baseline.revision+' → '+
+      (dirty?'unsaved draft':'revision '+active.revision)+' · '+
+      report.changes.length+' changed citations · '+report.unchanged+' unchanged';
+    if(!report.changes.length){
+      const noChange=document.createElement('p');
+      noChange.textContent='No changes to citation definitions, use counts or detected issues.';
+      citationAuditChanges.append(noChange);
+    }
+    for(const item of report.changes){
+      const wrapper=document.createElement('div');
+      wrapper.className='office-citation-audit-row';
+      wrapper.dataset.officeCitationAuditId=item.id;
+      const title=document.createElement('strong');
+      title.textContent='[^'+item.id+'] · '+item.changes.join(' · ');
+      const old=document.createElement('p');
+      old.textContent='Historical: '+item.before.useCount+' uses · '+
+        (item.before.definitionText===null?'No definition':item.before.definitionText.slice(0,180));
+      const now=document.createElement('p');
+      now.textContent='Current: '+item.after.useCount+' uses · '+
+        (item.after.definitionText===null?'No definition':item.after.definitionText.slice(0,180));
+      wrapper.append(title,old,now);
+      const actions=document.createElement('div');actions.className='office-citation-actions';
+      const currentPosition=item.after.definitionOffset??item.after.firstUseOffset;
+      if(currentPosition!==null){
+        const open=document.createElement('button');open.type='button';
+        open.dataset.officeCitationAuditCurrent=item.id;
+        open.textContent=item.after.definitionOffset!==null?'Go to current definition':'Go to current use';
+        open.addEventListener('click',()=>{
+          if(!citationAuditSnapshot||!active||!store||!allowed()||blocked||busy||body.disabled||
+            citationAuditSnapshot!==snapshot||snapshot.scope!==store.scope||
+            snapshot.documentId!==active.id||snapshot.revision!==active.revision||snapshot.body!==body.value){
+            clearCitationAudit();message('Source changed. Compare citations again.');return;
+          }
+          focusEditor(currentPosition,currentPosition);
+          message('Focused original citation [^'+item.id+'] in the current source.');
+        });
+        actions.append(open);
+      }
+      const oldButton=document.createElement('button');oldButton.type='button';
+      oldButton.dataset.officeCitationAuditHistory=item.id;
+      oldButton.textContent='View retained revision '+baseline.revision;
+      oldButton.addEventListener('click',()=>{
+        if(!citationAuditSnapshot||!active||!store||!allowed()||blocked||busy||
+          citationAuditSnapshot!==snapshot||snapshot.scope!==store.scope||
+          snapshot.documentId!==active.id||snapshot.revision!==active.revision||
+          snapshot.body!==body.value||
+          !active.history.some(row=>row.revision===snapshot.baselineRevision)){
+          clearCitationAudit();message('Retained source changed. Compare citations again.');return;
+        }
+        inspectTimeline(baseline.revision);
+        timelinePreview.scrollIntoView({block:'nearest'});
+      });
+      actions.append(oldButton);wrapper.append(actions);
+      citationAuditChanges.append(wrapper);
+    }
+    enable();
+  });
+
   citationSelect.addEventListener('change',()=>{
     citationUsageCursor=0;citationNewId.value='';clearCitationEdit();
     const def=analyzeOfficeReferences(body.value).definitions.find(row=>

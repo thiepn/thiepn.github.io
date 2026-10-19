@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -147,5 +147,42 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const initial=analyzeOfficeReferences(full).definitions[0]!;
   expect(()=>updateOfficeFootnoteDefinition(full,'a',initial.content,'Longer original evidence',initial.offset)).toThrow('source limit');
   expect(()=>updateOfficeFootnoteDefinition('x'.repeat(200001),'a','x','New',0)).toThrow('size limit');
+ });
+ it('O22 audits original content and use changes without inventing citation renames',()=>{
+  const before='# Report\nClaim[^old] and again[^old]\n[^old]: Original 한국어';
+  const now='# Report\nClaim[^new] and again[^new]\n[^new]: Updated 日本語';
+  const audit=compareOfficeCitationRevisions(before,now);
+  expect(audit.limited).toBe(false);
+  expect(audit.changes.map(row=>row.id)).toEqual(['new','old']);
+  expect(audit.changes.find(row=>row.id==='old')!.after.definitionCount).toBe(0);
+  expect(audit.changes.find(row=>row.id==='new')!.before.definitionCount).toBe(0);
+  expect(audit.changes.find(row=>row.id==='new')!.after.useCount).toBe(2);
+ });
+ it('O22 diagnoses change in missing/duplicate/unused citations and preserves original offsets',()=>{
+  const before='# R\nClaim[^a]\n[^a]: Original';
+  const after='# R\r\nClaim[^a] and [^missing]\r\n[^a]: Revised\r\n[^a]: Duplicate\r\n[^unused]: Unused';
+  const audit=compareOfficeCitationRevisions(before,after);
+  expect(audit.changes.map(row=>row.id)).toEqual(['a','missing','unused']);
+  const a=audit.changes[0]!;
+  expect(a.changes).toContain('Definition text changed');
+  expect(a.after.definitionCount).toBe(2);
+  expect(a.after.diagnostics).toContain('duplicate-footnote');
+  expect(a.after.firstUseOffset).toBe(after.indexOf('[^a]'));
+  expect(audit.changes.find(row=>row.id==='missing')!.after.diagnostics).toContain('missing-footnote');
+  expect(audit.changes.find(row=>row.id==='unused')!.after.diagnostics).toContain('unused-footnote');
+ });
+ it('O22 ignores pseudo references in source code and reports unchanged original citations',()=>{
+  const tick=String.fromCharCode(96);
+  const base='# Heading\nBody[^real]\n[^real]: Evidence\n'+tick.repeat(3)+'\n[^fake]\n'+tick.repeat(3);
+  const after=base.replace('[^fake]','[^different]');
+  const audit=compareOfficeCitationRevisions(base,after);
+  expect(audit.changes).toHaveLength(0);
+  expect(audit.unchanged).toBe(1);
+ });
+ it('O22 limits malformed or excessive source comparisons and never silently truncates',()=>{
+  expect(compareOfficeCitationRevisions('x'.repeat(200001),'Claim[^a]').limited).toBe(true);
+  const many=Array.from({length:161},(_,i)=>'Text[^id'+i+']').join('\n');
+  expect(compareOfficeCitationRevisions(many,'').limited).toBe(true);
+  expect(compareOfficeCitationRevisions('','').changes).toHaveLength(0);
  });
 });

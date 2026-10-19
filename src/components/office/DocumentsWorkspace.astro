@@ -186,6 +186,19 @@ import '../../styles/office-documents.css';
             <button type="button" data-office-citation-edit-cancel disabled>Discard edit</button>
           </div>
           <p data-office-citation-edit-status role="status" aria-live="polite"></p>
+
+          <section class="office-citation-audit" aria-label="Review citation changes against saved revision">
+            <h4>Changes since saved revision</h4>
+            <div class="office-citation-actions">
+              <label for="office-citation-audit-base">Compare with</label>
+              <select id="office-citation-audit-base" data-office-citation-audit-base disabled>
+                <option value="">Choose retained revision</option>
+              </select>
+              <button type="button" data-office-citation-audit-compare disabled>Compare citations</button>
+            </div>
+            <p role="status" aria-live="polite" data-office-citation-audit-summary>No comparison selected.</p>
+            <div data-office-citation-audit-changes class="office-citation-audit-changes"></div>
+          </section>
         </section>
       </section>
       <section class="office-find" aria-label="Find and replace in document">

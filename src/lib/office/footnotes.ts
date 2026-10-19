@@ -87,6 +87,71 @@ function uniqueCitation(source:string,id:string){
  if(!definition||definition.count!==1)throw new Error('A unique original footnote definition is required.');
  return {report,definition};
 }
+
+export type OfficeCitationDiagnostic=ReferenceProblem['kind'];
+export interface OfficeCitationSnapshot{
+ id:string;definitionCount:number;definitionText:string|null;definitionOffset:number|null;
+ definitionLine:number|null;useCount:number;firstUseOffset:number|null;firstUseLine:number|null;
+ diagnostics:readonly OfficeCitationDiagnostic[];
+}
+export interface OfficeCitationAuditChange{
+ id:string;before:OfficeCitationSnapshot;after:OfficeCitationSnapshot;changes:readonly string[];
+}
+export interface OfficeCitationAudit{
+ limited:boolean;beforeCount:number;afterCount:number;unchanged:number;
+ changes:OfficeCitationAuditChange[];
+}
+const MAX_AUDIT_IDENTITIES=160;
+/** Compare two actual Markdown sources, never inferring a rename or an externally verified source. */
+export function compareOfficeCitationRevisions(before:string,after:string):OfficeCitationAudit{
+ const empty:OfficeCitationAudit={limited:true,beforeCount:0,afterCount:0,unchanged:0,changes:[]};
+ const a=analyzeOfficeReferences(before),b=analyzeOfficeReferences(after);
+ if(a.limited||b.limited)return empty;
+ const gather=(report:ReferenceReport)=>{
+  const map=new Map<string,OfficeCitationSnapshot>();
+  const ids=new Set([
+   ...report.definitions.map(row=>row.id),
+   ...report.references.filter(row=>row.kind==='footnote').map(row=>row.id)
+  ]);
+  for(const id of ids){
+   const def=report.definitions.find(row=>row.id===id);
+   const uses=report.references.filter(row=>row.kind==='footnote'&&row.id===id);
+   const diagnostics=[...new Set(report.problems.filter(p=>p.id===id&&p.kind!=='broken-heading')
+     .map(p=>p.kind))].sort() as OfficeCitationDiagnostic[];
+   map.set(id,{
+    id,definitionCount:def?.count??0,definitionText:def?.content??null,
+    definitionOffset:def?.offset??null,definitionLine:def?.line??null,
+    useCount:uses.length,firstUseOffset:uses[0]?.offset??null,
+    firstUseLine:uses[0]?.line??null,diagnostics
+   });
+  }
+  return map;
+ };
+ const first=gather(a),last=gather(b);
+ const ids=[...new Set([...first.keys(),...last.keys()])].sort();
+ if(ids.length>MAX_AUDIT_IDENTITIES)return empty;
+ const absent=(id:string):OfficeCitationSnapshot=>({
+  id,definitionCount:0,definitionText:null,definitionOffset:null,definitionLine:null,
+  useCount:0,firstUseOffset:null,firstUseLine:null,diagnostics:[]
+ });
+ const changes:OfficeCitationAuditChange[]=[];
+ let unchanged=0;
+ for(const id of ids){
+  const earlier=first.get(id)??absent(id),later=last.get(id)??absent(id),reasons:string[]=[];
+  if(earlier.definitionCount!==later.definitionCount)
+   reasons.push('Definitions '+earlier.definitionCount+' → '+later.definitionCount);
+  if(earlier.definitionText!==later.definitionText)
+   reasons.push('Definition text changed');
+  if(earlier.useCount!==later.useCount)
+   reasons.push('Uses '+earlier.useCount+' → '+later.useCount);
+  if(earlier.diagnostics.join('|')!==later.diagnostics.join('|'))
+   reasons.push('Issues '+(earlier.diagnostics.join(', ')||'none')+' → '+(later.diagnostics.join(', ')||'none'));
+  if(reasons.length)changes.push({id,before:earlier,after:later,changes:reasons});
+  else unchanged++;
+ }
+ return {limited:false,beforeCount:first.size,afterCount:last.size,unchanged,changes};
+}
+
 /** Reuse an existing footnote in-place, with original CAS/autosave as sole writer. */
 export function insertExistingOfficeCitation(source:string,start:number,end:number,id:string):FootnoteInsertion{
  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>source.length)
