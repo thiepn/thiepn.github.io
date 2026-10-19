@@ -308,7 +308,8 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
     {revision:4,body:'A[^a] C[^c]\n[^a]: Fixed\n[^unused]: Definition'},
     {revision:8,body:'A[^a] C[^c]\n[^a]: Fixed\n[^unused]: Definition\n[^new]: Another'}];
   const result=traceOfficeReferenceIssues(docs);
-  expect(result).toMatchObject({firstRevision:1,currentRevision:8,retainedCount:4,unresolved:3,resolved:0});
+  expect(result).toMatchObject({firstRevision:1,currentRevision:8,retainedCount:4,unresolved:3,resolved:1});
+  expect(result.rows.find(row=>row.id==='a'&&row.kind==='missing-footnote')?.status).toBe('resolved');
   const keyed=(id:string)=>result.rows.find(x=>x.id===id)!;
   expect(keyed('c').status).toBe('persisting');
   expect(keyed('unused').status).toBe('persisting');
