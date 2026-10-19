@@ -21,17 +21,17 @@ const dateIso = (entry: ProjectEntry) => dateValue(entry).toISOString().slice(0,
   <section class="project-activity" aria-labelledby="activity-title" data-project-activity>
     <header class="activity-heading">
       <div>
-        <p class="activity-eyebrow">In motion</p>
-        <h2 id="activity-title">What is changing now.</h2>
+        
+        <h2 id="activity-title">Project activity</h2>
       </div>
-      <p>Active builds and the newest project updates, derived directly from catalogue metadata.</p>
+      
     </header>
 
     <div class="activity-grid">
       {building.length > 0 && (
         <section class="activity-panel activity-panel--building" aria-labelledby="building-title" data-currently-building>
           <header class="activity-panel__head">
-            <div><p>Development</p><h3 id="building-title">Currently building</h3></div>
+            <div><h3 id="building-title">Currently building</h3></div>
             <span>{String(building.length).padStart(2, '0')}</span>
           </header>
           <div class="building-list">
@@ -59,7 +59,7 @@ const dateIso = (entry: ProjectEntry) => dateValue(entry).toISOString().slice(0,
       {recent.length > 0 && (
         <section class="activity-panel activity-panel--recent" aria-labelledby="recent-title" data-recently-updated>
           <header class="activity-panel__head">
-            <div><p>Timeline</p><h3 id="recent-title">Recently updated</h3></div>
+            <div><h3 id="recent-title">Recently updated</h3></div>
             <span>{String(recent.length).padStart(2, '0')}</span>
           </header>
           <ol class="recent-list">
