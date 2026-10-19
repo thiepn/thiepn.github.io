@@ -199,3 +199,12 @@
 .office-section-navigation{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .office-section-navigation>button{min-height:34px;padding:6px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
 .office-section-navigation>p{width:100%}
+
+/* O17: in-memory source preview for original-section structural transformations. */
+.office-section-transform{display:grid;gap:8px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-section-transform h4{font-size:13px;margin:0}
+.office-section-transform>.ws-muted,.office-transform-review>.ws-muted{font-size:11px;line-height:1.5;margin:0}
+.office-transform-review{display:grid;gap:9px;border:1px solid var(--ws-line);padding:10px;min-width:0}
+.office-transform-review[hidden]{display:none}
+.office-transform-review label{font-size:12px;font-weight:600}
+.office-transform-review textarea{font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;padding:10px;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto}

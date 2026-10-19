@@ -149,6 +149,24 @@ import '../../styles/office-documents.css';
             </div>
             <p class="ws-muted">Choose a heading above or place your cursor in a section. Ctrl/⌘ + Shift + Enter inserts a following section using this title.</p>
           </div>
+          <section class="office-section-transform" aria-label="Restructure complete Markdown sections">
+            <h4>Restructure a saved section</h4>
+            <p class="ws-muted">Choose an original heading above. Make a whole-section copy or adjust every genuine nested heading level together. Save current edits first.</p>
+            <div class="office-section-buttons">
+              <button type="button" data-office-transform-duplicate disabled>Preview duplicate</button>
+              <button type="button" data-office-transform-promote disabled>Preview promote</button>
+              <button type="button" data-office-transform-demote disabled>Preview demote</button>
+            </div>
+            <section class="office-transform-review" data-office-transform-review hidden aria-label="Review source section transformation">
+              <p class="ws-muted" data-office-transform-summary></p>
+              <label for="office-transform-source">Resulting Markdown — read-only before confirmation</label>
+              <textarea id="office-transform-source" data-office-transform-source readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-section-buttons">
+                <button type="button" data-office-transform-confirm disabled>Confirm one revision…</button>
+                <button type="button" data-office-transform-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
           <div class="office-section-navigation" aria-label="Document heading navigation">
             <button type="button" data-office-heading-previous disabled>Previous heading</button>
             <button type="button" data-office-heading-next disabled>Next heading</button>

@@ -17,6 +17,7 @@ import {officeRevisionTimeline,timelineExcerpt} from '../lib/office/revision-tim
 import {searchOfficeHistory,compareOfficeSavedVersions} from '../lib/office/history-explorer';
 import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type AuthoringBlock} from '../lib/office/authoring';
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
+import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -49,6 +50,14 @@ if(root && shell){
   const sectionAddChild=pick<HTMLButtonElement>('[data-office-section-add-child]');
   const headingPrevious=pick<HTMLButtonElement>('[data-office-heading-previous]');
   const headingNext=pick<HTMLButtonElement>('[data-office-heading-next]');
+  const transformDuplicate=pick<HTMLButtonElement>('[data-office-transform-duplicate]');
+  const transformPromote=pick<HTMLButtonElement>('[data-office-transform-promote]');
+  const transformDemote=pick<HTMLButtonElement>('[data-office-transform-demote]');
+  const transformReview=pick<HTMLElement>('[data-office-transform-review]');
+  const transformSummary=pick<HTMLElement>('[data-office-transform-summary]');
+  const transformSource=pick<HTMLTextAreaElement>('[data-office-transform-source]');
+  const transformConfirm=pick<HTMLButtonElement>('[data-office-transform-confirm]');
+  const transformCancel=pick<HTMLButtonElement>('[data-office-transform-cancel]');
   const status=pick<HTMLElement>('[data-office-status]');
   const title=pick<HTMLInputElement>('[data-office-title]');
   const body=pick<HTMLTextAreaElement>('[data-office-body]');
@@ -151,6 +160,12 @@ if(root && shell){
   const selectedBundle=new Set<string>();
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
   let timelineChosen:{scope:string;id:string;currentRevision:number;selectedRevision:number}|null=null;
+  let structuralPlan:{scope:string;id:string;revision:number;body:string;title:string;
+    offset:number;action:StructuralAction;result:string;selection:number;heading:string}|null=null;
+  function discardStructure(){
+    structuralPlan=null;transformReview.hidden=true;transformSummary.textContent='';
+    transformSource.value='';
+  }
   let timelineBaseline:{scope:string;id:string;currentRevision:number;selectedRevision:number}|null=null;
   function clearVersionPair(){
     timelinePairPanel.hidden=true;timelinePairSummary.textContent='';timelinePairDiffs.replaceChildren();
@@ -256,6 +271,14 @@ if(root && shell){
     sectionAddSibling.disabled=!editing||!atSelection||!sectionTitle.value.trim();
     sectionAddChild.disabled=!editing||!atSelection||atSelection.level>=6||!sectionTitle.value.trim();
     headingPrevious.disabled=headingNext.disabled=!editing||!sectionsForAuthoring.length;
+    const savedSection=editing&&!dirty&&selectedSection;
+    transformDuplicate.disabled=!savedSection;
+    transformPromote.disabled=!savedSection||savedSection.level<=1;
+    transformDemote.disabled=!savedSection||savedSection.level>=6;
+    transformConfirm.disabled=!savedSection||!structuralPlan||structuralPlan.scope!==store?.scope||
+      structuralPlan.id!==active?.id||structuralPlan.revision!==active?.revision||
+      structuralPlan.body!==body.value||structuralPlan.title!==title.value||
+      String(structuralPlan.offset)!==sectionSelect.value;
     for(const button of formatButtons)button.disabled=!editing||busy;
   };
   function clearComparison(){
@@ -444,7 +467,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
+    discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
@@ -577,7 +600,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
+      discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -616,6 +639,7 @@ if(root && shell){
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';
+      discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -768,6 +792,7 @@ if(root && shell){
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';
+      discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -884,7 +909,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -943,7 +968,59 @@ if(root && shell){
       event.preventDefault();jumpHeading(event.key==='ArrowUp'?'previous':'next');
     }
   });
-  sectionSelect.addEventListener('change',()=>enable());
+  sectionSelect.addEventListener('change',()=>{discardStructure();enable();});
+  transformCancel.addEventListener('click',()=>{discardStructure();enable();});
+  function prepareTransform(action:StructuralAction){
+    if(!active||!store||!allowed()||body.disabled||busy||blocked||dirty)return;
+    const chosen=documentSections(body.value).find(section=>String(section.offset)===sectionSelect.value);
+    if(!chosen)return;
+    try{
+      const outcome=transformOfficeSection(body.value,chosen.offset,action);
+      structuralPlan={scope:store.scope,id:active.id,revision:active.revision,
+        body:body.value,title:title.value,offset:chosen.offset,action,result:outcome.value,
+        selection:outcome.offset,heading:chosen.title};
+      transformSource.value=outcome.value;
+      transformSummary.textContent='Preview only · '+action+' “'+chosen.title+'” · '+
+        outcome.affectedHeadings+' genuine heading'+(outcome.affectedHeadings===1?'':'s')+
+        ' affected · '+outcome.originalCharacters+' original characters · '+
+        outcome.value.length+' total source characters. Original records unchanged.';
+      transformReview.hidden=false;enable();
+    }catch(error){discardStructure();message(error instanceof Error?error.message:'Section transformation refused.');enable();}
+  }
+  transformDuplicate.addEventListener('click',()=>prepareTransform('duplicate'));
+  transformPromote.addEventListener('click',()=>prepareTransform('promote'));
+  transformDemote.addEventListener('click',()=>prepareTransform('demote'));
+  transformConfirm.addEventListener('click',()=>void (async()=>{
+    const plan=structuralPlan,opened=store,current=active,stamp=epoch;
+    if(!plan||!opened||!current||!allowed()||busy||blocked||dirty||transformConfirm.disabled||
+       plan.scope!==opened.scope||plan.id!==current.id||plan.revision!==current.revision||
+       plan.body!==body.value||plan.title!==title.value||
+       String(plan.offset)!==sectionSelect.value)return;
+    if(!confirm('Apply the previewed '+plan.action+' transformation of “'+plan.heading+
+       '” as one new Office revision? Existing history is retained under the normal policy.'))return;
+    if(stamp!==epoch||opened!==store||current!==active||plan!==structuralPlan||
+       !allowed()||busy||blocked||dirty)return;
+    busy=true;enable();
+    try{
+      const saved=await opened.save(current,plan.title,plan.result);
+      if(stamp!==epoch||opened!==store||!allowed())return;
+      active=saved;body.value=saved.body;title.value=saved.title;dirty=false;
+      discardStructure();clearComparison();
+      renderPreview();renderOutline();renderFind();renderHistory();
+      await refreshList();
+      if(stamp!==epoch||opened!==store||!allowed())return;
+      sectionSelect.value=String(plan.selection);
+      focusEditor(plan.selection,plan.selection);
+      message('Applied '+plan.action+' to original Office document · saved revision '+saved.revision+'.');
+    }catch(error){
+      if(stamp===epoch&&opened===store){
+        blocked=true;discardStructure();
+        message((error instanceof Error?error.message:'Structural save failed')+
+          ' Source was not replaced. Export any unsaved text before reloading.');
+      }
+    }finally{if(stamp===epoch){busy=false;enable();}}
+  })());
+  sectionFocus.addEventListener
   sectionFocus.addEventListener('click',()=>{
     if(!active||!allowed()||body.disabled)return;
     const section=documentSections(body.value).find(entry=>String(entry.offset)===sectionSelect.value);
