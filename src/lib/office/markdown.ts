@@ -1,3 +1,4 @@
+import {officeHeadingReferences,TOC_START,TOC_END} from './toc';
 // Deliberately constrained Markdown: text nodes only, no HTML parsing or raw HTML execution.
 export type FormatAction = 'heading'|'bold'|'italic'|'bullet'|'number'|'quote'|'code'|'link'|'table';
 export interface FormattedSelection {value:string;start:number;end:number}
@@ -30,7 +31,7 @@ export function formatSelection(value:string,start:number,end:number,action:Form
   const caret=left+insert.length;
   return {value:next,start:caret,end:caret};
 }
-const inlinePattern=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\x60([^\x60\n]+)\x60/g;
+const inlinePattern=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+|#office-ref-[a-z0-9-]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\x60([^\x60\n]+)\x60/g;
 function inline(doc:Document,element:Element,content:string){
   let pos=0;
   for(const m of content.matchAll(inlinePattern)){
@@ -40,9 +41,11 @@ function inline(doc:Document,element:Element,content:string){
     if(m[1]!==undefined&&m[2]!==undefined){
       const href=m[2];
       let allowed=false;
-      try{const parsed=new URL(href);allowed=(parsed.protocol==='https:'||parsed.protocol==='http:')&&!!parsed.hostname;}catch{}
-      child=doc.createElement(allowed?'a':'span');
-      if(allowed){child.setAttribute('href',href);child.setAttribute('rel','noopener noreferrer');child.setAttribute('target','_blank');}
+      const internal=/^#office-ref-[a-z0-9-]+$/.test(href);
+      if(!internal){try{const parsed=new URL(href);allowed=(parsed.protocol==='https:'||parsed.protocol==='http:')&&!!parsed.hostname;}catch{}}
+      child=doc.createElement(allowed||internal?'a':'span');
+      if(internal){child.setAttribute('href',href);child.setAttribute('data-office-internal-ref',href.slice(1));}
+      else if(allowed){child.setAttribute('href',href);child.setAttribute('rel','noopener noreferrer');child.setAttribute('target','_blank');}
       child.textContent=m[1];
     }else if(m[3]!==undefined){child=doc.createElement('strong');child.textContent=m[3];}
     else if(m[4]!==undefined){child=doc.createElement('em');child.textContent=m[4];}
@@ -67,14 +70,16 @@ function boundary(line:string):boolean {
 }
 export function renderMarkdown(source:string,container:HTMLElement):void {
   const doc=container.ownerDocument,fragment=doc.createDocumentFragment();
-  const lines=source.replace(/\r\n?/g,'\n').split('\n');
+  const normalized=source.replace(/\r\n?/g,'\n');
+  const lines=normalized.split('\n');
+  const headingIds=new Map(officeHeadingReferences(normalized).map(heading=>[heading.line,heading.id]));
   const appendInline=(tag:string,content:string)=>{
     const node=doc.createElement(tag);inline(doc,node,content);fragment.append(node);
   };
   const tick=String.fromCharCode(96).repeat(3);
   for(let i=0;i<lines.length;){
     const line=lines[i]!;
-    if(!line.trim()){i++;continue;}
+    if(!line.trim()||line===TOC_START||line===TOC_END){i++;continue;}
     if(line.startsWith(tick)||line.startsWith('~~~')){
       const fence=line.match(/^(\x60{3,}|~{3,})/)![1]!;i++;
       const parts:string[]=[];
@@ -88,7 +93,8 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
       code.textContent=parts.join('\n');pre.append(code);fragment.append(pre);continue;
     }
     const h=line.match(heading);
-    if(h){appendInline('h'+h[1]!.length,h[2]!);i++;continue;}
+    if(h){const node=doc.createElement('h'+h[1]!.length),id=headingIds.get(i);
+      if(id)node.id=id;inline(doc,node,h[2]!);fragment.append(node);i++;continue;}
     if(/^---+$/.test(line.trim())){fragment.append(doc.createElement('hr'));i++;continue;}
     if(i+1<lines.length&&line.includes('|')&&divider.test(lines[i+1]!)){
       const headers=cells(line),table=doc.createElement('table'),thead=doc.createElement('thead'),tr=doc.createElement('tr');
