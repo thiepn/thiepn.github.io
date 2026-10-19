@@ -94,3 +94,15 @@ test('mobile Today and catalogue retain content without decorative labels', asyn
   expect(overflow).toBeLessThanOrEqual(1);
   await testInfo.attach('hub-apps-mobile.png', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
 });
+
+test('Scan mobile retains safety and original media without ornamental section copy', async ({ page }, testInfo) => {
+  await page.route('https://api.github.com/repos/thiepn/scan/releases/tags/v1.0.0', route => route.fulfill({ status: 404, body: '{}' }));
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/scan/');
+  await expect(page.getByRole('heading', { name: 'Scan interface' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Installation options' })).toBeVisible();
+  await expect(page.locator('.scan-kicker, .scan-visual-note, .scan-closing')).toHaveCount(0);
+  await expect(page.locator('[data-scan-release-pending]').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  await testInfo.attach('scan-mobile.png', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+});

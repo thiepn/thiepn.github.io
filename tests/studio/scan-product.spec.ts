@@ -6,7 +6,7 @@ test('Scan product page uses authentic Android media', async ({ page }) => {
   await page.route(releaseApi, (route) => route.fulfill({ status: 404, body: '{}' }));
   await page.goto('/scan/');
 
-  await expect(page.getByRole('heading', { name: 'This is the app—not a concept render.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scan interface' })).toBeVisible();
   await expect(page.locator('.scan-shot')).toHaveCount(9);
   await expect(page.locator('.scan-real-badge')).toHaveText('REAL APP · API 35');
 
@@ -135,7 +135,7 @@ test('Scan keeps Google Play non-public until distribution state is published', 
   await page.route(releaseApi, (route) => route.fulfill({ status: 404, body: '{}' }));
   await page.goto('/scan/');
 
-  await expect(page.getByRole('heading', { name: 'One app. Clear distribution paths.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Installation options' })).toBeVisible();
   await expect(page.locator('[data-play-status]')).toHaveAttribute('data-play-status', 'planned');
   await expect(page.locator('[data-play-download]')).toHaveCount(0);
   await expect(page.getByText('Store listing package is prepared; public Play listing not published yet.')).toBeVisible();
