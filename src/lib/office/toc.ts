@@ -26,7 +26,10 @@ function slug(title:string):string{
 }
 export function officeHeadingReferences(source:string):OfficeHeadingRef[]{
  if(source.length>MAX_BODY)throw new Error('Document exceeds Office size limit.');
- const region=managedRegion(source),seen=new Map<string,number>();
+ // Malformed markers must never break normal editing/preview; the explicit TOC writer still refuses them.
+ let region:TocRegion|null=null;
+ try{region=managedRegion(source);}catch{}
+ const seen=new Map<string,number>();
  return outlineFor(source).filter(h=>!region||h.offset<region.start||h.offset>=region.end).map(heading=>{
   const stem=slug(heading.title);
   const count=(seen.get(stem)??0)+1;seen.set(stem,count);

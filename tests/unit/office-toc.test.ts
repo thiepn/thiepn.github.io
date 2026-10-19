@@ -40,6 +40,11 @@ describe('O18 original-source contents and internal cross references',()=>{
   expect(()=>generateOfficeToc(Array.from({length:121},(_,i)=>'# Heading '+i).join('\n'))).toThrow('120');
   expect(()=>generateOfficeToc('plain')).toThrow('genuine');
  });
+ it('keeps normal heading preview functional if a user has an incomplete TOC marker',()=>{
+  const partial='# Real\n'+TOC_START+'\n## Next';
+  expect(officeHeadingReferences(partial).map(x=>x.title)).toEqual(['Real','Next']);
+  expect(()=>generateOfficeToc(partial)).toThrow('incomplete');
+ });
  it('inserts original internal links without inferring external destinations or rewriting siblings',()=>{
   const start=document.indexOf('Summary');
   const link=insertOfficeHeadingLink(document,start,start+7,'office-ref-methods-2');
