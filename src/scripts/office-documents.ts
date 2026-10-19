@@ -1639,17 +1639,28 @@ if(root && shell){
     inspectTimeline(state.baselineRevision);
     timelinePreview.scrollIntoView({block:'nearest'});
   });
-  impactDownload.addEventListener('click',()=>{
-    const state=citationImpactState;
-    if(!citationImpactValid(state)||!state||impactDownload.disabled||!active)return;
+  impactDownload.addEventListener('click',()=>void (async()=>{
+    const state=citationImpactState,current=active,opened=store,ticket=epoch;
+    if(!citationImpactValid(state)||!state||impactDownload.disabled||!current||!opened)return;
     try{
-      const checked=inspectOfficeCitationUseImpact(body.value,state.baselineBody??undefined);
-      const text=formatOfficeCitationUseAudit(checked,title.value,active.revision,state.baselineRevision);
-      const filename=documentFilename(title.value).replace(/\.md$/,'-citation-impact.txt');
-      downloadBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),filename);
-      message('Source citation use audit exported for saved revision '+active.revision+'.');
-    }catch(error){message(error instanceof Error?error.message:'Cannot export original citation audit.');}
-  });
+      const latest=await opened.read(current.id);
+      if(ticket!==epoch||!allowed()||opened!==store||
+        !citationImpactValid(state)||citationImpactState!==state)return;
+      if(!latest||latest.revision!==state.revision||latest.body!==state.source){
+        clearCitationImpact();enable();
+        message('Document changed in another tab. Reopen its latest revision before exporting source uses.');
+        return;
+      }
+      const checked=inspectOfficeCitationUseImpact(state.source,state.baselineBody??undefined);
+      const content=formatOfficeCitationUseAudit(checked,current.title,current.revision,state.baselineRevision);
+      const filename=documentFilename(current.title).replace(/\.md$/,'-citation-impact.txt');
+      if(ticket!==epoch||!allowed()||!citationImpactValid(state))return;
+      downloadBlob(new Blob([content],{type:'text/plain;charset=utf-8'}),filename);
+      message('Source citation use audit exported for saved revision '+current.revision+'.');
+    }catch(error){
+      if(ticket===epoch&&allowed())message(error instanceof Error?error.message:'Cannot export original citation audit.');
+    }
+  })());
 
   function renderDuplicateCandidates(){
     duplicateCandidates.replaceChildren();clearDuplicatePreview();
