@@ -1,4 +1,5 @@
 import {officeHeadingReferences,TOC_START,TOC_END} from './toc';
+import {analyzeOfficeReferences} from './footnotes';
 // Deliberately constrained Markdown: text nodes only, no HTML parsing or raw HTML execution.
 export type FormatAction = 'heading'|'bold'|'italic'|'bullet'|'number'|'quote'|'code'|'link'|'table';
 export interface FormattedSelection {value:string;start:number;end:number}
@@ -31,8 +32,8 @@ export function formatSelection(value:string,start:number,end:number,action:Form
   const caret=left+insert.length;
   return {value:next,start:caret,end:caret};
 }
-const inlinePattern=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+|#office-ref-[a-z0-9-]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\x60([^\x60\n]+)\x60/g;
-function inline(doc:Document,element:Element,content:string){
+const inlinePattern=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+|#office-ref-[a-z0-9-]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\x60([^\x60\n]+)\x60|\[\^([a-z][a-z0-9_-]{0,47})\]/g;
+function inline(doc:Document,element:Element,content:string,footnoteIds:ReadonlySet<string>){
   let pos=0;
   for(const m of content.matchAll(inlinePattern)){
     const at=m.index??0;
@@ -49,7 +50,13 @@ function inline(doc:Document,element:Element,content:string){
       child.textContent=m[1];
     }else if(m[3]!==undefined){child=doc.createElement('strong');child.textContent=m[3];}
     else if(m[4]!==undefined){child=doc.createElement('em');child.textContent=m[4];}
-    else {child=doc.createElement('code');child.textContent=m[5]??'';}
+    else if(m[5]!==undefined){child=doc.createElement('code');child.textContent=m[5];}
+    else {const id=m[6]??'';child=doc.createElement('sup');
+      if(footnoteIds.has(id)){
+        const link=doc.createElement('a');link.setAttribute('href','#office-footnote-'+id);
+        link.setAttribute('data-office-footnote-id',id);link.textContent='['+id+']';child.append(link);
+      }else child.textContent='['+id+']';
+    }
     element.append(child);
     pos=at+m[0].length;
   }
@@ -73,8 +80,10 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
   const normalized=source.replace(/\r\n?/g,'\n');
   const lines=normalized.split('\n');
   const headingIds=new Map<number,string>(officeHeadingReferences(normalized).map(heading=>[heading.line,heading.id] as const));
+  const footnoteReport=analyzeOfficeReferences(normalized);
+  const footnoteIds=new Set(footnoteReport.definitions.filter(row=>row.count===1).map(row=>row.id));
   const appendInline=(tag:string,content:string)=>{
-    const node=doc.createElement(tag);inline(doc,node,content);fragment.append(node);
+    const node=doc.createElement(tag);inline(doc,node,content,footnoteIds);fragment.append(node);
   };
   const tick=String.fromCharCode(96).repeat(3);
   for(let i=0;i<lines.length;){
@@ -94,7 +103,15 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
     }
     const h=line.match(heading);
     if(h){const node=doc.createElement('h'+h[1]!.length),id=headingIds.get(i);
-      if(id)node.id=id;inline(doc,node,h[2]!);fragment.append(node);i++;continue;}
+      if(id)node.id=id;inline(doc,node,h[2]!,footnoteIds);fragment.append(node);i++;continue;}
+    const definition=line.match(/^ {0,3}\[\^([a-z][a-z0-9_-]{0,47})\]:[ \t]*(.*)$/);
+    if(definition){
+      const element=doc.createElement('p'),id=definition[1]!;
+      if(footnoteIds.has(id))element.id='office-footnote-'+id;
+      const name=doc.createElement('strong');name.textContent='['+id+'] ';
+      element.append(name);inline(doc,element,definition[2]!,footnoteIds);
+      fragment.append(element);i++;continue;
+    }
     if(/^---+$/.test(line.trim())){fragment.append(doc.createElement('hr'));i++;continue;}
     if(i+1<lines.length&&line.includes('|')&&divider.test(lines[i+1]!)){
       const headers=cells(line),table=doc.createElement('table'),thead=doc.createElement('thead'),tr=doc.createElement('tr');
@@ -121,8 +138,8 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
           const check=doc.createElement('input');
           check.type='checkbox';check.checked=task[1]!.toLowerCase()==='x';check.disabled=true;
           check.setAttribute('aria-label',check.checked?'Completed task':'Open task');
-          li.append(check);inline(doc,li,task[2]!);
-        }else inline(doc,li,match[1]!);
+          li.append(check);inline(doc,li,task[2]!,footnoteIds);
+        }else inline(doc,li,match[1]!,footnoteIds);
         list.append(li);i++;
       }
       fragment.append(list);continue;
