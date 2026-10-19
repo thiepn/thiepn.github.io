@@ -163,6 +163,30 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
 
+          <section class="office-footnote-order" aria-label="Reorder original footnote definitions">
+            <h4>Footnote order</h4>
+            <button type="button" data-office-order-review disabled>Inspect terminal definitions</button>
+            <p data-office-order-summary role="status">No footnote order reviewed.</p>
+            <div data-office-order-candidates class="office-order-candidates"></div>
+            <div class="office-citation-actions">
+              <label for="office-order-mode">Order</label>
+              <select id="office-order-mode" data-office-order-mode disabled>
+                <option value="first-use">First citation use</option>
+                <option value="id">Citation ID</option>
+              </select>
+              <button type="button" data-office-order-preview disabled>Preview reordered Markdown</button>
+            </div>
+            <section class="office-citation-restore-panel" data-office-order-panel hidden aria-label="Review reordered original footnotes">
+              <p role="status" data-office-order-change></p>
+              <label for="office-order-result">Resulting original Markdown</label>
+              <textarea id="office-order-result" data-office-order-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-order-confirm disabled>Apply definition order</button>
+                <button type="button" data-office-order-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+
           <section class="office-section-trail" aria-label="Citations organized by document section">
             <h4>Citations by section</h4>
             <button type="button" data-office-section-trail-review disabled>Map source citations</button>

@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,type OfficeFootnoteOrder,type OfficeFootnoteOrderPreview,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,36 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const orderReview=pick<HTMLButtonElement>('[data-office-order-review]');
+  const orderMode=pick<HTMLSelectElement>('[data-office-order-mode]');
+  const orderSummary=pick<HTMLElement>('[data-office-order-summary]');
+  const orderCandidates=pick<HTMLElement>('[data-office-order-candidates]');
+  const orderPreview=pick<HTMLButtonElement>('[data-office-order-preview]');
+  const orderPanel=pick<HTMLElement>('[data-office-order-panel]');
+  const orderChange=pick<HTMLElement>('[data-office-order-change]');
+  const orderResult=pick<HTMLTextAreaElement>('[data-office-order-result]');
+  const orderConfirm=pick<HTMLButtonElement>('[data-office-order-confirm]');
+  const orderCancel=pick<HTMLButtonElement>('[data-office-order-cancel]');
+  type OrderReviewState={scope:string;documentId:string;revision:number;source:string;
+    rows:{id:string;line:number;useCount:number;firstUseLine:number|null}[];mode:OfficeFootnoteOrder};
+  type OrderPreviewState={review:OrderReviewState;result:OfficeFootnoteOrderPreview};
+  let orderReviewState:OrderReviewState|null=null,orderPlan:OrderPreviewState|null=null;
+  function clearOrderPreview(){
+    orderPlan=null;orderPanel.hidden=true;orderChange.textContent='';
+    orderResult.value='';orderConfirm.disabled=true;
+  }
+  function clearFootnoteOrder(){
+    orderReviewState=null;clearOrderPreview();
+    orderCandidates.replaceChildren();orderSummary.textContent='No footnote order reviewed.';
+    orderMode.value='first-use';orderMode.disabled=orderPreview.disabled=true;
+  }
+  function orderValid(state:OrderReviewState|null){
+    return !!state&&!!store&&!!active&&allowed()&&!dirty&&!blocked&&!busy&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value;
+  }
+
 
   const sectionTrailReview=pick<HTMLButtonElement>('[data-office-section-trail-review]');
   const sectionTrailSummary=pick<HTMLElement>('[data-office-section-trail-summary]');
@@ -554,6 +584,10 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    orderReview.disabled=!editing||dirty;
+    orderMode.disabled=orderPreview.disabled=!editing||!orderValid(orderReviewState);
+    orderConfirm.disabled=!editing||!orderPlan||orderPlan.review!==orderReviewState||
+      !orderValid(orderPlan.review)||orderPlan.result.order!==orderReviewState?.mode;
     sectionTrailReview.disabled=!editing||dirty;
     sectionTrailSection.disabled=sectionTrailCitation.disabled=!editing||!citationTrailValid(citationTrail);
     impactBase.disabled=impactReview.disabled=!editing||dirty;
@@ -887,7 +921,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -966,7 +1000,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1040,7 +1074,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1350,7 +1384,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1581,6 +1615,76 @@ if(root && shell){
   }
 
 
+
+
+  orderReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
+    clearFootnoteOrder();
+    try{
+      const original=inspectOfficeFootnoteOrder(body.value);
+      orderReviewState={
+        scope:store.scope,documentId:active.id,revision:active.revision,source:body.value,
+        rows:original.rows.map(row=>({
+          id:row.id,line:row.line,useCount:row.useCount,firstUseLine:row.firstUseLine
+        })),mode:'first-use'
+      };
+      orderSummary.textContent=original.trailingDefinitions+' original footnotes in terminal block'+
+        ' · '+original.totalDefinitions+' total definitions.';
+      for(const row of original.rows){
+        const p=document.createElement('p');
+        p.textContent='[^'+row.id+'] · definition line '+row.line+' · '+
+          row.useCount+' uses'+(row.firstUseLine===null?'':' · first used line '+row.firstUseLine);
+        orderCandidates.append(p);
+      }
+      enable();
+    }catch(error){
+      clearFootnoteOrder();enable();
+      message(error instanceof Error?error.message:'Cannot inspect terminal original definitions.');
+    }
+  });
+  orderMode.addEventListener('change',()=>{
+    if(!orderReviewState||!orderValid(orderReviewState))return;
+    orderReviewState.mode=orderMode.value==='id'?'id':'first-use';
+    clearOrderPreview();enable();
+  });
+  orderCancel.addEventListener('click',()=>{clearOrderPreview();enable();});
+  orderPreview.addEventListener('click',()=>{
+    const state=orderReviewState;
+    if(!state||!orderValid(state)||orderPreview.disabled)return;
+    try{
+      const result=previewOfficeFootnoteOrder(body.value,state.mode);
+      orderPlan={review:state,result};
+      orderChange.textContent='Existing: '+result.before.map(id=>'[^'+id+']').join(' → ')+
+        ' · Proposed: '+result.after.map(id=>'[^'+id+']').join(' → ')+
+        ' · '+result.lines.length+' original definition lines. Source unchanged until confirmation.';
+      orderResult.value=result.value;orderPanel.hidden=false;
+      enable();orderPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearOrderPreview();enable();
+      message(error instanceof Error?error.message:'Original footnote order preview refused.');
+    }
+  });
+  orderConfirm.addEventListener('click',()=>{
+    const plan=orderPlan,state=plan?.review;
+    if(!plan||!state||!orderValid(state)||state!==orderReviewState||
+      plan.result.order!==state.mode||orderConfirm.disabled)return;
+    try{
+      const verified=previewOfficeFootnoteOrder(body.value,state.mode);
+      if(verified.value!==plan.result.value||
+         verified.before.join('|')!==plan.result.before.join('|')||
+         verified.after.join('|')!==plan.result.after.join('|')){
+        clearOrderPreview();enable();
+        message('Footnote order preview changed. Review before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Reordered '+verified.after.length+' original footnote definitions. Autosave pending.');
+      enable();
+    }catch(error){
+      clearOrderPreview();enable();
+      message(error instanceof Error?error.message:'Footnote ordering refused.');
+    }
+  });
 
   function renderCitationTrail(){
     sectionTrailDetails.replaceChildren();sectionTrailUses.replaceChildren();

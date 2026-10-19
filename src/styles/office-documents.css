@@ -309,3 +309,10 @@
 .office-section-trail-uses,.office-section-trail-related{display:grid;gap:6px;max-height:390px;overflow:auto}
 .office-section-trail-uses button,.office-section-trail-related button{text-align:left;white-space:normal;overflow-wrap:anywhere;padding:9px 11px;min-height:36px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
 .office-section-trail-related strong{font-size:14px}
+
+.office-footnote-order{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-footnote-order h4{font-size:14px;margin:0}
+.office-footnote-order p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-order-candidates{display:grid;gap:3px;max-height:240px;overflow:auto}
+.office-footnote-order select{min-width:0;max-width:100%}
+.office-footnote-order [hidden]{display:none!important}

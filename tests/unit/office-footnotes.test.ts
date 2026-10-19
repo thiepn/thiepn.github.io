@@ -590,7 +590,7 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const source='# Topic\nParagraph[^b]\n[^old]: Earlier\n\n## End\nFinal[^a]\n\n[^b]: B\n[^a]: A';
   const result=previewOfficeFootnoteOrder(source,'id');
   expect(result.value).toBe('# Topic\nParagraph[^b]\n[^old]: Earlier\n\n## End\nFinal[^a]\n\n[^a]: A\n[^b]: B');
-  expect(analyzeOfficeReferences(result.value).problems.map(x=>x.kind)).toEqual(['unused-footnote','missing-footnote']);
+  expect(analyzeOfficeReferences(result.value).problems.map(x=>x.kind)).toEqual(['unused-footnote']);
  });
 
 });
