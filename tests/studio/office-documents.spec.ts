@@ -2490,3 +2490,118 @@ test('O28 never exports stale current revision after another tab saved a new ori
  await peer.reload();await expect(peer.locator('[data-office-body]')).toHaveValue(/Peer saved/);
  await peer.close();
 });
+
+
+test('O29 maps nested original headings, moves among cross-section source uses and keeps Markdown unchanged',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const source='Preamble[^a]\n# Chapter\nChapter[^a]\n## Methods\nMethod[^a] plus[^b]\n### Detail\nDetail[^b]\n## Results\nResult[^a]\n[^a]: Main 한국어\n[^b]: Supporting 日本語';
+ await page.locator('[data-office-body]').fill(source);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ await expect(page.locator('[data-office-section-trail-summary]')).toContainText('5 original sections · 5 with citations · 6 genuine uses');
+ await expect(page.locator('[data-office-section-trail-section] option')).toHaveCount(5);
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('Before first heading · 1 source uses');
+ await page.locator('[data-office-section-trail-section]').selectOption('section-1');
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('Chapter › Methods · 2 source uses');
+ await page.locator('[data-office-section-trail-citation]').selectOption('b');
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('2 uses across 2 sections');
+ await expect(page.locator('[data-office-section-trail-related]')).toContainText('Chapter › Methods › Detail');
+ await page.locator('[data-office-section-trail-related="section-2"]').click();
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('Chapter › Methods › Detail');
+ expect(await page.locator('[data-office-body]').evaluate((node:HTMLTextAreaElement)=>node.selectionStart))
+   .toBe(source.indexOf('Detail[^b]')+'Detail'.length);
+ await page.locator('[data-office-section-trail-definition]').click();
+ expect(await page.locator('[data-office-body]').evaluate((node:HTMLTextAreaElement)=>node.selectionStart))
+   .toBe(source.indexOf('[^b]: Supporting'));
+ await expect(page.locator('[data-office-body]')).toHaveValue(source);
+ await page.reload();
+ await expect(page.locator('[data-office-section-trail-summary]')).toHaveText('No section citation review.');
+ await expect(page.locator('[data-office-body]')).toHaveValue(source);
+});
+test('O29 pages through dense real source uses without dropping citations, and respects actual missing definitions',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const source='# Research\n'+Array.from({length:45},(_,i)=>'Example '+i+'[^many]').join('\n')+'\nMissing[^unknown]\n[^many]: Original';
+ await page.locator('[data-office-body]').fill(source);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ await page.locator('[data-office-section-trail-citation]').selectOption('many');
+ await expect(page.locator('[data-office-section-trail-page]')).toContainText('1–20 of 45 uses');
+ await expect(page.locator('[data-office-section-trail-uses] button')).toHaveCount(20);
+ await page.locator('[data-office-section-trail-next]').click();
+ await expect(page.locator('[data-office-section-trail-page]')).toContainText('21–40 of 45 uses');
+ await expect(page.locator('[data-office-section-trail-uses] button')).toHaveCount(20);
+ await page.locator('[data-office-section-trail-next]').click();
+ await expect(page.locator('[data-office-section-trail-page]')).toContainText('41–45 of 45 uses');
+ await expect(page.locator('[data-office-section-trail-uses] button')).toHaveCount(5);
+ await expect(page.locator('[data-office-section-trail-next]')).toBeDisabled();
+ await page.locator('[data-office-section-trail-uses] button').last().click();
+ expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart))
+  .toBe(source.indexOf('Example 44[^many]')+'Example 44'.length);
+ await page.locator('[data-office-section-trail-citation]').selectOption('unknown');
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('0 original definitions');
+ await expect(page.locator('[data-office-section-trail-definition]')).toBeDisabled();
+ await expect(page.locator('[data-office-section-trail-page]')).toContainText('1–1 of 1 uses');
+ await expect(page.locator('[data-office-body]')).toHaveValue(source);
+});
+test('O29 source changes invalidate section routes; the next review uses actual updated headings and references',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Start\nFirst[^a]\n[^a]: Evidence');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ await expect(page.locator('[data-office-section-trail-section] option')).toHaveCount(2);
+ await page.locator('[data-office-body]').fill('# Start\nFirst[^a]\n## Added\nAnother[^a]\n[^a]: Evidence');
+ await expect(page.locator('[data-office-section-trail-uses]')).toBeEmpty();
+ await expect(page.locator('[data-office-section-trail-section]')).toBeDisabled();
+ await expect(page.locator('[data-office-section-trail-summary]')).toHaveText('No section citation review.');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ await expect(page.locator('[data-office-section-trail-section] option')).toHaveCount(3);
+ await page.locator('[data-office-section-trail-section]').selectOption('section-1');
+ await expect(page.locator('[data-office-section-trail-details]')).toContainText('Start › Added · 1 source uses');
+});
+test('O29 mobile privacy discards section-to-citation routes and original source context',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Confidential\nSecret[^p]\n## Followup\nMore[^p]\n[^p]: Sensitive definition');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ await page.locator('[data-office-section-trail-citation]').selectOption('p');
+ await expect(page.locator('[data-office-section-trail-related]')).toContainText('Followup');
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-section-trail-summary]')).toHaveText('No section citation review.');
+ await expect(page.locator('[data-office-section-trail-uses]')).toBeEmpty();
+ await expect(page.locator('[data-office-section-trail-related]')).toBeEmpty();
+ await expect(page.locator('[data-office-section-trail-review]')).toBeDisabled();
+ await expect(page.locator('[data-office-body]')).toHaveValue('');
+});
+test('O29 read-only citation routes cannot overwrite a peer CAS save',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Work\nMy claim[^a]\n[^a]: First definition');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-review]').click();
+ const peer=await page.context().newPage();
+ await peer.goto('/home/documents/');
+ await expect(peer.locator('[data-office-body]')).toHaveValue(/My claim/);
+ await peer.locator('[data-office-body]').fill('# Peer\nPeer version[^a]\n[^a]: Peer authority');
+ await expect(peer.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-section-trail-uses] button').first().click();
+ await expect(page.locator('[data-office-body]')).toHaveValue(/My claim/);
+ await peer.reload();
+ await expect(peer.locator('[data-office-body]')).toHaveValue(/Peer authority/);
+ await peer.close();
+ await page.reload();
+ await expect(page.locator('[data-office-body]')).toHaveValue(/Peer authority/);
+ await expect(page.locator('[data-office-section-trail-summary]')).toHaveText('No section citation review.');
+});
