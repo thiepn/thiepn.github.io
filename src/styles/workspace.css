@@ -369,19 +369,10 @@
 .ws-source-today .ws-unified-action{margin:6px 7px 0 0;min-height:36px;}
 @media(max-width:1100px){.ws-source-today-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:680px){.ws-source-today{padding:16px 0;}.ws-source-today-grid{grid-template-columns:minmax(0,1fr);}}
-.ws-visitor-welcome{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(230px,1fr);gap:28px;padding:28px;margin-bottom:24px;border:1px solid var(--ws-line);border-radius:20px;background:linear-gradient(135deg,var(--ws-surface),var(--ws-accent-soft));}
-.ws-visitor-eyebrow{margin:0 0 12px;color:var(--ws-accent);font-size:14px;font-weight:650;letter-spacing:.04em;}
-.ws-visitor-intro h2{margin:0 0 12px;font-size:clamp(23px,2.2vw,32px);line-height:1.15;letter-spacing:-.025em;max-width:20ch;}
-.ws-visitor-intro>p:not(.ws-visitor-eyebrow){color:var(--ws-muted);line-height:1.65;margin:0 0 18px;max-width:54ch;}
-.ws-visitor-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0;}
-.ws-visitor-storage{font-size:14px;}
-.ws-visitor-storage strong{color:var(--ws-ink);}
-.ws-visitor-features{display:grid;align-content:center;gap:10px;min-width:0;}
-.ws-visitor-features>a{display:flex;gap:12px;align-items:center;padding:16px;border:1px solid var(--ws-line);border-radius:12px;background:var(--ws-surface);color:var(--ws-ink);}
-.ws-visitor-features>a>span:first-child{flex:1;min-width:0;}
-.ws-visitor-features strong,.ws-visitor-features small{display:block;}
-.ws-visitor-features small{margin-top:4px;color:var(--ws-muted);font-size:14px;}
-@media(max-width:1100px){.ws-visitor-welcome{grid-template-columns:1fr;gap:12px;padding:22px;}.ws-visitor-intro h2{max-width:28ch;}.ws-visitor-features{gap:8px;}.ws-visitor-features>a{padding:12px;}}
-@media(max-width:480px){.ws-visitor-welcome{padding:18px;border-radius:16px;}.ws-visitor-actions>*{white-space:normal;}.ws-visitor-intro h2{font-size:26px;}}
 
 [data-workspace-date]:empty{display:none;}
+
+.ws-visitor-welcome{display:flex;align-items:center;padding:14px 16px;margin-bottom:18px;border:1px solid var(--ws-line);border-radius:10px;background:var(--ws-surface);}
+.ws-visitor-welcome[hidden]{display:none;}
+.ws-visitor-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0;}
+@media(max-width:480px){.ws-visitor-welcome{padding:12px}.ws-visitor-actions{width:100%}.ws-visitor-actions>*{flex:1 1 140px;white-space:normal}}

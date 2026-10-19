@@ -65,7 +65,7 @@ test('mobile project detail keeps actual project content without repeated eyebro
 test('Byte desktop keeps actionable downloads and security instructions without slogans', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/byte/');
-  await expect(page.getByRole('heading', { name: 'Byte', exact: true })).toBeVisible();
+  await expect(page.locator('#byte-title')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Download Byte' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /unknown-publisher warning/i })).toBeVisible();
   await expect(page.locator('.closing-cta, .visual-note')).toHaveCount(0);
@@ -76,7 +76,7 @@ test('Byte desktop keeps actionable downloads and security instructions without 
 test('Byte mobile reflows and retains primary download actions', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/byte/');
-  await expect(page.getByRole('heading', { name: 'Byte', exact: true })).toBeVisible();
+  await expect(page.locator('#byte-title')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'FAQ', exact: true })).toBeVisible();
   const action = page.getByRole('link', { name: 'Download for Windows', exact: true });
   await expect(action).toBeVisible();
@@ -109,5 +109,20 @@ test('Scan mobile retains safety and original media without ornamental section c
   await expect(page.locator('.scan-kicker, .scan-visual-note, .scan-closing')).toHaveCount(0);
   await expect(page.locator('[data-scan-release-pending]').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-  await testInfo.attach('scan-mobile.png', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+  await testInfo.attach('scan-mobile-viewport.png', { body: await page.screenshot(), contentType: 'image/png' });
+  await page.locator('#install').scrollIntoViewIfNeeded();
+  await testInfo.attach('scan-mobile-install.png', { body: await page.screenshot(), contentType: 'image/png' });
+});
+
+test('first-visit onboarding retains entry actions without duplicated navigation cards', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const welcome = page.locator('[data-visitor-welcome]');
+  await expect(welcome).toBeVisible();
+  await expect(welcome.getByRole('link', { name: 'Explore apps' })).toHaveAttribute('href', '/apps/');
+  await expect(welcome.getByRole('button', { name: 'Use this workspace' })).toBeVisible();
+  await expect(welcome.locator('.ws-visitor-features, #ws-welcome-title')).toHaveCount(0);
+  const box = await welcome.boundingBox();
+  expect(box?.height ?? 0).toBeLessThan(170);
+  await testInfo.attach('welcome-mobile.png', { body: await page.screenshot(), contentType: 'image/png' });
 });

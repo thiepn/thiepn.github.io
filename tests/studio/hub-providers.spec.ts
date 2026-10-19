@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 const actions=[['Capture a thought','https://thiepn.dev/notes/?capture=text'],['Continue in Library','https://thiepn.dev/library/saved/'],['Open TMS60','https://tms60.thiepn.dev/']] as const;
 test('H3 discovery describes disabled private contracts without private fixtures or false counts',async({page})=>{
  const urls:string[]=[];page.on('request',r=>urls.push(r.url()));await page.goto('/home/connections/');
- await expect(page.getByRole('heading',{name:'Your connected apps'})).toBeVisible();
+ await expect(page.locator('#connection-center-title')).toBeVisible();
  for(const [label,href] of actions){const link=page.getByRole('region',{name:'App actions'}).getByRole('link',{name:new RegExp('^'+label)});await expect(link).toHaveAttribute('href',href);await expect(link).toHaveAttribute('rel','noreferrer');}
  const registry=await(await page.request.get('/hub-providers.json')).json();expect(registry.providers).toHaveLength(3);expect(registry.contractVersion.major).toBe(1);
  for(const provider of registry.providers){expect(provider.privateReadsEnabled).toBe(false);expect(provider.inlineWritesEnabled).toBe(false);expect(provider.transport).toBeNull();}
