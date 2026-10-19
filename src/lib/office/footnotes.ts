@@ -451,8 +451,9 @@ export function previewOfficeDuplicateResolution(
  // A following indented block can extend a Markdown footnote; never delete a
  // definition header and silently reinterpret its original continuation.
  for(const row of group.definitions){
-  const next=source.slice(row.offset+row.rawLine.length+row.lineEnding.length)
-    .split(/\r\n|\r|\n/,1)[0]??'';
+  const remainder=source.slice(row.offset+row.rawLine.length+row.lineEnding.length);
+  const following=remainder.split(/\r\n|\r|\n/);
+  const next=following.find(line=>line.trim()!=='')??'';
   if(row.lineEnding&&/^(?: {4,}|\t)/.test(next))
    throw new Error('Possible multiline definition continuation. Edit this original source manually.');
   if(source.slice(row.offset,row.offset+row.rawLine.length+row.lineEnding.length)!==

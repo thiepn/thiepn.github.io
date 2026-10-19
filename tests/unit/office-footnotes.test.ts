@@ -406,6 +406,9 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const multiline='Claim[^x]\n[^x]: First\n    extra context\n[^x]: Second';
   const keep=inspectOfficeDuplicateFootnotes(multiline).groups[0]!.definitions[1]!;
   expect(()=>previewOfficeDuplicateResolution(multiline,'x',keep.offset)).toThrow('Possible multiline');
+  const separated='Claim[^x]\n[^x]: One\n\n    continued after blank\n[^x]: Two';
+  const chosen=inspectOfficeDuplicateFootnotes(separated).groups[0]!.definitions[1]!;
+  expect(()=>previewOfficeDuplicateResolution(separated,'x',chosen.offset)).toThrow('Possible multiline');
   const empty='Claim[^x]\n[^x]: \n[^x]: Valid';
   const emptyKeep=inspectOfficeDuplicateFootnotes(empty).groups[0]!.definitions[0]!;
   expect(()=>previewOfficeDuplicateResolution(empty,'x',emptyKeep.offset)).toThrow('single-line text');
