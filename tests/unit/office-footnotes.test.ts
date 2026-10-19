@@ -138,11 +138,14 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const fake=tick+'\n[^a]: Hidden\n'+tick;
   expect(()=>updateOfficeFootnoteDefinition(fake,'a','Hidden','New',fake.indexOf('[^a]'))).toThrow('unique original');
  });
- it('O21 exact-source size protects original records without mutating oversized drafts',()=>{
-  const source='[^a]: x'+'.'.repeat(200000-'[^a]: x'.length);
-  expect(()=>updateOfficeFootnoteDefinition(source,'a','x'+'.'.repeat(200000-'[^a]: x'.length),'updated',0)).toThrow('unchanged');
-  const short='[^a]: Evidence'+'.'.repeat(200000-'[^a]: Evidence'.length);
-  const initial=analyzeOfficeReferences(short).definitions[0]!;
-  expect(()=>updateOfficeFootnoteDefinition(short,'a',initial.content,initial.content+'more',initial.offset)).toThrow('source limit');
+ it('O21 exact-source size allows reducing an existing draft but rejects growth beyond capacity',()=>{
+  const huge='[^a]: x'+'.'.repeat(200000-'[^a]: x'.length);
+  const original=analyzeOfficeReferences(huge).definitions[0]!;
+  const shorter=updateOfficeFootnoteDefinition(huge,'a',original.content,'updated',original.offset);
+  expect(shorter.value).toBe('[^a]: updated');
+  const full='[^a]: Evidence\n'+'.'.repeat(200000-'[^a]: Evidence\n'.length);
+  const initial=analyzeOfficeReferences(full).definitions[0]!;
+  expect(()=>updateOfficeFootnoteDefinition(full,'a',initial.content,'Longer original evidence',initial.offset)).toThrow('source limit');
+  expect(()=>updateOfficeFootnoteDefinition('x'.repeat(200001),'a','x','New',0)).toThrow('size limit');
  });
 });
