@@ -51,8 +51,9 @@ export function generateOfficeToc(source:string):OfficeTocChange{
  const block=lines.join('\n');
  let value:string,start:number,end:number,mode:'insert'|'update';
  if(region){
-  mode='update';start=region.start;end=region.end;
-  value=source.slice(0,start)+block+source.slice(end);
+  mode='update';start=region.start;
+  value=source.slice(0,start)+block+source.slice(region.end);
+  end=start+block.length;
  }else{
   mode='insert';
   const titleHeading=headings.find(h=>h.level===1);
