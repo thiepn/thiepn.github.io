@@ -5,7 +5,7 @@ const symbol = { live: '■', beta: '◆', experiment: '○', archived: '—' }[
 ---
 <span class={`status-label status-label--${status}`}><span class="sr-only">Project status: </span><span aria-hidden="true">{symbol}</span><span>{status}</span></span>
 <style>
-  .status-label { display:inline-flex; align-items:center; gap:.55em; font-family:var(--font-meta); font-size:.72rem; line-height:1.15; letter-spacing:.075em; text-transform:uppercase; color:var(--ink-muted); white-space:nowrap; }
+  .status-label { display:inline-flex; align-items:center; gap:.55em; font-family:var(--font-meta); font-size:.875rem; line-height:1.15; letter-spacing:.075em; text-transform:uppercase; color:var(--ink-muted); white-space:nowrap; }
   .status-label--live { color:var(--ink-secondary); }
   .status-label--beta { color:var(--project-accent, var(--ink-secondary)); }
   .status-label--experiment, .status-label--archived { color:var(--ink-muted); }

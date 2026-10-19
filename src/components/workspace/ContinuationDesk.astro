@@ -6,7 +6,7 @@ const compact = Astro.props.compact ?? false;
 <section id={compact ? 'ws-owner-continue' : undefined} class:list={['ws-owner-continue', {'ws-owner-continue-compact':compact}]} data-owner-continue data-compact={compact ? 'true' : 'false'} aria-label="Continue from connected apps">
   <header class="ws-owner-continue-heading">
     <div>
-      <h2>Continue from your apps</h2>
+      <h2>Continue</h2>
 
     </div>
     <a href="/home/connections/" class="ws-owner-continue-manage">App connections</a>
@@ -22,7 +22,7 @@ const compact = Astro.props.compact ?? false;
     <span role="status" data-owner-overview-status>Checking available owner connections…</span>
   </div>
   <div data-owner-continue-results aria-live="polite" aria-atomic="false">
-    <p class="ws-home-empty">No shared activity.</p>
+    <p class="ws-home-empty">No connected activity.</p>
   </div>
   <footer class="ws-owner-continue-foot">
     <a href={providerAction('notes','open')!}>Notes</a>

@@ -12,7 +12,7 @@ const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
     <div class="portal-search-scopes" role="tablist" aria-label="Search scope" data-search-scopes hidden>{[['apps', 'Apps'], ['actions', 'Actions'], ['resources', 'My resources']].map(([scope, label]) => <button type="button" role="tab" id={`scope-${scope}`} aria-controls={`search-${scope}`} aria-selected={scope === 'apps' ? 'true' : 'false'} tabindex={scope === 'apps' ? 0 : -1} data-search-scope-choice={scope}>{label}</button>)}</div>
     <form class="portal-search-form" role="search" action="/search/" method="get" data-public-search-form>
       <label for="app-query" data-public-query-label>App name or task</label>
-      <div><input type="search" id="app-query" name="q" placeholder="Try merge PDF or French vocabulary" maxlength="200" autocomplete="off" spellcheck="false" data-portal-query /><button type="submit">Search</button></div>
+      <div><input type="search" id="app-query" name="q" maxlength="200" autocomplete="off" spellcheck="false" data-portal-query /><button type="submit">Search</button></div>
     </form>
     <p class="portal-search-status" role="status" aria-live="polite" data-portal-search-status>{projects.length} apps</p>
     <section id="search-apps" aria-labelledby="scope-apps" data-search-panel="apps">

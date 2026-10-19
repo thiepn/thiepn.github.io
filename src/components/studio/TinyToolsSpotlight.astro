@@ -3,12 +3,12 @@ import ToolboxOverview from './ToolboxOverview.astro';
 ---
 <section class="tools-suite" id="tiny-tools" aria-labelledby="tiny-tools-title" data-project="tiny-tools">
   <header class="tools-suite__header">
-    <div><p class="section-kicker">The complete browser toolbox</p><h2 id="tiny-tools-title">Tiny Tools<span aria-hidden="true">.</span></h2><p class="tools-suite__line">Hundreds of tools.<br/>One place.</p></div>
+    <div><h2 id="tiny-tools-title">Tiny Tools<span aria-hidden="true">.</span></h2></div>
     <div class="tools-suite__intro"><p>PDFs, images, audio, video, files, code, calculators, diagnostics and everyday tasks. One collection for work, study and the small tasks in between.</p><div class="actions"><a class="button" href="/tools/">Explore all tools <span aria-hidden="true">↗</span></a><a class="quiet-link" href="/project/tiny-tools/">Inside the project <span aria-hidden="true">→</span></a></div><p class="tools-suite__note">No account needed. Most tools process your content locally.</p></div>
   </header>
-  <div class="tools-suite__selection"><p>A glimpse inside the collection</p><span>Examples, not the whole catalogue.</span></div>
-  <ToolboxOverview/>
-  <footer class="tools-suite__footer"><p>From a quick conversion to a completely different task.</p><a class="action-link" href="/tools/">Find your next tool <span aria-hidden="true">→</span></a></footer>
+  
+  <div class="tools-suite__examples"><ToolboxOverview/></div>
+  
 </section>
 <style>
   .tools-suite { margin-top:72px; padding:48px; border:1px solid var(--showcase-rule); border-radius:10px; background:var(--tools-paper); }
@@ -18,15 +18,11 @@ import ToolboxOverview from './ToolboxOverview.astro';
   .tools-suite__line { margin-top:16px; font-size:clamp(1.8rem,3.2vw,2.8rem); line-height:1.15; letter-spacing:-.035em; color:var(--tools-ink); }
   .tools-suite__intro>p { max-width:46ch; font-size:1rem; color:var(--ink-secondary); line-height:1.65; }
   .tools-suite__intro .actions { margin-top:22px; gap:8px 24px; }
-  .tools-suite__intro .tools-suite__note { margin-top:18px; font-size:.8125rem; }
-  .tools-suite__selection { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:40px 0 14px; font-size:.8125rem; }
-  .tools-suite__selection p { font-weight:550; }
-  .tools-suite__selection span { color:var(--ink-secondary); font-size:.75rem; }
-  .tools-suite__footer { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-top:28px; padding-top:18px; border-top:1px solid var(--showcase-rule); }
-  .tools-suite__footer p { color:var(--ink-secondary); font-size:.8125rem; }
-  .tools-suite__footer .action-link { flex-shrink:0; font-size:.875rem; }
+  .tools-suite__intro .tools-suite__note { margin-top:18px; font-size:.875rem; }
+  .tools-suite__examples { margin-top:32px; }
+
   @media(max-width:1050px) { .tools-suite { padding:32px; } .tools-suite__header { gap:32px; } }
-  @media(max-width:760px) { .tools-suite { margin-top:52px; padding:24px; } .tools-suite__header { grid-template-columns:1fr; gap:24px; } .tools-suite__line { font-size:2rem; } .tools-suite__intro .actions { gap:8px 18px; } .tools-suite__intro>p { font-size:.9375rem; } .tools-suite__selection { display:block; margin-top:32px; } .tools-suite__selection span { display:block; margin-top:4px; } .tools-suite__footer { display:block; } .tools-suite__footer a { margin-top:4px; } }
+  @media(max-width:760px) { .tools-suite { margin-top:52px; padding:24px; } .tools-suite__header { grid-template-columns:1fr; gap:24px; } .tools-suite__line { font-size:2rem; } .tools-suite__intro .actions { gap:8px 18px; } .tools-suite__intro>p { font-size:.9375rem; } .tools-suite__examples { margin-top:24px; }    }
   @media(max-width:380px) { .tools-suite { padding:18px; } .tools-suite__line { font-size:1.75rem; } }
   @media(forced-colors:active) { .tools-suite { background:Canvas; color:CanvasText; border-color:CanvasText; } }
 </style>

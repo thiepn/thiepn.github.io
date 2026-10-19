@@ -92,11 +92,9 @@ const modes = [
         <div class="byte-chip-row">
           <span class="byte-chip byte-chip--blue">Windows app</span>
           <span class="byte-chip">v{version}</span>
-          <span class="byte-chip">Privacy-first</span>
+          
         </div>
-
-        <p class="byte-kicker">A desktop companion that understands your PC.</p>
-        <h1 id="byte-title">Meet Byte.</h1>
+        <h1 id="byte-title">Byte</h1>
         <p class="byte-hero__lead">
           Byte turns system health into a small, expressive character on your desktop—so you can tell when your PC is calm, busy, stressed, or actually needs attention without living inside a hardware dashboard.
         </p>
@@ -122,7 +120,7 @@ const modes = [
         </div>
       </div>
 
-      <div class="byte-hero__visual" aria-label="Illustration of Byte running on a Windows desktop">
+      <div class="byte-hero__visual" role="img" aria-label="Illustration of Byte running on a Windows desktop">
         <div class="desktop-scene">
           <div class="desktop-glow desktop-glow--one"></div>
           <div class="desktop-glow desktop-glow--two"></div>
@@ -179,8 +177,6 @@ const modes = [
             <div class="quick-card__action">Open Byte <span>→</span></div>
           </div>
         </div>
-
-        <p class="visual-note">Companion, Quick Panel, and full app—three levels of detail instead of one giant monitoring screen.</p>
       </div>
     </section>
 
@@ -197,8 +193,7 @@ const modes = [
     <section class="byte-section page-shell" id="showcase" aria-labelledby="showcase-title">
       <div class="section-intro">
         <div>
-          <p class="byte-kicker">Three layers, one tiny companion</p>
-          <h2 id="showcase-title">Glance. Click. Investigate.</h2>
+          <h2 id="showcase-title">How Byte works</h2>
         </div>
         <p>
           Byte stays quiet until you need more detail. Most of the time, the character and its environment are enough. One click opens the explanation. The full app is there for the deeper stuff.
@@ -293,8 +288,7 @@ const modes = [
       <div class="page-shell">
         <div class="section-intro section-intro--light">
           <div>
-            <p class="byte-kicker">Pick your desktop roommate</p>
-            <h2 id="characters-title">Four characters. Very different energy.</h2>
+            <h2 id="characters-title">Characters</h2>
           </div>
           <p>
             They share the same system intelligence, but not the same personality on screen. Every character has its own authored poses, reactions, rare idles and palettes.
@@ -329,8 +323,7 @@ const modes = [
     <section class="byte-section page-shell" id="features" aria-labelledby="features-title">
       <div class="section-intro">
         <div>
-          <p class="byte-kicker">What Byte actually does</p>
-          <h2 id="features-title">Cute outside. Serious boundaries underneath.</h2>
+          <h2 id="features-title">Features</h2>
         </div>
         <p>
           The point is not to add another technical dashboard to your desktop. Byte filters local system signals into something understandable, then stays out of the way.
@@ -482,8 +475,7 @@ const modes = [
     <section class="download-band" id="download" aria-labelledby="download-title">
       <div class="page-shell download-layout">
         <div class="download-copy">
-          <p class="byte-kicker">Byte {version}</p>
-          <h2 id="download-title">Put a tiny system companion on your desktop.</h2>
+          <h2 id="download-title">Download Byte</h2>
           <p>
             The installer is the recommended option. The portable ZIP contains a standalone <code>Byte.exe</code> if you prefer not to install the app.
           </p>
@@ -535,8 +527,7 @@ const modes = [
 
     <section class="faq page-shell" aria-labelledby="faq-title">
       <div class="faq__intro">
-        <p class="byte-kicker">A few useful answers</p>
-        <h2 id="faq-title">Before Byte moves in.</h2>
+        <h2 id="faq-title">FAQ</h2>
       </div>
       <div class="faq__items">
         <details open>
@@ -555,17 +546,6 @@ const modes = [
           <summary>How do updates work?</summary>
           <p>Byte does not silently poll, download or install updates. You choose Stable or Beta in Settings and use Check for updates when you want to open the corresponding official GitHub release page.</p>
         </details>
-      </div>
-    </section>
-
-    <section class="closing-cta">
-      <div class="page-shell closing-cta__inner">
-        <img src={characterRoot + '/byte/preview.png'} alt="" aria-hidden="true" />
-        <div>
-          <p class="byte-kicker">Ready?</p>
-          <h2>Byte is waiting on the desktop.</h2>
-        </div>
-        <a class="byte-button byte-button--primary" href={installerUrl}>Download Byte {version}</a>
       </div>
     </section>
   </div>
@@ -774,7 +754,6 @@ const modes = [
       
     }
     .quick-card__head{display:flex;gap:10px;align-items:flex-start}.quick-card__head .status-orb{margin-top:8px;flex:0 0 auto}.quick-card__head small{display:block;color:#8b98a9;font-size:.48rem;font-weight:700;letter-spacing:.08em}.quick-card__head strong{display:block;margin-top:3px;color:#31445d;font-size:.72rem;line-height:1.3}.quick-card__resources{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:13px}.quick-card__resources span{padding:8px;border-radius:8px;background:#f1f5f9;color:#748399;font-size:.52rem}.quick-card__resources b{float:right;color:#3c5069}.quick-card__action{margin-top:11px;padding-top:9px;border-top:1px solid #e8eef4;color:#416ba9;font-size:.55rem;font-weight:700}.quick-card__action span{float:right}
-    .visual-note { max-width:58ch; margin:18px auto 0; color:#78869a; text-align:center; font-size:.78rem; }
 
     .byte-subnav {
       position: sticky;
@@ -877,8 +856,6 @@ const modes = [
       background:#2b66c2;
     }
 
-    .closing-cta{border-top:1px solid #dce5ef;background:#f2f7fd}.closing-cta__inner{min-height:220px;display:grid;grid-template-columns:110px 1fr auto;gap:28px;align-items:center}.closing-cta img{width:100px;height:100px;object-fit:contain;image-rendering:pixelated}.closing-cta h2{margin:0;font-size:clamp(2rem,3.3vw,3rem)}.closing-cta .byte-kicker{margin-bottom:6px}
-
     @media (max-width: 1080px) {
       .byte-hero{grid-template-columns:1fr;min-height:0}.byte-hero__copy{max-width:760px}.byte-hero__visual{max-width:850px;width:100%;margin-inline:auto}.desktop-scene{height:min(64vw,570px)}
       .feature-grid{grid-template-columns:1fr 1fr}.character-grid{grid-template-columns:1fr 1fr}.character-facts{grid-template-columns:repeat(3,1fr)}
@@ -888,7 +865,7 @@ const modes = [
     @media (max-width: 760px) {
       .byte-page{--byte-radius:18px}
       .byte-hero{padding-top:58px;padding-bottom:70px;gap:42px}.byte-hero h1{font-size:clamp(4rem,21vw,6rem)}.byte-hero__lead{margin-top:22px;font-size:1rem}.byte-hero__actions{align-items:stretch}.byte-button{width:100%}.byte-hero__meta{font-size:.7rem}
-      .desktop-scene{height:470px;border-radius:23px}.window-card--main{width:85%;height:50%;top:8%;left:5%}.quick-card{width:48%;right:5%;top:51%}.habitat-card{width:39%;right:54%;bottom:8%}.resource-grid{grid-template-columns:repeat(3,1fr)}.visual-note{text-align:left}
+      .desktop-scene{height:470px;border-radius:23px}.window-card--main{width:85%;height:50%;top:8%;left:5%}.quick-card{width:48%;right:5%;top:51%}.habitat-card{width:39%;right:54%;bottom:8%}.resource-grid{grid-template-columns:repeat(3,1fr)}
       .byte-subnav{top:76px}.byte-subnav__inner{justify-content:flex-start}
       .byte-section,.character-band,.use-band{padding-top:78px;padding-bottom:78px}.section-intro{grid-template-columns:1fr;gap:20px;margin-bottom:36px}.section-intro h2{max-width:12ch;font-size:clamp(2.35rem,11vw,3.7rem)}.section-intro>p{font-size:.9rem}
       .showcase-grid{grid-template-columns:1fr}.showcase-card--app{grid-column:auto;display:block}.showcase-card__copy{padding:25px}.app-demo{margin:0 20px 20px;grid-template-columns:96px 1fr;min-height:290px}.app-demo__sidebar{padding:13px 7px}.app-brand b{display:none}.nav-row{font-size:.52rem;gap:5px;padding:7px 5px}.app-demo__body{padding:20px 15px}.app-demo__cards{grid-template-columns:1fr}.app-demo__cards span:nth-child(n+2){display:none}
@@ -898,7 +875,7 @@ const modes = [
       .split-feature{grid-template-columns:1fr;gap:32px}.notification-stack{min-height:250px}.notification-card--back{transform:translate(7px,-42px) scale(.93)}
       .download-band{padding-top:78px}.download-copy h2{font-size:clamp(2.6rem,12vw,4rem)}.download-actions{align-items:stretch}.download-band .byte-button{width:100%}.install-card{padding:24px}.release-footer{display:block}.release-links{justify-content:flex-start;margin-top:20px}
       .faq{grid-template-columns:1fr;gap:26px;padding-top:78px;padding-bottom:78px}
-      .closing-cta__inner{grid-template-columns:70px 1fr;min-height:240px;padding-block:35px}.closing-cta img{width:66px;height:66px}.closing-cta .byte-button{grid-column:1/-1}
+      
     }
 
     @media (max-width: 430px) {

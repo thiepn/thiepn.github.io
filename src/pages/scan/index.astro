@@ -144,9 +144,7 @@ const qaItems = [
           <span class="scan-chip" data-scan-version-state>v{version} RC</span>
           <span class="scan-chip">Local-first</span>
         </div>
-
-        <p class="scan-kicker">Documents in. Searchable PDFs out.</p>
-        <h1 id="scan-title">Scan it.<br />Keep it local.</h1>
+        <h1 id="scan-title">Scan</h1>
         <p class="scan-hero__lead">
           A full document scanner for Android with OCR, page editing, organization, secure export and backup—built around the idea that your documents should not need an account or cloud pipeline to become useful.
         </p>
@@ -207,7 +205,6 @@ const qaItems = [
             <a href="#screens">View the full walkthrough ↓</a>
           </div>
         </div>
-        <p class="scan-visual-note">Actual Scan v1 UI. No product mockups are used in this showcase.</p>
       </div>
     </section>
 
@@ -227,8 +224,7 @@ const qaItems = [
     <section class="scan-media-section page-shell" id="screens" aria-labelledby="screens-title">
       <div class="scan-section__intro">
         <div>
-          <p class="scan-kicker">Real app media</p>
-          <h2 id="screens-title">This is the app—not a concept render.</h2>
+          <h2 id="screens-title">Scan interface</h2>
         </div>
         <p>These captures come from Scan v1 running on Android API 35 with seeded local sample documents. Open any screen to inspect the full-resolution interface.</p>
       </div>
@@ -248,8 +244,7 @@ const qaItems = [
     <section class="scan-section page-shell" id="overview" aria-labelledby="overview-title">
       <div class="scan-section__intro">
         <div>
-          <p class="scan-kicker">From paper to something useful</p>
-          <h2 id="overview-title">More than a camera pointed at a page.</h2>
+          <h2 id="overview-title">Document capture</h2>
         </div>
         <p>
           Scan treats every capture as a document you can keep improving. OCR, page geometry, organization, edits and export settings remain attached to the document instead of disappearing after a one-time PDF share.
@@ -271,8 +266,7 @@ const qaItems = [
       <div class="page-shell">
         <div class="scan-section__intro scan-section__intro--dark">
           <div>
-            <p class="scan-kicker">The everyday path</p>
-            <h2 id="workflow-title">Capture. Clean. Find. Export.</h2>
+            <h2 id="workflow-title">Workflow</h2>
           </div>
           <p>
             The core flow stays simple while the deeper tools remain available when a document actually needs them.
@@ -300,8 +294,7 @@ const qaItems = [
     <section class="scan-section page-shell" id="features" aria-labelledby="features-title">
       <div class="scan-section__intro">
         <div>
-          <p class="scan-kicker">Full v1 toolkit</p>
-          <h2 id="features-title">Simple surface. Deep document tools underneath.</h2>
+          <h2 id="features-title">Features</h2>
         </div>
         <p>
           The main interface keeps routine scanning close at hand. Editing, publishing, security, structured extraction and specialized workflows stay progressively disclosed instead of filling every screen.
@@ -327,8 +320,7 @@ const qaItems = [
       <div class="page-shell">
         <div class="scan-section__intro">
           <div>
-            <p class="scan-kicker">Part of the THIEPN document toolkit</p>
-            <h2 id="tool-relationship-title">Use the tool that matches where the document is.</h2>
+            <h2 id="tool-relationship-title">Related tools</h2>
           </div>
           <p>
             Scan, PDF Studio and Tiny Tools overlap intentionally at the edges, but they solve different stages of the document workflow.
@@ -372,8 +364,7 @@ const qaItems = [
         </div>
 
         <div class="privacy-copy">
-          <p class="scan-kicker">Local-first by architecture</p>
-          <h2 id="privacy-title">Your scanner does not need to become a document cloud.</h2>
+          <h2 id="privacy-title">Local data and privacy</h2>
           <p>
             Scan stores document files in app-private storage and metadata in its local Room database. The release APK explicitly removes the <code>INTERNET</code> permission and does not include an account, advertising SDK or app-managed cloud document service.
           </p>
@@ -402,8 +393,7 @@ const qaItems = [
       <div class="page-shell">
         <div class="scan-section__intro">
           <div>
-            <p class="scan-kicker">Install channels</p>
-            <h2 id="distribution-title">One app. Clear distribution paths.</h2>
+            <h2 id="distribution-title">Installation options</h2>
           </div>
           <p>
             Google Play is the preferred long-term channel because it handles trusted installation and updates.
@@ -485,8 +475,7 @@ const qaItems = [
     <section class="scan-section page-shell" aria-labelledby="reliability-title">
       <div class="reliability-grid">
         <div class="reliability-copy">
-          <p class="scan-kicker">Release engineering</p>
-          <h2 id="reliability-title">The boring failure cases are part of the product.</h2>
+          <h2 id="reliability-title">Reliability</h2>
           <p>
             Scan v1 is certified around installation, migration, large documents, constrained devices, accessibility, backup integrity and low-storage behavior—not only the happy-path camera flow.
           </p>
@@ -526,7 +515,6 @@ const qaItems = [
     <section class="install-band" id="install" aria-labelledby="install-title">
       <div class="page-shell install-layout">
         <div class="install-copy">
-          <p class="scan-kicker">Download & install</p>
           <div class="install-channel-note">
             <span>{playStorePublished ? 'Recommended: Google Play' : 'Current public channel: direct release'}</span>
             <a href={privacyUrl}>Privacy policy</a>
@@ -598,8 +586,7 @@ const qaItems = [
     <section class="release-history page-shell" aria-labelledby="release-history-title">
       <div class="scan-section__intro">
         <div>
-          <p class="scan-kicker">Release history</p>
-          <h2 id="release-history-title">A visible chain from source to install.</h2>
+          <h2 id="release-history-title">Release history</h2>
         </div>
         <p>
           Public distribution stays tied to signed release artifacts. Google Play receives the verified AAB;
@@ -622,8 +609,7 @@ const qaItems = [
 
     <section class="faq page-shell" id="faq" aria-labelledby="faq-title">
       <div class="faq__intro">
-        <p class="scan-kicker">Useful answers</p>
-        <h2 id="faq-title">Before you install.</h2>
+        <h2 id="faq-title">FAQ</h2>
       </div>
 
       <div class="faq__items">
@@ -662,19 +648,6 @@ const qaItems = [
           <p>This page checks the official GitHub v1.0.0 release. Before publication it stays in release-candidate state; once the signed release contains the expected APK, AAB and checksum assets, the download panel switches to the official files automatically.</p>
         </details>
         <details><summary>Are the screenshots on this page real?</summary><p>Yes. They were captured from Scan v1 running on an Android API 35 emulator with seeded local sample data. They are not redesigned mockups of the interface.</p></details>
-      </div>
-    </section>
-
-    <section class="scan-closing">
-      <div class="page-shell scan-closing__inner">
-        <div class="closing-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48"><path d="M12 5h15l9 9v29H12z"/><path d="M27 5v10h9"/><path d="M17 23h14M17 29h14M17 35h9"/></svg>
-        </div>
-        <div>
-          <p class="scan-kicker">Scan v{version}</p>
-          <h2>Paper should become searchable—not become an account.</h2>
-        </div>
-        <a class="scan-button scan-button--outline" href={sourceUrl}>Explore the source ↗</a>
       </div>
     </section>
   </div>
@@ -834,7 +807,6 @@ const qaItems = [
     }
     .scan-chip--accent { border-color:color-mix(in srgb,var(--scan-accent) 30%,var(--scan-line)); background:var(--scan-accent-soft); color:var(--scan-accent-strong); }
 
-    .scan-kicker { margin:0 0 13px; color:var(--scan-accent); font-size:.82rem; font-weight:700; letter-spacing:.025em; }
     .scan-hero h1 { margin:0; max-width:9ch; font-size:clamp(4.4rem,8.6vw,8.2rem); line-height:.88; font-weight:650; letter-spacing:-.075em; }
     .scan-hero__lead { max-width:61ch; margin:30px 0 0; color:var(--scan-ink-2); font-size:clamp(1.05rem,1.35vw,1.28rem); line-height:1.72; }
 
@@ -911,7 +883,6 @@ const qaItems = [
     .real-proof-card strong { font-size:.78rem; }
     .real-proof-card span { margin-top:5px; color:#647188; font-size:.61rem; line-height:1.45; }
     .real-proof-card a { margin-top:8px; color:#4650bd; font-size:.62rem; font-weight:750; text-decoration:none; }
-    .scan-visual-note { margin:17px auto 0; max-width:62ch; color:var(--scan-muted); font-size:.76rem; text-align:center; }
 
     .scan-subnav { position:sticky; top:76px; z-index:20; border-block:1px solid var(--scan-line); background:color-mix(in srgb,var(--scan-bg) 88%,transparent); backdrop-filter:blur(14px); }
     .scan-subnav__inner { min-height:52px; display:flex; justify-content:center; align-items:center; gap:clamp(17px,4vw,44px); overflow-x:auto; scrollbar-width:none; }
@@ -945,7 +916,6 @@ const qaItems = [
     .workflow-band { padding:clamp(92px,10vw,148px) 0; background:linear-gradient(145deg,#0e1525,#171e34 63%,#162d32); color:#eaf0fa; }
     .scan-section__intro--dark h2 { color:#f6f7fb; }
     .scan-section__intro--dark>p { color:#aeb8c9; }
-    .scan-section__intro--dark .scan-kicker { color:#aeb2ff; }
     .workflow-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin:0; padding:0; list-style:none; border:1px solid rgb(181 192 216 / 18%); border-radius:20px; overflow:hidden; background:rgb(181 192 216 / 16%); }
     .workflow-steps li { position:relative; min-height:310px; padding:25px; background:#131b2c; }
     .workflow-index { color:#8492aa; font:700 .64rem var(--font-meta); letter-spacing:.08em; }
@@ -1018,7 +988,6 @@ const qaItems = [
 
     .install-band { padding:clamp(92px,10vw,145px) 0; background:linear-gradient(145deg,#0d1423,#171d31 62%,#183134); color:#eef2f8; }
     .install-layout { display:grid; grid-template-columns:1fr .82fr; gap:clamp(48px,8vw,110px); align-items:center; }
-    .install-copy .scan-kicker { color:#b9bcff; }
     .install-copy h2 { margin:0; max-width:12ch; color:#f7f8fb; font-size:clamp(2.7rem,5vw,5rem); line-height:.97; }
     .install-copy>p { max-width:61ch; margin:23px 0 0; color:#afb9c9; line-height:1.72; }
     .install-band .scan-button--outline { color:#d9e0eb; border-color:#40506a; background:rgb(255 255 255 / 4%); }
@@ -1078,12 +1047,6 @@ const qaItems = [
     .faq details[open] summary::after{content:'−'}
     .faq details p { max-width:72ch; margin:-2px 0 22px; color:var(--scan-ink-2); font-size:.83rem; line-height:1.72; }
 
-    .scan-closing { border-top:1px solid var(--scan-line); background:var(--scan-surface-soft); }
-    .scan-closing__inner { min-height:230px; display:grid; grid-template-columns:86px 1fr auto; gap:28px; align-items:center; }
-    .closing-mark { width:76px; height:76px; display:grid; place-items:center; border:1px solid var(--scan-line); border-radius:20px; background:var(--scan-surface); color:var(--scan-accent); }
-    .closing-mark svg { width:42px; height:42px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-    .scan-closing h2 { margin:0; max-width:17ch; font-size:clamp(1.9rem,3vw,3rem); line-height:1.05; }
-
     @media (max-width:1080px) {
       .scan-hero { grid-template-columns:1fr; min-height:0; }
       .scan-hero__copy { max-width:790px; }
@@ -1110,7 +1073,6 @@ const qaItems = [
       .real-device--library { width:49%; left:2%; top:8%; }
       .real-device--document { width:48%; right:2%; top:14%; }
       .real-proof-card { width:min(320px,72%); bottom:18px; }
-      .scan-visual-note { text-align:left; }
       .scan-subnav__inner { justify-content:flex-start; }
       .scan-section,.scan-media-section,.workflow-band,.privacy-band,.install-band { padding-top:78px; padding-bottom:78px; }
       .scan-section__intro { grid-template-columns:1fr; gap:20px; margin-bottom:36px; }
@@ -1141,10 +1103,10 @@ const qaItems = [
       .install-channel-note { align-items:flex-start; flex-direction:column; }
       .install-guide { padding:24px; }
       .faq { grid-template-columns:1fr; gap:26px; padding-top:78px; padding-bottom:78px; }
-      .scan-closing__inner { min-height:250px; grid-template-columns:65px 1fr; padding-block:34px; }
+      
       .closing-mark { width:60px; height:60px; border-radius:16px; }
       .closing-mark svg { width:34px; height:34px; }
-      .scan-closing .scan-button { grid-column:1/-1; }
+      
     }
 
     @media (max-width:440px) {

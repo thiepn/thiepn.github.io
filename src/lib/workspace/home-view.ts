@@ -53,8 +53,8 @@ export function renderMobileToday(state: WorkspaceState, today: string): string 
         <span><strong>${summary.completedToday}</strong> completed today</span>
       </div>
       <p class="ws-mobile-next">${escapeHTML(next)}</p>
-      ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>Next Hub task: ${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
-      ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><span>Unfinished capture</span><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
+      ${summary.upcomingTasks[0]?`<div class="ws-mobile-handoff-next"><strong>${escapeHTML(summary.upcomingTasks[0].task.title)}</strong><button type="button" class="ws-button" data-action="context-task" data-id="${escapeHTML(summary.upcomingTasks[0].task.id)}">Next actions</button></div>`:''}
+      ${state.captureDraft.trim()?'<div class="ws-mobile-return-draft"><button type="button" class="ws-button" data-action="capture">Resume draft</button></div>':''}
       <div class="ws-mobile-today-actions">
           <button type="button" data-action="capture" class="ws-button">Capture</button>
           <a href="/home/tasks/?filter=inbox" class="ws-button">Triage Inbox</a>
@@ -89,7 +89,7 @@ export function renderHomeOverview(state: WorkspaceState, apps: readonly AppShor
           <button type="button" class="ws-text-button" data-action="new-event">+ Add event</button>
         </section>
         <section class="ws-home-panel ws-home-continue" aria-labelledby="ws-continue-apps"><header><h3 id="ws-continue-apps">Continue in your apps</h3><a href="/apps/">All apps</a></header>
-          <div class="ws-home-handoffs">${handoffs || `<p class="ws-home-empty">Open Apps to choose a THIEPN application.</p>`}</div>
+          <div class="ws-home-handoffs">${handoffs || `<p class="ws-home-empty">No available app handoffs.</p>`}</div>
         </section>
       </div>
     </section>`;
