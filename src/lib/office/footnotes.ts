@@ -213,6 +213,25 @@ export function updateOfficeFootnoteDefinition(source:string,id:string,expectedC
  return {value,start,end:start+next.length,id};
 }
 
+
+export interface OfficeCitationRecovery extends FootnoteInsertion{
+ previousText:string;historicalText:string;usesPreserved:number;
+}
+/** Preview one retained original footnote, reusing the O21 source definition editor. */
+export function previewOfficeCitationRecovery(historical:string,current:string,id:string):OfficeCitationRecovery{
+ const earlier=uniqueCitation(historical,id).definition;
+ const now=uniqueCitation(current,id).definition;
+ if(!earlier.content.trim()||earlier.content!==earlier.content.trim()||
+    earlier.content.length>1000||/[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(earlier.content))
+  throw new Error('Historical citation definition cannot be recovered exactly as a supported single line.');
+ const oldRefs=analyzeOfficeReferences(current).references.filter(ref=>ref.kind==='footnote'&&ref.id===id);
+ const result=updateOfficeFootnoteDefinition(current,id,now.content,earlier.content,now.offset);
+ const newRefs=analyzeOfficeReferences(result.value).references.filter(ref=>ref.kind==='footnote'&&ref.id===id);
+ if(oldRefs.length!==newRefs.length||oldRefs.some((ref,i)=>ref.line!==newRefs[i]?.line))
+  throw new Error('Original citation uses changed during recovery preview.');
+ return {...result,previousText:now.content,historicalText:earlier.content,usesPreserved:oldRefs.length};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

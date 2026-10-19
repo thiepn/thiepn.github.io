@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -185,4 +185,33 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(compareOfficeCitationRevisions(many,'').limited).toBe(true);
   expect(compareOfficeCitationRevisions('','').changes).toHaveLength(0);
  });
+
+ it('O23 restores one historical definition and preserves genuine uses, Unicode and unrelated CRLF source',()=>{
+  const historical='# Report\r\nClaim[^a] and another[^a]\r\n[^a]: Original 한국어\r\n## More\r\nUnrelated';
+  const current='# Report\r\nClaim[^a] and another[^a]\r\n[^a]: Updated 日本語\r\n## More\r\nUnrelated changed';
+  const preview=previewOfficeCitationRecovery(historical,current,'a');
+  expect(preview).toMatchObject({id:'a',previousText:'Updated 日本語',historicalText:'Original 한국어',usesPreserved:2});
+  expect(preview.value).toBe(current.replace('Updated 日本語','Original 한국어'));
+  expect(preview.start).toBe(preview.value.indexOf('Original 한국어'));
+  expect(analyzeOfficeReferences(preview.value).problems).toHaveLength(0);
+  expect(()=>previewOfficeCitationRecovery(historical,preview.value,'a')).toThrow('unchanged');
+ });
+ it('O23 fails closed for absent, duplicate, code-fenced, unsupported and stale originals',()=>{
+  const real='# Original\nClaim[^a]\n[^a]: Safe',edited='# Updated\nClaim[^a]\n[^a]: New';
+  expect(()=>previewOfficeCitationRecovery('',edited,'a')).toThrow('unique original');
+  expect(()=>previewOfficeCitationRecovery(real,'Claim[^a]','a')).toThrow('unique original');
+  expect(()=>previewOfficeCitationRecovery(real+'\n[^a]: Duplicate',edited,'a')).toThrow('unique original');
+  expect(()=>previewOfficeCitationRecovery(real,edited+'\n[^a]: Duplicate','a')).toThrow('unique original');
+  expect(()=>previewOfficeCitationRecovery(real.replace('Safe',' Bad '),edited,'a')).toThrow('cannot be recovered exactly');
+  expect(()=>previewOfficeCitationRecovery(real.replace('Safe',''),edited,'a')).toThrow('cannot be recovered exactly');
+  const tick=String.fromCharCode(96).repeat(3);
+  expect(()=>previewOfficeCitationRecovery(tick+'\n[^a]: Hidden\n'+tick,edited,'a')).toThrow('unique original');
+ });
+ it('O23 conservatively enforces historical single-line and current source bounds',()=>{
+  const original='# Doc\nClaim[^a]\n[^a]: Old',now=original.replace('Old','New');
+  expect(()=>previewOfficeCitationRecovery(original,original,'a')).toThrow('unchanged');
+  expect(()=>previewOfficeCitationRecovery(original,now+'x'.repeat(200001),'a')).toThrow('limited');
+  expect(()=>previewOfficeCitationRecovery(original.replace('Old','z'.repeat(1001)),now,'a')).toThrow('supported single line');
+ });
+
 });
