@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,41 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const duplicateReview=pick<HTMLButtonElement>('[data-office-duplicate-review]');
+  const duplicatePanel=pick<HTMLElement>('[data-office-duplicate-panel]');
+  const duplicateGroup=pick<HTMLSelectElement>('[data-office-duplicate-group]');
+  const duplicateCandidates=pick<HTMLElement>('[data-office-duplicate-candidates]');
+  const duplicateStatus=pick<HTMLElement>('[data-office-duplicate-status]');
+  const duplicatePreview=pick<HTMLButtonElement>('[data-office-duplicate-preview]');
+  const duplicateResultPanel=pick<HTMLElement>('[data-office-duplicate-result-panel]');
+  const duplicateResultSummary=pick<HTMLElement>('[data-office-duplicate-result-summary]');
+  const duplicateResult=pick<HTMLTextAreaElement>('[data-office-duplicate-result]');
+  const duplicateRemoved=pick<HTMLElement>('[data-office-duplicate-removed]');
+  const duplicateConfirm=pick<HTMLButtonElement>('[data-office-duplicate-confirm]');
+  const duplicateCancel=pick<HTMLButtonElement>('[data-office-duplicate-cancel]');
+  type DuplicateReviewState={
+    scope:string;documentId:string;revision:number;source:string;
+    groups:OfficeDuplicateGroup[];selectedId:string;keepOffset:number|null;
+  };
+  type DuplicateResolutionPlan={review:DuplicateReviewState;result:OfficeDuplicateRepair};
+  let duplicateReviewState:DuplicateReviewState|null=null,duplicatePlan:DuplicateResolutionPlan|null=null;
+  function clearDuplicatePreview(){
+    duplicatePlan=null;duplicateResultPanel.hidden=true;
+    duplicateResultSummary.textContent='';duplicateResult.value='';duplicateRemoved.replaceChildren();
+    duplicateConfirm.disabled=true;
+  }
+  function clearDuplicateTriage(){
+    duplicateReviewState=null;clearDuplicatePreview();
+    duplicatePanel.hidden=true;duplicateGroup.replaceChildren(new Option('Choose duplicate ID',''));
+    duplicateCandidates.replaceChildren();duplicateStatus.textContent='';
+  }
+  function duplicateReviewValid(state:DuplicateReviewState|null){
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value;
+  }
+
 
   const issueHistoryReview=pick<HTMLButtonElement>('[data-office-issue-history-review]');
   const issueHistoryFilter=pick<HTMLSelectElement>('[data-office-issue-history-filter]');
@@ -456,6 +491,14 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    duplicateReview.disabled=!editing||dirty||
+      !analyzeOfficeReferences(body.value).problems.some(row=>row.kind==='duplicate-footnote');
+    duplicateGroup.disabled=!editing||!duplicateReviewValid(duplicateReviewState);
+    duplicatePreview.disabled=!editing||!duplicateReviewValid(duplicateReviewState)||
+      duplicateReviewState?.keepOffset===null;
+    duplicateConfirm.disabled=!editing||!duplicatePlan||
+      duplicatePlan.review!==duplicateReviewState||
+      !duplicateReviewValid(duplicatePlan.review);
     issueHistoryReview.disabled=!editing||dirty;issueHistoryFilter.disabled=!editing||!issueHistoryValid(issueHistoryState);
     citationMergeBase.disabled=citationMergeIncoming.disabled=!editing||dirty||!active||active.history.length<2;
     citationMergeReviewButton.disabled=!editing||dirty||
@@ -773,7 +816,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -852,7 +895,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -925,7 +968,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1235,7 +1278,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1464,6 +1507,114 @@ if(root && shell){
     }
     enable();
   }
+
+  function renderDuplicateCandidates(){
+    duplicateCandidates.replaceChildren();clearDuplicatePreview();
+    const state=duplicateReviewState;
+    if(!duplicateReviewValid(state)||!state){clearDuplicateTriage();enable();return;}
+    const group=state.groups.find(row=>row.id===duplicateGroup.value);
+    if(!group){state.selectedId='';state.keepOffset=null;duplicateStatus.textContent='Choose a duplicate ID.';enable();return;}
+    if(state.selectedId!==group.id){state.selectedId=group.id;state.keepOffset=null;}
+    duplicateStatus.textContent='[^'+group.id+'] · '+group.definitions.length+
+      ' original definitions · '+group.uses+' citation uses.';
+    for(const candidate of group.definitions){
+      const row=document.createElement('div');row.className='office-duplicate-choice';
+      const label=document.createElement('label');
+      const radio=document.createElement('input');radio.type='radio';
+      radio.name='office-duplicate-preserved-definition';
+      radio.value=String(candidate.offset);
+      radio.dataset.officeDuplicateOption=String(candidate.offset);
+      radio.setAttribute('aria-label','Keep definition on line '+candidate.line);
+      radio.checked=state.keepOffset===candidate.offset;
+      radio.addEventListener('change',()=>{
+        if(!duplicateReviewValid(state)||state!==duplicateReviewState){
+          clearDuplicateTriage();enable();return;
+        }
+        state.keepOffset=candidate.offset;clearDuplicatePreview();enable();
+      });
+      const description=document.createElement('span');
+      description.textContent='Line '+candidate.line+' · offset '+candidate.offset+
+        ' · '+candidate.rawLine.slice(0,240)+(candidate.rawLine.length>240?'…':'');
+      label.append(radio,description);
+      const jump=document.createElement('button');jump.type='button';
+      jump.dataset.officeDuplicateJump=String(candidate.offset);
+      jump.textContent='View original';
+      jump.addEventListener('click',()=>{
+        if(!duplicateReviewValid(state)||state!==duplicateReviewState){
+          clearDuplicateTriage();enable();return;
+        }
+        focusEditor(candidate.offset,candidate.offset+candidate.rawLine.length);
+      });
+      row.append(label,jump);duplicateCandidates.append(row);
+    }
+    enable();
+  }
+  duplicateReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty||body.disabled)return;
+    clearDuplicateTriage();
+    const found=inspectOfficeDuplicateFootnotes(body.value);
+    if(found.limited){message('Duplicate inspection exceeds the original source limits.');return;}
+    if(!found.groups.length){message('No genuine duplicate definition groups in current source.');return;}
+    duplicateReviewState={scope:store.scope,documentId:active.id,
+      revision:active.revision,source:body.value,groups:found.groups,
+      selectedId:'',keepOffset:null};
+    for(const group of found.groups)
+      duplicateGroup.add(new Option('[^'+group.id+'] · '+group.definitions.length+' definitions',group.id));
+    duplicateGroup.value=found.groups[0]!.id;
+    duplicatePanel.hidden=false;renderDuplicateCandidates();
+  });
+  duplicateGroup.addEventListener('change',renderDuplicateCandidates);
+  duplicateCancel.addEventListener('click',()=>{clearDuplicatePreview();enable();});
+  duplicatePreview.addEventListener('click',()=>{
+    const state=duplicateReviewState;
+    if(!state||!duplicateReviewValid(state)||state.keepOffset===null||duplicatePreview.disabled)return;
+    try{
+      const result=previewOfficeDuplicateResolution(body.value,state.selectedId,state.keepOffset);
+      duplicatePlan={review:state,result};
+      duplicateResultSummary.textContent='Keep [^'+result.id+'] on original line '+result.kept.line+
+        ' · remove '+result.removed.length+' competing definition'+
+        (result.removed.length===1?'':'s')+' · preserve '+result.usesPreserved+
+        ' citation use'+(result.usesPreserved===1?'':'s')+'. No source changed yet.';
+      duplicateResult.value=result.value;duplicateRemoved.replaceChildren();
+      for(const removed of result.removed){
+        const detail=document.createElement('p');
+        detail.textContent='Remove line '+removed.line+' · offset '+removed.offset+' · '+removed.rawLine;
+        duplicateRemoved.append(detail);
+      }
+      duplicateResultPanel.hidden=false;enable();
+      duplicateResultPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearDuplicatePreview();enable();
+      message(error instanceof Error?error.message:'Duplicate resolution preview refused.');
+    }
+  });
+  duplicateConfirm.addEventListener('click',()=>{
+    const plan=duplicatePlan,state=plan?.review;
+    if(!plan||!state||!duplicateReviewValid(state)||state!==duplicateReviewState||
+      duplicateConfirm.disabled||state.selectedId!==plan.result.id||
+      state.keepOffset!==plan.result.kept.offset){
+      clearDuplicatePreview();enable();return;
+    }
+    try{
+      const verified=previewOfficeDuplicateResolution(body.value,state.selectedId,state.keepOffset);
+      if(verified.value!==plan.result.value||verified.removed.length!==plan.result.removed.length||
+        verified.removed.some((row,i)=>row.offset!==plan.result.removed[i]?.offset||
+          row.rawLine!==plan.result.removed[i]?.rawLine)){
+        clearDuplicatePreview();enable();
+        message('Original duplicate source changed. Review and preview again.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      focusEditor(verified.start,verified.end);
+      message('Kept original [^'+verified.id+'] definition from line '+verified.kept.line+
+        ' and removed '+verified.removed.length+' competing definition(s). Autosave pending.');
+      enable();
+    }catch(error){
+      clearDuplicatePreview();enable();
+      message(error instanceof Error?error.message:'Duplicate resolution refused.');
+    }
+  });
+
   issueHistoryReview.addEventListener('click',()=>{
     if(!active||!store||!allowed()||busy||blocked||dirty||body.disabled)return;
     clearIssueHistory();

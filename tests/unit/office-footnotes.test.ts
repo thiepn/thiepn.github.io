@@ -396,7 +396,7 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(()=>previewOfficeDuplicateResolution(source,'x',rows[1]!.offset+1)).toThrow('stale');
   expect(()=>previewOfficeDuplicateResolution(source,'other',rows[0]!.offset)).toThrow('multiple genuine');
   expect(()=>previewOfficeDuplicateResolution(source,'Bad ID',0)).toThrow('Invalid original');
-  expect(()=>previewOfficeDuplicateResolution(source.replace('First','Edited first'),'x',rows[0]!.offset))
+  expect(()=>previewOfficeDuplicateResolution('Prefix\n'+source,'x',rows[1]!.offset))
    .toThrow('stale');
   const many='Claim[^x]\n'+Array.from({length:21},(_,i)=>'[^x]: '+i).join('\n');
   expect(inspectOfficeDuplicateFootnotes(many).limited).toBe(true);

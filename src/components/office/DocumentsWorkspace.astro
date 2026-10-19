@@ -163,6 +163,29 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
 
+          <section class="office-duplicate-triage" aria-label="Resolve duplicate footnote definitions">
+            <button type="button" data-office-duplicate-review disabled>Review duplicate definitions</button>
+            <div data-office-duplicate-panel hidden>
+              <label for="office-duplicate-group">Duplicate citation ID</label>
+              <select id="office-duplicate-group" data-office-duplicate-group disabled>
+                <option value="">Choose duplicate ID</option>
+              </select>
+              <p data-office-duplicate-status role="status"></p>
+              <div data-office-duplicate-candidates class="office-duplicate-candidates"></div>
+              <button type="button" data-office-duplicate-preview disabled>Preview exact resolution</button>
+              <section data-office-duplicate-result-panel hidden class="office-citation-restore-panel" aria-label="Review original definition removal">
+                <p data-office-duplicate-result-summary role="status"></p>
+                <div data-office-duplicate-removed class="office-duplicate-removed"></div>
+                <label for="office-duplicate-result">Resulting original Markdown</label>
+                <textarea id="office-duplicate-result" data-office-duplicate-result readonly rows="10" spellcheck="false"></textarea>
+                <div class="office-citation-actions">
+                  <button type="button" data-office-duplicate-confirm disabled>Keep selected definition</button>
+                  <button type="button" data-office-duplicate-cancel>Cancel preview</button>
+                </div>
+              </section>
+            </div>
+          </section>
+
         <section class="office-issue-history" aria-label="Reference issue history">
           <div class="office-citation-actions">
             <button type="button" data-office-issue-history-review disabled>Review issue history</button>
