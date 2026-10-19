@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,38 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const sectionTrailReview=pick<HTMLButtonElement>('[data-office-section-trail-review]');
+  const sectionTrailSummary=pick<HTMLElement>('[data-office-section-trail-summary]');
+  const sectionTrailSection=pick<HTMLSelectElement>('[data-office-section-trail-section]');
+  const sectionTrailCitation=pick<HTMLSelectElement>('[data-office-section-trail-citation]');
+  const sectionTrailDetails=pick<HTMLElement>('[data-office-section-trail-details]');
+  const sectionTrailUses=pick<HTMLElement>('[data-office-section-trail-uses]');
+  const sectionTrailRelated=pick<HTMLElement>('[data-office-section-trail-related]');
+  const sectionTrailPrevious=pick<HTMLButtonElement>('[data-office-section-trail-previous]');
+  const sectionTrailNext=pick<HTMLButtonElement>('[data-office-section-trail-next]');
+  const sectionTrailPage=pick<HTMLElement>('[data-office-section-trail-page]');
+  const sectionTrailDefinition=pick<HTMLButtonElement>('[data-office-section-trail-definition]');
+  type CitationTrailState={
+    scope:string;documentId:string;revision:number;source:string;
+    map:OfficeCitationSectionMap;offsetPage:number;
+  };
+  let citationTrail:CitationTrailState|null=null;
+  const CITATION_TRAIL_PAGE=20;
+  function clearCitationTrail(){
+    citationTrail=null;sectionTrailSummary.textContent='No section citation review.';
+    sectionTrailSection.replaceChildren(new Option('Choose section',''));
+    sectionTrailCitation.replaceChildren(new Option('All citations',''));
+    sectionTrailDetails.replaceChildren();sectionTrailUses.replaceChildren();sectionTrailRelated.replaceChildren();
+    sectionTrailPage.textContent='';sectionTrailSection.disabled=sectionTrailCitation.disabled=true;
+    sectionTrailNext.disabled=sectionTrailPrevious.disabled=sectionTrailDefinition.disabled=true;
+  }
+  function citationTrailValid(state:CitationTrailState|null){
+    return !!state&&!!store&&!!active&&allowed()&&!blocked&&!busy&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value;
+  }
+
 
   const impactBase=pick<HTMLSelectElement>('[data-office-impact-base]');
   const impactReview=pick<HTMLButtonElement>('[data-office-impact-review]');
@@ -522,6 +554,8 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    sectionTrailReview.disabled=!editing||dirty;
+    sectionTrailSection.disabled=sectionTrailCitation.disabled=!editing||!citationTrailValid(citationTrail);
     impactBase.disabled=impactReview.disabled=!editing||dirty;
     impactCitation.disabled=impactDownload.disabled=!editing||!citationImpactValid(citationImpactState);
     const selectedImpact=citationImpactState?.report.entries.find(row=>row.id===impactCitation.value);
@@ -853,7 +887,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -932,7 +966,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1006,7 +1040,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1316,7 +1350,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1546,6 +1580,126 @@ if(root && shell){
     enable();
   }
 
+
+
+  function renderCitationTrail(){
+    sectionTrailDetails.replaceChildren();sectionTrailUses.replaceChildren();
+    sectionTrailRelated.replaceChildren();
+    const state=citationTrail;
+    if(!citationTrailValid(state)||!state){clearCitationTrail();enable();return;}
+    const section=state.map.sections.find(row=>row.key===sectionTrailSection.value);
+    if(!section){enable();return;}
+    const id=sectionTrailCitation.value,identity=state.map.citations.find(row=>row.id===id);
+    const uses=section.uses.filter(row=>!id||row.id===id);
+    const cross=identity?.sectionKeys??[];
+    const detail=document.createElement('p');
+    detail.textContent=section.path+' · '+section.uses.length+' source uses · '+
+      section.citationIds.length+' distinct citations'+
+      (id?' · '+uses.length+' uses of [^'+id+'] in this section':'');
+    sectionTrailDetails.append(detail);
+    if(identity){
+      const status=document.createElement('p');
+      status.textContent='[^'+id+'] · '+identity.uses+' uses across '+cross.length+
+        ' sections · '+identity.definitionCount+' original definitions'+
+        (identity.definitionLine!==null?' · definition line '+identity.definitionLine:'');
+      sectionTrailDetails.append(status);
+    }
+    const total=uses.length;
+    const last=Math.max(0,Math.ceil(total/CITATION_TRAIL_PAGE)-1);
+    state.offsetPage=Math.min(state.offsetPage,last);
+    sectionTrailPage.textContent=total?(state.offsetPage*CITATION_TRAIL_PAGE+1)+'–'+
+      Math.min(total,(state.offsetPage+1)*CITATION_TRAIL_PAGE)+' of '+total+' uses':
+      'No matching source uses in this section.';
+    sectionTrailPrevious.disabled=state.offsetPage===0;
+    sectionTrailNext.disabled=state.offsetPage>=last;
+    for(const entry of uses.slice(state.offsetPage*CITATION_TRAIL_PAGE,(state.offsetPage+1)*CITATION_TRAIL_PAGE)){
+      const link=document.createElement('button');link.type='button';
+      link.dataset.officeSectionTrailJump=String(entry.offset);
+      link.textContent='Line '+entry.line+' · [^'+entry.id+'] · '+entry.excerpt;
+      link.addEventListener('click',()=>{
+        if(!citationTrailValid(state)||citationTrail!==state){clearCitationTrail();enable();return;}
+        const source=analyzeOfficeReferences(body.value).references.find(ref=>
+          ref.kind==='footnote'&&ref.id===entry.id&&ref.offset===entry.offset);
+        if(!source){clearCitationTrail();enable();return;}
+        focusEditor(source.offset,source.offset+('[^'+source.id+']').length);
+        message('Focused original [^'+source.id+'] in '+section.path+', line '+source.line+'.');
+      });
+      sectionTrailUses.append(link);
+    }
+    if(identity&&cross.length>1){
+      const title=document.createElement('strong');title.textContent='Also used in';
+      sectionTrailRelated.append(title);
+      for(const otherKey of cross.filter(key=>key!==section.key)){
+        const target=state.map.sections.find(row=>row.key===otherKey);
+        const first=target?.uses.find(row=>row.id===id);
+        if(!target||!first)continue;
+        const jump=document.createElement('button');jump.type='button';
+        jump.dataset.officeSectionTrailRelated=otherKey;
+        jump.textContent=target.path+' · line '+first.line;
+        jump.addEventListener('click',()=>{
+          if(!citationTrailValid(state)||citationTrail!==state){clearCitationTrail();enable();return;}
+          sectionTrailSection.value=target.key;state.offsetPage=0;renderCitationTrail();
+          const actual=analyzeOfficeReferences(body.value).references.find(ref=>
+            ref.kind==='footnote'&&ref.id===id&&ref.offset===first.offset);
+          if(actual)focusEditor(actual.offset,actual.offset+('[^'+id+']').length);
+        });
+        sectionTrailRelated.append(jump);
+      }
+    }
+    sectionTrailDefinition.disabled=!identity||identity.definitionCount!==1||
+      !citationTrailValid(state);
+    enable();
+  }
+  sectionTrailReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty||body.disabled)return;
+    clearCitationTrail();
+    try{
+      const map=mapOfficeCitationSections(body.value);
+      citationTrail={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,map,offsetPage:0};
+      const usedSections=map.sections.filter(row=>row.uses.length).length;
+      const shared=map.citations.filter(row=>row.sectionKeys.length>1).length;
+      sectionTrailSummary.textContent=map.sections.length+' original sections · '+
+        usedSections+' with citations · '+map.totalUses+' genuine uses · '+shared+
+        ' citations shared across sections.';
+      for(const section of map.sections)
+        sectionTrailSection.add(new Option(section.path+' · '+section.uses.length+' uses',section.key));
+      for(const id of map.citations)
+        sectionTrailCitation.add(new Option('[^'+id.id+'] · '+id.uses+' uses',id.id));
+      const first=map.sections.find(section=>section.uses.length)??map.sections[0];
+      sectionTrailSection.value=first?.key??'preamble';
+      renderCitationTrail();
+    }catch(error){
+      clearCitationTrail();enable();
+      message(error instanceof Error?error.message:'Citation section map unavailable.');
+    }
+  });
+  sectionTrailSection.addEventListener('change',()=>{
+    if(!citationTrailValid(citationTrail)){clearCitationTrail();enable();return;}
+    citationTrail!.offsetPage=0;renderCitationTrail();
+  });
+  sectionTrailCitation.addEventListener('change',()=>{
+    if(!citationTrailValid(citationTrail)){clearCitationTrail();enable();return;}
+    citationTrail!.offsetPage=0;renderCitationTrail();
+  });
+  sectionTrailPrevious.addEventListener('click',()=>{
+    if(!citationTrailValid(citationTrail)||!citationTrail||citationTrail.offsetPage===0)return;
+    citationTrail.offsetPage--;renderCitationTrail();
+  });
+  sectionTrailNext.addEventListener('click',()=>{
+    if(!citationTrailValid(citationTrail)||!citationTrail||sectionTrailNext.disabled)return;
+    citationTrail.offsetPage++;renderCitationTrail();
+  });
+  sectionTrailDefinition.addEventListener('click',()=>{
+    const state=citationTrail,identity=state?.map.citations.find(row=>row.id===sectionTrailCitation.value);
+    if(!citationTrailValid(state)||!state||!identity||identity.definitionCount!==1||
+       identity.definitionOffset===null||sectionTrailDefinition.disabled)return;
+    const current=analyzeOfficeReferences(body.value).definitions.find(row=>
+      row.id===identity.id&&row.count===1&&row.offset===identity.definitionOffset);
+    if(!current){clearCitationTrail();enable();return;}
+    focusEditor(current.offset,current.offset+('[^'+current.id+']').length);
+    message('Focused original [^'+current.id+'] definition, line '+current.line+'.');
+  });
 
   function renderCitationImpactDetail(){
     impactDetail.replaceChildren();

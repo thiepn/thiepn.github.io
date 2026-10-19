@@ -163,6 +163,31 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
 
+          <section class="office-section-trail" aria-label="Citations organized by document section">
+            <h4>Citations by section</h4>
+            <button type="button" data-office-section-trail-review disabled>Map source citations</button>
+            <p data-office-section-trail-summary role="status">No section citation review.</p>
+            <div class="office-citation-actions">
+              <label for="office-section-trail-section">Section</label>
+              <select id="office-section-trail-section" data-office-section-trail-section disabled>
+                <option value="">Choose section</option>
+              </select>
+              <label for="office-section-trail-citation">Citation</label>
+              <select id="office-section-trail-citation" data-office-section-trail-citation disabled>
+                <option value="">All citations</option>
+              </select>
+              <button type="button" data-office-section-trail-definition disabled>Go to definition</button>
+            </div>
+            <div data-office-section-trail-details class="office-section-trail-details"></div>
+            <div data-office-section-trail-uses class="office-section-trail-uses"></div>
+            <div class="office-citation-actions">
+              <button type="button" data-office-section-trail-previous disabled>Previous 20</button>
+              <p data-office-section-trail-page></p>
+              <button type="button" data-office-section-trail-next disabled>Next 20</button>
+            </div>
+            <div data-office-section-trail-related class="office-section-trail-related"></div>
+          </section>
+
           <section class="office-citation-impact" aria-label="Citation use impact and source audit">
             <h4>Citation use impact</h4>
             <div class="office-citation-actions">
