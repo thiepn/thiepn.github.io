@@ -163,6 +163,23 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
         </div>
+        <section class="office-citation-workbench" aria-label="Existing source citations">
+          <h4>Reuse and navigate citations</h4>
+          <p class="ws-muted">Select a genuine footnote, jump between source uses, cite it again, or rename its ID throughout original Markdown. Inline and fenced code remains unchanged.</p>
+          <div class="office-citation-actions">
+            <label for="office-citation-select">Existing footnote</label>
+            <select id="office-citation-select" data-office-citation-select disabled><option value="">Choose existing footnote</option></select>
+            <button type="button" data-office-citation-definition disabled>Go to definition</button>
+            <button type="button" data-office-citation-usage disabled>Next use</button>
+            <button type="button" data-office-citation-insert disabled>Cite at cursor</button>
+          </div>
+          <p class="ws-muted" data-office-citation-summary role="status" aria-live="polite">No citation selected.</p>
+          <div class="office-citation-actions">
+            <label for="office-citation-new-id">Rename selected ID</label>
+            <input id="office-citation-new-id" data-office-citation-new-id maxlength="48" autocomplete="off" placeholder="e.g. research-source" disabled/>
+            <button type="button" data-office-citation-rename disabled>Rename across source</button>
+          </div>
+        </section>
       </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>

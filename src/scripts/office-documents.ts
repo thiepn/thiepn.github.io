@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,14 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+  const citationSelect=pick<HTMLSelectElement>('[data-office-citation-select]');
+  const citationSummary=pick<HTMLElement>('[data-office-citation-summary]');
+  const citationDefinition=pick<HTMLButtonElement>('[data-office-citation-definition]');
+  const citationUsage=pick<HTMLButtonElement>('[data-office-citation-usage]');
+  const citationInsert=pick<HTMLButtonElement>('[data-office-citation-insert]');
+  const citationNewId=pick<HTMLInputElement>('[data-office-citation-new-id]');
+  const citationRename=pick<HTMLButtonElement>('[data-office-citation-rename]');
+  let citationOwnerKey:string|null=null,citationUsageCursor=0;
   const history=pick<HTMLSelectElement>('[data-office-history]');
   const timelineList=pick<HTMLElement>('[data-office-timeline-list]');
   const timelineSearch=pick<HTMLInputElement>('[data-office-history-search]');
@@ -232,7 +240,36 @@ if(root && shell){
       }
     }
   }
-  function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();renderReferenceProblems();}
+  function renderCitationWorkbench(){
+    const key=active&&store&&allowed()?store.scope+'/'+active.id:null;
+    if(key!==citationOwnerKey){
+      citationOwnerKey=key;citationUsageCursor=0;citationNewId.value='';
+      citationSelect.replaceChildren(new Option('Choose existing footnote',''));
+    }
+    const chosen=citationSelect.value;
+    citationSelect.replaceChildren(new Option('Choose existing footnote',''));
+    citationSummary.textContent='No citation selected.';
+    if(!key)return;
+    const inventory=officeCitationInventory(body.value);
+    if(inventory.limited){
+      citationSummary.textContent='Citation inventory limited. Shorten source or reduce references.';
+      return;
+    }
+    for(const entry of inventory.entries)
+      citationSelect.add(new Option('[^'+entry.id+'] · '+entry.uses.length+' uses',entry.id));
+    if(chosen&&inventory.entries.some(row=>row.id===chosen))citationSelect.value=chosen;
+    const selected=inventory.entries.find(row=>row.id===citationSelect.value);
+    if(!selected){
+      citationSummary.textContent=inventory.entries.length+' defined footnote'+
+        (inventory.entries.length===1?'':'s')+' in the current source.';
+      return;
+    }
+    citationSummary.textContent='[^'+selected.id+'] · '+selected.uses.length+' use'+
+      (selected.uses.length===1?'':'s')+' · definition line '+selected.definitionLine+
+      (selected.definitionCount>1?' · duplicate definitions; resolve before reusing or renaming':'')+
+      ' · '+selected.excerpt;
+  }
+  function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();renderReferenceProblems();renderCitationWorkbench();}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
@@ -291,6 +328,13 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    const citation=editing?officeCitationInventory(body.value).entries.find(row=>row.id===citationSelect.value):undefined;
+    citationSelect.disabled=!editing;
+    citationDefinition.disabled=!citation;
+    citationUsage.disabled=!citation?.uses.length;
+    citationInsert.disabled=!citation||citation.definitionCount!==1;
+    citationNewId.disabled=!citation||citation.definitionCount!==1;
+    citationRename.disabled=!citation||citation.definitionCount!==1||!citationNewId.value.trim();
     const hasRealHeadings=editing&&officeHeadingReferences(body.value).length>0;
     tocReviewButton.disabled=!hasRealHeadings||dirty;
     referenceTarget.disabled=!hasRealHeadings;
@@ -1142,6 +1186,44 @@ if(root && shell){
   }
   sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
   sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
+  citationSelect.addEventListener('change',()=>{citationUsageCursor=0;citationNewId.value='';renderCitationWorkbench();enable();});
+  citationNewId.addEventListener('input',enable);
+  function currentCitation(){
+    if(!active||!allowed()||body.disabled||blocked||busy||!citationSelect.value)return null;
+    return officeCitationInventory(body.value).entries.find(row=>row.id===citationSelect.value)??null;
+  }
+  citationDefinition.addEventListener('click',()=>{
+    const current=currentCitation();if(!current)return;
+    focusEditor(current.definitionOffset,current.definitionOffset);
+    message('Opened original citation definition [^'+current.id+'] on line '+current.definitionLine+'.');
+  });
+  citationUsage.addEventListener('click',()=>{
+    const current=currentCitation();if(!current?.uses.length)return;
+    const index=citationUsageCursor%current.uses.length,ref=current.uses[index]!;
+    citationUsageCursor=(index+1)%current.uses.length;
+    focusEditor(ref.offset,ref.offset+('[^'+current.id+']').length);
+    message('Citation [^'+current.id+'] · use '+(index+1)+' of '+current.uses.length+'.');
+  });
+  citationInsert.addEventListener('click',()=>{
+    const current=currentCitation();if(!current)return;
+    try{
+      const result=insertExistingOfficeCitation(body.value,body.selectionStart,body.selectionEnd,current.id);
+      body.value=result.value;body.dispatchEvent(new Event('input',{bubbles:true}));
+      focusEditor(result.start,result.end);
+      message('Reused original citation [^'+result.id+']; autosave pending.');
+    }catch(error){message(error instanceof Error?error.message:'Citation reuse refused.');}
+  });
+  citationRename.addEventListener('click',()=>{
+    const current=currentCitation();if(!current)return;
+    try{
+      const result=renameOfficeCitation(body.value,current.id,citationNewId.value);
+      body.value=result.value;body.dispatchEvent(new Event('input',{bubbles:true}));
+      citationSelect.value=result.id;citationNewId.value='';citationUsageCursor=0;
+      renderCitationWorkbench();enable();focusEditor(result.start,result.end);
+      message('Renamed original citation to [^'+result.id+'] across '+result.referenceCount+
+        ' use(s) and one definition. Autosave pending; earlier revisions retained.');
+    }catch(error){message(error instanceof Error?error.message:'Citation rename refused.');}
+  });
   footnoteText.addEventListener('input',enable);
   footnoteInsert.addEventListener('click',()=>{
     if(!active||body.disabled||!allowed()||busy||blocked)return;
