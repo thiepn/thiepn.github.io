@@ -179,6 +179,13 @@ import '../../styles/office-documents.css';
             <input id="office-citation-new-id" data-office-citation-new-id maxlength="48" autocomplete="off" placeholder="e.g. research-source" disabled/>
             <button type="button" data-office-citation-rename disabled>Rename across source</button>
           </div>
+          <div class="office-citation-actions">
+            <label for="office-citation-edit">Definition text</label>
+            <input id="office-citation-edit" data-office-citation-edit maxlength="1000" disabled autocomplete="off"/>
+            <button type="button" data-office-citation-edit-apply disabled>Update definition</button>
+            <button type="button" data-office-citation-edit-cancel disabled>Discard edit</button>
+          </div>
+          <p data-office-citation-edit-status role="status" aria-live="polite"></p>
         </section>
       </section>
       <section class="office-find" aria-label="Find and replace in document">

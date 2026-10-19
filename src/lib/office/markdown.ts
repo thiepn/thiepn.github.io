@@ -110,6 +110,12 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
       if(footnoteIds.has(id))element.id='office-footnote-'+id;
       const name=doc.createElement('strong');name.textContent='['+id+'] ';
       element.append(name);inline(doc,element,definition[2]!,footnoteIds);
+      if(footnoteIds.has(id)&&footnoteReport.references.some(row=>row.kind==='footnote'&&row.id===id)){
+        const back=doc.createElement('button');back.type='button';
+        back.setAttribute('data-office-footnote-backref',id);
+        back.setAttribute('aria-label','Go to first use of footnote '+id+' in source');
+        back.textContent='Back to citation';element.append(doc.createTextNode(' '),back);
+      }
       fragment.append(element);i++;continue;
     }
     if(/^---+$/.test(line.trim())){fragment.append(doc.createElement('hr'));i++;continue;}

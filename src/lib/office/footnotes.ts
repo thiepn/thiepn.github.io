@@ -123,6 +123,31 @@ export function renameOfficeCitation(source:string,oldId:string,newId:string):Of
  return {value,start,end:start+newMarker.length,id:newId,referenceCount:usageOffsets.length};
 }
 
+
+/** Modify only the contents of one unique original definition; keep ID, prefix, uses, line ending and history writer unchanged. */
+export function updateOfficeFootnoteDefinition(source:string,id:string,expectedContent:string,newContent:string,expectedOffset:number):FootnoteInsertion{
+ if(!Number.isSafeInteger(expectedOffset)||expectedOffset<0||source.length>MAX_BODY)
+  throw new Error('Original citation source position is invalid or exceeds the size limit.');
+ const {definition:current}=uniqueCitation(source,id);
+ if(current.offset!==expectedOffset||current.content!==expectedContent)
+  throw new Error('Original citation definition changed. Review current source before applying.');
+ if(typeof newContent!=='string'||!newContent.trim()||newContent.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(newContent))
+  throw new Error('Footnote text must be 1–1000 characters on one line.');
+ const at=current.offset,after=source.indexOf('\n',at);
+ const lineEnd=after<0?source.length:after>at&&source[after-1]==='\r'?after-1:after;
+ const line=source.slice(at,lineEnd);
+ const match=line.match(/^ {0,3}\[\^([a-z][a-z0-9_-]{0,47})\]:[ \t]*/);
+ if(!match||match[1]!==id||line.slice(match[0].length)!==expectedContent)
+  throw new Error('Original citation marker or contents changed. Source unchanged.');
+ const start=at+match[0].length,end=lineEnd;
+ const next=newContent.trim();
+ if(next===expectedContent)throw new Error('Citation text is unchanged.');
+ const value=source.slice(0,start)+next+source.slice(end);
+ if(value.length>MAX_BODY)throw new Error('Citation update exceeds the Office source limit.');
+ return {value,start,end:start+next.length,id};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

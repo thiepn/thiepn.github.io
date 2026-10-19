@@ -246,3 +246,7 @@
 .office-citation-actions label{font-size:12px;font-weight:600}
 .office-citation-actions select,.office-citation-actions input{min-height:36px;padding:7px;min-width:min(170px,100%);border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
 .office-citation-actions button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-actions input[data-office-citation-edit]{flex:1;min-width:min(220px,100%)}
+.office-preview [data-office-footnote-backref]{min-height:32px;margin-inline-start:8px;padding:3px 8px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font:inherit;cursor:pointer}
+.office-preview [data-office-footnote-backref]:focus-visible{outline:2px solid currentColor;outline-offset:2px}

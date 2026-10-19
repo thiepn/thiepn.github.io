@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -114,4 +114,35 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(officeCitationInventory('x'.repeat(200001)).limited).toBe(true);
  });
 
+ it('O21 edits one genuine definition in-place while preserving references, Unicode, and CRLF',()=>{
+  const source='# Research\r\nParagraph[^source] and again[^source]\r\n  [^source]: \tOriginal 한국어\r\nMore text';
+  const original=analyzeOfficeReferences(source).definitions[0]!;
+  const result=updateOfficeFootnoteDefinition(source,'source',original.content,'Updated référence 日本語',original.offset);
+  expect(result.value).toBe(source.replace('Original 한국어','Updated référence 日本語'));
+  expect(result.start).toBe(result.value.indexOf('Updated référence'));
+  expect(analyzeOfficeReferences(result.value).references.filter(row=>row.kind==='footnote')).toHaveLength(2);
+  expect(analyzeOfficeReferences(result.value).problems).toHaveLength(0);
+ });
+ it('O21 refuses edits to duplicate, missing, fenced, obsolete and malformed definitions',()=>{
+  const source='# Notes\nClaim[^a]\n[^a]: Old';
+  const at=analyzeOfficeReferences(source).definitions[0]!.offset;
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Stale','New',at)).toThrow('changed');
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Old','New',at+1)).toThrow('changed');
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Old','Old',at)).toThrow('unchanged');
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Old','Line\nTwo',at)).toThrow('one line');
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Old','   ',at)).toThrow('one line');
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','Old','x'.repeat(1001),at)).toThrow('one line');
+  expect(()=>updateOfficeFootnoteDefinition(source,'missing','Old','New',at)).toThrow('unique original');
+  expect(()=>updateOfficeFootnoteDefinition(source+'\n[^a]: Duplicate','a','Old','New',at)).toThrow('unique original');
+  const tick=String.fromCharCode(96).repeat(3);
+  const fake=tick+'\n[^a]: Hidden\n'+tick;
+  expect(()=>updateOfficeFootnoteDefinition(fake,'a','Hidden','New',fake.indexOf('[^a]'))).toThrow('unique original');
+ });
+ it('O21 exact-source size protects original records without mutating oversized drafts',()=>{
+  const source='[^a]: x'+'.'.repeat(200000-'[^a]: x'.length);
+  expect(()=>updateOfficeFootnoteDefinition(source,'a','x'+'.'.repeat(200000-'[^a]: x'.length),'updated',0)).toThrow('unchanged');
+  const short='[^a]: Evidence'+'.'.repeat(200000-'[^a]: Evidence'.length);
+  const initial=analyzeOfficeReferences(short).definitions[0]!;
+  expect(()=>updateOfficeFootnoteDefinition(short,'a',initial.content,initial.content+'more',initial.offset)).toThrow('source limit');
+ });
 });
