@@ -258,3 +258,8 @@
 .office-citation-audit-row strong{font-size:13px;overflow-wrap:anywhere}
 .office-citation-audit-row p{margin:0;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
 .office-citation-audit-row button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-restore-panel{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--ws-line);min-width:0}
+.office-citation-restore-panel[hidden]{display:none}
+.office-citation-restore-panel p,.office-citation-restore-panel label{font-size:13px;line-height:1.55;margin:0;overflow-wrap:anywhere}
+.office-citation-restore-panel textarea{font:13px/1.6 ui-monospace,monospace;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto;padding:10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
