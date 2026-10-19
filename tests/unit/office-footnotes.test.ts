@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -298,6 +298,55 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const ids=Array.from({length:13},(_,i)=>'a'+i);
   const make=(value:string)=>ids.map(id=>'Text[^'+id+']\n[^'+id+']: '+value).join('\n');
   expect(()=>reviewOfficeCitationThreeWay(make('Base'),make('Proposed'),make('Local'))).toThrow('More than 12');
+ });
+
+
+ it('O26 tracks introduced, persisting, reintroduced and resolved source problems',()=>{
+  const docs=[
+    {revision:1,body:'A[^a] C[^c]\n[^unused]: Definition'},
+    {revision:2,body:'A[^a]\n[^a]: Fixed'},
+    {revision:4,body:'A[^a] C[^c]\n[^a]: Fixed\n[^unused]: Definition'},
+    {revision:8,body:'A[^a] C[^c]\n[^a]: Fixed\n[^unused]: Definition\n[^new]: Another'}];
+  const result=traceOfficeReferenceIssues(docs);
+  expect(result).toMatchObject({firstRevision:1,currentRevision:8,retainedCount:4,unresolved:3,resolved:0});
+  const keyed=(id:string)=>result.rows.find(x=>x.id===id)!;
+  expect(keyed('c').status).toBe('persisting');
+  expect(keyed('unused').status).toBe('persisting');
+  expect(keyed('new').status).toBe('introduced');
+  expect(keyed('c').observed.map(x=>x.revision)).toEqual([1,4,8]);
+  const resurrected=traceOfficeReferenceIssues(docs.slice(0,3));
+  expect(resurrected.rows.find(x=>x.id==='c')?.status).toBe('reintroduced');
+  const resolved=traceOfficeReferenceIssues(docs.slice(0,2));
+  expect(resolved.rows.find(x=>x.id==='c')?.status).toBe('resolved');
+  expect(resolved.rows.find(x=>x.id==='unused')?.current).toBeNull();
+ });
+ it('O26 combines duplicate occurrences with exact source line and avoids fake fenced issues',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const old='# A\nRef[^x]\n[^x]: One\n[^x]: Duplicate\n'+tick+'\n[^ghost]\n'+tick;
+  const next='# A\r\nRef[^x]\r\n[^x]: One\r\n[^x]: Duplicate\r\n[^x]: Three\r\n'+tick+'\r\n[^ghost]\r\n'+tick;
+  const report=traceOfficeReferenceIssues([{revision:2,body:old},{revision:3,body:next}]);
+  expect(report.rows).toHaveLength(1);
+  expect(report.rows[0]).toMatchObject({id:'x',kind:'duplicate-footnote',status:'persisting'});
+  expect(report.rows[0]?.observed.map(x=>x.count)).toEqual([1,2]);
+  expect(report.rows[0]?.current?.offset).toBe(next.indexOf('[^x]: Duplicate'));
+ });
+ it('O26 includes authentic broken heading provenance and never assumes an expired revision existed',()=>{
+  const first='[Go](#office-ref-not-real)\n# Heading';
+  const second='# Heading\n[Go](#office-ref-not-real)';
+  const result=traceOfficeReferenceIssues([{revision:4,body:first},{revision:10,body:second}]);
+  const issue=result.rows.find(x=>x.kind==='broken-heading')!;
+  expect(issue).toMatchObject({status:'persisting',id:'office-ref-not-real',firstObserved:4,lastObserved:10});
+  expect(issue.current?.offset).toBe(second.indexOf('[Go]'));
+  expect(result.firstRevision).toBe(4);
+ });
+ it('O26 rejects unsupported versions, duplicate IDs and over-limit source and issue counts',()=>{
+  expect(()=>traceOfficeReferenceIssues([])).toThrow('between 1 and 13');
+  expect(()=>traceOfficeReferenceIssues([{revision:1,body:''},{revision:1,body:''}])).toThrow('unique');
+  expect(()=>traceOfficeReferenceIssues([{revision:-1,body:''}])).toThrow('unique');
+  expect(()=>traceOfficeReferenceIssues([{revision:4,body:'x'.repeat(200001)}])).toThrow('limited');
+  const many=Array.from({length:161},(_,i)=>'[^x'+i+']').join('\n');
+  expect(()=>traceOfficeReferenceIssues([{revision:1,body:many}])).toThrow('Too many distinct');
+  expect(()=>traceOfficeReferenceIssues(Array.from({length:14},(_,i)=>({revision:i,body:''})))).toThrow('between 1 and 13');
  });
 
 });

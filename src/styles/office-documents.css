@@ -272,3 +272,10 @@
 .office-citation-merge [data-office-citation-merge-preview]{justify-self:start;min-height:36px;padding:7px 12px}
 .office-citation-merge label:has(select){display:grid;gap:6px;font-size:13px;line-height:1.5}
 .office-citation-merge select{max-width:100%;min-height:38px}
+
+.office-issue-history{display:grid;gap:10px;padding-top:10px;border-top:1px solid var(--ws-line)}
+.office-issue-history-rows{display:grid;gap:8px;max-height:360px;overflow-y:auto}
+.office-issue-history-row{display:grid;gap:7px;border:1px solid var(--ws-line);padding:10px;min-width:0}
+.office-issue-history-row strong{font-size:14px;overflow-wrap:anywhere}
+.office-issue-history-row p,.office-issue-history [data-office-issue-history-summary]{font-size:13px;line-height:1.55;margin:0;overflow-wrap:anywhere}
+.office-issue-history-row button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}

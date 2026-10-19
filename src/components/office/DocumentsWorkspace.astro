@@ -162,6 +162,20 @@ import '../../styles/office-documents.css';
         <div class="office-reference-check">
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
+
+        <section class="office-issue-history" aria-label="Reference issue history">
+          <div class="office-citation-actions">
+            <button type="button" data-office-issue-history-review disabled>Review issue history</button>
+            <label for="office-issue-history-filter">Show</label>
+            <select id="office-issue-history-filter" data-office-issue-history-filter disabled>
+              <option value="unresolved">Unresolved</option>
+              <option value="resolved">Resolved</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <p data-office-issue-history-summary role="status" aria-live="polite">No issue history reviewed.</p>
+          <div data-office-issue-history-rows class="office-issue-history-rows"></div>
+        </section>
         </div>
         <section class="office-citation-workbench" aria-label="Existing source citations">
           <h4>Reuse and navigate citations</h4>

@@ -2165,3 +2165,76 @@ test('O25 original CAS prevents cross-tab overwrite after explicit conflict deci
  await expect(peer.locator('[data-office-body]')).toHaveValue(/\[\^a\]: Peer saved/);
  await peer.close();
 });
+
+
+test('O26 shows source-backed unresolved and resolved citation issue history and navigates original revisions',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Report\nClaim[^missing] and [^a]\n[^a]: One');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('# Report\nClaim[^a] and [^a]\n[^a]: One\n[^unused]: Orphan');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-issue-history-review]').click();
+ await expect(page.locator('[data-office-issue-history-summary]')).toContainText('1 unresolved · 1 resolved');
+ const orphan=page.locator('[data-office-issue-history-id="unused"]');
+ await expect(orphan).toContainText('introduced');
+ await orphan.locator('[data-office-issue-history-current="unused"]').click();
+ expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart))
+   .toBe((await page.locator('[data-office-body]').inputValue()).indexOf('[^unused]:'));
+ await page.locator('[data-office-issue-history-filter]').selectOption('resolved');
+ const repaired=page.locator('[data-office-issue-history-id="missing"]');
+ await expect(repaired).toContainText('resolved');
+ await repaired.locator('[data-office-issue-history-revision="1"]').click();
+ await expect(page.locator('[data-office-timeline-preview]')).toBeVisible();
+ await expect(page.locator('[data-office-timeline-excerpt]')).toContainText('[^missing]');
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\[\^unused\]: Orphan/);
+ await page.reload();
+ await expect(page.locator('[data-office-issue-history-rows]')).toBeEmpty();
+ await expect(page.locator('[data-office-issue-history-summary]')).toHaveText('No issue history reviewed.');
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\[\^unused\]: Orphan/);
+});
+test('O26 unresolved citation history identifies reintroduced problems and respects gaps between retained revisions',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Report\nClaim[^x]');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('# Report\nClaim[^x]\n[^x]: Fixed');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('# Report\nClaim[^x] and again[^x]');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-issue-history-review]').click();
+ const issue=page.locator('[data-office-issue-history-id="x"]');
+ await expect(issue).toContainText('reintroduced');
+ await expect(issue).toContainText('1, 3');
+ await issue.locator('[data-office-issue-history-current="x"]').click();
+ expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart))
+  .toBe((await page.locator('[data-office-body]').inputValue()).indexOf('[^x]'));
+ await page.locator('[data-office-issue-history-filter]').selectOption('all');
+ await expect(page.locator('[data-office-issue-history-rows]')).toContainText('reintroduced');
+});
+test('O26 source changes and mobile privacy clear retained issue evidence and disable history actions',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Private\nClaim[^x]');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-issue-history-review]').click();
+ await expect(page.locator('[data-office-issue-history-rows]')).toContainText('missing-footnote');
+ await page.locator('[data-office-body]').fill('# Private\nClaim[^x]\n[^x]: Fixed');
+ await expect(page.locator('[data-office-issue-history-rows]')).toBeEmpty();
+ await expect(page.locator('[data-office-issue-history-filter]')).toBeDisabled();
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-issue-history-review]').click();
+ await page.locator('[data-office-issue-history-filter]').selectOption('resolved');
+ await expect(page.locator('[data-office-issue-history-rows]')).toContainText('resolved');
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-issue-history-rows]')).toBeEmpty();
+ await expect(page.locator('[data-office-issue-history-summary]')).toHaveText('No issue history reviewed.');
+ await expect(page.locator('[data-office-issue-history-review]')).toBeDisabled();
+ await expect(page.locator('[data-office-body]')).toHaveValue('');
+});

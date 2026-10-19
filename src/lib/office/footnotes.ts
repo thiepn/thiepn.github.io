@@ -326,6 +326,71 @@ export function previewOfficeCitationThreeWay(
   baselineChanged:review.rows.length};
 }
 
+
+export interface OfficeIssueRevisionSource{revision:number;body:string}
+export interface OfficeIssueOccurrence{
+ revision:number;count:number;line:number;offset:number;message:string;
+}
+export type OfficeIssueLifecycle='introduced'|'persisting'|'reintroduced'|'resolved';
+export interface OfficeIssueLineage{
+ kind:ReferenceProblem['kind'];id:string;status:OfficeIssueLifecycle;
+ firstObserved:number;lastObserved:number;observed:OfficeIssueOccurrence[];
+ current:OfficeIssueOccurrence|null;
+}
+export interface OfficeIssueHistory{
+ retainedCount:number;firstRevision:number;currentRevision:number;
+ unresolved:number;resolved:number;rows:OfficeIssueLineage[];
+}
+/** Read-only diagnostics across *available* authentic source revisions. No external validation,
+ * no assertion about missing/expired snapshots, and no new persisted issue index.
+ */
+export function traceOfficeReferenceIssues(sources:readonly OfficeIssueRevisionSource[]):OfficeIssueHistory{
+ if(!Array.isArray(sources)||sources.length<1||sources.length>13)
+  throw new Error('Inspect between 1 and 13 retained Office source versions.');
+ const sorted=[...sources].sort((a,b)=>a.revision-b.revision);
+ if(sorted.some((s,i)=>!s||!Number.isSafeInteger(s.revision)||s.revision<0||
+     typeof s.body!=='string'||(i>0&&s.revision===sorted[i-1]?.revision)))
+  throw new Error('Original revision identities must be unique non-negative integers.');
+ const tracking=new Map<string,{
+  kind:ReferenceProblem['kind'];id:string;entries:OfficeIssueOccurrence[]
+ }>();
+ for(const source of sorted){
+  const report=analyzeOfficeReferences(source.body);
+  if(report.limited)throw new Error('Reference inspection is limited in a retained source revision.');
+  const found=new Map<string,OfficeIssueOccurrence>();
+  for(const problem of report.problems){
+   const key=problem.kind+'\x00'+problem.id;
+   const row=found.get(key);
+   if(row)row.count++;
+   else found.set(key,{revision:source.revision,count:1,line:problem.line,
+    offset:problem.offset,message:problem.message});
+   if(!tracking.has(key))tracking.set(key,{kind:problem.kind,id:problem.id,entries:[]});
+  }
+  if(tracking.size>160)throw new Error('Too many distinct source issues to inspect safely.');
+  for(const [key,item] of found)tracking.get(key)!.entries.push(item);
+ }
+ const currentRevision=sorted[sorted.length-1]!.revision;
+ const previousRevision=sorted.length>1?sorted[sorted.length-2]!.revision:null;
+ const rows:OfficeIssueLineage[]=[];
+ for(const item of tracking.values()){
+  const entries=item.entries;
+  const current=entries.find(x=>x.revision===currentRevision)??null;
+  let status:OfficeIssueLifecycle;
+  if(!current)status='resolved';
+  else if(previousRevision!==null&&entries.some(x=>x.revision===previousRevision))status='persisting';
+  else if(entries.length>1)status='reintroduced';
+  else status='introduced';
+  rows.push({kind:item.kind,id:item.id,status,
+   firstObserved:entries[0]!.revision,lastObserved:entries[entries.length-1]!.revision,
+   observed:entries,current});
+ }
+ rows.sort((a,b)=>Number(!!b.current)-Number(!!a.current)||
+  a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id));
+ return {retainedCount:sorted.length,firstRevision:sorted[0]!.revision,currentRevision,
+  unresolved:rows.filter(row=>row.current!==null).length,
+  resolved:rows.filter(row=>row.current===null).length,rows};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

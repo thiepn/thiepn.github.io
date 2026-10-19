@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,28 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const issueHistoryReview=pick<HTMLButtonElement>('[data-office-issue-history-review]');
+  const issueHistoryFilter=pick<HTMLSelectElement>('[data-office-issue-history-filter]');
+  const issueHistorySummary=pick<HTMLElement>('[data-office-issue-history-summary]');
+  const issueHistoryRows=pick<HTMLElement>('[data-office-issue-history-rows]');
+  type IssueHistoryReview={scope:string;documentId:string;revision:number;
+    source:string;revisions:{revision:number;body:string}[];report:OfficeIssueHistory};
+  let issueHistoryState:IssueHistoryReview|null=null;
+  function clearIssueHistory(){
+    issueHistoryState=null;issueHistoryRows.replaceChildren();
+    issueHistorySummary.textContent='No issue history reviewed.';
+    issueHistoryFilter.value='unresolved';
+  }
+  function issueHistoryValid(state:IssueHistoryReview|null){
+    return !!state&&!!store&&!!active&&allowed()&&!blocked&&!busy&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&
+      state.revisions.length===active.history.length+1&&
+      active.history.every((row,i)=>row.revision===state.revisions[i]?.revision&&
+        row.body===state.revisions[i]?.body);
+  }
+
   const citationSelect=pick<HTMLSelectElement>('[data-office-citation-select]');
   const citationSummary=pick<HTMLElement>('[data-office-citation-summary]');
   const citationDefinition=pick<HTMLButtonElement>('[data-office-citation-definition]');
@@ -434,6 +456,7 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    issueHistoryReview.disabled=!editing||dirty;issueHistoryFilter.disabled=!editing||!issueHistoryValid(issueHistoryState);
     citationMergeBase.disabled=citationMergeIncoming.disabled=!editing||dirty||!active||active.history.length<2;
     citationMergeReviewButton.disabled=!editing||dirty||
       !active?.history.some(rev=>String(rev.revision)===citationMergeBase.value)||
@@ -750,7 +773,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearCitationMerge(true);clearCitationAudit(true);
+    clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -829,7 +852,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearCitationMerge(true);clearCitationAudit();
+    clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -902,7 +925,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearCitationMerge(true);clearCitationAudit(true);
+      clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1212,7 +1235,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1378,6 +1401,85 @@ if(root && shell){
   });
 
 
+
+
+  function renderIssueHistory(){
+    issueHistoryRows.replaceChildren();
+    const state=issueHistoryState;
+    if(!issueHistoryValid(state)||!state){clearIssueHistory();enable();return;}
+    const visible=state.report.rows.filter(row=>
+      issueHistoryFilter.value==='all'||
+      (issueHistoryFilter.value==='resolved'?row.current===null:row.current!==null));
+    issueHistorySummary.textContent=state.report.unresolved+' unresolved · '+
+      state.report.resolved+' resolved across '+state.report.retainedCount+
+      ' retained/current revisions ('+state.report.firstRevision+'–'+state.report.currentRevision+
+      '). Earlier history may no longer be retained.';
+    if(!visible.length){
+      const empty=document.createElement('p');
+      empty.textContent='No '+(issueHistoryFilter.value==='resolved'?'resolved':issueHistoryFilter.value==='all'?'':'unresolved')+
+        ' reference problems in these source revisions.';
+      issueHistoryRows.append(empty);enable();return;
+    }
+    for(const item of visible){
+      const row=document.createElement('article');row.className='office-issue-history-row';
+      row.dataset.officeIssueHistoryKind=item.kind;row.dataset.officeIssueHistoryId=item.id;
+      const title=document.createElement('strong');
+      title.textContent=item.kind+' · '+item.id+' · '+item.status;
+      const detail=document.createElement('p');
+      detail.textContent='Observed in retained revisions '+item.observed.map(x=>String(x.revision)).join(', ')+
+        ' · first observed '+item.firstObserved+' · last observed '+item.lastObserved;
+      row.append(title,detail);
+      const actions=document.createElement('div');actions.className='office-citation-actions';
+      if(item.current){
+        const current=document.createElement('button');current.type='button';
+        current.dataset.officeIssueHistoryCurrent=item.id;
+        current.textContent='Go to current line '+item.current.line;
+        current.addEventListener('click',()=>{
+          if(!issueHistoryValid(state)||issueHistoryState!==state){clearIssueHistory();enable();return;}
+          const found=analyzeOfficeReferences(body.value).problems.find(x=>
+            x.kind===item.kind&&x.id===item.id&&x.offset===item.current?.offset);
+          if(!found){clearIssueHistory();enable();return;}
+          focusEditor(found.offset,found.offset);
+          message('Focused '+item.kind+' in original source, line '+found.line+'.');
+        });
+        actions.append(current);
+      }
+      for(const recorded of item.observed.filter(x=>x.revision!==state.revision)){
+        const inspect=document.createElement('button');inspect.type='button';
+        inspect.dataset.officeIssueHistoryRevision=String(recorded.revision);
+        inspect.textContent='Revision '+recorded.revision+' · line '+recorded.line+
+          (recorded.count>1?' · '+recorded.count+' occurrences':'');
+        inspect.addEventListener('click',()=>{
+          if(!issueHistoryValid(state)||issueHistoryState!==state){clearIssueHistory();enable();return;}
+          const original=active?.history.find(x=>x.revision===recorded.revision);
+          if(!original||original.body!==state.revisions.find(x=>x.revision===recorded.revision)?.body){
+            clearIssueHistory();enable();return;
+          }
+          inspectTimeline(recorded.revision);
+          timelinePreview.scrollIntoView({block:'nearest'});
+        });
+        actions.append(inspect);
+      }
+      row.append(actions);issueHistoryRows.append(row);
+    }
+    enable();
+  }
+  issueHistoryReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty||body.disabled)return;
+    clearIssueHistory();
+    const sources=[...active.history.map(row=>({revision:row.revision,body:row.body})),
+      {revision:active.revision,body:body.value}];
+    try{
+      const report=traceOfficeReferenceIssues(sources);
+      issueHistoryState={scope:store.scope,documentId:active.id,
+        revision:active.revision,source:body.value,revisions:sources,report};
+      renderIssueHistory();
+    }catch(error){
+      clearIssueHistory();enable();
+      message(error instanceof Error?error.message:'Original reference issue history is unavailable.');
+    }
+  });
+  issueHistoryFilter.addEventListener('change',renderIssueHistory);
 
   citationMergeBase.addEventListener('change',()=>{clearCitationMerge();enable();});
   citationMergeIncoming.addEventListener('change',()=>{clearCitationMerge();enable();});
