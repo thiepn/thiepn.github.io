@@ -198,6 +198,19 @@ import '../../styles/office-documents.css';
             </div>
             <p role="status" aria-live="polite" data-office-citation-audit-summary>No comparison selected.</p>
             <div data-office-citation-audit-changes class="office-citation-audit-changes"></div>
+            <div class="office-citation-actions">
+              <p data-office-citation-batch-selected role="status">0 of 12 definitions selected</p>
+              <button type="button" data-office-citation-batch-preview disabled>Preview selected definitions</button>
+            </div>
+            <section data-office-citation-batch-panel hidden class="office-citation-restore-panel" aria-label="Review selected historical citation definitions">
+              <p data-office-citation-batch-summary role="status"></p>
+              <label for="office-citation-batch-result">Resulting original Markdown</label>
+              <textarea id="office-citation-batch-result" data-office-citation-batch-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-citation-batch-confirm disabled>Apply selected definitions</button>
+                <button type="button" data-office-citation-batch-cancel>Cancel preview</button>
+              </div>
+            </section>
             <section data-office-citation-restore-panel hidden class="office-citation-restore-panel" aria-label="Review selective citation recovery">
               <p data-office-citation-restore-summary role="status"></p>
               <label for="office-citation-restore-result">Resulting original Markdown — review before saving</label>

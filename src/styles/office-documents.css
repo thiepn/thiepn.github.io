@@ -263,3 +263,6 @@
 .office-citation-restore-panel[hidden]{display:none}
 .office-citation-restore-panel p,.office-citation-restore-panel label{font-size:13px;line-height:1.55;margin:0;overflow-wrap:anywhere}
 .office-citation-restore-panel textarea{font:13px/1.6 ui-monospace,monospace;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto;padding:10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-batch-choice{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5}
+.office-citation-batch-choice input{width:16px;height:16px;flex-shrink:0}

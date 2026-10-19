@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,type OfficeCitationRecovery} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -104,16 +104,36 @@ if(root && shell){
   const citationRestoreResult=pick<HTMLTextAreaElement>('[data-office-citation-restore-result]');
   const citationRestoreConfirm=pick<HTMLButtonElement>('[data-office-citation-restore-confirm]');
   const citationRestoreCancel=pick<HTMLButtonElement>('[data-office-citation-restore-cancel]');
+  const citationBatchSelectedText=pick<HTMLElement>('[data-office-citation-batch-selected]');
+  const citationBatchPreview=pick<HTMLButtonElement>('[data-office-citation-batch-preview]');
+  const citationBatchPanel=pick<HTMLElement>('[data-office-citation-batch-panel]');
+  const citationBatchSummary=pick<HTMLElement>('[data-office-citation-batch-summary]');
+  const citationBatchResult=pick<HTMLTextAreaElement>('[data-office-citation-batch-result]');
+  const citationBatchConfirm=pick<HTMLButtonElement>('[data-office-citation-batch-confirm]');
+  const citationBatchCancel=pick<HTMLButtonElement>('[data-office-citation-batch-cancel]');
+  const citationBatchSelected=new Set<string>();
   type CitationAuditSnapshot={scope:string;documentId:string;revision:number;body:string;baselineRevision:number};
   type CitationRecoveryPlan={snapshot:CitationAuditSnapshot;baselineBody:string;result:OfficeCitationRecovery};
+  type CitationBatchPlan={
+    snapshot:CitationAuditSnapshot;baselineBody:string;ids:string[];result:OfficeCitationReconciliation;
+  };
+  let citationBatchPlan:CitationBatchPlan|null=null;
   let citationAuditSnapshot:CitationAuditSnapshot|null=null,citationRecoveryPlan:CitationRecoveryPlan|null=null;
+  function clearCitationBatchPlan(){
+    citationBatchPlan=null;citationBatchPanel.hidden=true;citationBatchSummary.textContent='';
+    citationBatchResult.value='';citationBatchConfirm.disabled=true;
+  }
+  function updateCitationBatchSelection(){
+    citationBatchSelectedText.textContent=citationBatchSelected.size+' of 12 definitions selected';
+  }
   function clearCitationRecovery(){
     citationRecoveryPlan=null;citationRestorePanel.hidden=true;
     citationRestoreSummary.textContent='';citationRestoreResult.value='';
     citationRestoreConfirm.disabled=true;
   }
   function clearCitationAudit(resetBaseline=false){
-    citationAuditSnapshot=null;clearCitationRecovery();
+    citationAuditSnapshot=null;clearCitationRecovery();clearCitationBatchPlan();
+    citationBatchSelected.clear();updateCitationBatchSelection();
     citationAuditChanges.replaceChildren();
     citationAuditSummary.textContent='No comparison selected.';
     if(resetBaseline)citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
@@ -371,6 +391,15 @@ if(root && shell){
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
     citationAuditBase.disabled=!editing||!active?.history.length;
     citationAuditCompare.disabled=!editing||!active?.history.some(row=>String(row.revision)===citationAuditBase.value);
+    citationBatchPreview.disabled=!editing||dirty||!citationAuditSnapshot||!citationBatchSelected.size;
+    citationBatchConfirm.disabled=!editing||dirty||!citationBatchPlan||
+      citationBatchPlan.snapshot!==citationAuditSnapshot||
+      citationBatchPlan.snapshot.scope!==store?.scope||
+      citationBatchPlan.snapshot.documentId!==active?.id||
+      citationBatchPlan.snapshot.revision!==active?.revision||
+      citationBatchPlan.snapshot.body!==body.value||
+      !active?.history.some(row=>row.revision===citationBatchPlan?.snapshot.baselineRevision&&
+        row.body===citationBatchPlan?.baselineBody);
     citationRestoreConfirm.disabled=!editing||dirty||!citationRecoveryPlan||
       citationRecoveryPlan.snapshot!==citationAuditSnapshot||
       citationRecoveryPlan.snapshot.scope!==store?.scope||
@@ -1287,6 +1316,61 @@ if(root && shell){
     }
   });
 
+
+  citationBatchCancel.addEventListener('click',()=>{clearCitationBatchPlan();enable();});
+  citationBatchPreview.addEventListener('click',()=>{
+    const snapshot=citationAuditSnapshot,current=active,opened=store;
+    if(!snapshot||!current||!opened||!allowed()||blocked||busy||dirty||body.disabled)return;
+    if(snapshot.scope!==opened.scope||snapshot.documentId!==current.id||
+      snapshot.revision!==current.revision||snapshot.body!==body.value){
+      clearCitationAudit();enable();message('Source changed. Compare citations again.');return;
+    }
+    const baseline=current.history.find(row=>row.revision===snapshot.baselineRevision);
+    if(!baseline){clearCitationAudit();enable();message('Retained revision is no longer available.');return;}
+    try{
+      const ids=[...citationBatchSelected];
+      const result=previewOfficeCitationReconciliation(baseline.body,body.value,ids);
+      citationBatchPlan={snapshot,baselineBody:baseline.body,ids:result.ids,result};
+      citationBatchSummary.textContent=result.ids.length+' historical definitions from revision '+
+        baseline.revision+' · '+result.usesPreserved+
+        ' original citation uses preserved. Selected historical text replaces current text.';
+      citationBatchResult.value=result.value;citationBatchPanel.hidden=false;
+      enable();citationBatchPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearCitationBatchPlan();enable();
+      message(error instanceof Error?error.message:'Cannot reconcile selected historical citations.');
+    }
+  });
+  citationBatchConfirm.addEventListener('click',()=>{
+    const plan=citationBatchPlan,current=active,opened=store;
+    if(!plan||!current||!opened||!allowed()||blocked||busy||dirty||body.disabled||
+       citationBatchConfirm.disabled)return;
+    const {snapshot,result,baselineBody,ids}=plan;
+    const baseline=current.history.find(row=>row.revision===snapshot.baselineRevision);
+    if(snapshot!==citationAuditSnapshot||snapshot.scope!==opened.scope||
+       snapshot.documentId!==current.id||snapshot.revision!==current.revision||
+       snapshot.body!==body.value||!baseline||baseline.body!==baselineBody||
+       ids.length!==citationBatchSelected.size||ids.some(id=>!citationBatchSelected.has(id))){
+      clearCitationAudit();enable();message('Reconciliation selection or original source changed. Compare again.');return;
+    }
+    try{
+      const verified=previewOfficeCitationReconciliation(baseline.body,body.value,ids);
+      if(verified.value!==result.value||verified.ids.join('|')!==result.ids.join('|')||
+         verified.changes.some((edit,i)=>edit.previousText!==result.changes[i]?.previousText||
+           edit.historicalText!==result.changes[i]?.historicalText)){
+        clearCitationBatchPlan();enable();message('Reconciliation preview is stale. Review the changes again.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      const first=analyzeOfficeReferences(body.value).definitions.find(row=>row.id===verified.ids[0]);
+      if(first)focusEditor(first.offset,first.offset);
+      message('Applied '+verified.ids.length+' selected original citation definitions. Autosave pending.');
+      enable();
+    }catch(error){
+      clearCitationBatchPlan();enable();
+      message(error instanceof Error?error.message:'Citation reconciliation refused.');
+    }
+  });
   citationAuditBase.addEventListener('change',()=>{clearCitationAudit();enable();});
   citationAuditCompare.addEventListener('click',()=>{
     if(!active||!store||!allowed()||blocked||busy||body.disabled)return;
@@ -1387,6 +1471,28 @@ if(root && shell){
           }
         });
         actions.append(recover);
+
+        const label=document.createElement('label');
+        label.className='office-citation-batch-choice';
+        const check=document.createElement('input');
+        check.type='checkbox';check.dataset.officeCitationBatchId=item.id;
+        check.setAttribute('aria-label','Restore historical definition for footnote '+item.id);
+        check.addEventListener('change',()=>{
+          if(snapshot!==citationAuditSnapshot||!active||!store||!allowed()||blocked||busy||
+             snapshot.scope!==store.scope||snapshot.documentId!==active.id||
+             snapshot.revision!==active.revision||snapshot.body!==body.value){
+            check.checked=false;clearCitationBatchPlan();enable();return;
+          }
+          if(check.checked&&citationBatchSelected.size>=12){
+            check.checked=false;message('Select no more than 12 historical definitions.');
+            return;
+          }
+          if(check.checked)citationBatchSelected.add(item.id);
+          else citationBatchSelected.delete(item.id);
+          clearCitationBatchPlan();updateCitationBatchSelection();enable();
+        });
+        label.append(check,document.createTextNode('Include [^'+item.id+'] in reconciliation'));
+        wrapper.append(label);
       }
       wrapper.append(actions);
       citationAuditChanges.append(wrapper);
