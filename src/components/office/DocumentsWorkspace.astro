@@ -163,6 +163,34 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
 
+          <section class="office-citation-impact" aria-label="Citation use impact and source audit">
+            <h4>Citation use impact</h4>
+            <div class="office-citation-actions">
+              <label for="office-impact-base">Compare with</label>
+              <select id="office-impact-base" data-office-impact-base disabled>
+                <option value="">Current source only</option>
+              </select>
+              <button type="button" data-office-impact-review disabled>Review source uses</button>
+            </div>
+            <p data-office-impact-summary role="status" aria-live="polite">No use impact reviewed.</p>
+            <div class="office-citation-actions">
+              <label for="office-impact-citation">Footnote</label>
+              <select id="office-impact-citation" data-office-impact-citation disabled>
+                <option value="">Choose footnote</option>
+              </select>
+              <button type="button" data-office-impact-history disabled>View compared revision</button>
+            </div>
+            <div class="office-citation-impact-detail" data-office-impact-detail></div>
+            <div class="office-citation-actions">
+              <label for="office-impact-current-use">Current use</label>
+              <select id="office-impact-current-use" data-office-impact-current-use disabled>
+                <option value="">Choose current use</option>
+              </select>
+              <button type="button" data-office-impact-jump disabled>Go to source use</button>
+            </div>
+            <button type="button" data-office-impact-export disabled>Export source-use audit (.txt)</button>
+          </section>
+
           <section class="office-duplicate-triage" aria-label="Resolve duplicate footnote definitions">
             <button type="button" data-office-duplicate-review disabled>Review duplicate definitions</button>
             <div data-office-duplicate-panel hidden>

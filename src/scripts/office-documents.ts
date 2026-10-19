@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,type OfficeCitationImpactReport,type OfficeCitationImpactEntry,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,37 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const impactBase=pick<HTMLSelectElement>('[data-office-impact-base]');
+  const impactReview=pick<HTMLButtonElement>('[data-office-impact-review]');
+  const impactSummary=pick<HTMLElement>('[data-office-impact-summary]');
+  const impactCitation=pick<HTMLSelectElement>('[data-office-impact-citation]');
+  const impactDetail=pick<HTMLElement>('[data-office-impact-detail]');
+  const impactCurrentUse=pick<HTMLSelectElement>('[data-office-impact-current-use]');
+  const impactJump=pick<HTMLButtonElement>('[data-office-impact-jump]');
+  const impactHistory=pick<HTMLButtonElement>('[data-office-impact-history]');
+  const impactDownload=pick<HTMLButtonElement>('[data-office-impact-export]');
+  type CitationImpactState={
+    scope:string;documentId:string;revision:number;source:string;
+    baselineRevision:number|null;baselineBody:string|null;report:OfficeCitationImpactReport;
+  };
+  let citationImpactState:CitationImpactState|null=null;
+  function clearCitationImpact(resetBaseline=false){
+    citationImpactState=null;impactSummary.textContent='No use impact reviewed.';
+    impactCitation.replaceChildren(new Option('Choose footnote',''));
+    impactCurrentUse.replaceChildren(new Option('Choose current use',''));
+    impactDetail.replaceChildren();impactCitation.disabled=impactCurrentUse.disabled=true;
+    impactJump.disabled=impactHistory.disabled=impactDownload.disabled=true;
+    if(resetBaseline)impactBase.replaceChildren(new Option('Current source only',''));
+  }
+  function citationImpactValid(state:CitationImpactState|null){
+    return !!state&&!!store&&!!active&&allowed()&&!blocked&&!busy&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&
+      (state.baselineRevision===null||
+       active.history.some(row=>row.revision===state.baselineRevision&&row.body===state.baselineBody));
+  }
+
 
   const duplicateReview=pick<HTMLButtonElement>('[data-office-duplicate-review]');
   const duplicatePanel=pick<HTMLElement>('[data-office-duplicate-panel]');
@@ -491,6 +522,12 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    impactBase.disabled=impactReview.disabled=!editing||dirty;
+    impactCitation.disabled=impactDownload.disabled=!editing||!citationImpactValid(citationImpactState);
+    const selectedImpact=citationImpactState?.report.entries.find(row=>row.id===impactCitation.value);
+    impactCurrentUse.disabled=!editing||!citationImpactValid(citationImpactState)||!selectedImpact?.currentUses.length;
+    impactJump.disabled=impactCurrentUse.disabled||!selectedImpact?.currentUses.some(row=>String(row.offset)===impactCurrentUse.value);
+    impactHistory.disabled=!editing||!citationImpactValid(citationImpactState)||citationImpactState?.baselineRevision===null;
     duplicateReview.disabled=!editing||dirty||
       !analyzeOfficeReferences(body.value).problems.some(row=>row.kind==='duplicate-footnote');
     duplicateGroup.disabled=!editing||!duplicateReviewValid(duplicateReviewState);
@@ -816,7 +853,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -895,13 +932,14 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
     for(const rev of [...(active?.history??[])].reverse()){
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
       citationAuditBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
+      impactBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
       citationMergeBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
       citationMergeIncoming.add(new Option('Revision '+rev.revision,String(rev.revision)));
     }
@@ -968,7 +1006,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1278,7 +1316,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1507,6 +1545,111 @@ if(root && shell){
     }
     enable();
   }
+
+
+  function renderCitationImpactDetail(){
+    impactDetail.replaceChildren();
+    impactCurrentUse.replaceChildren(new Option('Choose current use',''));
+    const state=citationImpactState;
+    if(!citationImpactValid(state)||!state){clearCitationImpact();enable();return;}
+    const item=state.report.entries.find(row=>row.id===impactCitation.value);
+    if(!item){enable();return;}
+    const description=document.createElement('p');
+    description.textContent='[^'+item.id+'] · '+item.currentUses.length+' current uses'+
+      (state.report.compared?' · '+item.historicalUses.length+' previous uses'+
+        ' · '+item.addedUses.length+' added/changed passages'+
+        ' · '+item.removedUses.length+' removed/changed passages':'')+
+      ' · '+(item.currentProblems.join(', ')||'no local reference problems');
+    impactDetail.append(description);
+    const current=document.createElement('p');
+    current.textContent='Current definition: '+
+      (item.currentDefinition?item.currentDefinition.content.slice(0,240):'Missing')+
+      (item.currentDefinition&&item.currentDefinition.content.length>240?'…':'');
+    impactDetail.append(current);
+    for(const site of item.currentUses)
+      impactCurrentUse.add(new Option('Line '+site.line+' · '+site.excerpt.slice(0,110),String(site.offset)));
+    if(state.report.compared){
+      const prior=document.createElement('p');
+      prior.textContent='Historical definition: '+
+        (item.historicalDefinition?item.historicalDefinition.content.slice(0,240):'Missing')+
+        (item.definitionChanged?' · definition changed':'');
+      impactDetail.append(prior);
+      for(const [label,uses] of [
+        ['Added or changed use passages',item.addedUses],
+        ['Removed or changed use passages',item.removedUses]
+      ] as const){
+        const heading=document.createElement('strong');
+        heading.textContent=label+' · '+uses.length;
+        impactDetail.append(heading);
+        for(const site of uses.slice(0,12)){
+          const p=document.createElement('p');
+          p.textContent='Line '+site.line+' · '+site.excerpt;
+          impactDetail.append(p);
+        }
+        if(uses.length>12){
+          const remaining=document.createElement('p');
+          remaining.textContent=(uses.length-12)+' more use passages in the complete text audit.';
+          impactDetail.append(remaining);
+        }
+      }
+    }
+    enable();
+  }
+  impactBase.addEventListener('change',()=>{clearCitationImpact();enable();});
+  impactCitation.addEventListener('change',renderCitationImpactDetail);
+  impactCurrentUse.addEventListener('change',enable);
+  impactReview.addEventListener('click',()=>{
+    if(!active||!store||busy||blocked||dirty||body.disabled||!allowed())return;
+    const historical=active.history.find(row=>String(row.revision)===impactBase.value);
+    if(impactBase.value&&!historical){clearCitationImpact();enable();message('Retained revision is no longer available.');return;}
+    clearCitationImpact();
+    try{
+      const report=inspectOfficeCitationUseImpact(body.value,historical?.body);
+      citationImpactState={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,baselineRevision:historical?.revision??null,
+        baselineBody:historical?.body??null,report};
+      impactSummary.textContent=report.entries.length+' original footnotes · '+report.currentCount+
+        ' current uses'+(report.compared?' · '+report.historicalCount+
+          ' historical uses · '+report.changed+' affected IDs':'')+'.';
+      for(const row of report.entries){
+        impactCitation.add(new Option('[^'+row.id+'] · '+row.currentUses.length+' uses',row.id));
+      }
+      if(report.entries.length)impactCitation.value=report.entries[0]!.id;
+      renderCitationImpactDetail();
+    }catch(error){
+      clearCitationImpact();enable();
+      message(error instanceof Error?error.message:'Cannot inspect original citation uses.');
+    }
+  });
+  impactJump.addEventListener('click',()=>{
+    const state=citationImpactState;
+    if(!citationImpactValid(state)||!state||impactJump.disabled)return;
+    const row=state.report.entries.find(x=>x.id===impactCitation.value);
+    const site=row?.currentUses.find(x=>String(x.offset)===impactCurrentUse.value);
+    if(!site)return;
+    const current=analyzeOfficeReferences(body.value).references.find(ref=>
+      ref.kind==='footnote'&&ref.id===row?.id&&ref.offset===site.offset);
+    if(!current){clearCitationImpact();enable();return;}
+    focusEditor(current.offset,current.offset+('[^'+current.id+']').length);
+    message('Focused original citation [^'+current.id+'] on line '+current.line+'.');
+  });
+  impactHistory.addEventListener('click',()=>{
+    const state=citationImpactState;
+    if(!citationImpactValid(state)||!state||impactHistory.disabled||state.baselineRevision===null)return;
+    inspectTimeline(state.baselineRevision);
+    timelinePreview.scrollIntoView({block:'nearest'});
+  });
+  impactDownload.addEventListener('click',()=>{
+    const state=citationImpactState;
+    if(!citationImpactValid(state)||!state||impactDownload.disabled||!active)return;
+    try{
+      const checked=inspectOfficeCitationUseImpact(body.value,state.baselineBody??undefined);
+      const text=formatOfficeCitationUseAudit(checked,title.value,active.revision,state.baselineRevision);
+      const filename=documentFilename(title.value).replace(/\.md$/,'-citation-impact.txt');
+      downloadBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),filename);
+      message('Source citation use audit exported for saved revision '+active.revision+'.');
+    }catch(error){message(error instanceof Error?error.message:'Cannot export original citation audit.');}
+  });
 
   function renderDuplicateCandidates(){
     duplicateCandidates.replaceChildren();clearDuplicatePreview();
