@@ -25,7 +25,9 @@ function slug(title:string):string{
  return result||'section';
 }
 export function officeHeadingReferences(source:string):OfficeHeadingRef[]{
- if(source.length>MAX_BODY)throw new Error('Document exceeds Office size limit.');
+ // Oversized unsaved drafts still need an operable editor so the user can trim and export them.
+ // Explicit generation and link insertion separately enforce the original MAX_BODY limit.
+ if(source.length>MAX_BODY)return [];
  // Malformed markers must never break normal editing/preview; the explicit TOC writer still refuses them.
  let region:TocRegion|null=null;
  try{region=managedRegion(source);}catch{}

@@ -159,9 +159,13 @@ if(root && shell){
       writingStats.textContent='Open a document for writing statistics.';
       return;
     }
-    const stats=sourceWritingStats(body.value);
-    writingStats.textContent=stats.words+' words · '+stats.characters+' characters · '+
-      stats.lines+' lines · '+stats.paragraphs+' paragraphs';
+    try{
+      const stats=sourceWritingStats(body.value);
+      writingStats.textContent=stats.words+' words · '+stats.characters+' characters · '+
+        stats.lines+' lines · '+stats.paragraphs+' paragraphs';
+    }catch{
+      writingStats.textContent='Document exceeds the 200,000-character Office limit. Shorten or export before saving.';
+    }
   }
   function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;

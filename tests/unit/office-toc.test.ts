@@ -53,6 +53,9 @@ describe('O18 original-source contents and internal cross references',()=>{
   expect(()=>insertOfficeHeadingLink(document,0,0,'office-ref-stale')).toThrow('no longer');
   expect(()=>insertOfficeHeadingLink(document,0,999,'office-ref-project')).toThrow('Invalid');
  });
+ it('keeps heading lookup non-throwing for an oversized unsaved draft',()=>{
+  expect(officeHeadingReferences('# Real\n'+'x'.repeat(200000))).toEqual([]);
+ });
  it('enforces canonical source body limit before inserting any contents or reference',()=>{
   const full='# Title\n'+'x'.repeat(199992);
   expect(full).toHaveLength(200000);
