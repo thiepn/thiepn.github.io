@@ -149,6 +149,21 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
+      <section class="office-footnotes" aria-label="Source footnotes and reference validation">
+        <h3>Footnotes and reference check</h3>
+        <p class="ws-muted">Insert a footnote in the original Markdown or inspect missing, duplicate and unused footnotes and broken internal heading links. All diagnostics are calculated from this document, without a separate index.</p>
+        <div class="office-footnote-controls">
+          <label for="office-footnote-id">Footnote ID</label>
+          <input id="office-footnote-id" data-office-footnote-id maxlength="48" autocomplete="off" placeholder="Automatic note-1" disabled/>
+          <label for="office-footnote-text">Footnote text</label>
+          <input id="office-footnote-text" data-office-footnote-text maxlength="1000" autocomplete="off" placeholder="Add source details or a citation" disabled/>
+          <button type="button" data-office-footnote-insert disabled>Insert footnote at selection</button>
+        </div>
+        <div class="office-reference-check">
+          <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
+          <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
+        </div>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>

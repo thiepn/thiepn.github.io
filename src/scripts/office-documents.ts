@@ -19,6 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
+import {analyzeOfficeReferences,insertOfficeFootnote} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -78,6 +79,11 @@ if(root && shell){
   const tocSource=pick<HTMLTextAreaElement>('[data-office-toc-source]');
   const tocConfirm=pick<HTMLButtonElement>('[data-office-toc-confirm]');
   const tocCancel=pick<HTMLButtonElement>('[data-office-toc-cancel]');
+  const footnoteId=pick<HTMLInputElement>('[data-office-footnote-id]');
+  const footnoteText=pick<HTMLInputElement>('[data-office-footnote-text]');
+  const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
+  const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
+  const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
   const history=pick<HTMLSelectElement>('[data-office-history]');
   const timelineList=pick<HTMLElement>('[data-office-timeline-list]');
   const timelineSearch=pick<HTMLInputElement>('[data-office-history-search]');
@@ -167,7 +173,38 @@ if(root && shell){
       writingStats.textContent='Document exceeds the 200,000-character Office limit. Shorten or export before saving.';
     }
   }
-  function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();}
+  function renderReferenceProblems(){
+    referenceProblems.replaceChildren();
+    if(!active||!allowed()){
+      referenceSummary.textContent='No open document.';return;
+    }
+    const report=analyzeOfficeReferences(body.value);
+    if(report.limited){
+      referenceSummary.textContent='Source reference inspection is limited. Shorten the document or reduce references.';
+      return;
+    }
+    referenceSummary.textContent=report.definitions.length+' footnote definition'+
+      (report.definitions.length===1?'':'s')+' · '+report.references.length+' reference'+
+      (report.references.length===1?'':'s')+' · '+report.problems.length+' issue'+
+      (report.problems.length===1?'':'s');
+    for(const problem of report.problems){
+      const control=document.createElement('button');control.type='button';
+      control.className='office-reference-problem';
+      control.dataset.officeProblem=problem.kind;
+      control.dataset.officeProblemLine=String(problem.line);
+      control.textContent='Line '+problem.line+' · '+problem.message;
+      control.addEventListener('click',()=>{
+        if(!active||!allowed()||body.disabled)return;
+        const current=analyzeOfficeReferences(body.value).problems.find(item=>
+          item.offset===problem.offset&&item.kind===problem.kind&&item.id===problem.id);
+        if(!current)return;
+        focusEditor(current.offset,current.offset);
+        message('Focused original reference issue on line '+current.line+'.');
+      });
+      referenceProblems.append(control);
+    }
+  }
+  function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();renderReferenceProblems();}
   let store:OfficeDeviceStore|null=null,active:OfficeDocument|null=null;
   let savedDocuments:OfficeDocument[]=[];
   const selectedBundle=new Set<string>();
@@ -224,6 +261,8 @@ if(root && shell){
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
+    footnoteId.disabled=footnoteText.disabled=!editing;
+    footnoteInsert.disabled=!editing||!footnoteText.value.trim();
     const hasRealHeadings=editing&&officeHeadingReferences(body.value).length>0;
     tocReviewButton.disabled=!hasRealHeadings||dirty;
     referenceTarget.disabled=!hasRealHeadings;
@@ -494,6 +533,7 @@ if(root && shell){
   function clearEditor(){
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
+    footnoteId.value='';footnoteText.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
@@ -634,7 +674,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
+      discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -672,7 +712,7 @@ if(root && shell){
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
-      sectionTitle.value='';
+      sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
@@ -825,7 +865,7 @@ if(root && shell){
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
-      sectionTitle.value='';
+      sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
@@ -1074,6 +1114,19 @@ if(root && shell){
   }
   sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
   sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
+  footnoteText.addEventListener('input',enable);
+  footnoteInsert.addEventListener('click',()=>{
+    if(!active||body.disabled||!allowed()||busy||blocked)return;
+    try{
+      const result=insertOfficeFootnote(body.value,body.selectionStart,body.selectionEnd,footnoteText.value,footnoteId.value);
+      body.value=result.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      footnoteId.value='';footnoteText.value='';
+      focusEditor(result.start,result.end);
+      message('Footnote '+result.id+' inserted into original Markdown. Autosave pending.');
+      enable();
+    }catch(error){message(error instanceof Error?error.message:'Footnote insertion refused.');}
+  });
   referenceTarget.addEventListener('change',enable);
   tocCancel.addEventListener('click',()=>{discardContents();enable();});
   tocReviewButton.addEventListener('click',()=>{
@@ -1128,6 +1181,15 @@ if(root && shell){
   preview.addEventListener('click',event=>{
     const target=event.target;
     if(!(target instanceof Element))return;
+    const footnote=target.closest<HTMLAnchorElement>('a[data-office-footnote-id]');
+    if(footnote&&preview.contains(footnote)){
+      event.preventDefault();
+      if(!active||!allowed()||body.disabled)return;
+      const report=analyzeOfficeReferences(body.value);
+      const definition=report.definitions.find(row=>row.id===footnote.dataset.officeFootnoteId&&row.count===1);
+      if(definition){focusEditor(definition.offset,definition.offset);message('Opened footnote '+definition.id+' in original source.');}
+      return;
+    }
     const link=target.closest<HTMLAnchorElement>('a[data-office-internal-ref]');
     if(!link||!preview.contains(link))return;
     event.preventDefault();

@@ -221,3 +221,19 @@
 .office-toc-review[hidden]{display:none}
 .office-toc-review label{font-size:12px;font-weight:600}
 .office-toc-review textarea{width:100%;min-height:160px;max-height:340px;padding:10px;font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;resize:vertical}
+
+/* O19 in-memory footnote insertion and accessible original-source reference diagnostics. */
+.office-footnotes{display:grid;gap:10px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-footnotes h3{font-size:14px;margin:0}
+.office-footnotes>.ws-muted{font-size:11px;line-height:1.5;margin:0}
+.office-footnote-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-footnote-controls label{font-size:12px;font-weight:600}
+.office-footnote-controls input{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-footnote-controls input[data-office-footnote-id]{width:160px}
+.office-footnote-controls input[data-office-footnote-text]{flex:1;min-width:min(220px,100%)}
+.office-footnote-controls button{padding:7px 10px;min-height:36px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-reference-check{display:grid;gap:9px}
+.office-reference-check p{font-size:12px;line-height:1.5;margin:0}
+.office-reference-problems{display:grid;gap:6px;max-height:240px;overflow-y:auto}
+.office-reference-problem{padding:9px 10px;text-align:left;min-height:34px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface);font-size:12px;overflow-wrap:anywhere}
+.office-reference-problem:focus-visible{outline:2px solid currentColor;outline-offset:2px}
