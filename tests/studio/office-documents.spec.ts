@@ -1558,3 +1558,26 @@ test('O19 mobile privacy masks footnote input, source diagnostics and navigable 
  await expect(page.locator('[data-office-footnote-insert]')).toBeDisabled();
  await expect(page.locator('[data-office-body]')).toHaveValue('');
 });
+
+
+test('O19 repairs missing source citations and broken headings with original CAS autosave',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ await page.locator('[data-office-body]').fill('# Research\nClaim[^missing] and [prior](#office-ref-gone)\n## Actual heading');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await expect(page.locator('[data-office-reference-summary]')).toContainText('2 issues');
+ await page.locator('[data-office-footnote-text]').fill('Original citation detail 한국어');
+ await page.locator('[data-office-reference-problems] [data-office-repair="missing-footnote"]').click();
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\[\^missing\]: Original citation detail 한국어/);
+ await expect(page.locator('[data-office-reference-summary]')).toContainText('1 issue');
+ await page.locator('[data-office-reference-heading]').selectOption('office-ref-actual-heading');
+ await page.locator('[data-office-reference-problems] [data-office-repair="broken-heading"]').click();
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\[prior\]\(#office-ref-actual-heading\)/);
+ await expect(page.locator('[data-office-reference-summary]')).toContainText('0 issues');
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.reload();
+ await expect(page.locator('[data-office-reference-summary]')).toContainText('0 issues');
+ await expect(page.locator('[data-office-body]')).toHaveValue(/\[\^missing\]: Original citation detail 한국어/);
+ expect(await page.locator('[data-office-history] option').count()).toBeGreaterThan(1);
+});

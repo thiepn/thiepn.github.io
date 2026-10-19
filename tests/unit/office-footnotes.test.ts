@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -42,4 +42,31 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(()=>insertOfficeFootnote('a'.repeat(200000),0,0,'Valid')).toThrow('200,000');
   expect(analyzeOfficeReferences('x'.repeat(200001)).limited).toBe(true);
  });
+ it('repairs existing missing citations without duplicating markers, and rejects obsolete repairs',()=>{
+  const source='# Notes\nSee[^source] and later[^source].';
+  const fixed=defineMissingOfficeFootnote(source,'source','Primary evidence and 한국어');
+  expect(fixed.value).toBe(source+'\n\n[^source]: Primary evidence and 한국어\n');
+  expect(analyzeOfficeReferences(fixed.value).problems).toHaveLength(0);
+  expect(()=>defineMissingOfficeFootnote(fixed.value,'source','Changed')).toThrow('no longer missing');
+  expect(()=>defineMissingOfficeFootnote(source,'source','Unsafe\nline')).toThrow('one line');
+  expect(()=>defineMissingOfficeFootnote(source,'another','Invented')).toThrow('no longer missing');
+ });
+ it('repairs only the selected broken heading link while preserving labels and intact links',()=>{
+  const source='# Heading\n[old](#office-ref-missing) and [old](#office-ref-missing) and [real](#office-ref-heading)';
+  const offset=source.indexOf('[old]');
+  const fixed=retargetBrokenOfficeHeading(source,offset,'office-ref-heading');
+  expect(fixed.value).toBe('# Heading\n[old](#office-ref-heading) and [old](#office-ref-missing) and [real](#office-ref-heading)');
+  expect(analyzeOfficeReferences(fixed.value).problems.map(x=>x.kind)).toEqual(['broken-heading']);
+  expect(()=>retargetBrokenOfficeHeading(fixed.value,offset,'office-ref-heading')).toThrow('no longer broken');
+  expect(()=>retargetBrokenOfficeHeading(source,offset,'office-ref-absent')).toThrow('existing original heading');
+ });
+ it('preserves CRLF source offsets, and never repairs references only present inside fenced code',()=>{
+  const source='# Heading\r\nLine[^missing]\r\nSee [gone](#office-ref-lost)';
+  const issues=analyzeOfficeReferences(source).problems;
+  expect(issues.map(x=>x.offset)).toEqual([source.indexOf('[^missing]'),source.indexOf('[gone]')]);
+  expect(defineMissingOfficeFootnote(source,'missing','Real').value).toContain('[^missing]: Real');
+  expect(()=>defineMissingOfficeFootnote('\x60\x60\x60\n[^hidden]\n\x60\x60\x60','hidden','No')).toThrow('no longer missing');
+  expect(()=>retargetBrokenOfficeHeading(source,source.indexOf('[gone]'),'office-ref-fake')).toThrow('existing original heading');
+ });
+
 });

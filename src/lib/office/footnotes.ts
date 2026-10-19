@@ -13,17 +13,17 @@ export interface ReferenceReport{definitions:OfficeFootnoteDefinition[];referenc
 export interface FootnoteInsertion{value:string;start:number;end:number;id:string}
 /** Iterate only source outside fully fenced Markdown. Do not inspect text within inline code spans. */
 function visibleLines(source:string,visit:(line:string,offset:number,number:number)=>void){
- const lines=source.replace(/\r\n?/g,'\n').split('\n');
+ const parts=source.split(/(\r\n|\r|\n)/);
  let offset=0,fence:{char:string;length:number}|null=null;
- for(let i=0;i<lines.length;i++){
-  const line=lines[i]!;
+ for(let i=0;i<parts.length;i+=2){
+  const line=parts[i]!;
   const opening=line.match(/^ {0,3}(\x60{3,}|~{3,})/);
   if(fence){
    const closing=line.match(/^ {0,3}(\x60{3,}|~{3,})\s*$/);
    if(closing&&closing[1]![0]===fence.char&&closing[1]!.length>=fence.length)fence=null;
   }else if(opening)fence={char:opening[1]![0]!,length:opening[1]!.length};
-  else visit(line,offset,i+1);
-  offset+=line.length+1;
+  else visit(line,offset,Math.floor(i/2)+1);
+  offset+=line.length+(parts[i+1]?.length??0);
  }
 }
 function withoutCode(line:string):string{
@@ -62,6 +62,41 @@ export function analyzeOfficeReferences(source:string):ReferenceReport{
  problems.sort((a,b)=>a.offset-b.offset);
  return {definitions:[...definitions.values()],references,problems,limited:definitions.size>MAX_FOOTNOTES||references.length>MAX_FOOTNOTES*10};
 }
+
+/** Repair a missing definition without adding a second marker to original source. */
+export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Source reference inspection is limited; shorten the document first.');
+ if(!footnoteId.test(id))throw new Error('Invalid footnote ID.');
+ if(report.definitions.some(row=>row.id===id)||
+    !report.problems.some(row=>row.kind==='missing-footnote'&&row.id===id))
+  throw new Error('This footnote is no longer missing. Source unchanged.');
+ if(typeof content!=='string'||!content.trim()||content.length>1000||/[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(content))
+  throw new Error('Footnote text must be 1–1000 characters on one line.');
+ const spacer=source.endsWith('\n\n')?'':source.endsWith('\n')?'\n':'\n\n';
+ const definition='[^'+id+']: '+content.trim()+'\n';
+ const value=source+spacer+definition;
+ if(value.length>MAX_BODY)throw new Error('Footnote would exceed the 200,000-character Office source limit.');
+ return {value,start:source.length+spacer.length,end:source.length+spacer.length+definition.length,id};
+}
+/** Retarget exactly one broken heading link, retaining its original label. */
+export function retargetBrokenOfficeHeading(source:string,offset:number,targetId:string):FootnoteInsertion{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Source reference inspection is limited; shorten the document first.');
+ if(!Number.isSafeInteger(offset)||offset<0||offset>=source.length||
+    !report.problems.some(row=>row.kind==='broken-heading'&&row.offset===offset))
+  throw new Error('This heading reference is no longer broken. Source unchanged.');
+ if(!officeHeadingReferences(source).some(row=>row.id===targetId))
+  throw new Error('Choose an existing original heading first.');
+ const match=source.slice(offset).match(/^\[[^\]\r\n]{1,200}\]\(#office-ref-[a-z0-9-]+\)/);
+ if(!match)throw new Error('Original reference changed. Source unchanged.');
+ const label=match[0]!.slice(0,match[0]!.indexOf('](#office-ref-')+1);
+ const replacement=label+'(#'+targetId+')';
+ const value=source.slice(0,offset)+replacement+source.slice(offset+match[0]!.length);
+ if(value.length>MAX_BODY)throw new Error('Heading reference exceeds Office source limit.');
+ return {value,start:offset,end:offset+replacement.length,id:targetId};
+}
+
 /** Inserts an original Markdown footnote marker and a single definition into the SAME source. */
 export function insertOfficeFootnote(source:string,start:number,end:number,content:string,requestedId=''):FootnoteInsertion{
  if(source.length>MAX_BODY||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>source.length)

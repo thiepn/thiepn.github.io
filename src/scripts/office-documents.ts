@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -202,6 +202,34 @@ if(root && shell){
         message('Focused original reference issue on line '+current.line+'.');
       });
       referenceProblems.append(control);
+      if(problem.kind==='missing-footnote'||problem.kind==='broken-heading'){
+        const repair=document.createElement('button');repair.type='button';
+        repair.className='office-reference-problem';
+        repair.dataset.officeRepair=problem.kind;
+        repair.dataset.officeRepairLine=String(problem.line);
+        repair.textContent=problem.kind==='missing-footnote'?
+          'Define missing [^'+problem.id+'] using footnote text above':
+          'Retarget broken heading link using selected heading above';
+        repair.addEventListener('click',()=>{
+          if(!active||!allowed()||body.disabled||busy||blocked)return;
+          const current=analyzeOfficeReferences(body.value).problems.find(item=>
+            item.offset===problem.offset&&item.kind===problem.kind&&item.id===problem.id);
+          if(!current){message('Reference has changed. Review the current source.');return;}
+          try{
+            const result=current.kind==='missing-footnote'?
+              defineMissingOfficeFootnote(body.value,current.id,footnoteText.value):
+              retargetBrokenOfficeHeading(body.value,current.offset,referenceTarget.value);
+            body.value=result.value;
+            body.dispatchEvent(new Event('input',{bubbles:true}));
+            if(current.kind==='missing-footnote')footnoteText.value='';
+            focusEditor(result.start,result.end);
+            message('Repaired original '+(current.kind==='missing-footnote'?'footnote':'heading reference')+
+              '. Autosave pending; revisions remain recoverable.');
+            enable();
+          }catch(error){message(error instanceof Error?error.message:'Reference repair refused.');}
+        });
+        referenceProblems.append(repair);
+      }
     }
   }
   function renderPreview(){renderMarkdown(body.value,preview);renderWritingStats();renderReferenceProblems();}
