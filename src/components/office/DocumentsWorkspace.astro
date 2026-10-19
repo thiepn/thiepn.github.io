@@ -187,6 +187,33 @@ import '../../styles/office-documents.css';
           </div>
           <p data-office-citation-edit-status role="status" aria-live="polite"></p>
 
+          <section class="office-citation-merge" aria-label="Resolve changes across three original revisions">
+            <h4>Three-revision citation reconciliation</h4>
+            <div class="office-citation-actions">
+              <label for="office-citation-merge-base">Baseline</label>
+              <select id="office-citation-merge-base" data-office-citation-merge-base disabled>
+                <option value="">Choose baseline revision</option>
+              </select>
+              <label for="office-citation-merge-incoming">Proposed</label>
+              <select id="office-citation-merge-incoming" data-office-citation-merge-incoming disabled>
+                <option value="">Choose proposed revision</option>
+              </select>
+              <button type="button" data-office-citation-merge-review disabled>Compare three revisions</button>
+            </div>
+            <p role="status" aria-live="polite" data-office-citation-merge-summary>No three-way comparison selected.</p>
+            <div class="office-citation-audit-changes" data-office-citation-merge-rows></div>
+            <button type="button" data-office-citation-merge-preview disabled>Preview resolved citations</button>
+            <section data-office-citation-merge-panel hidden class="office-citation-restore-panel" aria-label="Review three-revision citation result">
+              <p data-office-citation-merge-preview-summary role="status"></p>
+              <label for="office-citation-merge-result">Resulting original Markdown</label>
+              <textarea id="office-citation-merge-result" data-office-citation-merge-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-citation-merge-confirm disabled>Apply resolved definitions</button>
+                <button type="button" data-office-citation-merge-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+
           <section class="office-citation-audit" aria-label="Review citation changes against saved revision">
             <h4>Changes since saved revision</h4>
             <div class="office-citation-actions">

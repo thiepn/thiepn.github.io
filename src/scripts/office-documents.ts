@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -104,6 +104,51 @@ if(root && shell){
   const citationRestoreResult=pick<HTMLTextAreaElement>('[data-office-citation-restore-result]');
   const citationRestoreConfirm=pick<HTMLButtonElement>('[data-office-citation-restore-confirm]');
   const citationRestoreCancel=pick<HTMLButtonElement>('[data-office-citation-restore-cancel]');
+
+  const citationMergeBase=pick<HTMLSelectElement>('[data-office-citation-merge-base]');
+  const citationMergeIncoming=pick<HTMLSelectElement>('[data-office-citation-merge-incoming]');
+  const citationMergeReviewButton=pick<HTMLButtonElement>('[data-office-citation-merge-review]');
+  const citationMergeSummary=pick<HTMLElement>('[data-office-citation-merge-summary]');
+  const citationMergeRows=pick<HTMLElement>('[data-office-citation-merge-rows]');
+  const citationMergePreviewButton=pick<HTMLButtonElement>('[data-office-citation-merge-preview]');
+  const citationMergePanel=pick<HTMLElement>('[data-office-citation-merge-panel]');
+  const citationMergePreviewSummary=pick<HTMLElement>('[data-office-citation-merge-preview-summary]');
+  const citationMergeResult=pick<HTMLTextAreaElement>('[data-office-citation-merge-result]');
+  const citationMergeConfirm=pick<HTMLButtonElement>('[data-office-citation-merge-confirm]');
+  const citationMergeCancel=pick<HTMLButtonElement>('[data-office-citation-merge-cancel]');
+  type CitationMergeReviewState={
+    scope:string;documentId:string;currentRevision:number;currentBody:string;
+    baseRevision:number;baseBody:string;incomingRevision:number;incomingBody:string;
+    audit:OfficeCitationMergeReview;decisions:Record<string,OfficeCitationMergeDecision>;
+  };
+  type CitationMergePlan={
+    review:CitationMergeReviewState;decisions:string;result:OfficeCitationMergeResult;
+  };
+  let citationMergeReviewState:CitationMergeReviewState|null=null,citationMergePlan:CitationMergePlan|null=null;
+  function clearCitationMergePreview(){
+    citationMergePlan=null;citationMergePanel.hidden=true;citationMergePreviewSummary.textContent='';
+    citationMergeResult.value='';citationMergeConfirm.disabled=true;
+  }
+  function clearCitationMerge(resetSelectors=false){
+    citationMergeReviewState=null;clearCitationMergePreview();
+    citationMergeRows.replaceChildren();
+    citationMergeSummary.textContent='No three-way comparison selected.';
+    if(resetSelectors){
+      citationMergeBase.replaceChildren(new Option('Choose baseline revision',''));
+      citationMergeIncoming.replaceChildren(new Option('Choose proposed revision',''));
+    }
+  }
+  function citationMergeSelections(state:CitationMergeReviewState){
+    return Object.entries(state.decisions).sort(([a],[b])=>a.localeCompare(b))
+      .map(([id,choice])=>id+':'+choice).join('|');
+  }
+  function citationMergeValid(state:CitationMergeReviewState|null){
+    if(!state||!store||!active||!allowed()||blocked||busy||dirty)return false;
+    if(state.scope!==store.scope||state.documentId!==active.id||
+       state.currentRevision!==active.revision||state.currentBody!==body.value)return false;
+    return active.history.some(row=>row.revision===state.baseRevision&&row.body===state.baseBody)&&
+      active.history.some(row=>row.revision===state.incomingRevision&&row.body===state.incomingBody);
+  }
   const citationBatchSelectedText=pick<HTMLElement>('[data-office-citation-batch-selected]');
   const citationBatchPreview=pick<HTMLButtonElement>('[data-office-citation-batch-preview]');
   const citationBatchPanel=pick<HTMLElement>('[data-office-citation-batch-panel]');
@@ -389,6 +434,20 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    citationMergeBase.disabled=citationMergeIncoming.disabled=!editing||dirty||!active||active.history.length<2;
+    citationMergeReviewButton.disabled=!editing||dirty||
+      !active?.history.some(rev=>String(rev.revision)===citationMergeBase.value)||
+      !active?.history.some(rev=>String(rev.revision)===citationMergeIncoming.value)||
+      Number(citationMergeBase.value)>=Number(citationMergeIncoming.value)||
+      Number(citationMergeIncoming.value)>=Number(active?.revision);
+    const mergeActionable=citationMergeReviewState?.audit.rows.filter(row=>row.status==='safe'||row.status==='conflict')??[];
+    citationMergePreviewButton.disabled=!editing||dirty||!citationMergeValid(citationMergeReviewState)||
+      !!citationMergeReviewState?.audit.blocked||!mergeActionable.length||
+      mergeActionable.some(row=>!citationMergeReviewState?.decisions[row.id] );
+    citationMergeConfirm.disabled=!editing||dirty||!citationMergePlan||
+      !citationMergeValid(citationMergePlan?.review??null)||
+      citationMergePlan?.review!==citationMergeReviewState||
+      citationMergePlan?.decisions!==citationMergeSelections(citationMergePlan.review);
     citationAuditBase.disabled=!editing||!active?.history.length;
     citationAuditCompare.disabled=!editing||!active?.history.some(row=>String(row.revision)===citationAuditBase.value);
     citationBatchPreview.disabled=!editing||dirty||!citationAuditSnapshot||!citationBatchSelected.size;
@@ -691,7 +750,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearCitationAudit(true);
+    clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -770,13 +829,15 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearCitationAudit();
+    clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
     for(const rev of [...(active?.history??[])].reverse()){
       history.add(new Option('Revision '+rev.revision+' · '+new Date(rev.updatedAt).toLocaleString(),String(rev.revision)));
       citationAuditBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
+      citationMergeBase.add(new Option('Revision '+rev.revision,String(rev.revision)));
+      citationMergeIncoming.add(new Option('Revision '+rev.revision,String(rev.revision)));
     }
     if(chosen&&active?.history.some(rev=>String(rev.revision)===chosen))citationAuditBase.value=chosen;
     renderTimeline();
@@ -841,7 +902,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearCitationAudit(true);
+      clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1151,7 +1212,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1316,6 +1377,120 @@ if(root && shell){
     }
   });
 
+
+
+  citationMergeBase.addEventListener('change',()=>{clearCitationMerge();enable();});
+  citationMergeIncoming.addEventListener('change',()=>{clearCitationMerge();enable();});
+  citationMergeCancel.addEventListener('click',()=>{clearCitationMergePreview();enable();});
+  citationMergeReviewButton.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty||citationMergeReviewButton.disabled)return;
+    const base=active.history.find(row=>String(row.revision)===citationMergeBase.value);
+    const incoming=active.history.find(row=>String(row.revision)===citationMergeIncoming.value);
+    if(!base||!incoming||base.revision>=incoming.revision||incoming.revision>=active.revision)return;
+    clearCitationMerge();
+    try{
+      const audit=reviewOfficeCitationThreeWay(base.body,incoming.body,body.value);
+      const state:CitationMergeReviewState={
+        scope:store.scope,documentId:active.id,currentRevision:active.revision,
+        currentBody:body.value,baseRevision:base.revision,baseBody:base.body,
+        incomingRevision:incoming.revision,incomingBody:incoming.body,
+        audit,decisions:{}
+      };
+      citationMergeReviewState=state;
+      citationMergeSummary.textContent='Baseline revision '+base.revision+
+        ' · proposed revision '+incoming.revision+' · current revision '+active.revision+
+        ' · '+audit.conflicts+' conflicts · '+audit.safe+' proposed-only · '+
+        audit.alreadyApplied+' already present · '+audit.blocked+' blocked.';
+      for(const row of audit.rows){
+        const container=document.createElement('div');
+        container.className='office-citation-audit-row';
+        container.dataset.officeCitationMergeId=row.id;
+        const heading=document.createElement('strong');
+        heading.textContent='[^'+row.id+'] · '+row.status;
+        const original=document.createElement('p');
+        original.textContent='Baseline: '+(row.base??'No unique definition');
+        const proposed=document.createElement('p');
+        proposed.textContent='Proposed: '+(row.proposed??'No unique definition');
+        const current=document.createElement('p');
+        current.textContent='Current: '+(row.current??'No unique definition');
+        const reason=document.createElement('p');reason.textContent=row.reason;
+        container.append(heading,original,proposed,current,reason);
+        if(row.status==='safe'||row.status==='conflict'){
+          const label=document.createElement('label');
+          label.textContent='Resolution for [^'+row.id+']';
+          const select=document.createElement('select');
+          select.dataset.officeCitationMergeDecision=row.id;
+          select.setAttribute('aria-label','Resolution for citation '+row.id);
+          select.add(new Option('Choose resolution',''));
+          select.add(new Option('Keep current definition','keep-current'));
+          select.add(new Option('Use proposed revision '+incoming.revision,'use-proposed'));
+          select.addEventListener('change',()=>{
+            if(!citationMergeValid(state)||citationMergeReviewState!==state){
+              clearCitationMerge();enable();return;
+            }
+            if(select.value==='keep-current'||select.value==='use-proposed')
+              state.decisions[row.id]=select.value;
+            else delete state.decisions[row.id];
+            clearCitationMergePreview();enable();
+          });
+          label.append(select);container.append(label);
+        }
+        citationMergeRows.append(container);
+      }
+      if(!audit.rows.length){
+        const empty=document.createElement('p');
+        empty.textContent='No original citation definitions changed between these revisions.';
+        citationMergeRows.append(empty);
+      }
+      enable();
+    }catch(error){
+      clearCitationMerge();enable();
+      message(error instanceof Error?error.message:'Citation comparison is unavailable.');
+    }
+  });
+  citationMergePreviewButton.addEventListener('click',()=>{
+    const state=citationMergeReviewState;
+    if(!citationMergeValid(state)||!state||citationMergePreviewButton.disabled)return;
+    try{
+      const result=previewOfficeCitationThreeWay(state.baseBody,state.incomingBody,
+        state.currentBody,state.decisions);
+      citationMergePlan={review:state,decisions:citationMergeSelections(state),result};
+      citationMergePreviewSummary.textContent='Baseline '+state.baseRevision+
+        ' → proposed '+state.incomingRevision+' → current '+state.currentRevision+
+        ' · '+result.ids.length+' proposed definitions · '+result.kept.length+
+        ' current definitions retained · '+result.conflictsResolved+
+        ' resolved conflicts · '+result.usesPreserved+' citation uses preserved.';
+      citationMergeResult.value=result.value;citationMergePanel.hidden=false;
+      enable();citationMergePanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearCitationMergePreview();enable();
+      message(error instanceof Error?error.message:'Cannot preview citation resolutions.');
+    }
+  });
+  citationMergeConfirm.addEventListener('click',()=>{
+    const plan=citationMergePlan,state=plan?.review;
+    if(!plan||!state||!citationMergeValid(state)||plan.review!==citationMergeReviewState||
+      plan.decisions!==citationMergeSelections(state)||citationMergeConfirm.disabled)return;
+    try{
+      const verified=previewOfficeCitationThreeWay(state.baseBody,state.incomingBody,
+        body.value,state.decisions);
+      if(verified.value!==plan.result.value||
+         verified.ids.join('|')!==plan.result.ids.join('|')||
+         verified.kept.join('|')!==plan.result.kept.join('|')){
+        clearCitationMergePreview();enable();
+        message('Source or decisions changed. Review the citation resolution again.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      const reference=analyzeOfficeReferences(body.value).definitions.find(row=>row.id===verified.ids[0]);
+      if(reference)focusEditor(reference.offset,reference.offset);
+      message('Applied '+verified.ids.length+' proposed definitions with explicit conflict decisions. Autosave pending.');
+      enable();
+    }catch(error){
+      clearCitationMergePreview();enable();
+      message(error instanceof Error?error.message:'Citation conflict resolution refused.');
+    }
+  });
 
   citationBatchCancel.addEventListener('click',()=>{clearCitationBatchPlan();enable();});
   citationBatchPreview.addEventListener('click',()=>{

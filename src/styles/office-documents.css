@@ -266,3 +266,9 @@
 
 .office-citation-batch-choice{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5}
 .office-citation-batch-choice input{width:16px;height:16px;flex-shrink:0}
+
+.office-citation-merge{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-citation-merge h4{font-size:14px;margin:0}
+.office-citation-merge [data-office-citation-merge-preview]{justify-self:start;min-height:36px;padding:7px 12px}
+.office-citation-merge label:has(select){display:grid;gap:6px;font-size:13px;line-height:1.5}
+.office-citation-merge select{max-width:100%;min-height:38px}
