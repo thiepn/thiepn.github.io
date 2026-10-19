@@ -376,7 +376,7 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(preview.value).toBe('First[^a] & again[^a]\nA paragraph\n  [^a]: Beta\nEnding');
   expect(preview.start).toBe(preview.value.indexOf('  [^a]: Beta'));
   expect(analyzeOfficeReferences(preview.value).problems).toHaveLength(0);
-  expect(previewOfficeDuplicateResolution(preview.value,'a',keep.offset)).toThrow('multiple genuine');
+  expect(()=>previewOfficeDuplicateResolution(preview.value,'a',keep.offset)).toThrow('multiple genuine');
  });
  it('O27 handles code fences, CR only, Unicode and definition at EOF without altering neighboring Markdown',()=>{
   const tilde='~~~~';
