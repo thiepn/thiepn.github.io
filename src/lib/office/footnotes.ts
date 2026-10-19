@@ -667,6 +667,92 @@ export function mapOfficeCitationSections(source:string):OfficeCitationSectionMa
  return {sections,citations,totalUses:footnotes.length};
 }
 
+
+export type OfficeFootnoteOrder='first-use'|'id';
+export interface OfficeFootnoteOrderRow{
+ id:string;line:number;offset:number;raw:string;firstUseLine:number|null;useCount:number;
+}
+export interface OfficeFootnoteOrderReview{
+ rows:OfficeFootnoteOrderRow[];totalDefinitions:number;trailingDefinitions:number;
+}
+export interface OfficeFootnoteOrderPreview{
+ value:string;before:string[];after:string[];lines:number[];order:OfficeFootnoteOrder;
+}
+/** Only rearrange single-line authentic definition slots in the existing terminal
+ * footnote block. Do not move definitions from unrelated paragraphs or code fences.
+ */
+export function inspectOfficeFootnoteOrder(source:string):OfficeFootnoteOrderReview{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Footnote ordering exceeds source reference limits.');
+ const chunks=source.split(/(\r\n|\r|\n)/);
+ const lines:{raw:string;ending:string;offset:number;line:number}[]=[];
+ let offset=0;
+ for(let i=0;i<chunks.length;i+=2){
+  const raw=chunks[i]!,ending=chunks[i+1]??'';
+  lines.push({raw,ending,offset,line:Math.floor(i/2)+1});
+  offset+=raw.length+ending.length;
+ }
+ let n=lines.length-1;while(n>=0&&!lines[n]!.raw.trim())n--;
+ const rows:OfficeFootnoteOrderRow[]=[];
+ for(let i=n;i>=0;i--){
+  const line=lines[i]!;
+  if(!line.raw.trim())continue;
+  const match=line.raw.match(definition);
+  if(!match)break;
+  const known=report.definitions.find(item=>item.id===match[1]&&item.offset===line.offset);
+  if(!known||known.count!==1)
+   throw new Error('Terminal footnote block has ambiguous or duplicate definitions.');
+  if(!known.content.trim()||known.content!==known.content.trim()||known.content.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(known.content))
+   throw new Error('Only complete single-line original footnote definitions can be ordered.');
+  const uses=report.references.filter(ref=>ref.kind==='footnote'&&ref.id===known.id);
+  rows.unshift({id:known.id,line:line.line,offset:line.offset,raw:line.raw,
+    firstUseLine:uses[0]?.line??null,useCount:uses.length});
+ }
+ if(rows.length<2)throw new Error('Add at least two genuine footnotes in one terminal definition block.');
+ if(rows.length>MAX_FOOTNOTES)throw new Error('Too many original footnotes to order.');
+ if(rows.some(row=>report.references.some(ref=>ref.kind==='footnote'&&ref.offset>=rows[0]!.offset)))
+  throw new Error('References within the terminal definition block are ambiguous.');
+ return {rows,totalDefinitions:report.definitions.length,trailingDefinitions:rows.length};
+}
+/** Reorder exact original definition *line bodies* within existing positions, preserving
+ * CRLF/LF/CR separators, blank lines, headings, all citation uses and original IDs.
+ */
+export function previewOfficeFootnoteOrder(
+ source:string,mode:OfficeFootnoteOrder
+):OfficeFootnoteOrderPreview{
+ if(mode!=='first-use'&&mode!=='id')throw new Error('Choose an original footnote ordering mode.');
+ const review=inspectOfficeFootnoteOrder(source),slots=review.rows;
+ const report=analyzeOfficeReferences(source);
+ const refs=report.references.filter(ref=>ref.kind==='footnote');
+ const ordered=[...slots].sort(mode==='id'
+  ?(a,b)=>a.id.localeCompare(b.id)
+  :(a,b)=>{
+   const firstA=refs.find(ref=>ref.id===a.id)?.offset??Infinity;
+   const firstB=refs.find(ref=>ref.id===b.id)?.offset??Infinity;
+   return firstA-firstB||a.line-b.line;
+  });
+ const before=slots.map(row=>row.id),after=ordered.map(row=>row.id);
+ if(before.every((id,i)=>id===after[i]))throw new Error('Original footnotes already follow this order.');
+ let value=source;
+ for(let i=slots.length-1;i>=0;i--){
+  const slot=slots[i]!,newRaw=ordered[i]!.raw;
+  if(value.slice(slot.offset,slot.offset+slot.raw.length)!==slot.raw)
+   throw new Error('Original footnote source offsets changed.');
+  value=value.slice(0,slot.offset)+newRaw+value.slice(slot.offset+slot.raw.length);
+ }
+ if(value.length>MAX_BODY)throw new Error('Ordered footnotes exceed original source limits.');
+ const check=analyzeOfficeReferences(value);
+ if(check.limited||check.problems.length!==report.problems.length||
+    check.definitions.length!==report.definitions.length||
+    check.definitions.some(row=>report.definitions.find(prev=>prev.id===row.id)?.content!==row.content)||
+    check.references.length!==report.references.length||
+    check.references.some((ref,i)=>ref.kind!==report.references[i]?.kind||
+      ref.id!==report.references[i]?.id||ref.offset!==report.references[i]?.offset))
+  throw new Error('Original citations or diagnostics changed during ordering preview.');
+ return {value,before,after,lines:slots.map(row=>row.line),order:mode};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -543,6 +543,54 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(()=>mapOfficeCitationSections(headings)).toThrow('120 original Markdown headings');
   const refs=Array.from({length:161},(_,i)=>'[^id'+i+']').join('\n');
   expect(()=>mapOfficeCitationSections(refs)).toThrow('160 distinct original IDs');
+ });
+
+
+ it('O30 reorders authentic terminal definitions by first original use while preserving unrelated Markdown',()=>{
+  const source='# Research\nClaim[^z] and again[^z]\nAnother[^a]\n\n[^a]: Alpha\n[^z]: 한국어 Source\n';
+  const review=inspectOfficeFootnoteOrder(source);
+  expect(review).toMatchObject({totalDefinitions:2,trailingDefinitions:2});
+  expect(review.rows.map(row=>[row.id,row.line,row.useCount])).toEqual([['a',5,1],['z',6,2]]);
+  const result=previewOfficeFootnoteOrder(source,'first-use');
+  expect(result).toMatchObject({before:['a','z'],after:['z','a'],lines:[5,6]});
+  expect(result.value).toBe('# Research\nClaim[^z] and again[^z]\nAnother[^a]\n\n[^z]: 한국어 Source\n[^a]: Alpha\n');
+  expect(analyzeOfficeReferences(result.value).problems).toHaveLength(0);
+  expect(()=>previewOfficeFootnoteOrder(result.value,'first-use')).toThrow('already follow');
+ });
+ it('O30 alphabetizes source-defined IDs while leaving exactly all original mixed line endings and blank gaps',()=>{
+  const source='A[^a] B[^b]\r\n\r\n[^b]: Bêta\r\n\r\n[^a]: Alpha\r\n';
+  const result=previewOfficeFootnoteOrder(source,'id');
+  expect(result.value).toBe('A[^a] B[^b]\r\n\r\n[^a]: Alpha\r\n\r\n[^b]: Bêta\r\n');
+  expect(result.before).toEqual(['b','a']);
+  expect(result.after).toEqual(['a','b']);
+  expect(analyzeOfficeReferences(result.value).references.map(row=>row.offset))
+    .toEqual(analyzeOfficeReferences(source).references.map(row=>row.offset));
+ });
+ it('O30 does not treat code-fenced pseudo footnotes as part of a terminal definition block',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const src='Use[^a] and[^b]\n'+tick+'\n[^fake]: Fake\n'+tick+
+   '\n[^b]: B\n[^a]: A\n';
+  const result=previewOfficeFootnoteOrder(src,'id');
+  expect(result.value).toContain(tick+'\n[^fake]: Fake\n'+tick);
+  expect(result.value).toContain('[^a]: A\n[^b]: B');
+  const fencedEnd='Use[^a] and[^b]\n[^b]: B\n[^a]: A\n'+tick+'\n[^fake]: Fake\n'+tick;
+  expect(()=>inspectOfficeFootnoteOrder(fencedEnd)).toThrow('at least two');
+ });
+ it('O30 refuses definitions that are duplicated, multiline, empty or not in a genuine terminal block',()=>{
+  expect(()=>inspectOfficeFootnoteOrder('Text[^a]\n[^a]: One\n[^a]: Two')).toThrow('ambiguous');
+  expect(()=>inspectOfficeFootnoteOrder('Text[^a]\n[^a]: One\n    continuation\n[^b]: Two'))
+   .toThrow('at least two');
+  expect(()=>inspectOfficeFootnoteOrder('Text[^a]\n[^a]: One\n[^b]:    ')).toThrow('single-line');
+  expect(()=>inspectOfficeFootnoteOrder('Text[^a]\n[^a]: One')).toThrow('at least two');
+  const src='Text[^a]\n[^b]: Two\n[^a]: One';
+  expect(()=>previewOfficeFootnoteOrder(src,'unknown' as any)).toThrow('ordering mode');
+  expect(()=>previewOfficeFootnoteOrder('x'.repeat(200001),'id')).toThrow('limits');
+ });
+ it('O30 keeps references that follow a heading unchanged and only reorders the terminal footnote block',()=>{
+  const source='# Topic\nParagraph[^b]\n[^old]: Earlier\n\n## End\nFinal[^a]\n\n[^b]: B\n[^a]: A';
+  const result=previewOfficeFootnoteOrder(source,'id');
+  expect(result.value).toBe('# Topic\nParagraph[^b]\n[^old]: Earlier\n\n## End\nFinal[^a]\n\n[^a]: A\n[^b]: B');
+  expect(analyzeOfficeReferences(result.value).problems.map(x=>x.kind)).toEqual(['unused-footnote','missing-footnote']);
  });
 
 });
