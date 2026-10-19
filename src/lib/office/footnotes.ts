@@ -256,6 +256,76 @@ export function previewOfficeCitationReconciliation(historical:string,current:st
  return {value,ids,changes,usesPreserved};
 }
 
+
+export type OfficeCitationMergeStatus='safe'|'conflict'|'already-applied'|'blocked';
+export type OfficeCitationMergeDecision='keep-current'|'use-proposed';
+export interface OfficeCitationMergeRow{
+ id:string;base:string|null;proposed:string|null;current:string|null;
+ status:OfficeCitationMergeStatus;reason:string;
+}
+export interface OfficeCitationMergeReview{
+ rows:OfficeCitationMergeRow[];safe:number;conflicts:number;blocked:number;alreadyApplied:number;
+}
+export interface OfficeCitationMergeResult extends OfficeCitationReconciliation{
+ kept:string[];conflictsResolved:number;baselineChanged:number;
+}
+/** Review actual original definition changes across baseline, proposed and current source.
+ * A missing, duplicate or unrepresentable definition cannot be silently resolved.
+ */
+export function reviewOfficeCitationThreeWay(base:string,proposed:string,current:string):OfficeCitationMergeReview{
+ const records=[base,proposed,current].map(analyzeOfficeReferences);
+ if(records.some(row=>row.limited))throw new Error('Citation merge source exceeds the safe reference limit.');
+ const [ancestor,incoming,latest]=records as [ReferenceReport,ReferenceReport,ReferenceReport];
+ const ids=[...new Set([...ancestor.definitions.map(d=>d.id),...incoming.definitions.map(d=>d.id)])].sort();
+ if(ids.length>MAX_AUDIT_IDENTITIES)throw new Error('Citation merge has too many original identities.');
+ const rows:OfficeCitationMergeRow[]=[];
+ for(const id of ids){
+  const a=ancestor.definitions.find(row=>row.id===id);
+  const p=incoming.definitions.find(row=>row.id===id);
+  const c=latest.definitions.find(row=>row.id===id);
+  if(a?.count===1&&p?.count===1&&a.content===p.content)continue;
+  const previous=a?.content??null, proposedText=p?.content??null, currentText=c?.content??null;
+  let status:OfficeCitationMergeStatus,reason:string;
+  if(!a||!p||!c||a.count!==1||p.count!==1||c.count!==1){
+   status='blocked';reason='Missing, added or duplicate definition. Resolve directly in original source.';
+  }else if(!p.content.trim()||p.content!==p.content.trim()||p.content.length>1000||
+       /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(p.content)){
+   status='blocked';reason='Proposed text is not a supported single-line definition.';
+  }else if(c.content===p.content){
+   status='already-applied';reason='Current original source already matches the proposed definition.';
+  }else if(c.content===a.content){
+   status='safe';reason='Only the proposed revision changed this definition.';
+  }else{
+   status='conflict';reason='Both proposed and current sources differ from the baseline.';
+  }
+  rows.push({id,base:previous,proposed:proposedText,current:currentText,status,reason});
+ }
+ if(rows.length>MAX_CITATION_RECONCILIATION)
+  throw new Error('More than 12 changed definitions. Use a narrower retained revision comparison.');
+ return {rows,safe:rows.filter(row=>row.status==='safe').length,
+  conflicts:rows.filter(row=>row.status==='conflict').length,
+  blocked:rows.filter(row=>row.status==='blocked').length,
+  alreadyApplied:rows.filter(row=>row.status==='already-applied').length};
+}
+/** Explicitly decide every actionable source change; never infer conflict winners. */
+export function previewOfficeCitationThreeWay(
+ base:string,proposed:string,current:string,choices:Readonly<Record<string,OfficeCitationMergeDecision>>
+):OfficeCitationMergeResult{
+ const review=reviewOfficeCitationThreeWay(base,proposed,current);
+ if(review.blocked)throw new Error('Blocked citation changes must be resolved directly in the original source.');
+ const actionable=review.rows.filter(row=>row.status==='safe'||row.status==='conflict');
+ const names=new Set(actionable.map(row=>row.id));
+ if(Object.keys(choices).some(id=>!names.has(id))||
+    actionable.some(row=>choices[row.id]!=='keep-current'&&choices[row.id]!=='use-proposed'))
+  throw new Error('Choose Keep current or Use proposed for every changed citation.');
+ const ids=actionable.filter(row=>choices[row.id]==='use-proposed').map(row=>row.id);
+ if(!ids.length)throw new Error('No proposed definition changes selected for source recovery.');
+ const result=previewOfficeCitationReconciliation(proposed,current,ids);
+ return {...result,kept:actionable.filter(row=>choices[row.id]==='keep-current').map(row=>row.id),
+  conflictsResolved:actionable.filter(row=>row.status==='conflict').length,
+  baselineChanged:review.rows.length};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

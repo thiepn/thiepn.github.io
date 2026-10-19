@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -247,6 +247,57 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(()=>previewOfficeCitationReconciliation(historic,current,['hidden'])).toThrow('unique original');
   expect(()=>previewOfficeCitationReconciliation(historic.replace('History','x'.repeat(1001)),current,['a'])).toThrow('supported single line');
   expect(()=>previewOfficeCitationReconciliation(historic,current+'x'.repeat(200001),['a'])).toThrow('limited');
+ });
+
+
+ it('O25 flags divergent original edits and requires an explicit decision for every candidate',()=>{
+  const base='# R\nA[^a] B[^b]\n[^a]: Old 한국어\n[^b]: Old B';
+  const proposed=base.replace('Old 한국어','Proposed 日本語').replace('Old B','Proposed B');
+  const current=base.replace('Old 한국어','Current 내용').replace('Old B','Current B')+'\nUnrelated current';
+  const review=reviewOfficeCitationThreeWay(base,proposed,current);
+  expect(review).toMatchObject({safe:0,conflicts:2,blocked:0,alreadyApplied:0});
+  expect(review.rows.map(row=>[row.id,row.status])).toEqual([['a','conflict'],['b','conflict']]);
+  expect(()=>previewOfficeCitationThreeWay(base,proposed,current,{a:'use-proposed'})).toThrow('Choose Keep current');
+  const result=previewOfficeCitationThreeWay(base,proposed,current,{a:'use-proposed',b:'keep-current'});
+  expect(result.ids).toEqual(['a']);
+  expect(result.kept).toEqual(['b']);
+  expect(result.conflictsResolved).toBe(2);
+  expect(result.value).toBe(current.replace('Current 내용','Proposed 日本語'));
+  expect(()=>previewOfficeCitationThreeWay(base,proposed,current,{a:'keep-current',b:'keep-current'})).toThrow('No proposed');
+ });
+ it('O25 distinguishes safe upstream changes and already applied citations from genuine conflicts',()=>{
+  const base='C[^c] A[^a] B[^b]\n[^a]: Base A\n[^b]: Base B\n[^c]: Base C';
+  const proposed=base.replace('Base A','Proposed A').replace('Base B','Proposed B').replace('Base C','Proposed C');
+  const current=base.replace('Base B','Proposed B').replace('Base C','Local C');
+  const review=reviewOfficeCitationThreeWay(base,proposed,current);
+  expect(review.rows.map(row=>[row.id,row.status])).toEqual([['a','safe'],['b','already-applied'],['c','conflict']]);
+  const result=previewOfficeCitationThreeWay(base,proposed,current,{a:'use-proposed',c:'keep-current'});
+  expect(result.value).toContain('[^a]: Proposed A');
+  expect(result.value).toContain('[^b]: Proposed B');
+  expect(result.value).toContain('[^c]: Local C');
+  expect(result.value).not.toContain('Base A');
+ });
+ it('O25 blocks additions, deletions, duplicates, fenced definitions and unsafe resolutions',()=>{
+  const base='A[^a]\n[^a]: Old',proposed='A[^a]\n[^a]: New',current='A[^a]\n[^a]: Mine';
+  expect(reviewOfficeCitationThreeWay(base,proposed,current).conflicts).toBe(1);
+  expect(reviewOfficeCitationThreeWay(base,'A[^a]',current).blocked).toBe(1);
+  expect(reviewOfficeCitationThreeWay('A[^a]',proposed,current).blocked).toBe(1);
+  expect(reviewOfficeCitationThreeWay(base,proposed,current+'\n[^a]: Duplicate').blocked).toBe(1);
+  expect(()=>previewOfficeCitationThreeWay(base,proposed,current+'\n[^a]: Duplicate',{a:'use-proposed'}))
+    .toThrow('Blocked citation');
+  expect(()=>previewOfficeCitationThreeWay(base,proposed,current,{a:'unsupported' as any}))
+    .toThrow('Choose Keep current');
+  expect(()=>previewOfficeCitationThreeWay(base,proposed,current,{a:'use-proposed',z:'keep-current'}))
+    .toThrow('Choose Keep current');
+  const fence=String.fromCharCode(96).repeat(3);
+  const fencedBase=base+'\n'+fence+'\n[^fake]: Hidden\n'+fence;
+  expect(reviewOfficeCitationThreeWay(fencedBase,proposed,current).conflicts).toBe(1);
+ });
+ it('O25 compares actual three-source limits and refuses overlarge unsafe sets',()=>{
+  expect(()=>reviewOfficeCitationThreeWay('x'.repeat(200001),'','')).toThrow('safe reference limit');
+  const ids=Array.from({length:13},(_,i)=>'a'+i);
+  const make=(value:string)=>ids.map(id=>'Text[^'+id+']\n[^'+id+']: '+value).join('\n');
+  expect(()=>reviewOfficeCitationThreeWay(make('Base'),make('Proposed'),make('Local'))).toThrow('More than 12');
  });
 
 });
