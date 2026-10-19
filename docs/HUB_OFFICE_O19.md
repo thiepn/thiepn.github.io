@@ -1,0 +1,15 @@
+# Hub Office O19 — source-backed footnotes and reference diagnostics
+
+Original draft PR #175 and SAME feature/hub-office-o1-native-documents branch, starting at verified O18 SHA 7dda72d69bd2cab13113fb1eea8417c2a4e8efb1 with main SHA 04618de9ffb08fc96c1b5086f10c55be3ae0256b and no intervening branch commits.
+
+O18 Quality #39184765326 was still running at O19 start; do not call it full PASS before completion. O18 Library #39184765217 failed 6/54 and Reading #39184765292 failed 5/47, from the separate thiepn-hub-account IndexedDB initialization-before-consent issue. Preserve their assertions and release NO-GO.
+
+O19 adds real Markdown footnote authoring and conservative source-reference diagnostics without any additional writer, index, database, cloud client or schema. New src/lib/office/footnotes.ts scans the actual original Markdown body, bounded by canonical MAX_BODY=200000, 120 footnotes and 1200 references, excluding fenced-code and inline-code pseudo-references, preserving source offsets for navigation. Detects missing referenced footnotes, unused and duplicate definitions, and broken original O18 internal heading IDs. No external fact-checking or fabricated citation verification claims.
+
+The original Office editor gains a footnote ID (optional, automatic deterministic note-N allocation), plain one-line footnote text and Insert action. Insertion writes only original [^id] and [^id]: text Markdown inside the existing textarea, dispatches the original input/autosave and lets original OfficeDeviceStore CAS and existing immutable revision history govern persistence. Validates allowed footnote IDs, duplicate IDs, one-line 1–1000-character content and MAX_BODY before modifying source; stale, invalid and oversized source fails closed. Existing safe Markdown renderer displays footnote references as sup links to inert definition nodes, never untrusted HTML execution. Clicking a footnote reference focuses the original source definition; the source diagnostic list focuses the exact original broken reference.
+
+Diagnostics are computed on the visible current owner's source, never persisted in an auxiliary index. UI shows footnote and reference counts and explicit missing/unused/duplicate/broken heading messages. Document switch, new/import creation, Account changes and privacy mask clear footnote ID/text and source diagnostics. Original account and Office data ownership are preserved; no new paid CI manually requested.
+
+Pure Vitest tests cover Unicode, actual offsets, missing/unused/duplicate/broken links, code-fence exclusion, auto-unique IDs, invalid contents and body size. New Chromium/Firefox/WebKit desktop/mobile Playwright cases cover original persistence and reload, inert hostile HTML, footnote reference navigation, broken heading diagnostics, two-tab original CAS conflict and mobile privacy. PASS claims require completed exact-head execution.
+
+Office IndexedDB v1/schema/IDs/history/CAS and KEEP, Manuscript, StudyOS, Folio, Hub v1 and Account boundaries are unchanged. Same draft only; no merge, deployment, production writes/migrations, credentials or costs.
