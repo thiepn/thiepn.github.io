@@ -66,3 +66,29 @@ for (const [width, theme, zoom] of [[320, 'light', false], [1440, 'dark', false]
     await page.screenshot({ path: `.cache/h5-${route.slice(1,-1)}-${width}-${theme}-${zoom}.png`, fullPage: false });
   }
 });
+
+test('search results paint without content virtualization on narrow dark screens', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/search/?q=French%20vocabulary');
+  const result = page.locator('[data-portal-search-slug]:visible').first();
+  await expect(page.locator('[data-portal-search-status]')).toHaveText('1 app found');
+  await expect(result.getByRole('heading')).toContainText('French 3000');
+  await expect(result.getByRole('link', { name: /Open app/ })).toBeVisible();
+  const style = await result.evaluate(element => {
+    const value = getComputedStyle(element);
+    const heading = element.querySelector('h2');
+    return {
+      contentVisibility: value.contentVisibility,
+      headingVisibility: heading ? getComputedStyle(heading).visibility : null,
+      titleHeight: heading?.getBoundingClientRect().height ?? 0,
+    };
+  });
+  expect(style.contentVisibility).toBe('visible');
+  expect(style.headingVisibility).toBe('visible');
+  expect(style.titleHeight).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  await testInfo.attach('search-result-mobile-dark.png', {
+    body: await page.screenshot(), contentType: 'image/png',
+  });
+});
