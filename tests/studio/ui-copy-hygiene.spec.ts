@@ -43,3 +43,16 @@ test('public work and project pages use content headings instead of taglines', a
   await expect(page.getByRole('heading', { name: 'Project archive.', exact: true })).toBeVisible();
   await expect(page.getByText('Portfolio archive', { exact: true })).toHaveCount(0);
 });
+
+test('project snapshots preserve facts without duplicate category headings', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/project/the-bible-challenge/');
+  await expect(page.getByRole('heading', { name: 'Project snapshot' })).toBeVisible();
+  await expect(page.getByText('At a glance', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.showcase-facts dt').first()).toBeVisible();
+  const metaFont = await page.locator('.showcase-facts dt').first()
+    .evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
+  expect(metaFont).toBeGreaterThanOrEqual(14);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(1);
+});

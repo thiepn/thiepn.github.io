@@ -53,7 +53,7 @@ export function renderIntegratedHome(
       esc(tracker.id) + '">Log</button></div>';
   }).join('');
   const notes = day.recentNotes.map(note =>
-    '<div class="ws-brief-item"><span aria-hidden="true">·</span>' +
+    '<div class="ws-brief-item">' +
     '<button type="button" data-action="edit-note" data-id="' + esc(note.id) + '">' +
     esc(note.title || 'Untitled note') + '</button><small>' +
     esc(new Date(note.updatedAt).toLocaleDateString()) + '</small></div>'
@@ -84,7 +84,7 @@ export function renderIntegratedHome(
       (link ? '<a href="' + esc(link) + '" rel="noreferrer">' + esc(card.action.label || 'Continue in app') + ' ↗</a>' : '') + '</div>';
   }).join('');
   return '<section class="ws-daily-brief" aria-label="Daily information without opening other apps">' +
-    '<header class="ws-brief-heading"><div><h2>Today at a glance</h2></div>' +
+    '<header class="ws-brief-heading"><div><h2>Overview</h2></div>' +
     (status === 'signed-out' ? '' :
       '<button type="button" class="ws-text-button" data-action="refresh-languages">Refresh languages</button>') +
     '</header><div class="ws-brief-grid">' +
