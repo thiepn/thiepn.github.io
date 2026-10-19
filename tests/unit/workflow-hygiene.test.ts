@@ -20,7 +20,9 @@ describe('post-launch repository hygiene', () => {
 
   it('keeps the public footer on the current portfolio identity', () => {
     const footer = read('src/components/shell/SiteFooter.astro');
-    expect(footer).toContain('A digital workshop by Jonathan.');
+    expect(footer).toContain('THIEPN.');
+    expect(footer).toContain('Privacy');
+    expect(footer).not.toContain('A digital workshop by Jonathan.');
     expect(footer.toLowerCase()).not.toContain('project universe');
   });
 });
