@@ -1456,3 +1456,22 @@ test('O18 mobile privacy clears TOC source, heading targets and forbids confirmi
  await expect(page.locator('[data-office-toc-review]')).toBeDisabled();
  await expect(page.locator('[data-office-reference-insert]')).toBeDisabled();
 });
+
+test('O18 indented authentic Markdown headings receive safe anchor IDs and work from TOC',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const source='# Top\nIntro\n   ## Indented\nDetails';
+ await page.locator('[data-office-body]').fill(source);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-toc-review]').click();
+ await expect(page.locator('[data-office-toc-source]')).toHaveValue(/#office-ref-indented/);
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('[data-office-toc-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('saved Office revision 2');
+ await expect(page.locator('[data-office-preview] h2#office-ref-indented')).toHaveCount(1);
+ await page.locator('[data-office-preview] a[href="#office-ref-indented"]').click();
+ const final=await page.locator('[data-office-body]').inputValue();
+ const caret=await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart);
+ expect(caret).toBe(final.indexOf('   ## Indented'));
+});

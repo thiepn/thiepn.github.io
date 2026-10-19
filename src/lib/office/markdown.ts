@@ -59,7 +59,7 @@ function cells(line:string):string[]{
   return line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(s=>s.trim());
 }
 const divider=/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
-const heading=/^(#{1,6})\s+(.+)$/;
+const heading=/^ {0,3}(#{1,6})\s+(.+)$/;
 const ul=/^\s*[-*+]\s+(.+)$/;
 const ol=/^\s*\d+\.\s+(.+)$/;
 const quote=/^>\s?(.*)$/;
@@ -72,7 +72,7 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
   const doc=container.ownerDocument,fragment=doc.createDocumentFragment();
   const normalized=source.replace(/\r\n?/g,'\n');
   const lines=normalized.split('\n');
-  const headingIds=new Map(officeHeadingReferences(normalized).map(heading=>[heading.line,heading.id]));
+  const headingIds=new Map<number,string>(officeHeadingReferences(normalized).map(heading=>[heading.line,heading.id] as const));
   const appendInline=(tag:string,content:string)=>{
     const node=doc.createElement(tag);inline(doc,node,content);fragment.append(node);
   };
