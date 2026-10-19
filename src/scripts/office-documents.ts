@@ -1020,7 +1020,6 @@ if(root && shell){
       }
     }finally{if(stamp===epoch){busy=false;enable();}}
   })());
-  sectionFocus.addEventListener
   sectionFocus.addEventListener('click',()=>{
     if(!active||!allowed()||body.disabled)return;
     const section=documentSections(body.value).find(entry=>String(entry.offset)===sectionSelect.value);
