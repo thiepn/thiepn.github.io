@@ -5,20 +5,17 @@ const { stats } = Astro.props;
 const categories = [
   ['Tools','tools'],['Learning','learning'],['Games','games'],['Resources','resources'],['Visualizations','visualizations'],['Experiments','experiments'],
 ] as const;
-const hint = (key: typeof categories[number][1]) => key === 'tools' ? 'PDF Studio / Manuscript / Clean30' : key === 'learning' ? 'French / Mathematics / Study tools' : key === 'games' ? 'Typing / Strategy / Arcade' : 'Projects in this category';
 ---
 <nav class="category-index" aria-label="Browse projects by type">
   {categories.map(([label,key]) => stats.categories[key] > 0 ? (
     <a class="category-index__row" href={`/projects/?category=${key}`} data-archive-filter-link={key}>
       <span class="category-index__name">{label}</span>
-      <span class="category-index__hint">{hint(key)}</span>
       <span class="category-index__count" aria-label={`${stats.categories[key]} projects`}>{String(stats.categories[key]).padStart(2,'0')}</span>
       <span class="category-index__arrow" aria-hidden="true">→</span>
     </a>
   ) : (
     <div class="category-index__row is-empty" aria-disabled="true">
       <span class="category-index__name">{label}</span>
-      <span class="category-index__hint">No public projects yet</span>
       <span class="category-index__count" aria-label="0 projects">00</span>
       <span class="category-index__arrow" aria-hidden="true">—</span>
     </div>
@@ -26,11 +23,11 @@ const hint = (key: typeof categories[number][1]) => key === 'tools' ? 'PDF Studi
 </nav>
 <style>
   .category-index{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line-strong)}
-  .category-index__row{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;grid-template-areas:'name count arrow' 'hint count arrow';gap:5px 14px;align-items:center;min-height:92px;padding:16px 0;border-bottom:1px solid var(--line);text-decoration:none;background:transparent;transition:padding-inline var(--motion-fast) var(--ease-enter),background-color var(--motion-fast) var(--ease-standard)}
+  .category-index__row{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;grid-template-areas:'name count arrow';gap:14px;align-items:center;min-height:72px;padding:12px 0;border-bottom:1px solid var(--line);text-decoration:none;background:transparent;transition:padding-inline var(--motion-fast) var(--ease-enter),background-color var(--motion-fast) var(--ease-standard)}
   .category-index__row:nth-child(odd){padding-right:22px}.category-index__row:nth-child(even){padding-left:22px;border-left:1px solid var(--line)}
-  .category-index__row>*{min-width:0}.category-index__name{grid-area:name;font-family:var(--font-display);font-size:clamp(1.18rem,1.8vw,1.55rem);line-height:1.05;letter-spacing:-.018em;font-weight:500}.category-index__hint{grid-area:hint;color:var(--ink-muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.category-index__count{grid-area:count;font:500 .68rem var(--font-meta);letter-spacing:.07em;color:var(--accent);text-align:right;font-variant-numeric:tabular-nums}.category-index__arrow{grid-area:arrow;color:var(--accent);justify-self:end}
+  .category-index__row>*{min-width:0}.category-index__name{grid-area:name;font-family:var(--font-display);font-size:clamp(1.18rem,1.8vw,1.55rem);line-height:1.05;letter-spacing:-.018em;font-weight:500}.category-index__count{grid-area:count;font:500 .875rem var(--font-meta);letter-spacing:.04em;color:var(--accent);text-align:right;font-variant-numeric:tabular-nums}.category-index__arrow{grid-area:arrow;color:var(--accent);justify-self:end}
   .category-index__row.is-empty{opacity:.5}.category-index__row[href]:hover,.category-index__row[href]:focus-visible{padding-inline:12px;background:var(--accent-soft)}.category-index__row[href]:hover .category-index__name,.category-index__row[href]:focus-visible .category-index__name{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
   @media(max-width:760px){.category-index{grid-template-columns:1fr}.category-index__row:nth-child(n){padding-inline:0;border-left:0}.category-index__row[href]:hover,.category-index__row[href]:focus-visible{padding-inline:10px}}
-  @media(max-width:599px){.category-index__row{min-height:78px}.category-index__hint{font-size:.7rem}}
+  @media(max-width:599px){.category-index__row{min-height:64px}}
   @media(prefers-reduced-motion:reduce){.category-index__row{transition:none}}
 </style>

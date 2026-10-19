@@ -21,9 +21,7 @@ const mediaSizes = lead ? '(max-width: 700px) calc(100vw - 40px), (max-width: 13
     {isHubApp ? <HubMedia slug={p.slug} fallback={view.media} alt={`${p.title} app interface`} priority={priority} sizes={mediaSizes} /> : <ProjectMedia src={view.media} alt={view.caption} priority={priority} sizes={mediaSizes} />}
   </a>
   <div class="exhibit__copy">
-    {lead && <p class="eyebrow">Start here</p>}
     <Heading><a href={details}>{p.title}</a></Heading>
-    {lead && <p class="exhibit__line">{view.line}</p>}
     <p class="exhibit__summary">{view.summary}</p>
     {(p.status !== 'live' || p.platforms.length === 1) && <p class="availability">{p.status !== 'live' ? `${p.status === 'beta' ? 'Beta — still being developed' : p.status}` : ''}{p.status !== 'live' && p.platforms.length === 1 ? ' · ' : ''}{p.platforms.length === 1 && p.platforms[0] === 'desktop' ? 'Keyboard required' : ''}</p>}
     <div class="actions">
