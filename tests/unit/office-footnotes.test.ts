@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -67,6 +67,51 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(defineMissingOfficeFootnote(source,'missing','Real').value).toContain('[^missing]: Real');
   expect(()=>defineMissingOfficeFootnote('\x60\x60\x60\n[^hidden]\n\x60\x60\x60','hidden','No')).toThrow('no longer missing');
   expect(()=>retargetBrokenOfficeHeading(source,source.indexOf('[gone]'),'office-ref-fake')).toThrow('existing original heading');
+ });
+
+ it('O20 live inventory excludes fenced and inline pseudo citations with correct CRLF offsets',()=>{
+  const tick=String.fromCharCode(96);
+  const source=['# References','α[^ref] β[^ref]',tick.repeat(4),'ignore[^ref]','[^fake]: none',tick.repeat(4),
+    'Inline '+tick+'[^ref]'+tick,'[^ref]: 한국어 primary source'].join('\r\n');
+  const inventory=officeCitationInventory(source);
+  expect(inventory.limited).toBe(false);
+  expect(inventory.entries).toHaveLength(1);
+  expect(inventory.entries[0]).toMatchObject({id:'ref',definitionLine:8,excerpt:'한국어 primary source',definitionCount:1});
+  const first=source.indexOf('[^ref]');
+  expect(inventory.entries[0]!.uses.map(row=>row.offset)).toEqual([first,source.indexOf('[^ref]',first+1)]);
+ });
+ it('O20 reuses a real definition while refusing missing or ambiguous citation authority',()=>{
+  const source='# Research\nEvidence\n[^a]: Primary';
+  const inserted=insertExistingOfficeCitation(source,19,19,'a');
+  expect(inserted.value).toContain('[^a]');
+  expect(inserted.value.match(/\[\^a\]:/g)).toHaveLength(1);
+  expect(()=>insertExistingOfficeCitation(source,0,0,'unknown')).toThrow('unique original');
+  expect(()=>insertExistingOfficeCitation(source+'\n[^a]: Duplicate',0,0,'a')).toThrow('unique original');
+  expect(()=>insertExistingOfficeCitation(source,0,999,'a')).toThrow('selection');
+ });
+ it('O20 renames all and only genuine original citation markers without changing code',()=>{
+  const tick=String.fromCharCode(96);
+  const source=['# Actual','α[^old] and [^old]',tick+'[^old]'+tick,tick.repeat(4)+'md','[^old]',tick.repeat(4),
+    '[^old]: Korean 한국어'].join('\r\n');
+  const next=renameOfficeCitation(source,'old','renamed-source');
+  expect(next.referenceCount).toBe(2);
+  expect(next.value).toContain('α[^renamed-source] and [^renamed-source]');
+  expect(next.value).toContain(tick+'[^old]'+tick);
+  expect(next.value).toContain(tick.repeat(4)+'md\r\n[^old]\r\n'+tick.repeat(4));
+  expect(next.value).toContain('[^renamed-source]: Korean 한국어');
+  expect(officeCitationInventory(next.value).entries[0]!.uses).toHaveLength(2);
+  expect(next.start).toBe(next.value.indexOf('[^renamed-source]:'));
+ });
+ it('O20 refuses collisions, invalid IDs, duplicates, source limits and obsolete renames',()=>{
+  const source='See[^a] and [^b]\n[^a]: One';
+  expect(()=>renameOfficeCitation(source,'a','b')).toThrow('already in use');
+  expect(()=>renameOfficeCitation(source,'a','Bad-ID')).toThrow('lowercase');
+  expect(()=>renameOfficeCitation(source,'a','a')).toThrow('different');
+  expect(()=>renameOfficeCitation(source+'\n[^a]: Duplicate','a','valid')).toThrow('unique original');
+  expect(()=>renameOfficeCitation('x'.repeat(200001),'a','valid')).toThrow('limited');
+  const full='[^a]: x'+'.'.repeat(200000-'[^a]: x'.length);
+  expect(()=>renameOfficeCitation(full,'a','longer')).toThrow('source limit');
+  expect(officeCitationInventory('x'.repeat(200001)).limited).toBe(true);
  });
 
 });

@@ -63,6 +63,66 @@ export function analyzeOfficeReferences(source:string):ReferenceReport{
  return {definitions:[...definitions.values()],references,problems,limited:definitions.size>MAX_FOOTNOTES||references.length>MAX_FOOTNOTES*10};
 }
 
+
+export interface OfficeCitationEntry{
+ id:string;definitionOffset:number;definitionLine:number;excerpt:string;
+ definitionCount:number;uses:readonly SourceReference[];
+}
+export interface OfficeCitationInventory{entries:OfficeCitationEntry[];limited:boolean}
+/** Derived from the current original Markdown only: no independent index. */
+export function officeCitationInventory(source:string):OfficeCitationInventory{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)return {entries:[],limited:true};
+ return {entries:report.definitions.map(def=>({
+  id:def.id,definitionOffset:def.offset,definitionLine:def.line,
+  excerpt:def.content.slice(0,160),definitionCount:def.count,
+  uses:report.references.filter(ref=>ref.kind==='footnote'&&ref.id===def.id)
+ })),limited:false};
+}
+function uniqueCitation(source:string,id:string){
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Reference inspection is limited; shorten the original source first.');
+ if(!footnoteId.test(id))throw new Error('Invalid citation ID.');
+ const definition=report.definitions.find(row=>row.id===id);
+ if(!definition||definition.count!==1)throw new Error('A unique original footnote definition is required.');
+ return {report,definition};
+}
+/** Reuse an existing footnote in-place, with original CAS/autosave as sole writer. */
+export function insertExistingOfficeCitation(source:string,start:number,end:number,id:string):FootnoteInsertion{
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>source.length)
+  throw new Error('Invalid original source selection.');
+ uniqueCitation(source,id);
+ const marker='[^'+id+']',value=source.slice(0,start)+marker+source.slice(end);
+ if(value.length>MAX_BODY)throw new Error('Citation exceeds the Office source limit.');
+ return {value,start,end:start+marker.length,id};
+}
+export interface OfficeCitationRename extends FootnoteInsertion{referenceCount:number}
+/** Rename all genuine refs and exactly one definition, leaving code pseudorefs untouched. */
+export function renameOfficeCitation(source:string,oldId:string,newId:string):OfficeCitationRename{
+ const {report,definition:original}=uniqueCitation(source,oldId);
+ if(!footnoteId.test(newId))throw new Error('Use a lowercase letter followed by up to 47 lowercase letters, digits, hyphens or underscores.');
+ if(oldId===newId)throw new Error('Choose a different citation ID.');
+ if(report.definitions.some(row=>row.id===newId)||
+    report.references.some(ref=>ref.kind==='footnote'&&ref.id===newId))
+  throw new Error('The destination citation ID is already in use.');
+ const oldMarker='[^'+oldId+']',newMarker='[^'+newId+']';
+ const sourceLine=source.slice(original.offset).split(/\r\n|\r|\n/,1)[0]!;
+ const local=sourceLine.indexOf(oldMarker);
+ if(local<0||local>3)throw new Error('Original citation definition changed. Source unchanged.');
+ const definitionOffset=original.offset+local;
+ const usageOffsets=report.references.filter(ref=>ref.kind==='footnote'&&ref.id===oldId).map(ref=>ref.offset);
+ const edits=[definitionOffset,...usageOffsets];
+ if(new Set(edits).size!==edits.length||edits.some(offset=>source.slice(offset,offset+oldMarker.length)!==oldMarker))
+  throw new Error('Citation source offsets are stale. Source unchanged.');
+ if(source.length+edits.length*(newMarker.length-oldMarker.length)>MAX_BODY)
+  throw new Error('Citation rename exceeds the Office source limit.');
+ let value=source;
+ for(const offset of [...edits].sort((a,b)=>b-a))
+  value=value.slice(0,offset)+newMarker+value.slice(offset+oldMarker.length);
+ const start=definitionOffset+usageOffsets.filter(offset=>offset<definitionOffset).length*(newMarker.length-oldMarker.length);
+ return {value,start,end:start+newMarker.length,id:newId,referenceCount:usageOffsets.length};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);
