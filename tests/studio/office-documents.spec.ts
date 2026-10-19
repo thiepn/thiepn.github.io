@@ -1681,6 +1681,14 @@ test('O21 updates one source-backed definition, safely renders content, and retu
  await back.click();
  expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart)).toBe(original.indexOf('[^a]'));
  await expect(page.locator('[data-office-status]')).toContainText('Returned to original citation');
+ await page.locator('[data-office-history]').selectOption('1');
+ page.once('dialog',dialog=>void dialog.accept());
+ await page.locator('[data-office-restore]').click();
+ await expect(page.locator('[data-office-body]')).toHaveValue(original);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await expect(page.locator('[data-office-preview]')).toContainText('Initial 한국어');
+ await page.reload();
+ await expect(page.locator('[data-office-body]')).toHaveValue(original);
 });
 test('O21 stale staged definition refuses overwrite after original Markdown changes',async({page})=>{
  await page.goto('/home/documents/');
