@@ -2507,8 +2507,8 @@ test('O29 maps nested original headings, moves among cross-section source uses a
  await expect(page.locator('[data-office-section-trail-details]')).toContainText('Chapter › Methods · 2 source uses');
  await page.locator('[data-office-section-trail-citation]').selectOption('b');
  await expect(page.locator('[data-office-section-trail-details]')).toContainText('2 uses across 2 sections');
- await expect(page.locator('[data-office-section-trail-related]')).toContainText('Chapter › Methods › Detail');
- await page.locator('[data-office-section-trail-related="section-2"]').click();
+ await expect(page.locator('div[data-office-section-trail-related]')).toContainText('Chapter › Methods › Detail');
+ await page.locator('[data-office-section-trail-branch="section-2"]').click();
  await expect(page.locator('[data-office-section-trail-details]')).toContainText('Chapter › Methods › Detail');
  expect(await page.locator('[data-office-body]').evaluate((node:HTMLTextAreaElement)=>node.selectionStart))
    .toBe(source.indexOf('Detail[^b]')+'Detail'.length);
@@ -2574,13 +2574,13 @@ test('O29 mobile privacy discards section-to-citation routes and original source
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.locator('[data-office-section-trail-review]').click();
  await page.locator('[data-office-section-trail-citation]').selectOption('p');
- await expect(page.locator('[data-office-section-trail-related]')).toContainText('Followup');
+ await expect(page.locator('div[data-office-section-trail-related]')).toContainText('Followup');
  await page.locator('.ws-topbar-actions [data-action=account]').click();
  await page.locator('[data-account-dialog] [data-action=privacy]').click();
  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
  await expect(page.locator('[data-office-section-trail-summary]')).toHaveText('No section citation review.');
  await expect(page.locator('[data-office-section-trail-uses]')).toBeEmpty();
- await expect(page.locator('[data-office-section-trail-related]')).toBeEmpty();
+ await expect(page.locator('div[data-office-section-trail-related]')).toBeEmpty();
  await expect(page.locator('[data-office-section-trail-review]')).toBeDisabled();
  await expect(page.locator('[data-office-body]')).toHaveValue('');
 });

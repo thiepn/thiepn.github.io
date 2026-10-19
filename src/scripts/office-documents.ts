@@ -1634,7 +1634,7 @@ if(root && shell){
         const first=target?.uses.find(row=>row.id===id);
         if(!target||!first)continue;
         const jump=document.createElement('button');jump.type='button';
-        jump.dataset.officeSectionTrailRelated=otherKey;
+        jump.dataset.officeSectionTrailBranch=otherKey;
         jump.textContent=target.path+' · line '+first.line;
         jump.addEventListener('click',()=>{
           if(!citationTrailValid(state)||citationTrail!==state){clearCitationTrail();enable();return;}
@@ -1662,6 +1662,7 @@ if(root && shell){
       sectionTrailSummary.textContent=map.sections.length+' original sections · '+
         usedSections+' with citations · '+map.totalUses+' genuine uses · '+shared+
         ' citations shared across sections.';
+      sectionTrailSection.replaceChildren();
       for(const section of map.sections)
         sectionTrailSection.add(new Option(section.path+' · '+section.uses.length+' uses',section.key));
       for(const id of map.citations)
