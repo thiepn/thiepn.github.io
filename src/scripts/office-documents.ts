@@ -18,6 +18,7 @@ import {searchOfficeHistory,compareOfficeSavedVersions} from '../lib/office/hist
 import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type AuthoringBlock} from '../lib/office/authoring';
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
+import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -69,6 +70,14 @@ if(root && shell){
   const writingColumns=pick<HTMLInputElement>('[data-office-writing-columns]');
   const writingLanguage=pick<HTMLInputElement>('[data-office-writing-language]');
   const writingInsert=pick<HTMLButtonElement>('[data-office-writing-insert]');
+  const tocReviewButton=pick<HTMLButtonElement>('[data-office-toc-review]');
+  const referenceTarget=pick<HTMLSelectElement>('[data-office-reference-heading]');
+  const referenceInsert=pick<HTMLButtonElement>('[data-office-reference-insert]');
+  const tocPanel=pick<HTMLElement>('[data-office-toc-panel]');
+  const tocSummary=pick<HTMLElement>('[data-office-toc-summary]');
+  const tocSource=pick<HTMLTextAreaElement>('[data-office-toc-source]');
+  const tocConfirm=pick<HTMLButtonElement>('[data-office-toc-confirm]');
+  const tocCancel=pick<HTMLButtonElement>('[data-office-toc-cancel]');
   const history=pick<HTMLSelectElement>('[data-office-history]');
   const timelineList=pick<HTMLElement>('[data-office-timeline-list]');
   const timelineSearch=pick<HTMLInputElement>('[data-office-history-search]');
@@ -160,6 +169,11 @@ if(root && shell){
   const selectedBundle=new Set<string>();
   let matches:TextMatch[]=[],findTruncated=false,matchCursor=-1;
   let timelineChosen:{scope:string;id:string;currentRevision:number;selectedRevision:number}|null=null;
+  let contentsPlan:{scope:string;id:string;revision:number;body:string;title:string;
+    result:string;mode:'insert'|'update';headings:number}|null=null;
+  function discardContents(){
+    contentsPlan=null;tocPanel.hidden=true;tocSummary.textContent='';tocSource.value='';
+  }
   let structuralPlan:{scope:string;id:string;revision:number;body:string;title:string;
     offset:number;action:StructuralAction;result:string;selection:number;heading:string}|null=null;
   function discardStructure(){
@@ -206,6 +220,13 @@ if(root && shell){
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
+    const hasRealHeadings=editing&&officeHeadingReferences(body.value).length>0;
+    tocReviewButton.disabled=!hasRealHeadings||dirty;
+    referenceTarget.disabled=!hasRealHeadings;
+    referenceInsert.disabled=!hasRealHeadings||!referenceTarget.value;
+    tocConfirm.disabled=!editing||dirty||!contentsPlan||contentsPlan.scope!==store?.scope||
+      contentsPlan.id!==active?.id||contentsPlan.revision!==active?.revision||
+      contentsPlan.body!==body.value||contentsPlan.title!==title.value;
     writingRows.disabled=writingColumns.disabled=!editing||writingBlock.value!=='table';
     writingLanguage.disabled=!editing||writingBlock.value!=='code';
     history.disabled=restore.disabled=!editing||busy||!active?.history.length;
@@ -467,13 +488,22 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
+    discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     renderPreview();renderOutline();renderFind();printSheet.replaceChildren();
     history.replaceChildren(new Option('History',''));enable();
   }
   function renderOutline(){
     outline.replaceChildren();
+    const previousReference=referenceTarget.value;
+    referenceTarget.replaceChildren(new Option('Choose a heading',''));
+    if(active&&allowed()){
+      const references=officeHeadingReferences(body.value);
+      for(const heading of references)
+        referenceTarget.add(new Option('  '.repeat(heading.level-1)+heading.title,heading.id));
+      if(previousReference&&references.some(heading=>heading.id===previousReference))
+        referenceTarget.value=previousReference;
+    }
     if(!active||!allowed()){
       sectionSelect.replaceChildren(new Option('Choose heading',''));
       outlineEmpty.hidden=false;return;
@@ -600,7 +630,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
+      discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
   }
@@ -639,7 +669,7 @@ if(root && shell){
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';
-      discardStructure();
+      discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -792,7 +822,7 @@ if(root && shell){
       if(ticket!==epoch||opened!==store||!allowed())return;
       active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';
-      discardStructure();
+      discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
       await refreshList();
       if(ticket!==epoch||opened!==store||!allowed())return;
@@ -909,7 +939,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1040,6 +1070,69 @@ if(root && shell){
   }
   sectionUp.addEventListener('click',()=>moveSelectedSection('earlier'));
   sectionDown.addEventListener('click',()=>moveSelectedSection('later'));
+  referenceTarget.addEventListener('change',enable);
+  tocCancel.addEventListener('click',()=>{discardContents();enable();});
+  tocReviewButton.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty)return;
+    try{
+      const change=generateOfficeToc(body.value);
+      contentsPlan={scope:store.scope,id:active.id,revision:active.revision,
+        title:title.value,body:body.value,result:change.value,mode:change.mode,headings:change.headings};
+      tocSource.value=change.value;
+      tocSummary.textContent=(change.mode==='update'?'Refresh existing':'Insert new')+
+        ' navigable contents with '+change.headings+' original headings · '+
+        change.value.length+' characters. Nothing saved yet.';
+      tocPanel.hidden=false;enable();
+    }catch(error){discardContents();message(error instanceof Error?error.message:'Cannot generate contents.');enable();}
+  });
+  tocConfirm.addEventListener('click',()=>void (async()=>{
+    const plan=contentsPlan,opened=store,current=active,ticket=epoch;
+    if(!plan||!opened||!current||!allowed()||busy||blocked||dirty||tocConfirm.disabled||
+      plan.scope!==opened.scope||plan.id!==current.id||plan.revision!==current.revision||
+      plan.body!==body.value||plan.title!==title.value)return;
+    if(!confirm((plan.mode==='update'?'Refresh existing':'Insert new')+
+      ' table of contents in one new saved Office revision? Original history is retained.'))return;
+    if(ticket!==epoch||opened!==store||current!==active||plan!==contentsPlan||
+      !allowed()||busy||blocked||dirty)return;
+    busy=true;enable();
+    try{
+      const saved=await opened.save(current,plan.title,plan.result);
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      active=saved;title.value=saved.title;body.value=saved.body;dirty=false;
+      discardContents();discardStructure();clearComparison();
+      renderPreview();renderOutline();renderFind();renderHistory();
+      await refreshList();
+      if(ticket!==epoch||opened!==store||!allowed())return;
+      message('Contents '+(plan.mode==='update'?'refreshed':'inserted')+' · saved Office revision '+saved.revision+'.');
+    }catch(error){
+      if(ticket===epoch&&opened===store){
+        blocked=true;discardContents();
+        message((error instanceof Error?error.message:'Contents save failed')+
+          ' Source was not replaced. Export original text before reloading.');
+      }
+    }finally{if(ticket===epoch){busy=false;enable();}}
+  })());
+  referenceInsert.addEventListener('click',()=>{
+    if(!active||!allowed()||body.disabled||busy||blocked||!referenceTarget.value)return;
+    try{
+      const result=insertOfficeHeadingLink(body.value,body.selectionStart,body.selectionEnd,referenceTarget.value);
+      body.value=result.value;body.dispatchEvent(new Event('input',{bubbles:true}));
+      focusEditor(result.start,result.end);
+      message('Internal heading reference inserted in the original editor. Autosave pending.');
+    }catch(error){message(error instanceof Error?error.message:'Reference insertion refused.');}
+  });
+  preview.addEventListener('click',event=>{
+    const target=event.target;
+    if(!(target instanceof Element))return;
+    const link=target.closest<HTMLAnchorElement>('a[data-office-internal-ref]');
+    if(!link||!preview.contains(link))return;
+    event.preventDefault();
+    if(!active||!allowed()||body.disabled)return;
+    const heading=officeHeadingReferences(body.value).find(item=>item.id===link.dataset.officeInternalRef);
+    if(!heading){message('That original heading is no longer available. Refresh contents.');return;}
+    focusEditor(heading.offset,heading.offset);
+    message('Opened internal reference: '+heading.title);
+  });
   writingBlock.addEventListener('change',()=>enable());
   writingGo.addEventListener('click',()=>{
     if(!active||body.disabled||!allowed())return;

@@ -130,6 +130,25 @@ import '../../styles/office-documents.css';
         </div>
         <p class="ws-muted">Inserts safe Markdown into the existing editor, using the same original revision-checked autosave. Existing selected text may be replaced.</p>
       </section>
+      <section class="office-toc-tools" aria-label="Source-backed contents and cross-references">
+        <h3>Contents and internal references</h3>
+        <p class="ws-muted">Create or refresh a navigable table of contents from genuine Markdown headings. Preview the entire result before saving. Reference links navigate to original source headings.</p>
+        <div class="office-toc-actions">
+          <button type="button" data-office-toc-review disabled>Preview table of contents…</button>
+          <label for="office-reference-heading">Reference heading</label>
+          <select id="office-reference-heading" data-office-reference-heading disabled><option value="">Choose a heading</option></select>
+          <button type="button" data-office-reference-insert disabled>Insert link at cursor</button>
+        </div>
+        <section class="office-toc-review" data-office-toc-panel hidden aria-label="Confirm Markdown table of contents">
+          <p data-office-toc-summary class="ws-muted"></p>
+          <label for="office-toc-source">Resulting source — review before confirmation</label>
+          <textarea id="office-toc-source" data-office-toc-source readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-toc-actions">
+            <button type="button" data-office-toc-confirm disabled>Confirm one saved revision…</button>
+            <button type="button" data-office-toc-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>

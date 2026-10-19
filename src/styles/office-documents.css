@@ -208,3 +208,16 @@
 .office-transform-review[hidden]{display:none}
 .office-transform-review label{font-size:12px;font-weight:600}
 .office-transform-review textarea{font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;padding:10px;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto}
+
+/* O18 original-source contents and internal references; no shadow index. */
+.office-toc-tools{display:grid;gap:10px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-toc-tools h3{font-size:14px;margin:0}
+.office-toc-tools p{font-size:11px;line-height:1.55;margin:0}
+.office-toc-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-toc-actions label{font-size:12px;font-weight:600}
+.office-toc-actions select{min-width:180px;flex:1;min-height:36px;padding:7px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-toc-actions button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-toc-review{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-toc-review[hidden]{display:none}
+.office-toc-review label{font-size:12px;font-weight:600}
+.office-toc-review textarea{width:100%;min-height:160px;max-height:340px;padding:10px;font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;resize:vertical}
