@@ -20,6 +20,7 @@ import '../../styles/workspace-handoffs-h17.css';
 import '../../styles/workspace-planning-h18.css';
 import '../../styles/workspace-weekly-h19.css';
 import '../../styles/workspace-unified-h20.css';
+import '../../styles/hub-studyos-c1.css';
 import '@fontsource-variable/instrument-sans';
 interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows' }
 const {view='home'}=Astro.props;
@@ -65,7 +66,9 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
             <div data-calendar-preview><p>Choose an .ics export to preview upcoming events.</p></div>
             <noscript><p>Calendar file preview requires JavaScript. Your local Hub calendar and the Google Calendar link remain available.</p></noscript>
           </section></details>}
+          {view === 'calendar' && <div data-hub-study-panel hidden></div>}
           <div data-workspace-content>{staticView ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
+          {view !== 'calendar' && <div data-hub-study-panel hidden></div>}
           <noscript><p class="ws-notice">App links work without JavaScript. Tasks, calendar, trackers and layout customization require JavaScript.</p></noscript>
         </section>
         <aside class="ws-planner" aria-label="Tasks and agenda"><div data-planner><h2>Today</h2><p class="ws-muted">Your calendar and tasks will appear here.</p></div><footer><span set:html={icon('desktop')}/><div><strong class="ws-sr" data-storage-label>This device</strong><p class="ws-save-status" data-workspace-status role="status">Opening local storage…</p><p data-cloud-status role="status" hidden></p><button class="ws-text-button" type="button" data-action="export">Export backup</button><button class="ws-text-button" type="button" data-action="cloud-retry" hidden>Sync now</button><button class="ws-text-button" type="button" data-action="cloud-review" hidden>Review sync changes</button></div></footer></aside>
@@ -88,4 +91,4 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/hub-studyos';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';</script>
