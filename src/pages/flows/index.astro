@@ -5,7 +5,7 @@ import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/
 <WorkspaceShell view="flows">
   <div class="portal-flows page-shell" data-portal-flows>
     <nav class="portal-flow-choices" aria-label="Workflow guides">{WORKFLOWS.map(flow => <a href={workflowLocation(flow.id)} data-flow-choice={flow.id}>{flow.title}</a>)}</nav>
-    <p class="portal-muted" role="status" data-flow-status>Manual workflows</p>
+    <p class="portal-muted" role="status" data-flow-status></p>
     {WORKFLOWS.map(flow => <section class="portal-flow-guide" data-flow-guide={flow.id} aria-labelledby={`flow-${flow.id}`}>
       <h2 id={`flow-${flow.id}`}>{flow.title}</h2><p>{flow.description}</p>
       <ol class="portal-flow-steps">{flow.steps.map((step, index) => <li data-flow-step={index}>
@@ -16,7 +16,6 @@ import { WORKFLOWS, WORKFLOW_APPS, workflowLocation } from '../../lib/workflows/
       </li>)}</ol>
     </section>)}
 
-    <p><a href="/">Home</a> · <a href="/search/?scope=actions">Search actions</a></p>
     <noscript><p>All guides and app links are available without JavaScript.</p></noscript>
   </div>
 </WorkspaceShell>

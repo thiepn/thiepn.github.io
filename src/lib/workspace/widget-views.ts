@@ -22,7 +22,7 @@ function inbox(w:Widget,state:WorkspaceState):string {
     const total=pending.length,items=pending.slice(0,limit(w));
     return `<div class="ws-widget-utility">
       <div class="ws-widget-metrics"><strong>${total}</strong><span>unscheduled tasks</span><a href="/home/tasks/?filter=inbox">Open Inbox</a></div>
-      ${items.length ? items.map(t=>`<div class="ws-widget-plan-row">${rowTask(t,'Not scheduled')}<div class="ws-widget-plan-actions">${action('task-plan-today','Today',t.id)}${action('task-plan-tomorrow','Tomorrow',t.id)}${action('task-plan-week','In 7 days',t.id)}</div></div>`).join('') : blank('All unscheduled tasks are processed.','capture-task','Capture a task')}
+      ${items.length ? items.map(t=>`<div class="ws-widget-plan-row">${rowTask(t,'Not scheduled')}<div class="ws-widget-plan-actions">${action('task-plan-today','Today',t.id)}${action('task-plan-tomorrow','Tomorrow',t.id)}${action('task-plan-week','In 7 days',t.id)}</div></div>`).join('') : blank('No unscheduled tasks.','capture-task','Capture a task')}
       ${total>items.length?`<a class="ws-widget-more" href="/home/tasks/?filter=inbox">${total-items.length} more in Inbox →</a>`:''}
       </div>`;
 }
@@ -83,7 +83,7 @@ function captures(w:Widget,state:WorkspaceState):string {
          ${item.kind==='note'?`<button class="ws-widget-record-title" type="button" data-action="edit-note" data-id="${esc(item.id)}">${esc(item.title)}</button>`:`<strong class="ws-widget-record-title">${esc(item.title)}</strong>`}
          <small>${item.kind==='note'?'Note':'Task captured'} · ${esc(new Date(item.at).toLocaleDateString())}</small>
          </div>${item.kind==='note'?`<button type="button" class="ws-handoff-inline" data-action="context-note" data-id="${esc(item.id)}">Next</button>`:''}</div>`).join(''):blank('No captures yet.','capture','Capture')}
-      ${state.captureDraft?`<p class="ws-widget-draft">Draft available. ${action('capture','Resume draft')}</p>`:''}
+      ${state.captureDraft?`<div class="ws-widget-draft">${action('capture','Resume draft')}</div>`:''}
       </div>`;
 }
 function quickPlan(w:Widget,state:WorkspaceState):string {
