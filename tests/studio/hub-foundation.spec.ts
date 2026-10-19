@@ -17,7 +17,8 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
         await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
         if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       } else {
-        await expect(page.locator('.ws-brand')).toContainText('THIEPN HUB');
+        await expect(page.locator('.ws-brand .ws-brand-type strong')).toHaveText('THIEPN.');
+        await expect(page.locator('.ws-brand .ws-brand-type small')).toHaveText('PERSONAL INDEX');
         if (width < 768) await expect(page.getByRole('navigation', { name: 'Mobile workspace navigation' })).toBeVisible();
       }
     }
@@ -27,7 +28,7 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
 
 test('legacy pins migrate once, customization persists and the Apps catalogue stays separate', async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
-  await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.goto('/home/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
   await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
@@ -39,7 +40,7 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
 test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/?mode=workspace');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();

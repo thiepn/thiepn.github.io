@@ -24,6 +24,10 @@ import { initialState, parseState, activity, dayKey, addDays, weekDays, validDat
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
 import { utilityWidget } from '../lib/workspace/widget-views';
+import { enableHubPinboard, toggleHubRecordPin, moveHubRecordPin, hasHubPin } from '../lib/workspace/record-pinboard';
+import {outcomes,saveOutcome,changeOutcome,type OutcomeDraft} from '../lib/workspace/outcome-board';
+import {decisions,saveDecision,decide,transitionDecision,type DecisionDraft} from '../lib/workspace/decision-register';
+import {taskEventLinks,linkTaskEvent,unlinkTaskEvent,renderTaskEventContext,type RelationDraft} from '../lib/workspace/task-event-links';
 import { findPalette, PALETTE_SCOPES, GROUP_NAMES, type PaletteScope, type PaletteResult } from '../lib/workspace/search-palette';
 import { approvedSourceRows } from '../lib/workspace/approved-source-search';
 import { prepareCapture, taskMatchesFilter, taskCounts, applyTaskPlan, TASK_FILTERS, type TaskFilter, type TaskPlanAction } from '../lib/workspace/task-flow';
@@ -31,11 +35,24 @@ import { providerAction } from '../lib/providers/registry';
 import { renderMobileToday } from '../lib/workspace/home-view';
 import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type ReturnContext } from '../lib/workspace/return-journey';
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
+import {renderTaskKnowledgeContext,renderNoteWorkContext} from '../lib/workspace/knowledge-work-context';
+import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
+import { folioWarningsForProposedEvent } from '../lib/workspace/source-time-review';
+import {freshFolioPlanningShare,renderFolioPlanningContinuity} from '../lib/workspace/folio-continuity';
+import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
+import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
+import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
+import {hasWidgetOwnedRecords,workspaceOwnedSummary,assertWorkspaceMetadataRetained,duplicatePresentationLayout} from '../lib/workspace/widget-metadata-safety';
+import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
+import {renderTodayWorkbench} from '../lib/workspace/today-workbench';
+import {renderEventPreparation,preparationTaskSeed,preparationNoteSeed} from '../lib/workspace/event-preparation';
+import {renderNotesCalendarContinuity} from '../lib/workspace/notes-reminder-continuity';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -74,7 +91,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -94,16 +111,26 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number;folio:FolioDeviceSnapshot|null}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
+    let knowledgeNoteId:string|null=null,knowledgeQuery=''; // private, session-only; no URL or storage.
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    // Unsaved working pads are never attached to Hub storage or a remote account.
+    // Distinct originals retain separate drafts until tab closure or identity/privacy wipe.
+    const focusWork=new Map<string,FocusWorkDraft>();
+    function focusWorkForSelection():Readonly<FocusWorkDraft>{
+        return focus.selectedId ? (focusWork.get(focus.selectedId)??EMPTY_FOCUS_WORK) : EMPTY_FOCUS_WORK;
+    }
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
+    let weeklyReviewStage:WeeklyReviewStage='triage';
+    let weeklyReviewDraft:WeeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; // Tab-local review, no saved completion state.
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
     let notesSource: NotesDeviceSummary | null = null;
@@ -113,6 +140,8 @@ async function setup(root: HTMLElement) {
     let notesSourceWindow: Window | null = null;
     let notesSourceDeadline: ReturnType<typeof setTimeout> | null = null;
     function clearNotesSource() {
+        // Revoke owner-title projections even inside an already open context dialog.
+        root.querySelectorAll('[data-context-owner="notes"]').forEach(node=>node.remove());
         notesSourceNonce = null;
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
@@ -172,6 +201,8 @@ async function setup(root: HTMLElement) {
     let folioPopup: Window | null = null;
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
     function resetFolio() {
+        // Revoke consented Folio titles even inside an already open context dialog.
+        root.querySelectorAll('[data-context-owner="folio"]').forEach(node=>node.remove());
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -179,6 +210,22 @@ async function setup(root: HTMLElement) {
         folioSnapshot = null;
         folioStatus = 'disconnected';
         folioOwner = null;
+    }
+    function authorizedNotesPlanningSnapshot():NotesDeviceSummary|null {
+        if(!state || locked || privacyHeld || state.preferences.hidden ||
+           notesSourceStatus!=='ready')return null;
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return scope&&notesSourceOwner===scope?notesSource:null;
+    }
+    function authorizedFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        if(!state || locked || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+          hubIdentity.status==='signed-out'?'guest':null;
+        return scope && folioOwner===scope ? folioSnapshot:null;
+    }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        return freshFolioPlanningShare(authorizedFolioPlanningSnapshot());
     }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
@@ -252,8 +299,24 @@ async function setup(root: HTMLElement) {
             todayPanel.outerHTML = renderSourceToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
-                languages: {status: languageStatus, cards: languageCards}, apps
+                languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state.events,
+                day: today(), timezone: state.preferences.timezone
             });
+        }
+        const sourceWorkbench=root.querySelector<HTMLElement>('[data-today-workbench]');
+        if(sourceWorkbench && view==='home' && state && !privacyHeld && !state.preferences.hidden) {
+            sourceWorkbench.outerHTML=renderTodayWorkbench(state,today(),authorizedFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot());
+        }
+        const notesReminderPanel=root.querySelector<HTMLElement>('[data-notes-reminder-continuity]');
+        if(notesReminderPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden){
+            notesReminderPanel.outerHTML=renderNotesCalendarContinuity(
+                selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
+        }
+        const folioPlannerPanel=root.querySelector<HTMLElement>('[data-folio-continuity]');
+        if (folioPlannerPanel && view==='calendar' && state && !privacyHeld && !state.preferences.hidden) {
+            folioPlannerPanel.outerHTML=renderFolioPlanningContinuity(
+                state,selected,agendaMode,authorizedFolioPlanningSnapshot());
         }
     }
     async function refreshLanguages(force = false) {
@@ -385,6 +448,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeSpreadReview=null;
         activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
@@ -597,6 +661,7 @@ async function setup(root: HTMLElement) {
         focus.elapsed=false;
     }
     function clearFocusIdentity() {
+        focusWork.clear();
         pauseFocusSession();
         focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
         root.dataset.focusQuiet='false';
@@ -661,6 +726,7 @@ async function setup(root: HTMLElement) {
             const actions = view === 'tasks' && !t.completedAt ? `<div class="ws-task-planning" aria-label="Review task ${esc(t.title)}">
                 ${button('unified-triage','Review due date & priority',t.id,'ws-button')}
                 ${button('context-task', 'Next actions', t.id, 'ws-text-button')}
+                ${hubPinAction('task',t.id)}
                 ${button('plan-task-event', 'Review calendar block', t.id, 'ws-text-button')}
               </div>` : '';
             return `<div class="ws-task-entry"><div class="ws-task ${t.completedAt ? 'completed' : ''} ${t.priority}">
@@ -766,20 +832,23 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderFolioPlanningContinuity(state!,selected,agendaMode,authorizedFolioPlanningSnapshot())}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}${hubPinAction('tracker',t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus(),authorizedFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot())+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
+                    languages: {status: languageStatus, cards: languageCards}, apps,
+                    hubEvents: state!.events,
+                    day: today(), timezone: state!.preferences.timezone
                 });
-            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
-            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
+            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
+            if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,authorizedFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
+            return menu+(editing?'':renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery))+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
 
@@ -835,12 +904,13 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
+        if(knowledgeNoteId&&!state.notes.some(n=>n.id===knowledgeNoteId))knowledgeNoteId=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -849,7 +919,7 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? (homeMode==='workspace' ? current().title : 'Today')) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
@@ -914,10 +984,10 @@ async function setup(root: HTMLElement) {
     }
     const more = $<HTMLDialogElement>('[data-more-dialog]');
     const moreTrigger = $('[data-more-trigger]');
-    moreTrigger.addEventListener('click', () => more.showModal());
+    moreTrigger.addEventListener('click', () => { more.showModal(); moreTrigger.setAttribute('aria-expanded', 'true'); more.querySelector<HTMLElement>('a.ws-more-link')?.focus(); });
     $('[data-more-close]').addEventListener('click', () => more.close());
     let moreNavigation = false;
-    more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
+    more.addEventListener('close', () => { moreTrigger.setAttribute('aria-expanded', 'false'); if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
     const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
     const documents = new Map<string, Document>();
     let navigationTicket = 0;
@@ -928,8 +998,9 @@ async function setup(root: HTMLElement) {
             link.classList.toggle('active', active);
             if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
         });
-        if (['calendar','trackers','settings','connections','inbox'].includes(view)) moreTrigger.setAttribute('aria-current','page');
-        else moreTrigger.removeAttribute('aria-current');
+        // MENU is an action, not a page: current-page semantics stay on its links.
+        moreTrigger.dataset.hasCurrent = String(view !== 'home');
+        moreTrigger.removeAttribute('aria-current');
     }
     async function navigateWorkspace(url: URL, pop = false) {
         const next = routes[url.pathname];
@@ -959,6 +1030,8 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
+            // Home navigation always selects Today without changing original records.
+            if (next === 'home' && !url.searchParams.has('mode') && !editing) homeMode = 'today';
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
             dialog.close(); searchDialog.close(); account.close();
@@ -1030,6 +1103,19 @@ async function setup(root: HTMLElement) {
         renderHandoffBar();
         return true;
     }
+    function knowledgeOwnerContext() {
+        const scope=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        const available=!!scope&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden;
+        return {
+            folio:available?authorizedFolioPlanningSnapshot():null,
+            notes:available&&notesSourceStatus==='ready'&&notesSourceOwner===scope?notesSource:null,
+        };
+    }
+    function hubPinAction(kind:'task'|'note'|'event'|'tracker',id:string){
+        const key=kind+':'+id;
+        return button('toggle-record-pin',hasHubPin(state!,key)?'Unpin from Workspace':'Pin to Workspace',key,'ws-button');
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
@@ -1038,11 +1124,15 @@ async function setup(root: HTMLElement) {
 
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
+              ${hubPinAction('task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
               ${button('create-note-from-task','Draft a local note',id)}
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
               <a class="ws-button" href="/home/connections/">Owner app permissions</a>
             </div>
+            ${renderTaskKnowledgeContext(state!,task,knowledgeOwnerContext())}
+            ${renderTaskEventContext(state!,'task',id)}
+            ${renderConfirmedHubBacklinks(state!,'task',id)}
           </div>`;
         openForm('Next actions · Hub task',details,()=>{});
         $('[data-dialog-submit]').hidden=true;
@@ -1055,23 +1145,21 @@ async function setup(root: HTMLElement) {
           <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
           <div class="ws-context-actions">
             ${button('edit-note','Edit original note',id)}
+            ${hubPinAction('note',id)}
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
-          </div></div>`;
+          </div>
+          ${renderNoteWorkContext(state!,note,knowledgeOwnerContext())}
+          ${renderConfirmedHubBacklinks(state!,'note',id)}
+          </div>`;
         openForm('Next actions · Hub note',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
     function showEventContext(id:string) {
         if(!startHandoff('event',id))return;
         const item=state!.events.find(e=>e.id===id)!;
-        const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
-          <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
-          <div class="ws-context-actions">
-            ${button('edit-event','Edit original event',id)}
-            ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
-            <a class="ws-button" href="/home/calendar/">Open Calendar</a>
-          </div></div>`;
+        const html=hubPinAction('event',id)+renderTaskEventContext(state!,'event',id)+renderEventPreparation(state!,item,knowledgeOwnerContext());
         openForm('Next actions · Hub event',html,()=>{});
         $('[data-dialog-submit]').hidden=true;
     }
@@ -1084,6 +1172,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         const zone=state!.preferences.timezone;
+        const originalTask=taskSnapshot(task);
         const html=`<div class="ws-context-summary" data-task-calendar-review>
           <p><strong>Source: Hub task · ${esc(task.title)}</strong></p>
           <p>Task due date: ${task.due?esc(task.due):'Not scheduled'} · original task remains unchanged.</p>
@@ -1093,7 +1182,9 @@ async function setup(root: HTMLElement) {
           </div>
           ${select('Time block','duration',[['30','30 minutes'],['45','45 minutes'],['60','60 minutes'],['90','90 minutes'],['120','120 minutes']],'60')}
           <label class="ws-choice"><input type="checkbox" name="allDay"/> Use an all-day event instead</label>
-          <p class="ws-muted">${esc(zone)} · event must finish before midnight</p>
+          <p class="ws-muted">Hub local calendar · ${esc(zone)}. A timed event must finish before midnight. Only shared Folio blocks can be compared with Hub blocks; neither source is comprehensive availability.</p>
+          <label class="ws-choice"><input type="checkbox" name="alignDue"/> Also set this original Hub task's due date to the reviewed block date (clears its task clock). </label>
+          <label class="ws-choice"><input type="checkbox" name="persistLink"/> Persist a relationship between this original task and the new Hub event (no automatic date or status sync).</label>
           <div data-task-calendar-preview class="ws-plan-preview" aria-live="polite"></div>
           <label class="ws-choice ws-context-confirm"><input type="checkbox" name="confirm" required/>
             I reviewed the date and understand this creates a separate Hub-local calendar event, not a task due date or external appointment.</label>
@@ -1107,21 +1198,31 @@ async function setup(root: HTMLElement) {
                 time:String(data.get('start')),duration:Number(data.get('duration')),
                 allDay:data.has('allDay'),confirmed:data.has('confirm')};
             // Validate before mutation; validate again inside the native queued writer.
-            const preview=prepareTaskCalendarEvent(state.tasks.find(t=>t.id===id)??task,proposal,state.preferences.timezone);
+            const currentTask=state.tasks.find(t=>t.id===id);
+            if(!currentTask || JSON.stringify(taskSnapshot(currentTask))!==JSON.stringify(originalTask))
+                throw new Error('The original task changed. Reopen scheduling and review the latest record.');
+            const alignDue=data.has('alignDue'),persistLink=data.has('persistLink');
+            const preview=prepareTaskCalendarEvent(currentTask,proposal,state.preferences.timezone);
             if (identicalLocalEvent(state.events,preview.event))
                 throw new Error('An identical local calendar event already exists. No duplicate was created.');
             await mutate(s=>{
                 const source=s.tasks.find(t=>t.id===id);
-                if(!source)throw new Error('The source task was deleted. No calendar event was created.');
+                if(!source || JSON.stringify(taskSnapshot(source))!==JSON.stringify(originalTask))
+                    throw new Error('The source task changed during review. Reopen scheduling.');
                 const {event}=prepareTaskCalendarEvent(source,proposal,s.preferences.timezone);
                 if(identicalLocalEvent(s.events,event))throw new Error('An identical local calendar event already exists. No duplicate was added.');
+                // One detached candidate: event and optional task due-date change commit together.
+                if(alignDue && (source.due!==proposal.date || source.time))applyTaskPlan(source,'today',proposal.date);
                 s.events.push(event);
-                activity(s,`Scheduled local event from reviewed task: ${source.title}`,'event');
+                if(persistLink)linkTaskEvent(s,{taskId:id,eventId:event.id,role:'work'});
+                activity(s,`Reviewed Hub block from task: ${source.title}${alignDue?' · due date reviewed':''}${persistLink?' · linked original IDs':''}`,'event');
             },'Reviewed Hub calendar event created');
             if (!state.events.some(event=>event.title===preview.event.title &&
                 event.start===preview.event.start && event.end===preview.event.end &&
                 event.date===preview.event.date && event.allDay===preview.event.allDay))
                 throw new Error('The calendar event was not created. Review the message and try again.');
+            if(alignDue && state.tasks.find(t=>t.id===id)?.due!==proposal.date)
+                throw new Error('The task due-date change was not applied. Review your original Hub task.');
             if(dirty || conflict)throw new Error('Event is in this tab but was not confirmed saved. Export or retry; do not submit twice.');
         },'Create reviewed Hub event');
         paintTaskCalendarPreview(task,zone);
@@ -1138,13 +1239,19 @@ async function setup(root: HTMLElement) {
                 state.tasks.find(t=>t.id===task.id)??task,proposal,zone).event;
             const duplicate=identicalLocalEvent(state.events,preview);
             const overlaps=overlapsForEvent(state.events,preview);
+            const shared=folioWarningsForProposedEvent(preview,folioSnapshot,zone);
             const names=[...new Set(overlaps.map(p=>p.first===preview.id?p.second:p.first))]
                 .map(id=>state!.events.find(e=>e.id===id)?.title).filter(Boolean);
             el.innerHTML=`<strong>Proposed local calendar block · ${esc(preview.title)}</strong>
                 <p>${esc(preview.date)} · ${preview.allDay?'All day':esc(preview.start)+' → '+esc(preview.end)} (${esc(zone)})</p>
                 ${duplicate?'<p class="ws-plan-preview-warning">Identical event already exists. This proposal cannot be added again.</p>':''}
-                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}. No external calendars were checked.</p>`:
-                    '<p>No timed overlaps detected in local Hub events. All-day commitments and external sources are not checked for time conflicts.</p>'}`;
+                ${overlaps.length?`<p class="ws-plan-preview-warning">${overlaps.length} possible timed overlap${overlaps.length===1?'':'s'} with local Hub events: ${esc(names.join(', '))}.</p>`:
+                    '<p>No timed overlap detected in original local Hub events.</p>'}
+                ${folioSnapshot?`<p>Approved Folio snapshot: ${shared.timed.length} timed overlap${shared.timed.length===1?'':'s'}${shared.timed.length?' · '+esc(shared.timed.map(c=>c.folioTitle).join(', ')):''}. ${shared.allDayTitles.length?'All-day Folio commitments: '+esc(shared.allDayTitles.join(', '))+'.':''} This is a partial, one-time source summary, not complete availability.</p>`:
+                    '<p>Folio and other calendar owners have not shared schedules with this tab; no cross-app availability is assumed.</p>'}
+                ${data.has('alignDue')?`<p>Confirming will also move this task due date to ${esc(proposal.date)} .</p>`:
+                    '<p>The original task due date remains unchanged.</p>'}
+                ${data.has('persistLink')?'<p>Confirming will persist one original task–event ID reference.</p>':'<p>No permanent relation will be stored.</p>'}`;
         } catch(e) {
             el.innerHTML=`<p class="ws-plan-preview-warning">${esc(e instanceof Error?e.message:'Review the proposed date and time.')}</p>`;
         }
@@ -1165,6 +1272,99 @@ async function setup(root: HTMLElement) {
         } catch(error) {
             el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
         }
+    }
+    function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');
+        if(!panel || !state || origin!==epoch)return;
+        const date=dialog.querySelector<HTMLInputElement>('[name=spreadStart]')?.value??'';
+        const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
+        try {
+            if(date<today())throw new Error('Choose today or a future starting date.');
+            const useFolio=dialog.querySelector<HTMLInputElement>('[name=includeFolio]')?.checked===true;
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio sharing changed or expired. Refresh and reopen the review.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw),useFolio?pinned:null);
+            panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
+              <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
+                ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
+              <p>${prepared.folioConsidered?'Hub workload plus explicitly shared Folio hints':'Existing Hub workload'} for these days:</p>
+              <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
+              ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}${prepared.folioConsidered?', '+row.folioTasks+' Folio task hints, '+row.folioTimed+' timed and '+row.folioAllDay+' all-day Folio blocks':''}</li>`).join('')}</ul>
+              <p>Distribution balances record counts, not task duration or calendar availability.
+              It does not create appointments or change imported/owner-app data.</p>`;
+        } catch(error) {
+            panel.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the distribution fields.')}</p>`;
+        }
+    }
+    function reviewDistributedWeek() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)return;
+        if(!storageReady || dirty || conflict || !store) {
+            toast('Resolve storage or saved-state conflicts before spreading task due dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks to distribute.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
+        const own=epoch,source=store;
+        const availableFolio=activeFolioPlanningSnapshot();
+        activeSpreadReview={snapshots,epoch:own,folio:availableFolio};
+        const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
+          <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
+          <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
+            and dates with fewer existing Hub deadlines/events are considered first.</p>
+          ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
+          ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          ${availableFolio?'<label class="ws-week-confirm"><input type="checkbox" name="includeFolio"/>Consider this one-time Folio snapshot as *partial* day-load hints. The planner changes only Hub task due dates; refresh if the source share expires.</label>':'<p class="ws-muted">Share from Folio separately to optionally include its workload in this task review.</p>'}
+          <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed every proposed due date and authorize changes to these Hub tasks only,
+            without scheduling event blocks or updating Folio, Notes, or external calendars.</label>
+          <p class="ws-muted">Original IDs, titles, priorities and completion states survive; clock times on moved tasks are cleared.
+            All changes use one existing owner-scoped workspace mutation and its undo/conflict protection.</p>
+        </div>`;
+        openForm('Review multi-day task distribution',formHtml,async data=>{
+            if(epoch!==own || store!==source || !state || !storageReady || locked ||
+              privacyHeld || state.preferences.hidden || dirty || conflict)
+                throw new Error('Identity or storage changed. Reopen this planning review.');
+            if(!data.has('confirm'))throw new Error('Confirm all proposed Hub task due-date changes.');
+            const requestedStart=String(data.get('spreadStart')??'');
+            if(!validDate(requestedStart) || requestedStart<today())
+                throw new Error('Select a current or future distribution date.');
+            const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
+            const useFolio=data.has('includeFolio');
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio share changed or expired. Review the distribution again.');
+            const hint=useFolio?pinned:null;
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon,hint);
+            await mutate(next=>{
+                if(useFolio && pinned!==activeFolioPlanningSnapshot())
+                    throw new Error('Folio share changed while saving. No Hub task dates were changed.');
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon,hint);
+                activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
+            },'Reviewed multi-day task plan updated');
+            if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
+            if(preview.changes.some(change=>{
+                const record=state!.tasks.find(task=>task.id===change.id);
+                return !record || record.due!==change.after || !!record.time;
+            }))throw new Error('The due-date distribution was not applied. Reopen planning.');
+            if(dirty || conflict)throw new Error('The plan remains unsaved in this tab. Export or retry before resubmitting.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=requestedStart;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed distribution');
+        paintDistributedPreview(snapshots,own);
     }
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
@@ -1296,9 +1496,9 @@ async function setup(root: HTMLElement) {
             `:
             '<p class="ws-unified-review-error">Choose a valid present/future due date or select Inbox.</p>';
     }
-    function editTask(id = '', seed?: {title:string;notes:string}) {
+    function editTask(id = '', seed?: {title:string;notes:string;due?:string;priority?:Task['priority']}) {
         const t = state!.tasks.find(x => x.id === id);
-        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed ? '' : selected), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? 'none'), async (data) => {
+        openForm(t ? 'Edit task' : 'Add a task', field('Task', 'title', t?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Notes', 'notes', t?.notes ?? seed?.notes ?? '', 2000) + `<div class="ws-form-row">${field('Due date', 'due', t?.due ?? (seed?.due ?? (seed ? '' : selected)), 'date')}${field('Time (optional)', 'time', t?.time ?? '', 'time')}</div>` + `<div class="ws-task-date-presets" role="group" aria-label="Task due date shortcuts">${button('task-date-today','Today')}${button('task-date-tomorrow','Tomorrow')}${button('task-date-week','In 7 days')}${button('task-date-inbox','Clear due date')}</div>` + select('Priority', 'priority', [['none', 'None'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], t?.priority ?? seed?.priority ?? 'none'), async (data) => {
             const task: Task = { id: t?.id ?? uid(), title: String(data.get('title')).trim(), notes: String(data.get('notes')), due: String(data.get('due')), time: String(data.get('time')), priority: data.get('priority') as Task['priority'], completedAt: t?.completedAt ?? null };
             if (!task.title)
                 throw new Error('Enter a task title.');
@@ -1413,7 +1613,7 @@ async function setup(root: HTMLElement) {
     }
     function editNote(id = '', seed?: {title:string;body:string}) {
         const note = state!.notes.find(n => n.id === id);
-        openForm(note ? 'Edit local note' : 'Capture a note', field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft) + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
+        openForm(note ? 'Edit local note' : 'Capture a note', '<div data-note-editor>'+field('Title', 'title', note?.title ?? seed?.title ?? '', 'text', 'required maxlength="240"') + area('Note', 'body', note?.body ?? seed?.body ?? state!.captureDraft)+'</div>' + (note ? button('delete-note', 'Delete note', note.id) : ''), async (data) => {
             const next: Note = { id: note?.id ?? uid(), title: String(data.get('title')).trim(), body: String(data.get('body')), updatedAt: stamp() };
             if (!next.title)
                 throw new Error('Enter a title.');
@@ -1426,6 +1626,14 @@ async function setup(root: HTMLElement) {
                 if (!note) s.captureDraft = '';
                 activity(s, `${note ? 'Updated' : 'Captured'} note: ${next.title}`, 'note');
             }, 'Note saved');
+            // Keep the same original Hub note in view after a successful edit.
+            // The previous search may no longer match the new text; never claim
+            // a saved note vanished, and never retain this private query in a URL.
+            if (view==='home' && homeMode==='workspace' && !locked && !privacyHeld &&
+                state && !state.preferences.hidden && !dirty && !conflict &&
+                state.notes.some(n=>n.id===next.id)) {
+                knowledgeQuery='';knowledgeNoteId=next.id;render();
+            }
         });
     }
     function editTracker(id = '') {
@@ -1497,7 +1705,12 @@ async function setup(root: HTMLElement) {
             notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
             return;
         }
-        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
+        await mutate(s => {
+            const index = s.workspaces.findIndex(w => w.id === draft.workspaceId);
+            if(index<0)throw Error('Original workspace is unavailable. Preserve the edit draft.');
+            assertWorkspaceMetadataRetained(s.workspaces[index]!,draft.workspace);
+            draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace;
+        }, 'Layout saved', false);
         if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
             editing = null;
             recoveryDraft = null;
@@ -1534,6 +1747,125 @@ async function setup(root: HTMLElement) {
             await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,ids,nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
         });
     }
+
+    function editOutcome(id='') {
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=id?outcomes(state!).find(o=>o.id===id):undefined;
+        if(id&&!prior){toast('Outcome no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const tasks=[...state!.tasks.filter(t=>prior?.taskIds.includes(t.id)),...state!.tasks.filter(t=>!prior?.taskIds.includes(t.id)&&!t.completedAt)].slice(0,80);
+        const trackers=state!.trackers;
+        const fields=field('Outcome title','title',prior?.title??'','text','maxlength="100" required')+
+          field('Target date','target',prior?.target??'','date')+
+          '<p>Link original Hub records only. At most 16 tasks and 8 trackers; no source data is copied.</p>'+
+          '<fieldset><legend>Tasks</legend>'+tasks.map(t=>'<label class="ws-choice"><input type="checkbox" name="taskIds" aria-label="Link task '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.taskIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          '<fieldset><legend>Trackers</legend>'+trackers.map(t=>'<label class="ws-choice"><input type="checkbox" name="trackerIds" aria-label="Link tracker '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.trackerIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          (state!.tasks.length>tasks.length?'<p>Showing selected and up to 80 open tasks. Other Hub tasks remain in Tasks.</p>':'');
+        openForm(prior?'Edit outcome':'Create outcome',fields,async data=>{
+          const draft:OutcomeDraft={title:String(data.get('title')??''),target:String(data.get('target')??''),
+            taskIds:data.getAll('taskIds').map(String),trackerIds:data.getAll('trackerIds').map(String)};
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the editor.');saveOutcome(s,id||null,draft,snapshot);},'Outcome saved',true,false,true);
+        });
+    }
+    function updateOutcome(id:string,remove=false){
+       if(editing){toast('Finish editing the layout first.');return;}
+       const prior=outcomes(state!).find(o=>o.id===id);
+       if(!prior){toast('Outcome no longer exists.');return;}
+       const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+       const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');changeOutcome(s,id,snapshot,remove);},
+         remove?'Outcome grouping removed':prior.archived?'Outcome restored':'Outcome archived',true,false,remove);
+       if(remove)openForm('Remove outcome','<p>Remove this grouping only? All original tasks and tracker logs will remain.</p>',apply,'Remove grouping');
+       else void apply().catch(error=>toast(error instanceof Error?error.message:'Unable to change outcome.'));
+    }
+
+
+    function editDecision(idValue=''){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=idValue?decisions(state!).find(d=>d.id===idValue):undefined;
+        if(idValue&&!prior){toast('Decision no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const choice=(items:{id:string;title:string}[],label:string,fieldName:string,current='')=>
+          select(label,fieldName,[['','None'],...items.map(x=>[x.id,x.title])],current);
+        const fields=field('Decision title','title',prior?.title??'','text','required maxlength="100"')+
+          area('Situation and criteria','context',prior?.context??'',300)+
+          area('Options, one per line','options',prior?.options.join('\n')??'',370)+
+          field('Review date','review',prior?.review??'','date')+
+          choice(state!.tasks,'Related original task','taskId',prior?.taskId??'')+
+          choice(state!.notes,'Related original note','noteId',prior?.noteId??'')+
+          '<p class="ws-muted">Two to four distinct options, each at most 90 characters. Decisions are Hub-owned; linked original records are not copied or edited.</p>';
+        openForm(prior?'Edit decision':'New decision',fields,async data=>{
+          const draft:DecisionDraft={
+            title:String(data.get('title')??''),context:String(data.get('context')??''),
+            options:String(data.get('options')??'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
+            review:String(data.get('review')??''),taskId:String(data.get('taskId')??''),noteId:String(data.get('noteId')??'')
+          };
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen decision.');saveDecision(s,idValue||null,draft,snapshot);},'Decision saved',true,false,true);
+        });
+    }
+    function chooseDecision(idValue:string){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior||prior.status==='archived'){toast('Restore or reopen the decision first.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const fields=select('Selected option','choice',prior.options.map(x=>[x,x]),prior.choice||prior.options[0]!)+
+          area('Why this option?','reason',prior.reason,500)+
+          '<p>Confirm the chosen alternative and rationale; earlier decision text is replaced, not historically versioned.</p>';
+        openForm(prior.status==='open'?'Make decision':'Revise decision',fields,async data=>{
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');decide(s,idValue,snapshot,String(data.get('choice')??''),String(data.get('reason')??''));},
+            'Decision recorded',true,false,true);
+        },'Record decision');
+    }
+    function decisionTransition(idValue:string,mode:'reopen'|'archive'|'restore'|'remove'){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior){toast('Decision no longer exists.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');transitionDecision(s,idValue,snapshot,mode);},
+          mode==='remove'?'Decision removed':'Decision updated',true,false,true);
+        if(mode==='remove'||mode==='reopen')
+          openForm(mode==='remove'?'Remove decision?':'Reopen decision?',
+            '<p>'+ (mode==='remove'?'Remove this Hub-owned decision record? Original linked records remain unchanged.':'Clear the current choice and rationale to deliberate again? The previous choice is not retained in a decision history.')+'</p>',apply,mode==='remove'?'Remove':'Reopen');
+        else void apply().catch(e=>toast(e instanceof Error?e.message:'Unable to update decision.'));
+    }
+
+
+    function reviewTaskEventLink(reference='') {
+        if(editing){toast('Finish editing the layout before linking records.');return;}
+        const [kind,sourceId]=reference.includes(':')?[reference.split(':')[0],reference.slice(reference.indexOf(':')+1)]:['',''];
+        const currentTask=kind==='task'?sourceId:'';
+        const currentEvent=kind==='event'?sourceId:'';
+        const workspaceId=state!.active;
+        const currentTasks=state!.tasks.map(t=>[t.id,t.title+(t.completedAt?' · completed':'')]);
+        const currentEvents=state!.events.map(e=>[e.id,e.title+' · '+e.date]);
+        if(currentTasks.length===0||currentEvents.length===0){
+          toast('Create an original Hub task and calendar event before linking them.');return;
+        }
+        openForm('Link original Hub task and event',
+          select('Original Hub task','taskId',currentTasks,currentTask||currentTasks[0]![0]!)+
+          select('Original Hub calendar event','eventId',currentEvents,currentEvent||currentEvents[0]![0]!)+
+          select('Relationship','role',[['work','Scheduled work'],['prepare','Preparation'],['followup','Follow-up']],'work')+
+          '<p>Review an explicit reference only. Neither task dates nor calendar times change; no external calendar receives anything.</p>',
+          async data=>{
+            const draft:RelationDraft={taskId:String(data.get('taskId')??''),eventId:String(data.get('eventId')??''),
+              role:String(data.get('role')??'') as RelationDraft['role']};
+            await mutate(s=>{
+              if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the link review.');
+              linkTaskEvent(s,draft);
+            },'Task–calendar relationship saved',true,false,true);
+          },'Link originals');
+    }
+    function reviewTaskEventUnlink(idValue:string) {
+        if(editing){toast('Finish editing the layout before unlinking.');return;}
+        const original=taskEventLinks(state!).find(x=>x.id===idValue);
+        if(!original){toast('Link no longer available.');return;}
+        const snapshot=JSON.stringify(original),workspaceId=state!.active;
+        openForm('Unlink task and event','<p>Remove only the relationship? Both original records, dates, status and activity remain unchanged.</p>',
+          async()=>mutate(s=>{
+            if(s.active!==workspaceId)throw Error('Workspace changed. Reopen this relationship.');
+            unlinkTaskEvent(s,idValue,snapshot);
+          },'Task–calendar relationship removed',true,false,true),'Unlink');
+    }
+
     function configureWidget(id: string) {
         let w = (editing?.workspace ?? current()).widgets.find(w => w.id === id);
         if (!w)
@@ -1617,7 +1949,7 @@ async function setup(root: HTMLElement) {
         const groups: Array<{title:string;description:string;types:string[]}> = [
             {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
-            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
+            {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity','outcome-board','decision-register','task-event-links']},
         ];
         openForm('Add a widget', `<div class="ws-widget-library ws-widget-library-groups">${groups.map(group=>`<section class="ws-widget-library-group"><h3>${group.title}</h3><div>${group.types.map(type=>{const spec=specification(type)!;return button('add-type',`${icon(spec.icon)}<div><strong>${spec.title}</strong></div>`,type,'ws-widget-choice');}).join('')}</div></section>`).join('')}</div>`, () => { });
         $('[data-dialog-submit]').hidden = true;
@@ -1628,14 +1960,14 @@ async function setup(root: HTMLElement) {
             toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
             return;
         }
-        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
+        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '<p class="ws-muted">Copies this layout and display settings only. Saved outcomes, decisions, pins and task–calendar links stay with the original workspace.</p>' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
             const title = String(data.get('title')).trim();
             if (!title)
                 throw new Error('Choose a name.');
             await mutate(s => {
-                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
-                if (original)
-                    workspace.widgets.forEach(w => w.id = uid());
+                const existing=original?s.workspaces.find(w=>w.id===original.id):undefined;
+                if(original&&!existing)throw Error('Original workspace changed. Open the current layout again.');
+                const workspace = existing ? duplicatePresentationLayout(existing,title) : preset(title, pins(), Number(data.get('preset')));
                 s.workspaces.push(workspace);
                 s.active = workspace.id;
             }, 'Workspace created');
@@ -1658,6 +1990,8 @@ async function setup(root: HTMLElement) {
                 }
                 else {
                     const index = s.workspaces.findIndex(w => w.id === s.active);
+                    if(workspaceOwnedSummary(s.workspaces[index]!).length)
+                        throw Error('This layout contains original Hub groupings or relationships. Remove them explicitly before replacing its layout, or create a new workspace.');
                     next.id = s.active;
                     next.title = s.workspaces[index]!.title;
                     next.revision = s.workspaces[index]!.revision + 1;
@@ -1705,23 +2039,7 @@ async function setup(root: HTMLElement) {
                     Object.assign(s, clone(imported), { revision });
                     return;
                 }
-                const copy = clone(imported), ids = new Map<string, string>();
-            copy.trackers.forEach(t => ids.set(t.id,uid()));
-                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
-                    for (const record of list) {
-                        const id = uid();
-                        ids.set(record.id, id);
-                        record.id = id;
-                    }
-                for (const w of copy.workspaces) {
-                    w.widgets.forEach(widget => {
-                        widget.id = uid();
-                        if (Array.isArray(widget.config.trackerIds))
-                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
-                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
-                    });
-                }
-                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
+                const copy=rebaseAddedHubBackup(imported);
                 s.workspaces.push(...copy.workspaces);
                 s.tasks.push(...copy.tasks);
                 s.notes.push(...copy.notes);
@@ -1841,6 +2159,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'account') {
+            if (more.open) { moreNavigation = true; more.close(); }
             account.showModal();
             syncReadingPanels();
             return;
@@ -1860,6 +2179,11 @@ async function setup(root: HTMLElement) {
         if (action === 'palette-execute') {
             executePalette(target.dataset.command ?? '',id);
             return;
+        }
+        if(action==='knowledge-open'){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!state.notes.some(n=>n.id===id))return;
+            knowledgeNoteId=id;render();
+            root.querySelector<HTMLElement>('#ws-knowledge-preview-title')?.focus({preventScroll:true});return;
         }
         if (action === 'export') {
             exportWorkspace();
@@ -1916,6 +2240,23 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
                 }
                 break;
+            case 'weekly-review-stage':
+                if(view==='home' && homeMode==='review' &&
+                    (WEEKLY_REVIEW_STAGES as readonly string[]).includes(id)){
+                    weeklyReviewStage=id as WeeklyReviewStage;
+                    render();
+                    root.querySelector<HTMLHeadingElement>('#ws-review-stage-title')?.focus();
+                }
+                break;
+            case 'weekly-review-note':
+                if(view!=='home'||homeMode!=='review'||!state || locked ||
+                    privacyHeld || state.preferences.hidden || editing){
+                    toast('Unlock the original Hub workspace before reviewing a note.');
+                    break;
+                }
+                // Candidate only. The original Hub note form still requires Save.
+                editNote('',weeklyReviewNoteSeed(state,today(),weeklyReviewDraft));
+                break;
             case 'unified-triage':
                 reviewUnifiedTask(id);
                 break;
@@ -1932,6 +2273,35 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>('[data-action=focus-start]')?.focus();
                 }
                 break;
+            case 'focus-work-note': {
+                const task=state.tasks.find(t=>t.id===focus.selectedId&&!t.completedAt);
+                if(!task){toast('Choose an unfinished Hub task before preparing a note.');break;}
+                const work=focusWorkForSelection();
+                if(!hasFocusWork(work)){toast('Enter working notes, a blocker or a next step first.');break;}
+                const seed=focusWorkNoteSeed(task,work);
+                // Review in the original Hub note editor; no write is made now.
+                editNote('',seed);
+                break;
+            }
+            case 'focus-work-plan':
+                if(focus.selectedId)reviewUnifiedTask(focus.selectedId);
+                break;
+            case 'focus-work-knowledge':
+                if(focus.selectedId)showTaskContext(focus.selectedId);
+                break;
+            case 'focus-work-clear': {
+                const taskId=focus.selectedId;
+                if(!taskId||!focusWork.has(taskId))break;
+                openForm('Discard working session pad?',
+                    '<p>This removes only the unsaved scratch for this task in this tab. '+
+                    'Original Hub notes, tasks and other session pads are unchanged.</p>',
+                    ()=>{
+                        if(focus.selectedId!==taskId)throw new Error('Selected task changed. Review before discarding.');
+                        focusWork.delete(taskId);
+                        render();
+                    },'Discard pad');
+                break;
+            }
             case 'focus-queue':
                 if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
                     focus.queue=id as FocusQueue;
@@ -1990,6 +2360,20 @@ async function setup(root: HTMLElement) {
             case 'context-event':
                 showEventContext(id);
                 break;
+            case 'prep-event-task':
+            case 'followup-event-task': {
+                if(!startHandoff('event',id))break;
+                const source=state.events.find(e=>e.id===id);
+                if(source)editTask('',preparationTaskSeed(
+                    source,today(),action==='prep-event-task'?'prepare':'followup'));
+                break;
+            }
+            case 'prep-event-note': {
+                if(!startHandoff('event',id))break;
+                const source=state.events.find(e=>e.id===id);
+                if(source)editNote('',preparationNoteSeed(source));
+                break;
+            }
             case 'plan-task-event':
                 planTaskInCalendar(id);
                 break;
@@ -2174,6 +2558,9 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-spread':
+                reviewDistributedWeek();
+                break;
             case 'week-scroll-review':
                 if(view==='calendar' && agendaMode==='week') {
                     root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
@@ -2304,6 +2691,9 @@ async function setup(root: HTMLElement) {
                 const spec = specification(id);
                 if (!spec)
                     return;
+                if (id==='outcome-board' && editing!.workspace.widgets.some(w=>w.type==='outcome-board')) {toast('One Outcomes board per workspace.');return;}
+                if (id==='decision-register' && editing!.workspace.widgets.some(w=>w.type==='decision-register')) {toast('One Decision register per workspace.');return;}
+                if (id==='task-event-links' && editing!.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One Task–calendar links widget per workspace.');return;}
                 if (editing!.workspace.widgets.length >= 32) {
                     toast('This workspace already has 32 widgets.');
                     return;
@@ -2323,10 +2713,48 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'review-task-event-link':reviewTaskEventLink(id);break;
+            case 'unlink-task-event':reviewTaskEventUnlink(id);break;
+            case 'new-decision':editDecision();break;
+            case 'edit-decision':editDecision(id);break;
+            case 'choose-decision':chooseDecision(id);break;
+            case 'reopen-decision':decisionTransition(id,'reopen');break;
+            case 'archive-decision':decisionTransition(id,'archive');break;
+            case 'restore-decision':decisionTransition(id,'restore');break;
+            case 'remove-decision':decisionTransition(id,'remove');break;
+            case 'new-outcome':editOutcome();break;
+            case 'edit-outcome':editOutcome(id);break;
+            case 'toggle-outcome':updateOutcome(id);break;
+            case 'remove-outcome':updateOutcome(id,true);break;
+            case 'enable-record-pinboard':
+                if(editing){toast('Finish layout editing before adding a pinboard.');break;}
+                void mutate(s=>enableHubPinboard(s),'Workspace pinboard ready')
+                    .catch(error=>toast(error instanceof Error?error.message:'Unable to create pinboard.'));
+                break;
+            case 'toggle-record-pin':
+                if(editing){toast('Finish layout editing before pinning records.');break;}
+                void mutate(s=>{toggleHubRecordPin(s,id);},'Pinned records updated')
+                  .then(()=>{
+                    root.querySelectorAll<HTMLButtonElement>('[data-action="toggle-record-pin"]').forEach(el=>{
+                        if(el.dataset.id!==id||el.closest('[data-record-pinboard]'))return;
+                        el.textContent=hasHubPin(state!,id)?'Unpin from Workspace':'Pin to Workspace';
+                    });
+                  }).catch(error=>toast(error instanceof Error?error.message:'Unable to update pin.'));
+                break;
+            case 'move-record-pin-up':
+            case 'move-record-pin-down':
+                if(editing){toast('Finish layout editing before reordering pins.');break;}
+                void mutate(s=>{moveHubRecordPin(s,id,action==='move-record-pin-up'?-1:1);},'Pinboard order updated')
+                  .catch(error=>toast(error instanceof Error?error.message:'Unable to reorder pin.'));
+                break;
             case 'configure-widget':
                 configureWidget(id);
                 break;
             case 'remove-widget':
+                if(hasWidgetOwnedRecords((editing?.workspace??current()).widgets.find(x=>x.id===id)!)){
+                    toast('This widget owns saved records or relationships. Remove or unlink those items explicitly first.');
+                    break;
+                }
                 changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
                 dialog.close();
                 toast('Widget removed; its content is kept.');
@@ -2377,7 +2805,10 @@ async function setup(root: HTMLElement) {
                     toast('Keep at least one workspace. You can apply the blank layout instead.');
                     break;
                 }
-                confirmRemoval('Delete this workspace?', 'Only its layout will be removed. Tasks, notes, events and trackers stay.', s => {
+                confirmRemoval('Delete this workspace?', 'Hub tasks, notes, events and trackers stay. Workspace-owned groupings and relationships must be emptied first.', s => {
+                    const source=s.workspaces.find(w=>w.id===id);
+                    if(source&&workspaceOwnedSummary(source).length)
+                        throw Error('This workspace still owns saved records or relationships. Unlink or remove them explicitly before deleting the workspace.');
                     s.workspaces = s.workspaces.filter(w => w.id !== id);
                     if (s.active === id)
                         s.active = s.workspaces[0]!.id;
@@ -2398,7 +2829,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { knowledgeNoteId=null;knowledgeQuery=''; focusWork.clear(); weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage'; resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -2499,12 +2930,8 @@ async function setup(root: HTMLElement) {
                 const draft=clone(recoveryDraft);
                 const original=state.workspaces.find(w=>w.id===draft.workspaceId);
                 if(!original) {toast('Original layout is unavailable. Export and review the saved draft.');break;}
-                const source=store, own=epoch, copy=clone(draft.workspace);
-                copy.id=uid();
-                copy.title=(original.title.slice(0,68)+' recovered').slice(0,80);
-                copy.revision=0;
-                copy.updatedAt=stamp();
-                copy.widgets.forEach(w=>{w.id=uid();});
+                const source=store, own=epoch;
+                const copy=duplicatePresentationLayout(draft.workspace,(original.title.slice(0,68)+' recovered').slice(0,80));
                 void mutate(s=>{
                     if(s.workspaces.length>=10) throw new Error('At most 10 workspaces are supported.');
                     s.workspaces.push(copy);
@@ -2545,11 +2972,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'save-draft-as':
                 if (editing && state.workspaces.length < 10) {
-                    const w = clone(editing.workspace);
-                    w.id = uid();
-                    w.title += ' recovered';
-                    w.revision = 0;
-                    w.widgets.forEach(x => x.id = uid());
+                    const w = duplicatePresentationLayout(editing.workspace,(editing.workspace.title.slice(0,68)+' recovered').slice(0,80));
                     editing = null;
                     conflict = false;
                     void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
@@ -2604,6 +3027,11 @@ async function setup(root: HTMLElement) {
             } else weekSelection.delete(id);
             render();
             root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
+            return;
+        }
+        if (el.closest('[data-week-spread-review]')) {
+            const review=activeSpreadReview;
+            if(review && review.epoch===epoch)paintDistributedPreview(review.snapshots,review.epoch);
             return;
         }
         if (el.closest('[data-week-review-form]')) {
@@ -2666,7 +3094,38 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(el.hasAttribute('data-weekly-review-field')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||
+               view!=='home'||homeMode!=='review'||weeklyReviewStage!=='finish')return;
+            weeklyReviewDraft=weeklyReviewField(weeklyReviewDraft,
+                el.dataset.weeklyReviewField??'',el.value);
+            return;
+        }
+        if(el.hasAttribute('data-focus-work-field')){
+            const source=el.closest<HTMLElement>('[data-focus-work]');
+            const taskId=source?.dataset.sourceTask;
+            if(!state || locked || privacyHeld || state.preferences.hidden || !taskId ||
+                taskId!==focus.selectedId || !state.tasks.some(t=>t.id===taskId&&!t.completedAt))return;
+            const field=el.dataset.focusWorkField!;
+            const next=focusWorkInput(focusWork.get(taskId)??EMPTY_FOCUS_WORK,field,el.value);
+            focusWork.set(taskId,next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-note]')!.disabled=!hasFocusWork(next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-clear]')!.disabled=!hasFocusWork(next);
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
+        if(el.hasAttribute('data-knowledge-query')){
+            if(!state||locked||privacyHeld||state.preferences.hidden)return;
+            knowledgeQuery=el.value.slice(0,100);
+            const projection=projectHubKnowledge(state,knowledgeQuery,knowledgeNoteId);
+            knowledgeNoteId=projection.selected?.id??null;
+            const results=root.querySelector<HTMLElement>('[data-knowledge-results]');
+            if(results)results.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,knowledgeNoteId);
+            const documentView=root.querySelector<HTMLElement>('[data-knowledge-document]');
+            if(documentView)documentView.innerHTML=projection.selected?renderHubKnowledgePreview(state,projection.selected):
+                '<div class="ws-knowledge-blank"><h3>No matching Hub notes</h3><p>Refine the local search; your originals remain unchanged.</p></div>';
+            return;
+        }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
             renderSearch();
@@ -2860,14 +3319,19 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
+        knowledgeNoteId=null;knowledgeQuery=''; // Never carry private note search across owners.
+        weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW}; weeklyReviewStage='triage';
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='review'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else if (homeMode === 'focus') homeMode='today';
+        // Owner re-verification replaces account-scoped records, never the deliberately
+        // selected presentation. A fresh visit and explicit Home navigation still use Today.
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
+        activeSpreadReview=null;
         weekFilter='carry';
         const own = ++epoch;
         cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();
@@ -3077,7 +3541,7 @@ async function setup(root: HTMLElement) {
         if(document.hidden)pauseFocusSession();
         else if(state && !dirty && !editing && !dialog.open && !searchDialog.open && !inputFocused() && !privacyHeld && !state.preferences.hidden && view==='home')render();
     });
-    window.addEventListener('pagehide',()=>{pauseFocusSession();});
+    window.addEventListener('pagehide',()=>{pauseFocusSession();focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';});
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing) void reloadSaved();
         if (event.persisted) void refreshLanguages(true);

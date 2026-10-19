@@ -1,0 +1,21 @@
+import {test,expect} from '@playwright/test';
+test('original task opens its confirmed Decision backlink without modifying source',async({page})=>{
+ await page.goto('/home/tasks/?filter=all');
+ await page.locator('[data-action=new-task]:visible').first().click();
+ await page.getByLabel('Task',{exact:true}).fill('Original proof task');
+ await page.locator('[data-dialog-submit]').click();
+ await page.goto('/');
+ await page.locator('[data-today-decisions] [data-action=new-decision]').click();
+ await page.getByLabel('Decision title').fill('Choose a proof strategy');
+ await page.getByLabel('Options, one per line').fill('Direct\nInduction');
+ await page.getByLabel('Related original task').selectOption({label:'Original proof task'});
+ await page.locator('[data-dialog-submit]').click();
+ await page.locator('.ws-unified-task [data-action=context-task]').first().click();
+ const backlinks=page.locator('[data-workspace-dialog] [data-confirmed-backlinks]');
+ await expect(backlinks).toContainText('Choose a proof strategy');
+ await backlinks.locator('[data-action=edit-decision]').click();
+ await expect(page.getByLabel('Decision title')).toHaveValue('Choose a proof strategy');
+ await page.locator('[data-workspace-dialog] [aria-label="Close dialog"]').click();
+ await page.goto('/home/tasks/?filter=all');
+ // The planner separately projects this same owner task; count only canonical Tasks results.\n await expect(page.locator('.ws-task-results .ws-task-entry').filter({hasText:'Original proof task'})).toHaveCount(1);
+});

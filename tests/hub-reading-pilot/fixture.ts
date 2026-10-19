@@ -26,7 +26,10 @@ export async function fixture(page:Page){
   if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,'index.html');
   if(fs.existsSync(f))return route.fulfill({path:f,contentType:mime(f)});return route.fulfill({status:404});
  });
- await page.goto(HUB+'/home/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');await page.locator('.ws-topbar [data-action=account]').click();return{calls,pause:()=>{paused=true;},fail:()=>{fail=true;},hold:()=>{hold=true;},release:()=>{hold=false;release();}};
+ await page.goto(HUB+'/home/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ if(await page.locator('.ws-topbar [data-action=account]').isVisible())await page.locator('.ws-topbar [data-action=account]').click();
+ else {await page.locator('[data-more-trigger]').click();await page.getByRole('button',{name:'Account and sharing'}).click();}
+ await expect(page.locator('[data-account-dialog]')).toBeVisible();return{calls,pause:()=>{paused=true;},fail:()=>{fail=true;},hold:()=>{hold=true;},release:()=>{hold=false;release();}};
 }
 export async function join(page:Page){await page.getByRole('button',{name:'Try reading pilot',exact:true}).click();await expect(page.locator('[data-private-library]')).toBeVisible();}
 export async function connect(page:Page){await join(page);await page.getByRole('button',{name:'Connect this browser',exact:true}).click();await expect(page.locator('[data-library-items]')).toContainText(book.title);}

@@ -24,7 +24,7 @@ function eventRow(e:CalendarEvent,zone:string):string {
     const detail=e.allDay?`All day · ${esc(e.date)}${e.endDate!==e.date?' – '+esc(e.endDate):''}`:
       `${esc(clock(e.start,zone))} – ${esc(clock(e.end,zone))} · ${esc(zone)}`;
     return `<li class="ws-plan-record"><span><strong>${esc(e.title)}</strong><small>${detail}</small></span>
-      <div>${navButton('review-event-time','Review time',e.id)}${navButton('context-event','Next actions',e.id)}</div></li>`;
+      <div>${navButton('review-event-time','Review time',e.id)}${navButton('context-event','Prepare / follow up',e.id)}</div></li>`;
 }
 function deadlineRow(t:Task,selected:string):string {
     return `<li class="ws-plan-record"><span><strong>${esc(t.title)}</strong><small>Task due ${esc(t.due)} · ${esc(t.priority)} priority${t.time?' · task clock '+esc(t.time):''}</small></span>

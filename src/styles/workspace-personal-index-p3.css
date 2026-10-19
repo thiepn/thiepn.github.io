@@ -1,0 +1,36 @@
+/* PI-04 P3: full text previews and original Hub note editor. */
+.ws-knowledge-native{display:grid;gap:17px;background:var(--ws-surface);border:1px solid var(--ws-line);padding:22px;margin:0 0 24px;min-width:0}
+.ws-knowledge-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--ws-line);padding-bottom:18px}
+.ws-knowledge-header h2{font-size:clamp(24px,3vw,34px);font-weight:630;letter-spacing:-.045em}
+.ws-knowledge-header p:last-child{font-size:12px;color:var(--ws-meta);max-width:70ch}
+.ws-knowledge-kicker{font:500 10px/1.6 'IBM Plex Mono',monospace;letter-spacing:.09em;color:var(--ws-meta)}
+.ws-knowledge-layout{display:grid;grid-template-columns:minmax(210px,.62fr) minmax(0,1.7fr);min-height:440px;min-width:0;border:1px solid var(--ws-line)}
+.ws-knowledge-browser{border-right:1px solid var(--ws-line);background:var(--ws-soft);min-width:0;padding:17px 13px}
+.ws-knowledge-browser label{display:block;font:500 11px/1.7 'IBM Plex Mono',monospace;margin:0 0 7px;color:var(--ws-meta)}
+.ws-knowledge-browser input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--ws-line);background:var(--ws-paper-raised);color:var(--ws-ink)}
+.ws-knowledge-count{font-size:11px;color:var(--ws-meta);margin:11px 0}
+.ws-knowledge-items{list-style:none;margin:0;padding:0;display:grid;gap:3px;max-height:600px;overflow:auto}
+.ws-knowledge-item{display:grid;text-align:left;width:100%;gap:5px;min-height:58px;border:0;border-left:2px solid transparent;background:transparent;color:var(--ws-ink);padding:9px 10px}
+.ws-knowledge-item[aria-pressed=true]{border-color:var(--ws-ink);background:var(--ws-accent-soft)}
+.ws-knowledge-item strong{font-size:14px;overflow-wrap:anywhere}.ws-knowledge-item small{font-size:11px;color:var(--ws-meta)}
+.ws-knowledge-empty,.ws-knowledge-blank{font-size:13px;color:var(--ws-meta);line-height:1.65;padding:16px}
+.ws-knowledge-document{min-width:0;padding:clamp(18px,2.4vw,36px);background:var(--ws-paper-raised)}
+.ws-knowledge-document-header{border-bottom:1px solid var(--ws-line);padding-bottom:19px;display:grid;gap:9px}
+.ws-knowledge-document-header h3{font-size:clamp(23px,2.5vw,33px);letter-spacing:-.045em;line-height:1.18;overflow-wrap:anywhere}
+.ws-knowledge-document-header>p:nth-of-type(2){font-size:12px;color:var(--ws-meta)}
+.ws-knowledge-document-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ws-knowledge-document-actions button,.ws-knowledge-header>button{min-height:44px}
+.ws-knowledge-note-body{padding:22px 0;min-height:125px;overflow-wrap:anywhere}
+.ws-knowledge-note-body pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;font:400 15px/1.85 'Instrument Sans Variable','Instrument Sans',sans-serif;max-width:78ch;color:var(--ws-ink)}
+.ws-knowledge-note-body p{font-size:13px;color:var(--ws-meta)}
+.ws-knowledge-related{border-top:1px solid var(--ws-line);padding-top:16px}
+.ws-knowledge-related h4{font-size:14px;margin-bottom:10px}
+.ws-knowledge-related ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ws-knowledge-related li{display:flex;gap:10px;justify-content:space-between;align-items:center}
+.ws-knowledge-related li span{display:grid;gap:4px}
+.ws-knowledge-related li small,.ws-knowledge-related>p{font-size:12px;color:var(--ws-meta)}
+.ws-knowledge-footer{font-size:11px;color:var(--ws-meta);line-height:1.7;border-top:1px solid var(--ws-line);padding-top:12px}
+.ws-dialog:has([data-note-editor]){width:min(900px,calc(100vw - 24px));max-height:92dvh}
+.ws [data-note-editor] textarea{min-height:clamp(240px,48dvh,650px);width:100%;line-height:1.7;font-size:15px;resize:vertical;white-space:pre-wrap;tab-size:4}
+@media(max-width:900px){.ws-knowledge-layout{grid-template-columns:minmax(170px,.75fr) minmax(0,1.25fr)}}
+@media(max-width:680px){.ws-knowledge-native{padding:12px}.ws-knowledge-header{flex-wrap:wrap}.ws-knowledge-layout{grid-template-columns:minmax(0,1fr)}.ws-knowledge-browser{border-right:0;border-bottom:1px solid var(--ws-line)}.ws-knowledge-items{max-height:170px}.ws-knowledge-document{padding:18px}.ws-knowledge-note-body pre{font-size:14px;line-height:1.75}.ws-knowledge-related li{align-items:flex-start;flex-wrap:wrap}}

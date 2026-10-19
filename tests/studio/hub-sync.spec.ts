@@ -58,11 +58,18 @@ function backend(options={sharing:false,probeEligible:false}) {
    } else {await route.fulfill({status:404,json:{message:'unexpected RPC'}});return;}
    await route.fulfill({json:result});
   });
-  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/');if(storageMode==='session-blocked'){await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','SecurityError');return {page,context};}try {
+  const page=await context.newPage();await page.bringToFront();if(clock)await page.clock.install();await page.goto('https://thiepn.dev/?mode=workspace');if(storageMode==='session-blocked'){await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','SecurityError');return {page,context};}try {
    // Cold SSO includes the bounded eight-second Account probe plus PKCE
    // navigation and verification. Local-token/guest assertions stay at 5s.
    await expect(page.locator('[data-storage-label]')).toHaveText(owner||options.probeEligible?'THIEPN Account':'This device',{timeout:owner===null&&options.probeEligible?15_000:5_000});
-  }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
+  }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+   // SSO/PKCE may return to Today. Navigate to Workspace only after Account
+   // verification, reusing the same session with no additional PKCE exchange.
+   if ((owner || options.probeEligible) && new URL(page.url()).searchParams.get('mode')!=='workspace') {
+     await page.goto('https://thiepn.dev/?mode=workspace');
+     await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+   }
+   if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
 async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
@@ -76,7 +83,7 @@ test('two independent devices sync tasks, offline changes and app navigation wit
  await task(b.page,'Second device task');await sync(b.page);await sync(a.page);await expect(a.page.locator('.ws-task-title')).toHaveText(['First device task','Second device task']);
  api.offline(true);await task(a.page,'Offline task');await a.page.locator('[data-action=cloud-retry]').first().click();await expect(a.page.locator('[data-cloud-status]').first()).not.toHaveText('Synced with your account');
  api.offline(false);await sync(a.page);await sync(b.page);await expect(b.page.locator('.ws-task-title')).toHaveCount(3);
- await a.page.locator('a[href="/apps/"]').first().click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await a.page.locator('a[href="/"]').first().click();await expect(a.page.locator('.ws-task-title')).toHaveCount(3);
+ await a.page.locator('a[href="/apps/"]').first().click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await a.page.locator('a[href="/"]').first().click();await a.page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(a.page.locator('.ws-task-title')).toHaveCount(3);
  const other=await api.device(browser,OTHER);await sync(other.page);await expect(other.page.locator('.ws-task-title')).toHaveCount(0);expect(api.heads.get(OTHER)?.state).not.toEqual(api.heads.get(OWNER)?.state);
  await Promise.all([a.context.close(),b.context.close(),other.context.close()]);
 });
@@ -92,7 +99,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  await Promise.all([a.context.close(),b.context.close()]);
 });
 test('mobile account dialog exposes cloud status and recovery actions',async({browser})=>{
- const api=backend(),a=await api.device(browser,OWNER,{width:390,height:844});await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-account-dialog] [data-cloud-status]')).toHaveText('Synced with your account');await expect(a.page.locator('[data-account-dialog] [data-action=cloud-retry]')).toBeVisible();await a.context.close();
+ const api=backend(),a=await api.device(browser,OWNER,{width:390,height:844});await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');await a.page.locator('[data-more-trigger]').click();await expect(a.page.locator('[data-more-dialog]')).toBeVisible();await a.page.getByRole('button',{name:'Account and sharing'}).click();await expect(a.page.locator('[data-account-dialog] [data-cloud-status]')).toHaveText('Synced with your account');await expect(a.page.locator('[data-account-dialog] [data-action=cloud-retry]')).toBeVisible();await a.context.close();
 });
 
 test('the shared SDK completes explicit PKCE sign-in and consumes the callback once',async({browser})=>{
@@ -120,7 +127,31 @@ test('concurrent new tabs share a single rotating refresh instead of reconnectin
  }));
  await a.page.close();const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
- expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+ // Preserve the strict rotating-token invariant. Diagnostic metadata deliberately
+ // excludes token values and can distinguish a stale store from an unlocked refresh.
+ const diagnostics=await Promise.all(pages.map(page=>page.evaluate(async()=>{
+   const locks=!!navigator.locks,manager=locks?await navigator.locks.query().catch(()=>null):null;
+   const db=await new Promise<IDBDatabase|null>(resolve=>{
+     const request=indexedDB.open('thiepn-hub-account');
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>resolve(null);
+   });
+   const record=await new Promise<{expired:boolean;hasValue:boolean;legacyMatch:boolean}|null>(resolve=>{
+     if(!db)return resolve(null);
+     const request=db.transaction('session','readonly').objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     request.onsuccess=()=>{
+       const row=request.result;let expired=false;
+       try{expired=JSON.parse(row?.value??'null')?.expiresAt<=Date.now()}catch{}
+       resolve({expired,hasValue:typeof row?.value==='string',
+         legacyMatch:!!row&&row.legacy===localStorage.getItem('thiepn:hub-sso:v1:tokens')});
+       db.close();
+     };
+     request.onerror=()=>{db.close();resolve(null);};
+   });
+   return {locks,held:manager?.held?.map(x=>x.name),pending:manager?.pending?.map(x=>x.name),record};
+ })));
+ expect(api.exchanges()).toBe(1);
+ expect(api.refreshes(),JSON.stringify({diagnostics})).toBe(1);
+ await a.context.close();
 });
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
@@ -142,7 +173,7 @@ test('visitors get an introduction and can choose their local workspace without 
  const api=backend(),a=await api.device(browser,null);
  await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
  await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
- await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
+ await a.page.goto('https://thiepn.dev/?mode=workspace');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
 });
 test('Account initialization failure leaves local tasks usable and persistent',async({browser})=>{
@@ -210,13 +241,16 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
    await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
    await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
    await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
-   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await expect(a.page).toHaveURL('https://thiepn.dev/?mode=workspace');
    await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
   if(trigger==='focus'){
    const guest=await a.page.evaluate(()=>new Promise<string>((resolve,reject)=>{const open=indexedDB.open('thiepn-adaptive-workspace',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('records').objectStore('records').get('guest');read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};}));
-   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');
+   // PKCE returns to Today; the original account Workspace capture lives in Workspace mode.
+   await a.page.locator('[data-action=unified-mode][data-id=workspace]').click();
+   await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
   }
  }finally{await a.context.close();}
 });

@@ -1,3 +1,28 @@
+/** Legacy storage may lag a newer, already rotated IndexedDB credential in
+ * concurrently opened WebKit tabs. Treat a durable sign-out tombstone as final;
+ * accept a genuinely newer legacy login or explicit legacy sign-out. No token
+ * contents are logged, sent elsewhere, or stored outside the existing stores. */
+export function staleLegacyAccountCredential(
+  durable:{value:string|null;legacy:string|null|undefined},
+  incoming:string|null|undefined,
+):boolean {
+  if(durable.value===null)return incoming!==null;
+  if(incoming===null)return false; // Explicit legacy sign-out remains authoritative.
+  if(typeof incoming!=='string')return true;
+  const expiration=(raw:string):number|null=>{
+    try {
+      const data:unknown=JSON.parse(raw);
+      if(!data||typeof data!=='object'||!('expiresAt' in data)||
+        typeof data.expiresAt!=='number'||!Number.isFinite(data.expiresAt))return null;
+      return data.expiresAt;
+    } catch {return null;}
+  };
+  const candidateExpires=expiration(incoming);
+  if(candidateExpires===null)return true; // Malformed legacy data must not replace a valid durable record.
+  const durableExpires=expiration(durable.value);
+  return durableExpires!==null&&durableExpires>=candidateExpires&&durable.value!==incoming;
+}
+
 /** The SDK has a synchronous Storage contract. Load its small credential cache
  * before each operation and commit it before releasing the cross-tab lock.
  * IndexedDB has a separate quota from localStorage used by the app catalogue. */
@@ -50,8 +75,12 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       // record, but never replace a durable credential with an unchanged stale
       // local record left behind by a quota failure.
       const changed = record !== undefined && currentLegacy !== undefined && currentLegacy !== record.legacy;
-      cache.set(key, changed ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
-      if (record === undefined || changed) await write(key, cache.get(key)!, currentLegacy);
+      // A WebKit tab can briefly read an older localStorage snapshot after
+      // another tab has committed a rotated credential to durable IndexedDB.
+      // Never downgrade that credential while reconciling a legacy writer.
+      const adopt = changed && !(key === keys[0] && staleLegacyAccountCredential(record!, currentLegacy));
+      cache.set(key, adopt ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
+      if (record === undefined || adopt) await write(key, cache.get(key)!, currentLegacy);
     }
   }
   const storage: Storage = {

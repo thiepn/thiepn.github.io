@@ -77,3 +77,27 @@
  .ws-planning-review>footer .ws-plan-button{flex:1 1 115px;min-height:44px;}
 }
 @media(forced-colors:active){.ws-planning-review,.ws-plan-button,.ws-plan-group,.ws-plan-week-day,.ws-plan-preview,.ws-plan-confirm{border-color:CanvasText;}}
+
+/* Folio is a one-time read-only source overlay, not a Hub calendar mirror. */
+.ws-folio-continuity{margin:0 0 18px;border:1px solid var(--ws-line);border-radius:9px;padding:16px;background:var(--ws-surface);display:grid;gap:12px;min-width:0;}
+.ws-folio-continuity>header{display:flex;gap:10px 15px;align-items:start;justify-content:space-between;flex-wrap:wrap;}
+.ws-folio-continuity>header>div:first-child{display:grid;gap:4px;min-width:0;}
+.ws-folio-continuity h3{font-size:16px;font-weight:700;letter-spacing:-.02em;}
+.ws-folio-continuity>header>div:last-child{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.ws-folio-continuity :is(button,a){font:inherit;font-size:11px;line-height:1.4;padding:8px 10px;min-height:38px;border:1px solid var(--ws-line);border-radius:6px;background:var(--ws-surface);color:var(--ws-ink);text-decoration:none;cursor:pointer;}
+.ws-folio-continuity :is(button,a):hover{border-color:var(--ws-accent);color:var(--ws-accent);}
+.ws-folio-continuity :is(button,a):focus-visible{outline:2px solid var(--ws-accent);outline-offset:3px;}
+.ws-folio-days{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;padding:0;margin:0;}
+.ws-folio-day{border:1px solid var(--ws-line);border-radius:7px;padding:11px;display:grid;gap:9px;align-content:start;min-width:0;}
+.ws-folio-day>header{display:grid;gap:3px;}
+.ws-folio-day>header strong{font-size:12px;}
+.ws-folio-day>header small,.ws-folio-day>p{font-size:11px;line-height:1.55;color:var(--ws-muted);}
+.ws-folio-day ul{list-style:none;display:grid;gap:0;margin:0;padding:0;}
+.ws-folio-day li{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--ws-line);padding:7px 0;min-width:0;}
+.ws-folio-day li span{display:grid;gap:3px;flex:1 1 110px;min-width:0;}
+.ws-folio-day li strong{font-size:11px;line-height:1.45;overflow-wrap:anywhere;}
+.ws-folio-day li small{font-size:10px;line-height:1.45;color:var(--ws-muted);}
+.ws-folio-day li a{font-size:10px;padding:6px 8px;min-height:32px;}
+.ws-folio-day .ws-folio-overlap{border-left:3px solid var(--ws-warning,#af7334);padding-left:9px;color:var(--ws-ink);}
+.ws-folio-continuity>.ws-plan-provenance{margin:0;}
+@media(max-width:680px){.ws-folio-continuity{padding:12px;}.ws-folio-days{grid-template-columns:minmax(0,1fr);}.ws-folio-continuity>header>div:last-child{width:100%;}.ws-folio-continuity>header>div:last-child :is(a,button){min-height:44px;flex:1 1 120px;}}

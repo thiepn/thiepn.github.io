@@ -109,14 +109,15 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
         ${filters[value]} <span>${value==='all'?summary.open:counts[value]}</span></button>`).join('')}
     </div>
     <div class="ws-week-toolbar"><span>${selectedOpen.length} selected unfinished task${selectedOpen.length===1?'':'s'} · maximum ${MAX_WEEK_BATCH} per review</span>
-      <div>${action('week-select-visible','Select shown')}${action('week-clear','Clear selection')}${action('week-preview','Review selected changes')}</div></div>
+      <div>${action('week-select-visible','Select shown')}${action('week-clear','Clear selection')}${action('week-preview','Move together')}${action('week-spread','Spread across days')}</div></div>
     ${items?`<ul class="ws-week-tasks">${items}</ul>`:
        `<div class="ws-week-empty"><strong>No tasks in this category</strong><p></p>
        <a href="/home/tasks/?filter=inbox">Open task Inbox</a></div>`}
     ${available.length>visible.length?`<p class="ws-week-limited">Showing ${visible.length} of ${available.length} matching tasks. Narrow the category or open Tasks for the rest.</p>`:''}
     <div class="ws-week-actions">
       <span>Carryover suggestion: next Monday, ${esc(nextMonday)}. You can choose any valid date in the review form.</span>
-      <button type="button" data-action="week-preview" class="ws-week-primary">Review selected tasks →</button>
+      <button type="button" data-action="week-preview" class="ws-week-primary">Review one due date →</button>
+      <button type="button" data-action="week-spread" class="ws-week-primary">Spread reviewed work →</button>
     </div>
     <footer><a href="/home/tasks/">Tasks</a><a href="/home/calendar/">Calendar</a>
       </footer>
