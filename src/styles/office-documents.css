@@ -325,3 +325,17 @@
 .office-prose-review-row{display:grid;gap:7px;border:1px solid var(--ws-line);padding:10px;min-width:0}
 .office-prose-review-row strong{font-size:14px}
 .office-prose-review-row button{min-height:36px}
+
+.office-external-links{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-external-links h3{font-size:16px;margin:0}
+.office-external-links p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-link-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-link-controls label{font-size:14px;font-weight:600}
+.office-link-controls select,.office-link-controls input{min-width:0;max-width:100%;flex:1 1 210px;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;padding:8px;font-size:14px}
+.office-external-links button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-link-uses{display:grid;gap:7px;max-height:360px;overflow:auto}
+.office-link-use{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px;border:1px solid var(--ws-line);min-width:0}
+.office-link-use span{overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+.office-link-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-link-plan[hidden]{display:none}
+.office-link-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}

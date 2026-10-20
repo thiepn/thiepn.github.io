@@ -389,6 +389,35 @@ import '../../styles/office-documents.css';
           </section>
         </section>
       </section>
+      <section class="office-external-links" aria-label="External Markdown link review">
+        <h3>External links</h3>
+        <button type="button" data-office-link-review disabled>Review source links</button>
+        <p data-office-link-summary role="status" aria-live="polite">No link review.</p>
+        <div class="office-link-controls">
+          <label for="office-link-target">Original target</label>
+          <select id="office-link-target" data-office-link-target disabled><option value="">Choose link target</option></select>
+        </div>
+        <div data-office-link-uses class="office-link-uses"></div>
+        <div class="office-link-controls">
+          <button type="button" data-office-link-previous disabled>Previous uses</button>
+          <p data-office-link-page></p>
+          <button type="button" data-office-link-next disabled>Next uses</button>
+        </div>
+        <div class="office-link-controls">
+          <label for="office-link-replacement">New HTTPS target</label>
+          <input id="office-link-replacement" data-office-link-replacement type="url" maxlength="2048" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-link-preview disabled>Preview replacing this target</button>
+        </div>
+        <section data-office-link-plan hidden class="office-link-plan" aria-label="Confirm external Markdown link changes">
+          <p data-office-link-change role="status"></p>
+          <label for="office-link-result">Resulting Markdown</label>
+          <textarea id="office-link-result" data-office-link-result readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-link-controls">
+            <button type="button" data-office-link-confirm disabled>Apply target change</button>
+            <button type="button" data-office-link-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>

@@ -1,5 +1,5 @@
 import {officeHeadingReferences,TOC_START,TOC_END} from './toc';
-import {analyzeOfficeReferences} from './footnotes';
+import {analyzeOfficeReferences,withoutCode} from './footnotes';
 // Deliberately constrained Markdown: text nodes only, no HTML parsing or raw HTML execution.
 export type FormatAction = 'heading'|'bold'|'italic'|'bullet'|'number'|'quote'|'code'|'link'|'table';
 export interface FormattedSelection {value:string;start:number;end:number}
@@ -33,6 +33,20 @@ export function formatSelection(value:string,start:number,end:number,action:Form
   return {value:next,start:caret,end:caret};
 }
 const inlinePattern=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+|#office-ref-[a-z0-9-]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\x60([^\x60\n]+)\x60|\[\^([a-z][a-z0-9_-]{0,47})\]/g;
+export interface OfficeInlineSourceLink {label:string;href:string;offset:number;hrefOffset:number}
+export function officeInlineSourceLinks(line:string):OfficeInlineSourceLink[]{
+ const found:OfficeInlineSourceLink[]=[];
+ for(const m of withoutCode(line).matchAll(inlinePattern)){
+  if(m[1]===undefined||m[2]===undefined||!/^https?:\/\//.test(m[2]))continue;
+  try{
+   const parsed=new URL(m[2]);
+   if((parsed.protocol!=='https:'&&parsed.protocol!=='http:')||!parsed.hostname)continue;
+  }catch{continue;}
+  const at=m.index??0;
+  found.push({label:m[1],href:m[2],offset:at,hrefOffset:at+m[1].length+3});
+ }
+ return found;
+}
 function inline(doc:Document,element:Element,content:string,footnoteIds:ReadonlySet<string>){
   let pos=0;
   for(const m of content.matchAll(inlinePattern)){

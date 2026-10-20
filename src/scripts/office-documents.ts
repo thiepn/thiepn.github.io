@@ -21,6 +21,7 @@ import {transformOfficeSection,type StructuralAction} from '../lib/office/sectio
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
 import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,reviewOfficeProseCitations,type OfficeProseCitationReview,type OfficeFootnoteOrder,type OfficeFootnoteOrderPreview,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
+import {reviewOfficeExternalLinks,previewOfficeExternalLinkChange,type OfficeExternalLinkReport,type OfficeExternalLinkChange} from '../lib/office/external-links';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -109,6 +110,43 @@ if(root && shell){
       state.revision===active.revision&&state.source===body.value;
   }
 
+
+  const linkReview=pick<HTMLButtonElement>('[data-office-link-review]');
+  const linkSummary=pick<HTMLElement>('[data-office-link-summary]');
+  const linkTarget=pick<HTMLSelectElement>('[data-office-link-target]');
+  const linkUses=pick<HTMLElement>('[data-office-link-uses]');
+  const linkPrevious=pick<HTMLButtonElement>('[data-office-link-previous]');
+  const linkNext=pick<HTMLButtonElement>('[data-office-link-next]');
+  const linkPage=pick<HTMLElement>('[data-office-link-page]');
+  const linkReplacement=pick<HTMLInputElement>('[data-office-link-replacement]');
+  const linkPreview=pick<HTMLButtonElement>('[data-office-link-preview]');
+  const linkPlanPanel=pick<HTMLElement>('[data-office-link-plan]');
+  const linkChange=pick<HTMLElement>('[data-office-link-change]');
+  const linkResult=pick<HTMLTextAreaElement>('[data-office-link-result]');
+  const linkConfirm=pick<HTMLButtonElement>('[data-office-link-confirm]');
+  const linkCancel=pick<HTMLButtonElement>('[data-office-link-cancel]');
+  type ExternalLinkState={scope:string;documentId:string;revision:number;source:string;
+    title:string;report:OfficeExternalLinkReport;page:number};
+  type ExternalLinkPlan={review:ExternalLinkState;target:string;replacement:string;
+    change:OfficeExternalLinkChange};
+  let externalLinkState:ExternalLinkState|null=null,externalLinkPlan:ExternalLinkPlan|null=null;
+  const LINK_PAGE_SIZE=20;
+  function discardExternalLinkPlan(){
+    externalLinkPlan=null;linkPlanPanel.hidden=true;linkResult.value='';linkChange.textContent='';
+    linkConfirm.disabled=true;
+  }
+  function clearExternalLinks(){
+    externalLinkState=null;discardExternalLinkPlan();
+    linkSummary.textContent='No link review.';linkUses.replaceChildren();
+    linkTarget.replaceChildren(new Option('Choose link target',''));
+    linkPage.textContent='';linkReplacement.value='';
+    linkTarget.disabled=linkReplacement.disabled=linkPrevious.disabled=linkNext.disabled=linkPreview.disabled=true;
+  }
+  function externalLinkValid(state:ExternalLinkState|null):boolean{
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&state.title===title.value;
+  }
 
   const orderReview=pick<HTMLButtonElement>('[data-office-order-review]');
   const orderMode=pick<HTMLSelectElement>('[data-office-order-mode]');
@@ -610,6 +648,17 @@ if(root && shell){
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
     proseStart.disabled=!editing||dirty;
+    linkReview.disabled=!editing||dirty;
+    const linkReady=editing&&externalLinkValid(externalLinkState);
+    linkTarget.disabled=!linkReady;
+    linkReplacement.disabled=!linkReady||!linkTarget.value;
+    linkPreview.disabled=!linkReady||!linkTarget.value||!linkReplacement.value.trim();
+    const chosenLink=externalLinkState?.report.targets.find(row=>row.href===linkTarget.value);
+    const maxLinkPage=Math.max(0,Math.ceil((chosenLink?.uses.length??0)/LINK_PAGE_SIZE)-1);
+    linkPrevious.disabled=!linkReady||!chosenLink||externalLinkState!.page===0;
+    linkNext.disabled=!linkReady||!chosenLink||externalLinkState!.page>=maxLinkPage;
+    linkConfirm.disabled=!linkReady||!externalLinkPlan||externalLinkPlan.review!==externalLinkState||
+      externalLinkPlan.target!==linkTarget.value||externalLinkPlan.replacement!==linkReplacement.value;
     proseFilter.disabled=proseSection.disabled=!editing||!proseReviewValid(proseReviewState);
     orderReview.disabled=!editing||dirty;
     orderMode.disabled=orderPreview.disabled=!editing||!orderValid(orderReviewState);
@@ -948,7 +997,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1027,7 +1076,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1101,7 +1150,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1139,7 +1188,7 @@ if(root && shell){
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1242,7 +1291,7 @@ if(root && shell){
     try{
       const created=await opened.createBatch(records);
       if(ticket!==epoch||opened!==store||!allowed())return;
-      active=created[0]??active;
+      clearExternalLinks();active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
         renderPreview();renderOutline();renderFind();renderHistory();
@@ -1292,7 +1341,7 @@ if(root && shell){
     try{
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1411,7 +1460,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1644,6 +1693,102 @@ if(root && shell){
 
 
 
+
+  function renderExternalLinks(){
+    linkUses.replaceChildren();
+    const state=externalLinkState;
+    if(!externalLinkValid(state)||!state){clearExternalLinks();enable();return;}
+    const target=state.report.targets.find(row=>row.href===linkTarget.value);
+    linkSummary.textContent=state.report.useCount+' original external link uses · '+
+      state.report.targets.length+' distinct targets · '+
+      state.report.targets.filter(row=>row.scheme==='http').length+
+      ' HTTP targets. Destinations have not been visited or verified.';
+    if(!target){linkPage.textContent='Choose a target.';enable();return;}
+    state.page=Math.min(state.page,Math.max(0,Math.ceil(target.uses.length/LINK_PAGE_SIZE)-1));
+    const start=state.page*LINK_PAGE_SIZE;
+    linkPage.textContent=(start+1)+'–'+Math.min(target.uses.length,start+LINK_PAGE_SIZE)+
+      ' of '+target.uses.length+' uses · '+(target.scheme==='http'?'HTTP':'HTTPS');
+    for(const use of target.uses.slice(start,start+LINK_PAGE_SIZE)){
+      const row=document.createElement('div');row.className='office-link-use';
+      const content=document.createElement('span');
+      content.textContent='Line '+use.line+' · '+use.label;
+      const jump=document.createElement('button');jump.type='button';
+      jump.dataset.officeLinkJump=String(use.offset);
+      jump.textContent='Go to link';
+      jump.addEventListener('click',()=>{
+        if(!externalLinkValid(state)||externalLinkState!==state||body.disabled||
+           body.value.slice(use.hrefOffset,use.hrefOffset+target.href.length)!==target.href){
+          clearExternalLinks();enable();return;
+        }
+        focusEditor(use.offset,use.hrefOffset+target.href.length+1);
+      });
+      row.append(content,jump);linkUses.append(row);
+    }
+    enable();
+  }
+  linkReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
+    clearExternalLinks();
+    try{
+      const report=reviewOfficeExternalLinks(body.value);
+      externalLinkState={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,title:title.value,report,page:0};
+      for(const target of report.targets)
+        linkTarget.add(new Option(target.href+' · '+target.uses.length+' uses',target.href));
+      renderExternalLinks();
+    }catch(error){
+      clearExternalLinks();enable();
+      message(error instanceof Error?error.message:'Original Markdown link review refused.');
+    }
+  });
+  linkTarget.addEventListener('change',()=>{
+    if(!externalLinkValid(externalLinkState)){clearExternalLinks();enable();return;}
+    externalLinkState!.page=0;linkReplacement.value='';discardExternalLinkPlan();
+    renderExternalLinks();
+  });
+  linkReplacement.addEventListener('input',()=>{discardExternalLinkPlan();enable();});
+  linkPrevious.addEventListener('click',()=>{
+    if(!externalLinkValid(externalLinkState)||!externalLinkState||externalLinkState.page===0)return;
+    externalLinkState.page--;renderExternalLinks();
+  });
+  linkNext.addEventListener('click',()=>{
+    if(!externalLinkValid(externalLinkState)||!externalLinkState||linkNext.disabled)return;
+    externalLinkState.page++;renderExternalLinks();
+  });
+  linkCancel.addEventListener('click',()=>{discardExternalLinkPlan();enable();});
+  linkPreview.addEventListener('click',()=>{
+    const state=externalLinkState,target=linkTarget.value,replacement=linkReplacement.value.trim();
+    if(!state||!externalLinkValid(state)||linkPreview.disabled)return;
+    try{
+      const change=previewOfficeExternalLinkChange(body.value,target,replacement);
+      externalLinkPlan={review:state,target,replacement,change};
+      linkChange.textContent='Replace '+change.count+' original Markdown link targets. '+
+        'Only target URLs change; source stays editable after confirmation.';
+      linkResult.value=change.value;linkPlanPanel.hidden=false;
+      enable();linkPlanPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      discardExternalLinkPlan();enable();
+      message(error instanceof Error?error.message:'Target change preview refused.');
+    }
+  });
+  linkConfirm.addEventListener('click',()=>{
+    const plan=externalLinkPlan,state=plan?.review;
+    if(!plan||!state||!externalLinkValid(state)||state!==externalLinkState||
+       linkConfirm.disabled||plan.target!==linkTarget.value||
+       plan.replacement!==linkReplacement.value)return;
+    try{
+      const verified=previewOfficeExternalLinkChange(body.value,plan.target,plan.replacement);
+      if(verified.value!==plan.change.value||verified.count!==plan.change.count){
+        discardExternalLinkPlan();enable();message('Source link review changed. Recheck before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Changed '+verified.count+' original link targets. Normal revision-checked autosave pending.');
+    }catch(error){
+      discardExternalLinkPlan();enable();
+      message(error instanceof Error?error.message:'Link change refused. Source unchanged.');
+    }
+  });
 
   function renderProseReview(){
     proseRows.replaceChildren();

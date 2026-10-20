@@ -2857,3 +2857,88 @@ test('O31 read-only prose review does not alter original peer CAS revision or in
  await expect(page.locator('[data-office-body]')).toHaveValue(/Peer saved paragraph/);
  await expect(page.locator('[data-office-prose-summary]')).toHaveText('No prose review.');
 });
+
+
+test('O32 source link review groups genuine HTTP/HTTPS uses and changes targets through original CAS',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const old='http://research.example.test/one',next='https://research.example.test/updated';
+ const source='# Reading\n[Alpha]('+old+')\n'+
+  '\x60[Code]('+old+')\x60\n~~~\n[Hidden]('+old+')\n~~~\n'+
+  '[Beta]('+old+')\n[Keep](https://retained.example.test)';
+ const expected=source.replace('[Alpha]('+old+')','[Alpha]('+next+')')
+  .replace('[Beta]('+old+')','[Beta]('+next+')');
+ await page.locator('[data-office-body]').fill(source);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-link-review]').click();
+ await expect(page.locator('[data-office-link-summary]')).toContainText('3 original external link uses');
+ await page.locator('[data-office-link-target]').selectOption(old);
+ await expect(page.locator('[data-office-link-uses] [data-office-link-jump]')).toHaveCount(2);
+ await page.locator('[data-office-link-uses] [data-office-link-jump]').first().click();
+ expect(await page.locator('[data-office-body]').evaluate((el:HTMLTextAreaElement)=>el.selectionStart)).toBe(source.indexOf('[Alpha]'));
+ await page.locator('[data-office-link-replacement]').fill(next);
+ await page.locator('[data-office-link-preview]').click();
+ await expect(page.locator('[data-office-link-result]')).toHaveValue(expected);
+ await page.locator('[data-office-link-confirm]').click();
+ await expect(page.locator('[data-office-link-plan]')).toBeHidden();
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.reload();
+ await expect(page.locator('[data-office-body]')).toHaveValue(expected);
+ await expect(page.locator('[data-office-preview] a[href="'+next+'"]')).toHaveCount(2);
+ await expect(page.locator('[data-office-history] option')).not.toHaveCount(1);
+});
+test('O32 mobile cancel, fresh-source fencing and privacy erase external link plans',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const source='[A](http://old.example.test)\n[B](http://old.example.test)';
+ await page.locator('[data-office-body]').fill(source);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-link-review]').click();
+ await page.locator('[data-office-link-target]').selectOption('http://old.example.test');
+ await page.locator('[data-office-link-replacement]').fill('https://new.example.test');
+ await page.locator('[data-office-link-preview]').click();
+ await page.locator('[data-office-link-cancel]').click();
+ await expect(page.locator('[data-office-body]')).toHaveValue(source);
+ await page.locator('[data-office-link-preview]').click();
+ await page.locator('[data-office-body]').fill(source+'\nFresh');
+ await expect(page.locator('[data-office-link-plan]')).toBeHidden();
+ await expect(page.locator('[data-office-link-target]')).toBeDisabled();
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-link-review]').click();
+ await page.locator('[data-office-link-target]').selectOption('http://old.example.test');
+ await page.locator('[data-office-link-replacement]').fill('https://new.example.test');
+ await page.locator('[data-office-link-preview]').click();
+ await page.locator('.ws-topbar-actions [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-action=privacy]').click();
+ await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+ await expect(page.locator('[data-office-body]')).toHaveValue('');
+ await expect(page.locator('[data-office-link-plan]')).toBeHidden();
+ await expect(page.locator('[data-office-link-target]')).toBeDisabled();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+test('O32 stale peer revision cannot overwrite authentic external links',async({page,context})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const old='[Source](http://original.example.test)';
+ await page.locator('[data-office-body]').fill(old);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ const peer=await context.newPage();
+ await peer.goto('/home/documents/');
+ await expect(peer.locator('[data-office-body]')).toHaveValue(old);
+ await page.locator('[data-office-link-review]').click();
+ await page.locator('[data-office-link-target]').selectOption('http://original.example.test');
+ await page.locator('[data-office-link-replacement]').fill('https://updated.example.test');
+ await page.locator('[data-office-link-preview]').click();
+ await peer.locator('[data-office-body]').fill('[Source](https://peer.example.test)');
+ await expect(peer.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-link-confirm]').click();
+ await expect(page.locator('[data-office-status]')).toContainText('changed in another tab');
+ await expect(page.locator('[data-office-export]')).toBeEnabled();
+ await peer.reload();
+ await expect(peer.locator('[data-office-body]')).toHaveValue('[Source](https://peer.example.test)');
+ await peer.close();
+});

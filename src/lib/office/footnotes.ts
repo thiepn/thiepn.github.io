@@ -12,7 +12,7 @@ export interface ReferenceProblem{kind:'missing-footnote'|'duplicate-footnote'|'
 export interface ReferenceReport{definitions:OfficeFootnoteDefinition[];references:SourceReference[];problems:ReferenceProblem[];limited:boolean}
 export interface FootnoteInsertion{value:string;start:number;end:number;id:string}
 /** Iterate only source outside fully fenced Markdown. Do not inspect text within inline code spans. */
-function visibleLines(source:string,visit:(line:string,offset:number,number:number)=>void){
+export function visibleLines(source:string,visit:(line:string,offset:number,number:number)=>void){
  const parts=source.split(/(\r\n|\r|\n)/);
  let offset=0,fence:{char:string;length:number}|null=null;
  for(let i=0;i<parts.length;i+=2){
@@ -26,7 +26,7 @@ function visibleLines(source:string,visit:(line:string,offset:number,number:numb
   offset+=line.length+(parts[i+1]?.length??0);
  }
 }
-function withoutCode(line:string):string{
+export function withoutCode(line:string):string{
  // Replace inline code with spaces while preserving exact source offsets.
  return line.replace(/(\x60+)([\s\S]*?)\1/g,match=>' '.repeat(match.length));
 }
