@@ -163,6 +163,31 @@ import '../../styles/office-documents.css';
           <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
           <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
 
+          <section class="office-prose-review" aria-label="Review prose citation markers">
+            <h4>Prose review</h4>
+            <button type="button" data-office-prose-review disabled>Review prose paragraphs</button>
+            <p data-office-prose-summary role="status">No prose review.</p>
+            <div class="office-citation-actions">
+              <label for="office-prose-filter">References</label>
+              <select id="office-prose-filter" data-office-prose-filter disabled>
+                <option value="all">All prose</option>
+                <option value="unmarked">No footnote marker</option>
+                <option value="cited">Locally defined</option>
+                <option value="unresolved">Unresolved locally</option>
+              </select>
+              <label for="office-prose-section">Section</label>
+              <select id="office-prose-section" data-office-prose-section disabled>
+                <option value="">All sections</option>
+              </select>
+            </div>
+            <div data-office-prose-rows class="office-prose-rows"></div>
+            <div class="office-citation-actions">
+              <button type="button" data-office-prose-previous disabled>Previous 20</button>
+              <p data-office-prose-position></p>
+              <button type="button" data-office-prose-next disabled>Next 20</button>
+            </div>
+          </section>
+
           <section class="office-footnote-order" aria-label="Reorder original footnote definitions">
             <h4>Footnote order</h4>
             <button type="button" data-office-order-review disabled>Inspect terminal definitions</button>

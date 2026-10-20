@@ -622,7 +622,7 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   expect(review.paragraphs[3]?.excerpt).toBe('Unmarked analysis.');
  });
  it('O31 preserves original UTF16 source spans across CRLF, CR, Unicode and fences',()=>{
-  const src='## 소개\r\n논지[^a]\r\n계속 설명\r\n\r\n~~\r\nFake[^a]\r\n~~\r\nAnother thought\r' +
+  const src='## 소개\r\n논지[^a]\r\n계속 설명\r\n\r\n~~~\r\nFake[^a]\r\n~~~\r\nAnother thought\r' +
    '\n[^a]: Valid';
   const review=reviewOfficeProseCitations(src);
   expect(review.paragraphs).toHaveLength(2);

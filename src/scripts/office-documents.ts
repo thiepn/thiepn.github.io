@@ -19,7 +19,7 @@ import {insertAuthoringBlock,sourcePositionAtLine,sourceWritingStats,type Author
 import {adjacentDocumentHeading,documentSectionAt,insertOfficeSection,type SectionPlacement} from '../lib/office/section-authoring';
 import {transformOfficeSection,type StructuralAction} from '../lib/office/section-transform';
 import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from '../lib/office/toc';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,type OfficeFootnoteOrder,type OfficeFootnoteOrderPreview,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,reviewOfficeProseCitations,type OfficeProseCitationReview,type OfficeProseCitationStatus,type OfficeFootnoteOrder,type OfficeFootnoteOrderPreview,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
@@ -84,6 +84,31 @@ if(root && shell){
   const footnoteInsert=pick<HTMLButtonElement>('[data-office-footnote-insert]');
   const referenceSummary=pick<HTMLElement>('[data-office-reference-summary]');
   const referenceProblems=pick<HTMLElement>('[data-office-reference-problems]');
+
+  const proseStart=pick<HTMLButtonElement>('[data-office-prose-review]');
+  const proseFilter=pick<HTMLSelectElement>('[data-office-prose-filter]');
+  const proseSection=pick<HTMLSelectElement>('[data-office-prose-section]');
+  const proseSummary=pick<HTMLElement>('[data-office-prose-summary]');
+  const proseRows=pick<HTMLElement>('[data-office-prose-rows]');
+  const prosePrevious=pick<HTMLButtonElement>('[data-office-prose-previous]');
+  const proseNext=pick<HTMLButtonElement>('[data-office-prose-next]');
+  const prosePosition=pick<HTMLElement>('[data-office-prose-position]');
+  type OfficeProseState={scope:string;documentId:string;revision:number;source:string;
+    report:OfficeProseCitationReview;reviewed:Set<number>;page:number};
+  let proseReviewState:OfficeProseState|null=null;
+  const PROSE_PAGE_SIZE=20;
+  function clearProseReview(){
+    proseReviewState=null;proseSummary.textContent='No prose review.';
+    proseRows.replaceChildren();proseSection.replaceChildren(new Option('All sections',''));
+    proseFilter.value='all';prosePosition.textContent='';
+    proseFilter.disabled=proseSection.disabled=prosePrevious.disabled=proseNext.disabled=true;
+  }
+  function proseReviewValid(state:OfficeProseState|null){
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value;
+  }
+
 
   const orderReview=pick<HTMLButtonElement>('[data-office-order-review]');
   const orderMode=pick<HTMLSelectElement>('[data-office-order-mode]');
@@ -584,6 +609,8 @@ if(root && shell){
     writingLine.disabled=writingGo.disabled=writingBlock.disabled=writingInsert.disabled=!editing;
     footnoteId.disabled=footnoteText.disabled=!editing;
     footnoteInsert.disabled=!editing||!footnoteText.value.trim();
+    proseStart.disabled=!editing||dirty;
+    proseFilter.disabled=proseSection.disabled=!editing||!proseReviewValid(proseReviewState);
     orderReview.disabled=!editing||dirty;
     orderMode.disabled=orderPreview.disabled=!editing||!orderValid(orderReviewState);
     orderConfirm.disabled=!editing||!orderPlan||orderPlan.review!==orderReviewState||
@@ -921,7 +948,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1000,7 +1027,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1074,7 +1101,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1384,7 +1411,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1616,6 +1643,98 @@ if(root && shell){
 
 
 
+
+
+  function renderProseReview(){
+    proseRows.replaceChildren();
+    const state=proseReviewState;
+    if(!state||!proseReviewValid(state)){clearProseReview();enable();return;}
+    const selection=state.report.paragraphs.filter(paragraph=>
+      (proseFilter.value==='all'||paragraph.status===proseFilter.value)&&
+      (!proseSection.value||paragraph.section===proseSection.value));
+    const last=Math.max(0,Math.ceil(selection.length/PROSE_PAGE_SIZE)-1);
+    state.page=Math.min(state.page,last);
+    proseSummary.textContent=state.report.paragraphs.length+' prose paragraphs · '+
+      state.report.unmarked+' without footnote markers · '+
+      state.report.cited+' locally defined · '+state.report.unresolved+
+      ' unresolved local references · '+state.reviewed.size+' reviewed this session.';
+    const first=state.page*PROSE_PAGE_SIZE;
+    prosePosition.textContent=selection.length?(first+1)+'–'+Math.min(selection.length,first+PROSE_PAGE_SIZE)+
+      ' of '+selection.length+' paragraphs':'No matching prose paragraphs.';
+    prosePrevious.disabled=state.page===0;proseNext.disabled=state.page>=last;
+    for(const paragraph of selection.slice(first,first+PROSE_PAGE_SIZE)){
+      const item=document.createElement('article');item.className='office-prose-review-row';
+      item.dataset.officeProseRow=String(paragraph.offset);
+      const heading=document.createElement('strong');
+      heading.textContent='Line '+paragraph.line+' · '+
+        (paragraph.status==='unmarked'?'No footnote marker':paragraph.status==='cited'?
+          'Locally defined citation':'Unresolved local reference')+
+        (state.reviewed.has(paragraph.offset)?' · Reviewed':'');
+      const context=document.createElement('p');
+      context.textContent=paragraph.section+' · '+paragraph.excerpt;
+      item.append(heading,context);
+      if(paragraph.citationIds.length){
+        const ids=document.createElement('p');ids.textContent='Footnotes: '+
+          paragraph.citationIds.map(id=>'[^'+id+']').join(', ');
+        item.append(ids);
+      }
+      const actions=document.createElement('div');actions.className='office-citation-actions';
+      const jump=document.createElement('button');jump.type='button';
+      jump.dataset.officeProseJump=String(paragraph.offset);
+      jump.textContent='Go to passage';
+      jump.addEventListener('click',()=>{
+        if(!proseReviewValid(state)||proseReviewState!==state){clearProseReview();enable();return;}
+        if(body.value.slice(paragraph.offset,paragraph.end)!==state.source.slice(paragraph.offset,paragraph.end)){
+          clearProseReview();enable();return;
+        }
+        focusEditor(paragraph.offset,paragraph.end);
+        message('Original prose at line '+paragraph.line+'.');
+      });
+      const reviewed=document.createElement('button');reviewed.type='button';
+      reviewed.dataset.officeProseMark=String(paragraph.offset);
+      reviewed.textContent=state.reviewed.has(paragraph.offset)?'Mark unreviewed':'Mark reviewed';
+      reviewed.setAttribute('aria-pressed',String(state.reviewed.has(paragraph.offset)));
+      reviewed.addEventListener('click',()=>{
+        if(!proseReviewValid(state)||proseReviewState!==state){clearProseReview();enable();return;}
+        if(state.reviewed.has(paragraph.offset))state.reviewed.delete(paragraph.offset);
+        else state.reviewed.add(paragraph.offset);
+        renderProseReview();
+      });
+      actions.append(jump,reviewed);item.append(actions);proseRows.append(item);
+    }
+    enable();
+  }
+  proseStart.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||busy||blocked||dirty||body.disabled)return;
+    clearProseReview();
+    try{
+      const report=reviewOfficeProseCitations(body.value);
+      proseReviewState={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,report,reviewed:new Set(),page:0};
+      for(const section of [...new Set(report.paragraphs.map(p=>p.section))])
+        proseSection.add(new Option(section,section));
+      renderProseReview();
+    }catch(error){
+      clearProseReview();enable();
+      message(error instanceof Error?error.message:'Original prose review unavailable.');
+    }
+  });
+  proseFilter.addEventListener('change',()=>{
+    if(!proseReviewValid(proseReviewState)){clearProseReview();enable();return;}
+    proseReviewState!.page=0;renderProseReview();
+  });
+  proseSection.addEventListener('change',()=>{
+    if(!proseReviewValid(proseReviewState)){clearProseReview();enable();return;}
+    proseReviewState!.page=0;renderProseReview();
+  });
+  prosePrevious.addEventListener('click',()=>{
+    if(!proseReviewValid(proseReviewState)||!proseReviewState||proseReviewState.page===0)return;
+    proseReviewState.page--;renderProseReview();
+  });
+  proseNext.addEventListener('click',()=>{
+    if(!proseReviewValid(proseReviewState)||!proseReviewState||proseNext.disabled)return;
+    proseReviewState.page++;renderProseReview();
+  });
 
   orderReview.addEventListener('click',()=>{
     if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
