@@ -2653,16 +2653,20 @@ test('O30 alphabetizes original definitions and preserves CRLF blank-line separa
  await page.locator('[data-office-order-preview]').click();
  const expected=normalized.replace('[^b]: Bêta','__office_swap__')
   .replace('[^a]: 한국어','[^b]: Bêta').replace('__office_swap__','[^a]: 한국어');
- await expect(page.locator('[data-office-order-result]')).toHaveValue(expected);
+ // Native textarea value exposure differs on WebKit for CRLF input. Compare the
+ // complete authored Markdown under browser-canonical line endings; byte-accurate
+ // CRLF preservation remains asserted by the original source unit regressions.
+ const canonical=(value:string)=>value.replace(/\r\n?|\n/g,'\n');
+ await expect.poll(async()=>canonical(await page.locator('[data-office-order-result]').inputValue())).toBe(canonical(expected));
  await page.locator('[data-office-order-cancel]').click();
  await expect(page.locator('[data-office-order-panel]')).toBeHidden();
  await expect(page.locator('[data-office-body]')).toHaveValue(normalized);
  await page.locator('[data-office-order-preview]').click();
  await page.locator('[data-office-order-confirm]').click();
- await expect(page.locator('[data-office-body]')).toHaveValue(expected);
+ await expect.poll(async()=>canonical(await page.locator('[data-office-body]').inputValue())).toBe(canonical(expected));
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.reload();
- await expect(page.locator('[data-office-body]')).toHaveValue(expected);
+ await expect.poll(async()=>canonical(await page.locator('[data-office-body]').inputValue())).toBe(canonical(expected));
 });
 test('O30 refuses ambiguous or duplicate source definitions without changing original writing',async({page})=>{
  await page.goto('/home/documents/');
