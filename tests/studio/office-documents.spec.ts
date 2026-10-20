@@ -3105,12 +3105,17 @@ test('O34 table row append uses real column inputs, exact UTF8 text and existing
  await page.locator('[data-office-table-preview]').click();
  const nativeSource=await page.locator('[data-office-body]').inputValue();
  const expected=nativeSource.replace('| Köln | 1 |','| Köln | 1 |\n| Berlin | 2 |');
+ // Source byte/CRLF preservation is covered by the O34 unit tests. Native
+ // textarea inputValue normalizes line endings differently across engines.
+ const canonical=(value:string)=>value.replace(/\r\n?|\n/g,'\n');
  const preview=await page.locator('[data-office-table-result]').inputValue();
- expect(preview).toBe(expected);
+ expect(canonical(preview)).toBe(canonical(expected));
+ expect(canonical(preview).split('| Berlin | 2 |')).toHaveLength(2);
+ expect(canonical(preview)).toContain('| Köln | 1 |\n| Berlin | 2 |');
  await page.locator('[data-office-table-confirm]').click();
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.reload();
- await expect(page.locator('[data-office-body]')).toHaveValue(expected);
+ await expect.poll(async()=>canonical(await page.locator('[data-office-body]').inputValue())).toBe(canonical(expected));
  await expect(page.locator('[data-office-preview] table tbody tr')).toHaveCount(2);
 });
 test('O34 mobile table row removal preview cancels, new source clears plan, privacy clears table data',async({page})=>{
@@ -3162,13 +3167,18 @@ test('O34 stale peer revision cannot overwrite original Markdown table through C
  await page.locator('[data-office-table-choice]').selectOption('0');
  await page.locator('[data-office-table-cell]').fill('B');
  await page.locator('[data-office-table-preview]').click();
- await peer.locator('[data-office-body]').fill('| Topic | Score |\n| --- | --- |\n| Peer | 9 |');
+ const peerSource='| Topic | Score |\n| --- | --- |\n| Peer | 9 |';
+ await peer.locator('[data-office-body]').fill(peerSource);
  await expect(peer.locator('[data-office-status]')).toContainText('Saved locally');
+ await expect(peer.locator('[data-office-body]')).toHaveValue(peerSource);
  await page.locator('[data-office-table-confirm]').click();
  await expect(page.locator('[data-office-status]')).toContainText('changed in another tab');
  await expect(page.locator('[data-office-export]')).toBeEnabled();
+ // The independently saved peer revision, not the blocked stale writer's
+ // proposed table, remains the only value after reopening the real device DB.
  await peer.reload();
- await expect(peer.locator('[data-office-body]')).toContainText('| Peer | 9 |');
+ await expect(peer.locator('[data-office-body]')).toHaveValue(peerSource);
+ await expect(peer.locator('[data-office-preview] table tbody tr').first()).toHaveText('Peer9');
  await peer.close();
 });
 test('O34 original Markdown table inspection excludes fenced pseudo-tables and rejects malformed rows',async({page})=>{
