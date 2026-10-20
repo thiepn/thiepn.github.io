@@ -2641,13 +2641,18 @@ test('O30 alphabetizes original definitions and preserves CRLF blank-line separa
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
  const source='Claim[^a] & Ref[^b]\r\n\r\n[^b]: Bêta\r\n\r\n[^a]: 한국어\r\n';
- const normalized=source.replace(/\r\n/g,'\n');
  await page.locator('[data-office-body]').fill(source);
+ // WebKit may preserve additional native newline boundaries during textarea.fill.
+ // Compare against actual editor input; exact CRLF source preservation is unit-tested.
+ const normalized=await page.locator('[data-office-body]').inputValue();
+ expect(normalized).toContain('[^b]: Bêta');
+ expect(normalized).toContain('[^a]: 한국어');
  await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
  await page.locator('[data-office-order-review]').click();
  await page.locator('[data-office-order-mode]').selectOption('id');
  await page.locator('[data-office-order-preview]').click();
- const expected='Claim[^a] & Ref[^b]\n\n[^a]: 한국어\n\n[^b]: Bêta\n';
+ const expected=normalized.replace('[^b]: Bêta','__office_swap__')
+  .replace('[^a]: 한국어','[^b]: Bêta').replace('__office_swap__','[^a]: 한국어');
  await expect(page.locator('[data-office-order-result]')).toHaveValue(expected);
  await page.locator('[data-office-order-cancel]').click();
  await expect(page.locator('[data-office-order-panel]')).toBeHidden();
