@@ -753,6 +753,70 @@ export function previewOfficeFootnoteOrder(
  return {value,before,after,lines:slots.map(row=>row.line),order:mode};
 }
 
+
+export type OfficeProseCitationStatus='unmarked'|'cited'|'unresolved';
+export interface OfficeProseCitationParagraph{
+ offset:number;end:number;line:number;section:string;excerpt:string;
+ citationIds:string[];status:OfficeProseCitationStatus;
+}
+export interface OfficeProseCitationReview{
+ paragraphs:OfficeProseCitationParagraph[];unmarked:number;cited:number;unresolved:number;
+}
+export const MAX_PROSE_REVIEW_PARAGRAPHS=160;
+/** Bounded original-Markdown paragraph review, not a judgement that a passage
+ * requires an academic citation. Existing footnote references remain authoritative.
+ */
+export function reviewOfficeProseCitations(source:string):OfficeProseCitationReview{
+ const references=analyzeOfficeReferences(source);
+ if(references.limited)throw new Error('Original prose review exceeds reference limits.');
+ const headings=officeHeadingReferences(source);
+ const paragraphs:OfficeProseCitationParagraph[]=[];
+ const lines:{line:string;start:number;end:number;number:number}[]=[];
+ let previousEnd=-1;
+ const flush=()=>{
+  if(!lines.length)return;
+  const start=lines[0]!.start,end=lines[lines.length-1]!.end;
+  const sites=references.references.filter(ref=>
+   ref.kind==='footnote'&&ref.offset>=start&&ref.offset<end);
+  const ids=[...new Set(sites.map(ref=>ref.id))].sort();
+  const unresolved=ids.some(id=>{
+   const definition=references.definitions.find(row=>row.id===id);
+   return !definition||definition.count!==1;
+  });
+  const ancestry:{title:string;level:number}[]=[];
+  for(const heading of headings){
+   if(heading.offset>=start)break;
+   while(ancestry.length&&ancestry[ancestry.length-1]!.level>=heading.level)ancestry.pop();
+   ancestry.push({title:heading.title.slice(0,120),level:heading.level});
+  }
+  paragraphs.push({offset:start,end,line:lines[0]!.number,
+   section:ancestry.map(row=>row.title).join(' › ')||'Before first heading',
+   excerpt:source.slice(start,end).replace(/\s+/g,' ').trim().slice(0,220),
+   citationIds:ids,status:unresolved?'unresolved':ids.length?'cited':'unmarked'});
+  lines.length=0;
+  if(paragraphs.length>MAX_PROSE_REVIEW_PARAGRAPHS)
+   throw new Error('Original prose review exceeds 160 paragraphs.');
+ };
+ visibleLines(source,(line,offset,number)=>{
+  const stripped=withoutCode(line).trim();
+  // Exclude Markdown structure and explicit non-prose blocks. Empty lines break a
+  // paragraph; fenced code is skipped by visibleLines, creating an offset gap.
+  const other=!stripped||
+   /^ {0,3}(?:#{1,6}\s|>{1,}\s?|[-*+]\s|\d{1,4}[.)]\s|(?:-{3,}|\*{3,}|_{3,})\s*$)/.test(line)||
+   /^ {0,3}(?:\[\^[a-z][a-z0-9_-]{0,47}\]:|\[[^\]]{1,150}\]:|<!--|<\/?[a-zA-Z]|\|)/.test(line)||
+   /^(?: {4,}|\t)/.test(line);
+  if(other){flush();previousEnd=-1;return;}
+  if(lines.length&&offset!==previousEnd)flush();
+  const sep=source.slice(offset+line.length).match(/^(\r\n|\r|\n)/)?.[1]??'';
+  lines.push({line,start:offset,end:offset+line.length,number});
+  previousEnd=offset+line.length+sep.length;
+ });
+ flush();
+ return {paragraphs,unmarked:paragraphs.filter(p=>p.status==='unmarked').length,
+  cited:paragraphs.filter(p=>p.status==='cited').length,
+  unresolved:paragraphs.filter(p=>p.status==='unresolved').length};
+}
+
 /** Repair a missing definition without adding a second marker to original source. */
 export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
  const report=analyzeOfficeReferences(source);

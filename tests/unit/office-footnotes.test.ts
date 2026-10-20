@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder} from '../../src/lib/office/footnotes';
+import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,reviewOfficeProseCitations} from '../../src/lib/office/footnotes';
 describe('Office O19 source-backed footnotes and broken-reference diagnostics',()=>{
  it('tracks actual references and definitions, including Unicode footnote text',()=>{
   const source='# Research\nAn observation[^a] and another[^a].\n\n[^a]: 출처 and evidence';
@@ -591,6 +591,58 @@ describe('Office O19 source-backed footnotes and broken-reference diagnostics',(
   const result=previewOfficeFootnoteOrder(source,'id');
   expect(result.value).toBe('# Topic\nParagraph[^b]\n[^old]: Earlier\n\n## End\nFinal[^a]\n\n[^a]: A\n[^b]: B');
   expect(analyzeOfficeReferences(result.value).problems.map(x=>x.kind)).toEqual(['unused-footnote']);
+ });
+
+
+ it('O31 separates authored prose paragraphs from headings, lists, definitions, fences and inline-only code',()=>{
+  const tick=String.fromCharCode(96).repeat(3);
+  const src='# Research\nOpening argument without a source\ncontinued on the next line.\n\n'+
+   'Supported[^a] but unresolved[^missing].\n\n- List[^a]\n'+tick+
+   '\nFenced[^a]\n'+tick+'\n'+tick+'inline[^fake]'+tick+
+   '\n\n[^a]: Authored footnote';
+  const result=reviewOfficeProseCitations(src);
+  expect(result).toMatchObject({unmarked:1,cited:0,unresolved:1});
+  expect(result.paragraphs).toHaveLength(2);
+  expect(result.paragraphs[0]).toMatchObject({line:2,section:'Research',status:'unmarked',
+   citationIds:[],excerpt:'Opening argument without a source continued on the next line.'});
+  expect(result.paragraphs[1]).toMatchObject({line:5,status:'unresolved',
+   citationIds:['a','missing']});
+  expect(result.paragraphs[1]?.offset).toBe(src.indexOf('Supported[^a]'));
+  expect(result.paragraphs[0]?.end).toBe(src.indexOf('.\n\nSupported')+1);
+ });
+ it('O31 recognizes prose with genuine citations across nested and repeated headings',()=>{
+  const src='Opening[^x]\n[^x]: Authored\n# Part\nText[^x]\n## Work\n' +
+   'Work[^x]\n# Part\nUnmarked analysis.';
+  const review=reviewOfficeProseCitations(src);
+  expect(review).toMatchObject({unmarked:1,cited:3,unresolved:0});
+  expect(review.paragraphs.map(p=>p.section)).toEqual([
+   'Before first heading','Part','Part › Work','Part'
+  ]);
+  expect(review.paragraphs[2]?.citationIds).toEqual(['x']);
+  expect(review.paragraphs[3]?.excerpt).toBe('Unmarked analysis.');
+ });
+ it('O31 preserves original UTF16 source spans across CRLF, CR, Unicode and fences',()=>{
+  const src='## 소개\r\n논지[^a]\r\n계속 설명\r\n\r\n~~\r\nFake[^a]\r\n~~\r\nAnother thought\r' +
+   '\n[^a]: Valid';
+  const review=reviewOfficeProseCitations(src);
+  expect(review.paragraphs).toHaveLength(2);
+  expect(review.paragraphs[0]).toMatchObject({status:'cited',line:2,section:'소개'});
+  expect(review.paragraphs[1]?.excerpt).toBe('Another thought');
+  for(const item of review.paragraphs)
+   expect(src.slice(item.offset,item.end).replace(/\s+/g,' ').trim()).toContain(item.excerpt);
+  expect(review.paragraphs[1]?.offset).toBe(src.indexOf('Another thought'));
+ });
+ it('O31 identifies duplicate-defined citations as unresolved without asserting external source truth',()=>{
+  const source='One[^a]\n\nSecond[^b]\n\nThird plain.\n[^a]: First\n[^a]: Duplicate\n[^b]: Second';
+  const reviewed=reviewOfficeProseCitations(source);
+  expect(reviewed.paragraphs.map(p=>[p.status,p.citationIds])).toEqual([
+   ['unresolved',['a']],['cited',['b']],['unmarked',[]]
+  ]);
+ });
+ it('O31 fails closed for oversized source and too many original prose paragraphs',()=>{
+  expect(()=>reviewOfficeProseCitations('x'.repeat(200001))).toThrow('reference limits');
+  const long=Array.from({length:161},(_,i)=>'Paragraph '+i+'.').join('\n\n');
+  expect(()=>reviewOfficeProseCitations(long)).toThrow('160 paragraphs');
  });
 
 });
