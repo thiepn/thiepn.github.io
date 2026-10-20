@@ -451,6 +451,48 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
+      <section class="office-tables" aria-label="Edit existing Markdown tables">
+        <h3>Markdown tables</h3>
+        <button type="button" data-office-table-review disabled>Review tables</button>
+        <p data-office-table-summary role="status" aria-live="polite">No table review.</p>
+        <div class="office-table-controls">
+          <label for="office-table-choice">Table</label>
+          <select id="office-table-choice" data-office-table-choice disabled><option value="">Choose table</option></select>
+          <button type="button" data-office-table-jump disabled>Go to source</button>
+        </div>
+        <div class="office-table-grid" data-office-table-rows></div>
+        <div class="office-table-controls">
+          <label for="office-table-action">Change</label>
+          <select id="office-table-action" data-office-table-action disabled>
+            <option value="cell">Edit cell</option>
+            <option value="append-row">Append row</option>
+            <option value="delete-row">Remove row</option>
+          </select>
+          <div class="office-table-field" data-office-table-row-field>
+            <label for="office-table-row">Data row</label>
+            <select id="office-table-row" data-office-table-row disabled><option value="">Choose row</option></select>
+          </div>
+          <div class="office-table-field" data-office-table-column-field>
+            <label for="office-table-column">Column</label>
+            <select id="office-table-column" data-office-table-column disabled><option value="">Choose column</option></select>
+          </div>
+          <div class="office-table-field" data-office-table-cell-field>
+            <label for="office-table-cell">Cell text</label>
+            <input id="office-table-cell" data-office-table-cell type="text" maxlength="240" autocomplete="off" disabled/>
+          </div>
+        </div>
+        <div data-office-table-new-cells class="office-table-new-cells" hidden></div>
+        <button type="button" data-office-table-preview disabled>Preview table change</button>
+        <section data-office-table-plan class="office-table-plan" aria-label="Confirm original Markdown table change" hidden>
+          <p data-office-table-change role="status"></p>
+          <label for="office-table-result">Resulting Markdown</label>
+          <textarea data-office-table-result id="office-table-result" rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-table-controls">
+            <button type="button" data-office-table-confirm disabled>Apply table change</button>
+            <button type="button" data-office-table-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>

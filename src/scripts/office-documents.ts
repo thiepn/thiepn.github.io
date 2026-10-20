@@ -23,6 +23,7 @@ import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 import {reviewOfficeExternalLinks,previewOfficeExternalLinkChange,type OfficeExternalLinkReport,type OfficeExternalLinkChange} from '../lib/office/external-links';
 import {reviewOfficeTerminology,previewOfficeTerminologyChange,type OfficeTermReview,type OfficeTermChange} from '../lib/office/terminology';
+import {reviewOfficeTables,previewOfficeTableChange,type OfficeSourceTable,type OfficeTableEdit,type OfficeTableAction} from '../lib/office/tables';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -187,6 +188,57 @@ if(root && shell){
       state.scope===store.scope&&state.documentId===active.id&&
       state.revision===active.revision&&state.source===body.value&&
       state.title===title.value&&state.report.term===termQuery.value.trim();
+  }
+
+
+  const tableReview=pick<HTMLButtonElement>('[data-office-table-review]');
+  const tableSummary=pick<HTMLElement>('[data-office-table-summary]');
+  const tableChoice=pick<HTMLSelectElement>('[data-office-table-choice]');
+  const tableJump=pick<HTMLButtonElement>('[data-office-table-jump]');
+  const tableRows=pick<HTMLElement>('[data-office-table-rows]');
+  const tableAction=pick<HTMLSelectElement>('[data-office-table-action]');
+  const tableRow=pick<HTMLSelectElement>('[data-office-table-row]');
+  const tableColumn=pick<HTMLSelectElement>('[data-office-table-column]');
+  const tableCell=pick<HTMLInputElement>('[data-office-table-cell]');
+  const tableNewCells=pick<HTMLElement>('[data-office-table-new-cells]');
+  const tablePreview=pick<HTMLButtonElement>('[data-office-table-preview]');
+  const tablePanel=pick<HTMLElement>('[data-office-table-plan]');
+  const tableChange=pick<HTMLElement>('[data-office-table-change]');
+  const tableResult=pick<HTMLTextAreaElement>('[data-office-table-result]');
+  const tableConfirm=pick<HTMLButtonElement>('[data-office-table-confirm]');
+  const tableCancel=pick<HTMLButtonElement>('[data-office-table-cancel]');
+  type TableReviewState={scope:string;documentId:string;revision:number;source:string;title:string;
+    tables:OfficeSourceTable[]};
+  type TablePlan={review:TableReviewState;tableOffset:number;action:OfficeTableAction;
+    row:number;column:number;content:string|string[];change:OfficeTableEdit};
+  let tableState:TableReviewState|null=null,tablePlan:TablePlan|null=null;
+  function clearTablePlan(){
+    tablePlan=null;tablePanel.hidden=true;tableChange.textContent='';tableResult.value='';
+    tableConfirm.disabled=true;
+  }
+  function clearTables(){
+    tableState=null;clearTablePlan();tableSummary.textContent='No table review.';
+    tableChoice.replaceChildren(new Option('Choose table',''));
+    tableRows.replaceChildren();tableRow.replaceChildren(new Option('Choose row',''));
+    tableColumn.replaceChildren(new Option('Choose column',''));
+    tableNewCells.replaceChildren();tableCell.value='';tableAction.value='cell';
+    tableChoice.disabled=tableJump.disabled=tableAction.disabled=tablePreview.disabled=true;
+  }
+  function tableValid(state:TableReviewState|null):boolean{
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&state.title===title.value;
+  }
+  function selectedTable():OfficeSourceTable|undefined{
+    return tableState?.tables.find(t=>String(t.offset)===tableChoice.value);
+  }
+  function selectedTableDraft():{tableOffset:number;action:OfficeTableAction;row:number;column:number;content:string|string[]}|null{
+    const table=selectedTable();
+    if(!table)return null;
+    const action=tableAction.value as OfficeTableAction;
+    if(action!=='cell'&&action!=='append-row'&&action!=='delete-row')return null;
+    return {tableOffset:table.offset,action,row:Number(tableRow.value),column:Number(tableColumn.value),
+      content:action==='append-row'?[...tableNewCells.querySelectorAll<HTMLInputElement>('input')].map(x=>x.value):tableCell.value};
   }
 
   const orderReview=pick<HTMLButtonElement>('[data-office-order-review]');
@@ -700,6 +752,25 @@ if(root && shell){
     linkNext.disabled=!linkReady||!chosenLink||externalLinkState!.page>=maxLinkPage;
     linkConfirm.disabled=!linkReady||!externalLinkPlan||externalLinkPlan.review!==externalLinkState||
       externalLinkPlan.target!==linkTarget.value||externalLinkPlan.replacement!==linkReplacement.value;
+    tableReview.disabled=!editing||dirty;
+    const tableReady=editing&&tableValid(tableState);
+    const chosenTable=tableReady?selectedTable():null;
+    tableChoice.disabled=!tableReady;
+    tableJump.disabled=tableAction.disabled=!chosenTable;
+    const tableMode=tableAction.value;
+    tableRow.disabled=!chosenTable||tableMode==='append-row';
+    tableColumn.disabled=tableCell.disabled=!chosenTable||tableMode!=='cell';
+    for(const field of tableNewCells.querySelectorAll<HTMLInputElement>('input'))
+      field.disabled=!chosenTable||tableMode!=='append-row';
+    tablePreview.disabled=!chosenTable||
+      (tableMode==='append-row'&&chosenTable.rows.length>=40)||
+      (tableMode==='delete-row'&&chosenTable.rows.length<=1);
+    const tableDraft=selectedTableDraft();
+    tableConfirm.disabled=!chosenTable||!tablePlan||tablePlan.review!==tableState||
+      !tableDraft||tableDraft.tableOffset!==tablePlan.tableOffset||
+      tableDraft.action!==tablePlan.action||tableDraft.row!==tablePlan.row||
+      tableDraft.column!==tablePlan.column||
+      JSON.stringify(tableDraft.content)!==JSON.stringify(tablePlan.content);
     termQuery.disabled=!editing;
     termReview.disabled=!editing||dirty||!termQuery.value.trim();
     const termReady=editing&&termValid(termState);
@@ -1051,7 +1122,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1130,7 +1201,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1204,7 +1275,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1242,7 +1313,7 @@ if(root && shell){
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1345,7 +1416,7 @@ if(root && shell){
     try{
       const created=await opened.createBatch(records);
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();active=created[0]??active;
+      clearExternalLinks();clearTerminology();clearTables();active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
         renderPreview();renderOutline();renderFind();renderHistory();
@@ -1395,7 +1466,7 @@ if(root && shell){
     try{
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1514,7 +1585,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1748,6 +1819,122 @@ if(root && shell){
 
 
 
+
+
+  function renderTableSelection(){
+    clearTablePlan();
+    tableRows.replaceChildren();
+    tableRow.replaceChildren(new Option('Choose row',''));
+    tableColumn.replaceChildren(new Option('Choose column',''));
+    tableNewCells.replaceChildren();tableCell.value='';
+    const table=selectedTable();
+    if(!table||!tableValid(tableState)){enable();return;}
+    const listing=document.createElement('table');
+    const head=document.createElement('thead'),headRow=document.createElement('tr');
+    for(const label of table.headers){
+      const th=document.createElement('th');th.textContent=label;headRow.append(th);
+    }
+    head.append(headRow);listing.append(head);
+    const rows=document.createElement('tbody');
+    table.rows.forEach((entry,index)=>{
+      tableRow.add(new Option('Row '+(index+1)+' · line '+entry.line,String(index)));
+      const tr=document.createElement('tr');
+      for(const value of entry.cells){
+        const td=document.createElement('td');td.textContent=value;tr.append(td);
+      }
+      rows.append(tr);
+    });
+    listing.append(rows);tableRows.append(listing);
+    table.headers.forEach((value,index)=>{
+      tableColumn.add(new Option(value,String(index)));
+      const label=document.createElement('label');
+      const input=document.createElement('input');
+      input.type='text';input.maxLength=240;input.dataset.officeTableNewCell=String(index);
+      label.textContent=value;
+      label.append(input);tableNewCells.append(label);
+      input.addEventListener('input',()=>{clearTablePlan();enable();});
+    });
+    tableAction.value='cell';
+    tableRow.value='0';tableColumn.value='0';
+    tableCell.value=table.rows[0]?.cells[0]??'';
+    renderTableAction();enable();
+  }
+  function renderTableAction(){
+    clearTablePlan();
+    const table=selectedTable(),action=tableAction.value;
+    tableNewCells.hidden=action!=='append-row';
+    pick<HTMLElement>('[data-office-table-row-field]').hidden=action==='append-row';
+    pick<HTMLElement>('[data-office-table-column-field]').hidden=action!=='cell';
+    pick<HTMLElement>('[data-office-table-cell-field]').hidden=action!=='cell';
+    if(table&&action==='cell'){
+      const row=table.rows[Number(tableRow.value)];
+      tableCell.value=row?.cells[Number(tableColumn.value)]??'';
+    }
+    enable();
+  }
+  tableReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
+    clearTables();
+    try{
+      const tables=reviewOfficeTables(body.value);
+      tableState={scope:store.scope,documentId:active.id,revision:active.revision,
+        title:title.value,source:body.value,tables};
+      for(const table of tables)
+        tableChoice.add(new Option('Line '+table.line+' · '+table.headers.length+
+          ' columns · '+table.rows.length+' rows',String(table.offset)));
+      tableSummary.textContent=tables.length+' original Markdown tables.';
+      enable();
+    }catch(error){
+      clearTables();enable();
+      message(error instanceof Error?error.message:'Original Markdown table review refused.');
+    }
+  });
+  tableChoice.addEventListener('change',()=>{
+    if(!tableValid(tableState)){clearTables();enable();return;}
+    renderTableSelection();
+  });
+  tableJump.addEventListener('click',()=>{
+    const table=selectedTable();
+    if(!table||!tableValid(tableState)||body.disabled)return;
+    focusEditor(table.offset,table.offset);
+  });
+  tableAction.addEventListener('change',renderTableAction);
+  tableRow.addEventListener('change',renderTableAction);
+  tableColumn.addEventListener('change',renderTableAction);
+  tableCell.addEventListener('input',()=>{clearTablePlan();enable();});
+  tableCancel.addEventListener('click',()=>{clearTablePlan();enable();});
+  tablePreview.addEventListener('click',()=>{
+    const state=tableState,draft=selectedTableDraft();
+    if(!state||!draft||!tableValid(state)||tablePreview.disabled)return;
+    try{
+      const change=previewOfficeTableChange(body.value,draft.tableOffset,draft.action,draft.row,draft.column,draft.content);
+      tablePlan={review:state,...draft,change};
+      tableChange.textContent=(draft.action==='cell'?'Edit cell':draft.action==='append-row'?'Append row':'Delete row')+
+        ' · table line '+change.tableLine+' · '+change.rowCount+' resulting rows.';
+      tableResult.value=change.value;tablePanel.hidden=false;
+      enable();tablePanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearTablePlan();enable();
+      message(error instanceof Error?error.message:'Original Markdown table preview refused.');
+    }
+  });
+  tableConfirm.addEventListener('click',()=>{
+    const plan=tablePlan,state=plan?.review,draft=selectedTableDraft();
+    if(!plan||!state||!draft||!tableValid(state)||state!==tableState||
+      tableConfirm.disabled)return;
+    try{
+      const verified=previewOfficeTableChange(body.value,draft.tableOffset,draft.action,draft.row,draft.column,draft.content);
+      if(verified.value!==plan.change.value||verified.rowCount!==plan.change.rowCount){
+        clearTablePlan();enable();message('Original table changed. Review before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Updated original Markdown table. Revision-checked autosave pending.');
+    }catch(error){
+      clearTablePlan();enable();
+      message(error instanceof Error?error.message:'Table change refused. Source unchanged.');
+    }
+  });
 
   function renderTermRows(){
     termRows.replaceChildren();

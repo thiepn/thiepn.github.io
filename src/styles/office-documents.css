@@ -355,3 +355,25 @@
 .office-term-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
 .office-term-plan[hidden]{display:none}
 .office-term-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace}
+
+.office-tables{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-tables h3{font-size:16px;margin:0}
+.office-tables p{font-size:14px;line-height:1.5;margin:0}
+.office-table-controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;min-width:0}
+.office-table-controls label{font-size:14px;font-weight:600}
+.office-tables button{min-height:38px;padding:8px 11px;font-size:14px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-table-controls select,.office-table-controls input,.office-table-new-cells input{min-width:0;max-width:100%;flex:1 1 170px;min-height:38px;padding:8px;font-size:14px;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line)}
+.office-table-grid{max-height:390px;max-width:100%;overflow:auto}
+.office-table-grid table{width:100%;border-collapse:collapse;font-size:14px}
+.office-table-grid th,.office-table-grid td{border:1px solid var(--ws-line);padding:8px;overflow-wrap:anywhere;text-align:left;min-width:80px}
+.office-table-grid th{font-weight:650}
+.office-table-new-cells{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.office-table-new-cells[hidden]{display:none}
+.office-table-new-cells label{display:grid;gap:5px;min-width:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.office-table-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-table-plan[hidden]{display:none}
+.office-table-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+@media(max-width:540px){.office-table-grid th,.office-table-grid td{min-width:100px}}
+
+.office-table-field{display:grid;gap:5px;flex:1 1 170px;min-width:0}
+.office-table-field[hidden]{display:none}

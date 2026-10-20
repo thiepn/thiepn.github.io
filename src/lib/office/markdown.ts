@@ -76,10 +76,10 @@ function inline(doc:Document,element:Element,content:string,footnoteIds:Readonly
   }
   if(pos<content.length)element.append(doc.createTextNode(content.slice(pos)));
 }
-function cells(line:string):string[]{
+export function officeTableCells(line:string):string[]{
   return line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(s=>s.trim());
 }
-const divider=/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+export const officeTableDivider=/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 const heading=/^ {0,3}(#{1,6})\s+(.+)$/;
 const ul=/^\s*[-*+]\s+(.+)$/;
 const ol=/^\s*\d+\.\s+(.+)$/;
@@ -133,14 +133,14 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
       fragment.append(element);i++;continue;
     }
     if(/^---+$/.test(line.trim())){fragment.append(doc.createElement('hr'));i++;continue;}
-    if(i+1<lines.length&&line.includes('|')&&divider.test(lines[i+1]!)){
-      const headers=cells(line),table=doc.createElement('table'),thead=doc.createElement('thead'),tr=doc.createElement('tr');
+    if(i+1<lines.length&&line.includes('|')&&officeTableDivider.test(lines[i+1]!)){
+      const headers=officeTableCells(line),table=doc.createElement('table'),thead=doc.createElement('thead'),tr=doc.createElement('tr');
       for(const text of headers){const th=doc.createElement('th');th.textContent=text;tr.append(th);}
       thead.append(tr);table.append(thead);i+=2;
       const tbody=doc.createElement('tbody');
       while(i<lines.length&&lines[i]!.trim()&&lines[i]!.includes('|')){
         const row=doc.createElement('tr');
-        for(const text of cells(lines[i]!).slice(0,headers.length)){
+        for(const text of officeTableCells(lines[i]!).slice(0,headers.length)){
           const td=doc.createElement('td');td.textContent=text;row.append(td);
         }
         tbody.append(row);i++;
@@ -171,7 +171,7 @@ export function renderMarkdown(source:string,container:HTMLElement):void {
     }
     const paragraph:string[]=[line];i++;
     while(i<lines.length&&!boundary(lines[i]!)&&
-      !(i+1<lines.length&&lines[i]!.includes('|')&&divider.test(lines[i+1]!))){
+      !(i+1<lines.length&&lines[i]!.includes('|')&&officeTableDivider.test(lines[i+1]!))){
       paragraph.push(lines[i++]!);
     }
     appendInline('p',paragraph.join(' '));
