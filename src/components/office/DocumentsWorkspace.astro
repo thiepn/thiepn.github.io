@@ -418,6 +418,39 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
+      <section class="office-terminology" aria-label="Selective prose terminology editing">
+        <h3>Prose terminology</h3>
+        <div class="office-term-controls">
+          <label for="office-term-query">Original term (exact case)</label>
+          <input id="office-term-query" data-office-term-query type="search" maxlength="60" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-term-review disabled>Find in prose</button>
+        </div>
+        <p data-office-term-summary role="status" aria-live="polite">No terminology review.</p>
+        <div class="office-term-actions">
+          <button type="button" data-office-term-all disabled>Select all</button>
+          <button type="button" data-office-term-none disabled>Clear selection</button>
+        </div>
+        <div data-office-term-rows class="office-term-rows"></div>
+        <div class="office-term-actions">
+          <button type="button" data-office-term-previous disabled>Previous occurrences</button>
+          <p data-office-term-page></p>
+          <button type="button" data-office-term-next disabled>Next occurrences</button>
+        </div>
+        <div class="office-term-controls">
+          <label for="office-term-replacement">Replacement term</label>
+          <input id="office-term-replacement" data-office-term-replacement maxlength="80" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-term-preview disabled>Preview selected changes</button>
+        </div>
+        <section data-office-term-plan hidden class="office-term-plan" aria-label="Confirm selected prose terminology changes">
+          <p data-office-term-change role="status"></p>
+          <label for="office-term-result">Resulting Markdown</label>
+          <textarea id="office-term-result" data-office-term-result rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-term-actions">
+            <button type="button" data-office-term-confirm disabled>Apply selected changes</button>
+            <button type="button" data-office-term-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-find" aria-label="Find and replace in document">
         <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
         <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>

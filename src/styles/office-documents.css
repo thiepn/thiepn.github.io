@@ -339,3 +339,19 @@
 .office-link-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
 .office-link-plan[hidden]{display:none}
 .office-link-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+
+.office-terminology{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-terminology h3{font-size:16px;margin:0}
+.office-terminology p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-term-controls,.office-term-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-term-controls label{font-size:14px;font-weight:600}
+.office-term-controls input{min-width:0;max-width:100%;flex:1 1 190px;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px;padding:8px}
+.office-terminology button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-term-rows{display:grid;gap:7px;max-height:380px;overflow:auto}
+.office-term-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:9px;border:1px solid var(--ws-line);min-width:0}
+.office-term-row label{display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1 1 230px;font-size:14px}
+.office-term-row label span{overflow-wrap:anywhere;line-height:1.5}
+.office-term-row input[type=checkbox]{flex:0 0 auto;margin-top:4px}
+.office-term-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-term-plan[hidden]{display:none}
+.office-term-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace}

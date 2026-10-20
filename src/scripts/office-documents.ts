@@ -22,6 +22,7 @@ import {officeHeadingReferences,generateOfficeToc,insertOfficeHeadingLink} from 
 import {analyzeOfficeReferences,insertOfficeFootnote,defineMissingOfficeFootnote,retargetBrokenOfficeHeading,officeCitationInventory,insertExistingOfficeCitation,renameOfficeCitation,updateOfficeFootnoteDefinition,compareOfficeCitationRevisions,previewOfficeCitationRecovery,previewOfficeCitationReconciliation,reviewOfficeCitationThreeWay,previewOfficeCitationThreeWay,traceOfficeReferenceIssues,inspectOfficeDuplicateFootnotes,previewOfficeDuplicateResolution,inspectOfficeCitationUseImpact,formatOfficeCitationUseAudit,mapOfficeCitationSections,inspectOfficeFootnoteOrder,previewOfficeFootnoteOrder,reviewOfficeProseCitations,type OfficeProseCitationReview,type OfficeFootnoteOrder,type OfficeFootnoteOrderPreview,type OfficeCitationSectionMap,type OfficeCitationImpactReport,type OfficeDuplicateGroup,type OfficeDuplicateRepair,type OfficeIssueHistory,type OfficeIssueLineage,type OfficeCitationMergeReview,type OfficeCitationMergeDecision,type OfficeCitationMergeResult,type OfficeCitationRecovery,type OfficeCitationReconciliation} from '../lib/office/footnotes';
 import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '../lib/office/multi-import';
 import {reviewOfficeExternalLinks,previewOfficeExternalLinkChange,type OfficeExternalLinkReport,type OfficeExternalLinkChange} from '../lib/office/external-links';
+import {reviewOfficeTerminology,previewOfficeTerminologyChange,type OfficeTermReview,type OfficeTermChange} from '../lib/office/terminology';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -146,6 +147,46 @@ if(root && shell){
     return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
       state.scope===store.scope&&state.documentId===active.id&&
       state.revision===active.revision&&state.source===body.value&&state.title===title.value;
+  }
+
+
+  const termQuery=pick<HTMLInputElement>('[data-office-term-query]');
+  const termReview=pick<HTMLButtonElement>('[data-office-term-review]');
+  const termSummary=pick<HTMLElement>('[data-office-term-summary]');
+  const termRows=pick<HTMLElement>('[data-office-term-rows]');
+  const termPage=pick<HTMLElement>('[data-office-term-page]');
+  const termPrevious=pick<HTMLButtonElement>('[data-office-term-previous]');
+  const termNext=pick<HTMLButtonElement>('[data-office-term-next]');
+  const termAll=pick<HTMLButtonElement>('[data-office-term-all]');
+  const termNone=pick<HTMLButtonElement>('[data-office-term-none]');
+  const termReplacement=pick<HTMLInputElement>('[data-office-term-replacement]');
+  const termPreview=pick<HTMLButtonElement>('[data-office-term-preview]');
+  const termPlanPanel=pick<HTMLElement>('[data-office-term-plan]');
+  const termChange=pick<HTMLElement>('[data-office-term-change]');
+  const termResult=pick<HTMLTextAreaElement>('[data-office-term-result]');
+  const termConfirm=pick<HTMLButtonElement>('[data-office-term-confirm]');
+  const termCancel=pick<HTMLButtonElement>('[data-office-term-cancel]');
+  const TERM_PAGE_SIZE=20;
+  type TermState={scope:string;documentId:string;revision:number;source:string;title:string;
+    report:OfficeTermReview;selected:Set<number>;page:number};
+  type TermPlan={review:TermState;replacement:string;change:OfficeTermChange};
+  let termState:TermState|null=null,termPlan:TermPlan|null=null;
+  function clearTermPreview(){
+    termPlan=null;termPlanPanel.hidden=true;termChange.textContent='';termResult.value='';
+    termConfirm.disabled=true;
+  }
+  function clearTerminology(resetQuery=true){
+    termState=null;clearTermPreview();termRows.replaceChildren();
+    termSummary.textContent='No terminology review.';termPage.textContent='';
+    if(resetQuery)termQuery.value='';
+    termReplacement.value='';
+    termPrevious.disabled=termNext.disabled=termAll.disabled=termNone.disabled=true;
+  }
+  function termValid(state:TermState|null):boolean{
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&
+      state.title===title.value&&state.report.term===termQuery.value.trim();
   }
 
   const orderReview=pick<HTMLButtonElement>('[data-office-order-review]');
@@ -659,6 +700,19 @@ if(root && shell){
     linkNext.disabled=!linkReady||!chosenLink||externalLinkState!.page>=maxLinkPage;
     linkConfirm.disabled=!linkReady||!externalLinkPlan||externalLinkPlan.review!==externalLinkState||
       externalLinkPlan.target!==linkTarget.value||externalLinkPlan.replacement!==linkReplacement.value;
+    termQuery.disabled=!editing;
+    termReview.disabled=!editing||dirty||!termQuery.value.trim();
+    const termReady=editing&&termValid(termState);
+    termReplacement.disabled=!termReady||!termState?.report.uses.length;
+    termAll.disabled=!termReady||!termState||!termState.report.uses.length||
+      termState.selected.size===termState.report.uses.length;
+    termNone.disabled=!termReady||!termState?.selected.size;
+    termPrevious.disabled=!termReady||!termState||termState.page===0;
+    termNext.disabled=!termReady||!termState||
+      termState.page>=Math.max(0,Math.ceil(termState.report.uses.length/TERM_PAGE_SIZE)-1);
+    termPreview.disabled=!termReady||!termState?.selected.size||!termReplacement.value.trim();
+    termConfirm.disabled=!termReady||!termPlan||termPlan.review!==termState||
+      termPlan.replacement!==termReplacement.value;
     proseFilter.disabled=proseSection.disabled=!editing||!proseReviewValid(proseReviewState);
     orderReview.disabled=!editing||dirty;
     orderMode.disabled=orderPreview.disabled=!editing||!orderValid(orderReviewState);
@@ -997,7 +1051,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1076,7 +1130,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1150,7 +1204,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1188,7 +1242,7 @@ if(root && shell){
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1291,7 +1345,7 @@ if(root && shell){
     try{
       const created=await opened.createBatch(records);
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();active=created[0]??active;
+      clearExternalLinks();clearTerminology();active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
         renderPreview();renderOutline();renderFind();renderHistory();
@@ -1341,7 +1395,7 @@ if(root && shell){
     try{
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1460,7 +1514,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearProseReview();clearExternalLinks();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1693,6 +1747,114 @@ if(root && shell){
 
 
 
+
+
+  function renderTermRows(){
+    termRows.replaceChildren();
+    const state=termState;
+    if(!state||!termValid(state)){clearTerminology(false);enable();return;}
+    const uses=state.report.uses;
+    state.page=Math.min(state.page,Math.max(0,Math.ceil(uses.length/TERM_PAGE_SIZE)-1));
+    const from=state.page*TERM_PAGE_SIZE;
+    termSummary.textContent=uses.length+' prose occurrences · '+state.selected.size+
+      ' selected · '+state.report.paragraphs+' paragraphs inspected.';
+    termPage.textContent=uses.length?
+      (from+1)+'–'+Math.min(uses.length,from+TERM_PAGE_SIZE)+' of '+uses.length:'No occurrences.';
+    for(const site of uses.slice(from,from+TERM_PAGE_SIZE)){
+      const row=document.createElement('div');row.className='office-term-row';
+      const label=document.createElement('label');
+      const checkbox=document.createElement('input');checkbox.type='checkbox';
+      checkbox.dataset.officeTermOffset=String(site.offset);
+      checkbox.checked=state.selected.has(site.offset);
+      checkbox.addEventListener('change',()=>{
+        if(!termValid(state)||termState!==state){clearTerminology();enable();return;}
+        if(checkbox.checked)state.selected.add(site.offset);else state.selected.delete(site.offset);
+        clearTermPreview();renderTermRows();
+      });
+      const detail=document.createElement('span');
+      detail.textContent='Line '+site.line+' · '+site.section+' · '+site.excerpt;
+      label.append(checkbox,detail);
+      const jump=document.createElement('button');jump.type='button';
+      jump.dataset.officeTermJump=String(site.offset);jump.textContent='Go to term';
+      jump.addEventListener('click',()=>{
+        if(!termValid(state)||termState!==state||body.disabled||
+          body.value.slice(site.offset,site.offset+state.report.term.length)!==state.report.term){
+          clearTerminology();enable();return;
+        }
+        focusEditor(site.offset,site.offset+state.report.term.length);
+      });
+      row.append(label,jump);termRows.append(row);
+    }
+    enable();
+  }
+  termQuery.addEventListener('input',()=>{clearTerminology(false);enable();});
+  termReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
+    const query=termQuery.value.trim();
+    clearTerminology(false);
+    try{
+      const report=reviewOfficeTerminology(body.value,query);
+      termState={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,title:title.value,report,selected:new Set(),page:0};
+      renderTermRows();
+    }catch(error){
+      clearTerminology(false);enable();
+      message(error instanceof Error?error.message:'Original prose terminology review refused.');
+    }
+  });
+  termPrevious.addEventListener('click',()=>{
+    if(!termValid(termState)||!termState||termState.page===0)return;
+    termState.page--;renderTermRows();
+  });
+  termNext.addEventListener('click',()=>{
+    if(!termValid(termState)||!termState||termNext.disabled)return;
+    termState.page++;renderTermRows();
+  });
+  termAll.addEventListener('click',()=>{
+    if(!termValid(termState)||!termState)return;
+    for(const site of termState.report.uses)termState.selected.add(site.offset);
+    clearTermPreview();renderTermRows();
+  });
+  termNone.addEventListener('click',()=>{
+    if(!termValid(termState)||!termState)return;
+    termState.selected.clear();clearTermPreview();renderTermRows();
+  });
+  termReplacement.addEventListener('input',()=>{clearTermPreview();enable();});
+  termCancel.addEventListener('click',()=>{clearTermPreview();enable();});
+  termPreview.addEventListener('click',()=>{
+    const state=termState,replacement=termReplacement.value;
+    if(!state||!termValid(state)||termPreview.disabled)return;
+    try{
+      const change=previewOfficeTerminologyChange(body.value,state.report.term,replacement,[...state.selected]);
+      termPlan={review:state,replacement,change};
+      termChange.textContent=change.count+' selected prose occurrences will change.';
+      termResult.value=change.value;termPlanPanel.hidden=false;
+      enable();termPlanPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      clearTermPreview();enable();
+      message(error instanceof Error?error.message:'Terminology preview refused.');
+    }
+  });
+  termConfirm.addEventListener('click',()=>{
+    const plan=termPlan,state=plan?.review;
+    if(!plan||!state||!termValid(state)||state!==termState||
+      termConfirm.disabled||plan.replacement!==termReplacement.value)return;
+    try{
+      const verified=previewOfficeTerminologyChange(
+        body.value,state.report.term,plan.replacement,[...state.selected]);
+      if(verified.value!==plan.change.value||
+         verified.selectedOffsets.join(',')!==plan.change.selectedOffsets.join(',')){
+        clearTermPreview();enable();
+        message('Selected original prose changed. Review again before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Changed '+verified.count+' selected prose occurrences. Revision-checked autosave pending.');
+    }catch(error){
+      clearTermPreview();enable();
+      message(error instanceof Error?error.message:'Terminology change refused. Source unchanged.');
+    }
+  });
 
   function renderExternalLinks(){
     linkUses.replaceChildren();
