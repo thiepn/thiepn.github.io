@@ -451,6 +451,44 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
+      <section class="office-checklists" aria-label="Review document checklists">
+        <h3>Document checklists</h3>
+        <button type="button" data-office-checklist-review disabled>Review checklists</button>
+        <p data-office-checklist-summary role="status" aria-live="polite">No checklist review.</p>
+        <div class="office-checklist-controls">
+          <label for="office-checklist-filter">Show</label>
+          <select data-office-checklist-filter id="office-checklist-filter" disabled>
+            <option value="all">All tasks</option>
+            <option value="open">Open tasks</option>
+            <option value="completed">Completed tasks</option>
+          </select>
+          <label for="office-checklist-action">Change selected to</label>
+          <select data-office-checklist-action id="office-checklist-action" disabled>
+            <option value="complete">Completed</option>
+            <option value="open">Open</option>
+          </select>
+        </div>
+        <div class="office-checklist-controls">
+          <button type="button" data-office-checklist-all disabled>Select eligible</button>
+          <button type="button" data-office-checklist-none disabled>Clear selection</button>
+        </div>
+        <div data-office-checklist-items class="office-checklist-items"></div>
+        <div class="office-checklist-controls">
+          <button type="button" data-office-checklist-prev disabled>Previous tasks</button>
+          <p data-office-checklist-page></p>
+          <button type="button" data-office-checklist-next disabled>Next tasks</button>
+        </div>
+        <button type="button" data-office-checklist-preview disabled>Preview selected changes</button>
+        <section data-office-checklist-plan class="office-checklist-plan" aria-label="Confirm original checklist changes" hidden>
+          <p data-office-checklist-change role="status"></p>
+          <label for="office-checklist-result">Resulting Markdown</label>
+          <textarea data-office-checklist-result id="office-checklist-result" rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-checklist-controls">
+            <button type="button" data-office-checklist-confirm disabled>Apply selected changes</button>
+            <button type="button" data-office-checklist-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-tables" aria-label="Edit existing Markdown tables">
         <h3>Markdown tables</h3>
         <button type="button" data-office-table-review disabled>Review tables</button>

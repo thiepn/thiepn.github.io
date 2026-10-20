@@ -377,3 +377,18 @@
 
 .office-table-field{display:grid;gap:5px;flex:1 1 170px;min-width:0}
 .office-table-field[hidden]{display:none}
+
+.office-checklists{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-checklists h3{font-size:16px;margin:0}
+.office-checklists p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-checklist-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-checklist-controls label{font-size:14px;font-weight:600}
+.office-checklists button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-checklist-controls select{min-width:0;flex:1 1 150px;max-width:100%;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px;padding:8px}
+.office-checklist-items{display:grid;gap:7px;max-height:390px;overflow:auto}
+.office-checklist-item{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0;border:1px solid var(--ws-line);padding:9px}
+.office-checklist-item label{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1 1 220px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.office-checklist-item label input{flex:0 0 auto;margin-top:3px}
+.office-checklist-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-checklist-plan[hidden]{display:none}
+.office-checklist-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}

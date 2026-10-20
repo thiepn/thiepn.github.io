@@ -24,6 +24,7 @@ import {parseMarkdownBatch,MAX_MULTI_IMPORT_FILES,MAX_MULTI_IMPORT_BYTES} from '
 import {reviewOfficeExternalLinks,previewOfficeExternalLinkChange,type OfficeExternalLinkReport,type OfficeExternalLinkChange} from '../lib/office/external-links';
 import {reviewOfficeTerminology,previewOfficeTerminologyChange,type OfficeTermReview,type OfficeTermChange} from '../lib/office/terminology';
 import {reviewOfficeTables,previewOfficeTableChange,type OfficeSourceTable,type OfficeTableEdit,type OfficeTableAction} from '../lib/office/tables';
+import {reviewOfficeChecklists,previewOfficeChecklistChange,type OfficeChecklistReview,type OfficeChecklistChange} from '../lib/office/checklists';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -190,6 +191,52 @@ if(root && shell){
       state.title===title.value&&state.report.term===termQuery.value.trim();
   }
 
+
+
+  const checklistReview=pick<HTMLButtonElement>('[data-office-checklist-review]');
+  const checklistSummary=pick<HTMLElement>('[data-office-checklist-summary]');
+  const checklistFilter=pick<HTMLSelectElement>('[data-office-checklist-filter]');
+  const checklistAction=pick<HTMLSelectElement>('[data-office-checklist-action]');
+  const checklistAll=pick<HTMLButtonElement>('[data-office-checklist-all]');
+  const checklistNone=pick<HTMLButtonElement>('[data-office-checklist-none]');
+  const checklistItems=pick<HTMLElement>('[data-office-checklist-items]');
+  const checklistPage=pick<HTMLElement>('[data-office-checklist-page]');
+  const checklistPrev=pick<HTMLButtonElement>('[data-office-checklist-prev]');
+  const checklistNext=pick<HTMLButtonElement>('[data-office-checklist-next]');
+  const checklistPreview=pick<HTMLButtonElement>('[data-office-checklist-preview]');
+  const checklistPanel=pick<HTMLElement>('[data-office-checklist-plan]');
+  const checklistChange=pick<HTMLElement>('[data-office-checklist-change]');
+  const checklistResult=pick<HTMLTextAreaElement>('[data-office-checklist-result]');
+  const checklistConfirm=pick<HTMLButtonElement>('[data-office-checklist-confirm]');
+  const checklistCancel=pick<HTMLButtonElement>('[data-office-checklist-cancel]');
+  const CHECKLIST_PAGE_SIZE=20;
+  type ChecklistState={scope:string;documentId:string;revision:number;source:string;title:string;
+    report:OfficeChecklistReview;selected:Set<number>;page:number};
+  type ChecklistPlan={review:ChecklistState;offsets:number[];completed:boolean;change:OfficeChecklistChange};
+  let checklistState:ChecklistState|null=null,checklistPlan:ChecklistPlan|null=null;
+  function discardChecklistPlan(){
+    checklistPlan=null;checklistPanel.hidden=true;checklistChange.textContent='';
+    checklistResult.value='';checklistConfirm.disabled=true;
+  }
+  function clearChecklists(){
+    checklistState=null;discardChecklistPlan();checklistSummary.textContent='No checklist review.';
+    checklistItems.replaceChildren();checklistPage.textContent='';
+    checklistFilter.value='all';checklistAction.value='complete';
+    checklistFilter.disabled=checklistAction.disabled=checklistAll.disabled=
+      checklistNone.disabled=checklistPrev.disabled=checklistNext.disabled=
+      checklistPreview.disabled=true;
+  }
+  function checklistValid(state:ChecklistState|null):boolean{
+    return !!state&&!!store&&!!active&&allowed()&&!busy&&!blocked&&!dirty&&
+      state.scope===store.scope&&state.documentId===active.id&&
+      state.revision===active.revision&&state.source===body.value&&state.title===title.value;
+  }
+  const checklistTarget=()=>checklistAction.value==='complete';
+  function checklistVisible(state:ChecklistState){
+    return state.report.items.filter(item=>checklistFilter.value==='all'||
+      (checklistFilter.value==='completed'?item.completed:!item.completed));
+  }
+  const checklistOffsets=(state:ChecklistState)=>[...state.selected].sort((a,b)=>a-b);
 
   const tableReview=pick<HTMLButtonElement>('[data-office-table-review]');
   const tableSummary=pick<HTMLElement>('[data-office-table-summary]');
@@ -752,6 +799,20 @@ if(root && shell){
     linkNext.disabled=!linkReady||!chosenLink||externalLinkState!.page>=maxLinkPage;
     linkConfirm.disabled=!linkReady||!externalLinkPlan||externalLinkPlan.review!==externalLinkState||
       externalLinkPlan.target!==linkTarget.value||externalLinkPlan.replacement!==linkReplacement.value;
+    checklistReview.disabled=!editing||dirty;
+    const checklistReady=editing&&checklistValid(checklistState);
+    const checklistVisibleItems=checklistReady?checklistVisible(checklistState!):[];
+    const checklistEligible=checklistVisibleItems.filter(item=>item.completed!==checklistTarget());
+    checklistFilter.disabled=checklistAction.disabled=!checklistReady;
+    checklistAll.disabled=!checklistReady||!checklistEligible.some(item=>!checklistState!.selected.has(item.markerOffset));
+    checklistNone.disabled=!checklistReady||!checklistState?.selected.size;
+    checklistPrev.disabled=!checklistReady||!checklistState||checklistState.page===0;
+    checklistNext.disabled=!checklistReady||!checklistState||
+      checklistState.page>=Math.max(0,Math.ceil(checklistVisibleItems.length/CHECKLIST_PAGE_SIZE)-1);
+    checklistPreview.disabled=!checklistReady||!checklistState?.selected.size;
+    checklistConfirm.disabled=!checklistReady||!checklistPlan||checklistPlan.review!==checklistState||
+      checklistPlan.completed!==checklistTarget()||
+      JSON.stringify(checklistPlan.offsets)!==JSON.stringify(checklistOffsets(checklistState!));
     tableReview.disabled=!editing||dirty;
     const tableReady=editing&&tableValid(tableState);
     const chosenTable=tableReady?selectedTable():null;
@@ -1122,7 +1183,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1201,7 +1262,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1275,7 +1336,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1313,7 +1374,7 @@ if(root && shell){
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1416,7 +1477,7 @@ if(root && shell){
     try{
       const created=await opened.createBatch(records);
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();active=created[0]??active;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
         renderPreview();renderOutline();renderFind();renderHistory();
@@ -1466,7 +1527,7 @@ if(root && shell){
     try{
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1585,7 +1646,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1820,6 +1881,120 @@ if(root && shell){
 
 
 
+
+
+  function renderChecklistItems(){
+    checklistItems.replaceChildren();
+    const state=checklistState;
+    if(!state||!checklistValid(state)){clearChecklists();enable();return;}
+    const visible=checklistVisible(state),eligible=checklistTarget();
+    state.page=Math.min(state.page,Math.max(0,Math.ceil(visible.length/CHECKLIST_PAGE_SIZE)-1));
+    const from=state.page*CHECKLIST_PAGE_SIZE;
+    checklistSummary.textContent=state.report.items.length+' tasks · '+state.report.open+
+      ' open · '+state.report.completed+' completed · '+state.selected.size+' selected.';
+    checklistPage.textContent=visible.length?
+      (from+1)+'–'+Math.min(visible.length,from+CHECKLIST_PAGE_SIZE)+' of '+visible.length:
+      'No matching tasks.';
+    for(const task of visible.slice(from,from+CHECKLIST_PAGE_SIZE)){
+      const row=document.createElement('div');row.className='office-checklist-item';
+      const label=document.createElement('label'),checkbox=document.createElement('input');
+      checkbox.type='checkbox';checkbox.dataset.officeChecklistOption=String(task.markerOffset);
+      checkbox.checked=state.selected.has(task.markerOffset);
+      checkbox.disabled=task.completed===eligible;
+      checkbox.addEventListener('change',()=>{
+        if(!checklistValid(state)||checklistState!==state){clearChecklists();enable();return;}
+        if(checkbox.checked)state.selected.add(task.markerOffset);else state.selected.delete(task.markerOffset);
+        discardChecklistPlan();renderChecklistItems();
+      });
+      const detail=document.createElement('span');
+      detail.textContent='Line '+task.line+' · '+(task.completed?'Completed':'Open')+' · '+
+        task.section+' · '+task.label;
+      label.append(checkbox,detail);
+      const jump=document.createElement('button');jump.type='button';
+      jump.dataset.officeChecklistJump=String(task.markerOffset);
+      jump.textContent='Go to task';
+      jump.addEventListener('click',()=>{
+        if(!checklistValid(state)||checklistState!==state||body.disabled||
+          body.value[task.markerOffset]!==state.source[task.markerOffset]){clearChecklists();enable();return;}
+        focusEditor(task.markerOffset-1,task.markerOffset+2);
+      });
+      row.append(label,jump);checklistItems.append(row);
+    }
+    enable();
+  }
+  checklistReview.addEventListener('click',()=>{
+    if(!active||!store||!allowed()||dirty||busy||blocked||body.disabled)return;
+    clearChecklists();
+    try{
+      const report=reviewOfficeChecklists(body.value);
+      checklistState={scope:store.scope,documentId:active.id,revision:active.revision,
+        source:body.value,title:title.value,report,selected:new Set(),page:0};
+      renderChecklistItems();
+    }catch(error){
+      clearChecklists();enable();
+      message(error instanceof Error?error.message:'Original checklist review refused.');
+    }
+  });
+  checklistFilter.addEventListener('change',()=>{
+    if(!checklistValid(checklistState)){clearChecklists();enable();return;}
+    checklistState!.page=0;discardChecklistPlan();renderChecklistItems();
+  });
+  checklistAction.addEventListener('change',()=>{
+    if(!checklistValid(checklistState)){clearChecklists();enable();return;}
+    checklistState!.selected.clear();checklistState!.page=0;discardChecklistPlan();renderChecklistItems();
+  });
+  checklistAll.addEventListener('click',()=>{
+    const state=checklistState;
+    if(!checklistValid(state)){clearChecklists();enable();return;}
+    for(const task of checklistVisible(state!))
+      if(task.completed!==checklistTarget())state!.selected.add(task.markerOffset);
+    discardChecklistPlan();renderChecklistItems();
+  });
+  checklistNone.addEventListener('click',()=>{
+    if(!checklistValid(checklistState)){clearChecklists();enable();return;}
+    checklistState!.selected.clear();discardChecklistPlan();renderChecklistItems();
+  });
+  checklistPrev.addEventListener('click',()=>{
+    if(!checklistValid(checklistState)){clearChecklists();enable();return;}
+    checklistState!.page=Math.max(0,checklistState!.page-1);renderChecklistItems();
+  });
+  checklistNext.addEventListener('click',()=>{
+    if(!checklistValid(checklistState)){clearChecklists();enable();return;}
+    checklistState!.page++;renderChecklistItems();
+  });
+  checklistCancel.addEventListener('click',()=>{discardChecklistPlan();enable();});
+  checklistPreview.addEventListener('click',()=>{
+    const state=checklistState;
+    if(!checklistValid(state)||checklistPreview.disabled||!state)return;
+    const offsets=checklistOffsets(state),completed=checklistTarget();
+    try{
+      const change=previewOfficeChecklistChange(body.value,offsets,completed);
+      checklistPlan={review:state,offsets,completed,change};
+      checklistChange.textContent=change.count+' original task'+(change.count===1?'':'s')+
+        ' to '+(completed?'completed':'open')+'.';
+      checklistResult.value=change.value;checklistPanel.hidden=false;
+      enable();checklistPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      discardChecklistPlan();enable();
+      message(error instanceof Error?error.message:'Original checklist preview refused.');
+    }
+  });
+  checklistConfirm.addEventListener('click',()=>{
+    const plan=checklistPlan,state=plan?.review;
+    if(!plan||!state||!checklistValid(state)||state!==checklistState||checklistConfirm.disabled)return;
+    try{
+      const verified=previewOfficeChecklistChange(body.value,checklistOffsets(state),checklistTarget());
+      if(verified.value!==plan.change.value||verified.count!==plan.change.count){
+        discardChecklistPlan();enable();message('Checklist source changed. Review before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Updated original Markdown checklist. Revision-checked autosave pending.');
+    }catch(error){
+      discardChecklistPlan();enable();
+      message(error instanceof Error?error.message:'Checklist change refused. Source unchanged.');
+    }
+  });
 
   function renderTableSelection(){
     clearTablePlan();
