@@ -63,6 +63,6 @@ export function roadmapWeekForDate(plan:ImportedStudyRoadmap,date:string):Import
  return plan.weeks.find(w=>w.start<=date&&w.end>=date)??null;
 }
 export function weekCourseTargets(week:ImportedWeek){
- return keys.filter(key=>week.hours_by_course[key]>0)
+ return keys.filter(key=>(week.hours_by_course[key]??0)>0)
   .map(key=>({course:key,minutes:Math.round(week.hours_by_course[key]!*60)}));
 }
