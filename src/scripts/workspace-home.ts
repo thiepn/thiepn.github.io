@@ -1015,6 +1015,7 @@ async function setup(root: HTMLElement) {
         });
     }
     updateNavigation();
+    window.addEventListener('hub:calendar-local-request',()=>{if(state)render();});
     function originalHandoffRecord() {
         if (!handoffOrigin || handoffOrigin.epoch !== epoch || !state) return undefined;
         const origin=handoffOrigin;
