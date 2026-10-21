@@ -35,7 +35,7 @@ describe("C1 owner calendar client",()=>{
   it("sends only a bearer, read-only, no-store request and checks its window",async()=>{
     const params:{url?:string;init?:RequestInit}={};
     const fetcher=(async(url:RequestInfo|URL,init?:RequestInit)=>{
-      params.url=String(url);params.init=init;
+      params.url=String(url);if(init)params.init=init;
       return new Response(JSON.stringify({ok:true,data:{...source(),generatedAt:new Date().toISOString(),
         expiresAt:new Date(Date.now()+5*60000).toISOString()}}),{
           status:200,headers:{"content-type":"application/json"}});
