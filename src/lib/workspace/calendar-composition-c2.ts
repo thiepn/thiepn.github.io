@@ -84,6 +84,7 @@ export function composeCalendarView(args:{
   academic: AcademicCalendarProjection|null;
   selected:string;mode:"day"|"week";timezone:string;
   now?:number;
+  capacityOverrides?:readonly {date:string;budgetMinutes?:number|null}[];
 }):ComposedCalendar {
   const dates=args.mode==="week"?weekDays(args.selected):[args.selected];
   const google=args.google&&Date.parse(args.google.expiresAt)>(args.now??Date.now())?args.google:null;
@@ -131,9 +132,12 @@ export function composeCalendarView(args:{
       [Date.parse(zonedInstant(date,a!,args.timezone)),Date.parse(zonedInstant(date,b!,args.timezone))] as const);
     const busy=ranges(present,lo,hi);
     const minutes=subtract(lo,hi,[...meals,...busy]);
-    return {date,items:present,availableMinutes:reliable?(weekend?Math.min(minutes,210):minutes):null,
+    const chosen=args.capacityOverrides?.find(c=>c.date===date)?.budgetMinutes;
+    const studyGoalMinutes=Number.isInteger(chosen)&&Number(chosen)>=0&&Number(chosen)<=720
+      ?Math.min(weekend?240:720,Number(chosen)):(weekend?210:420);
+    return {date,items:present,availableMinutes:reliable?(weekend?Math.min(minutes,studyGoalMinutes):minutes):null,
       availableWindows:reliable?candidateWindows(lo,hi,[...meals,...busy]):[],
-      studyGoalMinutes:weekend?210:420,sourceReliable:reliable,
+      studyGoalMinutes,sourceReliable:reliable,
       assumptions:"proposed_meals_and_free_time" as const};
   });
   const reasons=[...new Set([...(validSource?.coverage.reasons??[]),...(args.academic?.reasons??[]),
