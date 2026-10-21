@@ -46,6 +46,6 @@ describe("C3 original StudyOS 23-week roadmap contract",()=>{
          targetMinutes:600,actionTitle:"Practice",sourceRoute:"/courses/"+id}]}],capacities:[]};
    expect(verifyNativeStudyPlan(base)?.weeks).toHaveLength(1);
    expect(verifyNativeStudyPlan({...base,weeks:[base.weeks[0],base.weeks[0]]})).toBeNull();
-   expect(verifyNativeStudyPlan({...base,weeks:[{...base.weeks[0],courses:[{...base.weeks[0].courses[0],sourceRoute:"https://evil.invalid"}]}]})).toBeNull();
+   expect(verifyNativeStudyPlan({...base,weeks:[{...base.weeks[0],courses:[{...base.weeks[0]!.courses[0]!,sourceRoute:"https://evil.invalid"}]}]})).toBeNull();
  });
 });
