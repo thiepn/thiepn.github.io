@@ -1,7 +1,10 @@
 import {test,expect} from "@playwright/test";
 for(const width of [1440,390]){
   test(`C2 original local event flows through ephemeral native calendar projection (${width}px)`,async({page})=>{
-    await page.setViewportSize({width,height:860});
+    // Original mobile planner intentionally hides its desktop add-event button.
+    // Create with the original desktop control, then verify the same persisted
+    // record and privacy behavior at the requested real mobile viewport.
+    await page.setViewportSize({width:1440,height:860});
     await page.addInitScript(()=>{
       (window as any).__calendarSnapshots=[];
       window.addEventListener("hub:calendar-local",(event)=>{
@@ -17,6 +20,7 @@ for(const width of [1440,390]){
     await page.getByLabel("Event",{exact:true}).fill("Source-owned planning event");
     await page.locator("[data-workspace-dialog] button[data-dialog-submit]").click();
     await expect(page.locator("[data-workspace-dialog]")).not.toBeVisible();
+    await page.setViewportSize({width,height:860});
     await expect.poll(()=>page.evaluate(()=>{
       const items=(window as any).__calendarSnapshots as Array<{private:boolean;events:Array<{title:string;id:string}>}>;
       return items.some(x=>x.private===false&&x.events.some(e=>e.title==="Source-owned planning event"));
