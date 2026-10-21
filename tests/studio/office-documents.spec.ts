@@ -1930,6 +1930,7 @@ test('O24 reconciles two explicitly chosen genuine historical citations and pres
  expect(await page.locator('[data-office-history] option').count()).toBeGreaterThan(2);
 });
 test('O24 reconciles only selected original citations and rejects changed selection previews',async({page})=>{
+ test.setTimeout(60_000); // Full WebKit browser journey can exceed Playwright's default 30s budget.
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
@@ -3038,6 +3039,7 @@ test('O33 peer tab CAS rejects terminology decisions based on stale saved prose'
 });
 
 test('O33 genuine paged terminology review allows selecting one later occurrence without bulk replacement',async({page})=>{
+ test.setTimeout(60_000); // Full WebKit browser journey can exceed Playwright's default 30s budget.
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
@@ -3227,6 +3229,7 @@ test('O35 original checklist batch changes selected genuine Markdown tasks and s
  await expect(page.locator('[data-office-history] option')).not.toHaveCount(1);
 });
 test('O35 checklist reopens selected completed tasks across a paged filtered review without touching neighbors',async({page})=>{
+ test.setTimeout(60_000); // Full WebKit browser journey can exceed Playwright's default 30s budget.
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
@@ -3453,6 +3456,7 @@ test('O36 refuses a stale source document revision in another tab before transfe
  await peer.close();
 });
 test('O36 target peer-tab CAS still rejects transferred excerpts and preserves newer document',async({page,context})=>{
+ test.setTimeout(60_000); // Full WebKit browser journey can exceed Playwright's default 30s budget.
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
