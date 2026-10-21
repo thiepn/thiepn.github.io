@@ -56,6 +56,13 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           {<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar" hidden={view!=='home'&&view!=='calendar'}>
             <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
             <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>
+            <section data-hub-study-plan class="ws-hub-study-c3" aria-label="StudyOS study plan">
+              <header><h3>StudyOS weekly plan</h3><label for="hub-study-roadmap-import">Open roadmap JSON</label>
+                <input id="hub-study-roadmap-import" type="file" accept=".json,application/json" data-hub-study-file/></header>
+              <div data-hub-study-status role="status"></div>
+              <div data-hub-study-content></div>
+              <button type="button" data-hub-study-clear hidden>Clear imported roadmap</button>
+            </section>
           </section>}
 
           {<details class="ws-calendar-details"><summary>Preview an external calendar</summary><section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
