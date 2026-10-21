@@ -53,7 +53,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
           <VisitorWelcome hidden={view !== 'home'}/>
           <div data-workspace-today hidden></div>
-          {(view==='home'||view==='calendar')&&<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar">
+          {<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar" hidden={view!=='home'&&view!=='calendar'}>
             <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
             <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>
           </section>}
