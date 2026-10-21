@@ -1,7 +1,7 @@
 /** Validate only original StudyOS weekly envelope projection; no inferred grades. */
 export type StudyOSWeekCourse={courseId:string;label:string;stableKey:string;targetMinutes:number;actionTitle:string;sourceRoute:string};
 export type StudyOSNativeWeek={id:string;start:string;end:string;revision:number;objective:string;courseBudgetMinutes:number|null;committedAt:string|null;courses:StudyOSWeekCourse[]};
-export type StudyOSNativePlan={status:"active"|"no_active_week"|"partial";source:"studyos-week-plans";weeks:StudyOSNativeWeek[];capacities:{date:string;mode:string;customMinutes:number|null}[];readonly:true};
+export type StudyOSNativePlan={status:"active"|"no_active_week"|"partial";source:"studyos-week-plans";weeks:StudyOSNativeWeek[];capacities:{date:string;mode:string;customMinutes:number|null;budgetMinutes?:number|null}[];readonly:true};
 const o=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
 const id=(v:unknown):v is string=>typeof v==="string"&&/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(v);
 const day=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&
@@ -29,7 +29,7 @@ export function verifyNativeStudyPlan(input:unknown):StudyOSNativePlan|null{
  }
  for(const c of input.capacities){
    if(!o(c)||!day(c.date)||!["normal","light","recovery","intensive","custom"].includes(String(c.mode))||
-     !min(c.customMinutes))return null;
+     !min(c.customMinutes)||!(c.budgetMinutes===undefined||min(c.budgetMinutes)))return null;
  }
  return input as StudyOSNativePlan;
 }
