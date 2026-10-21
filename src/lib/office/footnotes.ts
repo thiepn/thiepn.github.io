@@ -1,0 +1,878 @@
+import {MAX_BODY} from './documents';
+import {officeHeadingReferences} from './toc';
+export const MAX_FOOTNOTE_ID=48;
+export const MAX_FOOTNOTES=120;
+const footnoteId=/^[a-z][a-z0-9_-]{0,47}$/;
+const definition=/^ {0,3}\[\^([a-z][a-z0-9_-]{0,47})\]:[ \t]*(.*)$/;
+const marker=/\[\^([a-z][a-z0-9_-]{0,47})\]/g;
+const crossRef=/\[[^\]\n]{1,200}\]\(#(office-ref-[a-z0-9-]+)\)/g;
+export interface SourceReference{kind:'footnote'|'heading';id:string;offset:number;line:number}
+export interface OfficeFootnoteDefinition{id:string;offset:number;line:number;content:string;count:number}
+export interface ReferenceProblem{kind:'missing-footnote'|'duplicate-footnote'|'unused-footnote'|'broken-heading';id:string;offset:number;line:number;message:string}
+export interface ReferenceReport{definitions:OfficeFootnoteDefinition[];references:SourceReference[];problems:ReferenceProblem[];limited:boolean}
+export interface FootnoteInsertion{value:string;start:number;end:number;id:string}
+/** Iterate only source outside fully fenced Markdown. Do not inspect text within inline code spans. */
+export function visibleLines(source:string,visit:(line:string,offset:number,number:number)=>void){
+ const parts=source.split(/(\r\n|\r|\n)/);
+ let offset=0,fence:{char:string;length:number}|null=null;
+ for(let i=0;i<parts.length;i+=2){
+  const line=parts[i]!;
+  const opening=line.match(/^ {0,3}(\x60{3,}|~{3,})/);
+  if(fence){
+   const closing=line.match(/^ {0,3}(\x60{3,}|~{3,})\s*$/);
+   if(closing&&closing[1]![0]===fence.char&&closing[1]!.length>=fence.length)fence=null;
+  }else if(opening)fence={char:opening[1]![0]!,length:opening[1]!.length};
+  else visit(line,offset,Math.floor(i/2)+1);
+  offset+=line.length+(parts[i+1]?.length??0);
+ }
+}
+export function withoutCode(line:string):string{
+ // Replace inline code with spaces while preserving exact source offsets.
+ return line.replace(/(\x60+)([\s\S]*?)\1/g,match=>' '.repeat(match.length));
+}
+export function analyzeOfficeReferences(source:string):ReferenceReport{
+ if(source.length>MAX_BODY)return {definitions:[],references:[],problems:[],limited:true};
+ const definitions=new Map<string,OfficeFootnoteDefinition>(),references:SourceReference[]=[];
+ const duplicates:ReferenceProblem[]=[];
+ visibleLines(source,(line,offset,number)=>{
+  const def=line.match(definition);
+  if(def){
+   const id=def[1]!,previous=definitions.get(id);
+   if(previous){previous.count++;duplicates.push({kind:'duplicate-footnote',id,offset,line:number,message:'Footnote '+id+' has multiple definitions.'});}
+   else definitions.set(id,{id,offset,line:number,content:def[2]!,count:1});
+   return;
+  }
+  const text=withoutCode(line);
+  for(const match of text.matchAll(marker))
+   references.push({kind:'footnote',id:match[1]!,offset:offset+(match.index??0),line:number});
+  for(const match of text.matchAll(crossRef))
+   references.push({kind:'heading',id:match[1]!,offset:offset+(match.index??0),line:number});
+ });
+ const headings=new Set(officeHeadingReferences(source).map(row=>row.id));
+ const problems=[...duplicates];
+ const consumed=new Set<string>();
+ for(const ref of references){
+  if(ref.kind==='footnote'){
+   consumed.add(ref.id);
+   if(!definitions.has(ref.id))problems.push({kind:'missing-footnote',id:ref.id,offset:ref.offset,line:ref.line,message:'Footnote '+ref.id+' is referenced but not defined.'});
+  }else if(!headings.has(ref.id))problems.push({kind:'broken-heading',id:ref.id,offset:ref.offset,line:ref.line,message:'Heading '+ref.id+' no longer exists.'});
+ }
+ for(const def of definitions.values())if(!consumed.has(def.id))
+  problems.push({kind:'unused-footnote',id:def.id,offset:def.offset,line:def.line,message:'Footnote '+def.id+' is defined but unused.'});
+ problems.sort((a,b)=>a.offset-b.offset);
+ return {definitions:[...definitions.values()],references,problems,limited:definitions.size>MAX_FOOTNOTES||references.length>MAX_FOOTNOTES*10};
+}
+
+
+export interface OfficeCitationEntry{
+ id:string;definitionOffset:number;definitionLine:number;excerpt:string;
+ definitionCount:number;uses:readonly SourceReference[];
+}
+export interface OfficeCitationInventory{entries:OfficeCitationEntry[];limited:boolean}
+/** Derived from the current original Markdown only: no independent index. */
+export function officeCitationInventory(source:string):OfficeCitationInventory{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)return {entries:[],limited:true};
+ return {entries:report.definitions.map(def=>({
+  id:def.id,definitionOffset:def.offset,definitionLine:def.line,
+  excerpt:def.content.slice(0,160),definitionCount:def.count,
+  uses:report.references.filter(ref=>ref.kind==='footnote'&&ref.id===def.id)
+ })),limited:false};
+}
+function uniqueCitation(source:string,id:string){
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Reference inspection is limited; shorten the original source first.');
+ if(!footnoteId.test(id))throw new Error('Invalid citation ID.');
+ const definition=report.definitions.find(row=>row.id===id);
+ if(!definition||definition.count!==1)throw new Error('A unique original footnote definition is required.');
+ return {report,definition};
+}
+
+export type OfficeCitationDiagnostic=ReferenceProblem['kind'];
+export interface OfficeCitationSnapshot{
+ id:string;definitionCount:number;definitionText:string|null;definitionOffset:number|null;
+ definitionLine:number|null;useCount:number;firstUseOffset:number|null;firstUseLine:number|null;
+ diagnostics:readonly OfficeCitationDiagnostic[];
+}
+export interface OfficeCitationAuditChange{
+ id:string;before:OfficeCitationSnapshot;after:OfficeCitationSnapshot;changes:readonly string[];
+}
+export interface OfficeCitationAudit{
+ limited:boolean;beforeCount:number;afterCount:number;unchanged:number;
+ changes:OfficeCitationAuditChange[];
+}
+const MAX_AUDIT_IDENTITIES=160;
+/** Compare two actual Markdown sources, never inferring a rename or an externally verified source. */
+export function compareOfficeCitationRevisions(before:string,after:string):OfficeCitationAudit{
+ const empty:OfficeCitationAudit={limited:true,beforeCount:0,afterCount:0,unchanged:0,changes:[]};
+ const a=analyzeOfficeReferences(before),b=analyzeOfficeReferences(after);
+ if(a.limited||b.limited)return empty;
+ const gather=(report:ReferenceReport)=>{
+  const map=new Map<string,OfficeCitationSnapshot>();
+  const ids=new Set([
+   ...report.definitions.map(row=>row.id),
+   ...report.references.filter(row=>row.kind==='footnote').map(row=>row.id)
+  ]);
+  for(const id of ids){
+   const def=report.definitions.find(row=>row.id===id);
+   const uses=report.references.filter(row=>row.kind==='footnote'&&row.id===id);
+   const diagnostics=[...new Set(report.problems.filter(p=>p.id===id&&p.kind!=='broken-heading')
+     .map(p=>p.kind))].sort() as OfficeCitationDiagnostic[];
+   map.set(id,{
+    id,definitionCount:def?.count??0,definitionText:def?.content??null,
+    definitionOffset:def?.offset??null,definitionLine:def?.line??null,
+    useCount:uses.length,firstUseOffset:uses[0]?.offset??null,
+    firstUseLine:uses[0]?.line??null,diagnostics
+   });
+  }
+  return map;
+ };
+ const first=gather(a),last=gather(b);
+ const ids=[...new Set([...first.keys(),...last.keys()])].sort();
+ if(ids.length>MAX_AUDIT_IDENTITIES)return empty;
+ const absent=(id:string):OfficeCitationSnapshot=>({
+  id,definitionCount:0,definitionText:null,definitionOffset:null,definitionLine:null,
+  useCount:0,firstUseOffset:null,firstUseLine:null,diagnostics:[]
+ });
+ const changes:OfficeCitationAuditChange[]=[];
+ let unchanged=0;
+ for(const id of ids){
+  const earlier=first.get(id)??absent(id),later=last.get(id)??absent(id),reasons:string[]=[];
+  if(earlier.definitionCount!==later.definitionCount)
+   reasons.push('Definitions '+earlier.definitionCount+' → '+later.definitionCount);
+  if(earlier.definitionText!==later.definitionText)
+   reasons.push('Definition text changed');
+  if(earlier.useCount!==later.useCount)
+   reasons.push('Uses '+earlier.useCount+' → '+later.useCount);
+  if(earlier.diagnostics.join('|')!==later.diagnostics.join('|'))
+   reasons.push('Issues '+(earlier.diagnostics.join(', ')||'none')+' → '+(later.diagnostics.join(', ')||'none'));
+  if(reasons.length)changes.push({id,before:earlier,after:later,changes:reasons});
+  else unchanged++;
+ }
+ return {limited:false,beforeCount:first.size,afterCount:last.size,unchanged,changes};
+}
+
+/** Reuse an existing footnote in-place, with original CAS/autosave as sole writer. */
+export function insertExistingOfficeCitation(source:string,start:number,end:number,id:string):FootnoteInsertion{
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>source.length)
+  throw new Error('Invalid original source selection.');
+ uniqueCitation(source,id);
+ const marker='[^'+id+']',value=source.slice(0,start)+marker+source.slice(end);
+ if(value.length>MAX_BODY)throw new Error('Citation exceeds the Office source limit.');
+ return {value,start,end:start+marker.length,id};
+}
+export interface OfficeCitationRename extends FootnoteInsertion{referenceCount:number}
+/** Rename all genuine refs and exactly one definition, leaving code pseudorefs untouched. */
+export function renameOfficeCitation(source:string,oldId:string,newId:string):OfficeCitationRename{
+ const {report,definition:original}=uniqueCitation(source,oldId);
+ if(!footnoteId.test(newId))throw new Error('Use a lowercase letter followed by up to 47 lowercase letters, digits, hyphens or underscores.');
+ if(oldId===newId)throw new Error('Choose a different citation ID.');
+ if(report.definitions.some(row=>row.id===newId)||
+    report.references.some(ref=>ref.kind==='footnote'&&ref.id===newId))
+  throw new Error('The destination citation ID is already in use.');
+ const oldMarker='[^'+oldId+']',newMarker='[^'+newId+']';
+ const sourceLine=source.slice(original.offset).split(/\r\n|\r|\n/,1)[0]!;
+ const local=sourceLine.indexOf(oldMarker);
+ if(local<0||local>3)throw new Error('Original citation definition changed. Source unchanged.');
+ const definitionOffset=original.offset+local;
+ const usageOffsets=report.references.filter(ref=>ref.kind==='footnote'&&ref.id===oldId).map(ref=>ref.offset);
+ const edits=[definitionOffset,...usageOffsets];
+ if(new Set(edits).size!==edits.length||edits.some(offset=>source.slice(offset,offset+oldMarker.length)!==oldMarker))
+  throw new Error('Citation source offsets are stale. Source unchanged.');
+ if(source.length+edits.length*(newMarker.length-oldMarker.length)>MAX_BODY)
+  throw new Error('Citation rename exceeds the Office source limit.');
+ let value=source;
+ for(const offset of [...edits].sort((a,b)=>b-a))
+  value=value.slice(0,offset)+newMarker+value.slice(offset+oldMarker.length);
+ const start=definitionOffset+usageOffsets.filter(offset=>offset<definitionOffset).length*(newMarker.length-oldMarker.length);
+ return {value,start,end:start+newMarker.length,id:newId,referenceCount:usageOffsets.length};
+}
+
+
+/** Modify only the contents of one unique original definition; keep ID, prefix, uses, line ending and history writer unchanged. */
+export function updateOfficeFootnoteDefinition(source:string,id:string,expectedContent:string,newContent:string,expectedOffset:number):FootnoteInsertion{
+ if(!Number.isSafeInteger(expectedOffset)||expectedOffset<0||source.length>MAX_BODY)
+  throw new Error('Original citation source position is invalid or exceeds the size limit.');
+ const {definition:current}=uniqueCitation(source,id);
+ if(current.offset!==expectedOffset||current.content!==expectedContent)
+  throw new Error('Original citation definition changed. Review current source before applying.');
+ if(typeof newContent!=='string'||!newContent.trim()||newContent.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(newContent))
+  throw new Error('Footnote text must be 1–1000 characters on one line.');
+ const at=current.offset,after=source.indexOf('\n',at);
+ const lineEnd=after<0?source.length:after>at&&source[after-1]==='\r'?after-1:after;
+ const line=source.slice(at,lineEnd);
+ const match=line.match(/^ {0,3}\[\^([a-z][a-z0-9_-]{0,47})\]:[ \t]*/);
+ if(!match||match[1]!==id||line.slice(match[0].length)!==expectedContent)
+  throw new Error('Original citation marker or contents changed. Source unchanged.');
+ const start=at+match[0].length,end=lineEnd;
+ const next=newContent.trim();
+ if(next===expectedContent)throw new Error('Citation text is unchanged.');
+ const value=source.slice(0,start)+next+source.slice(end);
+ if(value.length>MAX_BODY)throw new Error('Citation update exceeds the Office source limit.');
+ return {value,start,end:start+next.length,id};
+}
+
+
+export interface OfficeCitationRecovery extends FootnoteInsertion{
+ previousText:string;historicalText:string;usesPreserved:number;
+}
+/** Preview one retained original footnote, reusing the O21 source definition editor. */
+export function previewOfficeCitationRecovery(historical:string,current:string,id:string):OfficeCitationRecovery{
+ const earlier=uniqueCitation(historical,id).definition;
+ const now=uniqueCitation(current,id).definition;
+ if(!earlier.content.trim()||earlier.content!==earlier.content.trim()||
+    earlier.content.length>1000||/[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(earlier.content))
+  throw new Error('Historical citation definition cannot be recovered exactly as a supported single line.');
+ const oldRefs=analyzeOfficeReferences(current).references.filter(ref=>ref.kind==='footnote'&&ref.id===id);
+ const result=updateOfficeFootnoteDefinition(current,id,now.content,earlier.content,now.offset);
+ const newRefs=analyzeOfficeReferences(result.value).references.filter(ref=>ref.kind==='footnote'&&ref.id===id);
+ if(oldRefs.length!==newRefs.length||oldRefs.some((ref,i)=>ref.line!==newRefs[i]?.line))
+  throw new Error('Original citation uses changed during recovery preview.');
+ return {...result,previousText:now.content,historicalText:earlier.content,usesPreserved:oldRefs.length};
+}
+
+
+export const MAX_CITATION_RECONCILIATION=12;
+export interface OfficeCitationReconciliation{
+ value:string;ids:string[];changes:OfficeCitationRecovery[];usesPreserved:number;
+}
+/** All-or-nothing in-memory preview of explicit historical definition choices. */
+export function previewOfficeCitationReconciliation(historical:string,current:string,chosenIds:readonly string[]):OfficeCitationReconciliation{
+ if(!Array.isArray(chosenIds)||chosenIds.length<1||chosenIds.length>MAX_CITATION_RECONCILIATION)
+  throw new Error('Choose between 1 and 12 changed original footnotes.');
+ if(chosenIds.some(id=>typeof id!=='string'||!footnoteId.test(id))||
+    new Set(chosenIds).size!==chosenIds.length)
+  throw new Error('Selected citation IDs must be valid and unique.');
+ if(historical.length>MAX_BODY||current.length>MAX_BODY)
+  throw new Error('Source reference inspection is limited; shorten original source first.');
+ const ids=[...chosenIds].sort();
+ const changes:OfficeCitationRecovery[]=[];
+ let value=current,usesPreserved=0;
+ for(const id of ids){
+  const next=previewOfficeCitationRecovery(historical,value,id);
+  changes.push(next);usesPreserved+=next.usesPreserved;value=next.value;
+ }
+ return {value,ids,changes,usesPreserved};
+}
+
+
+export type OfficeCitationMergeStatus='safe'|'conflict'|'already-applied'|'blocked';
+export type OfficeCitationMergeDecision='keep-current'|'use-proposed';
+export interface OfficeCitationMergeRow{
+ id:string;base:string|null;proposed:string|null;current:string|null;
+ status:OfficeCitationMergeStatus;reason:string;
+}
+export interface OfficeCitationMergeReview{
+ rows:OfficeCitationMergeRow[];safe:number;conflicts:number;blocked:number;alreadyApplied:number;
+}
+export interface OfficeCitationMergeResult extends OfficeCitationReconciliation{
+ kept:string[];conflictsResolved:number;baselineChanged:number;
+}
+/** Review actual original definition changes across baseline, proposed and current source.
+ * A missing, duplicate or unrepresentable definition cannot be silently resolved.
+ */
+export function reviewOfficeCitationThreeWay(base:string,proposed:string,current:string):OfficeCitationMergeReview{
+ const records=[base,proposed,current].map(analyzeOfficeReferences);
+ if(records.some(row=>row.limited))throw new Error('Citation merge source exceeds the safe reference limit.');
+ const [ancestor,incoming,latest]=records as [ReferenceReport,ReferenceReport,ReferenceReport];
+ const ids=[...new Set([...ancestor.definitions.map(d=>d.id),...incoming.definitions.map(d=>d.id)])].sort();
+ if(ids.length>MAX_AUDIT_IDENTITIES)throw new Error('Citation merge has too many original identities.');
+ const rows:OfficeCitationMergeRow[]=[];
+ for(const id of ids){
+  const a=ancestor.definitions.find(row=>row.id===id);
+  const p=incoming.definitions.find(row=>row.id===id);
+  const c=latest.definitions.find(row=>row.id===id);
+  if(a?.count===1&&p?.count===1&&a.content===p.content)continue;
+  const previous=a?.content??null, proposedText=p?.content??null, currentText=c?.content??null;
+  let status:OfficeCitationMergeStatus,reason:string;
+  if(!a||!p||!c||a.count!==1||p.count!==1||c.count!==1){
+   status='blocked';reason='Missing, added or duplicate definition. Resolve directly in original source.';
+  }else if(!p.content.trim()||p.content!==p.content.trim()||p.content.length>1000||
+       /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(p.content)){
+   status='blocked';reason='Proposed text is not a supported single-line definition.';
+  }else if(c.content===p.content){
+   status='already-applied';reason='Current original source already matches the proposed definition.';
+  }else if(c.content===a.content){
+   status='safe';reason='Only the proposed revision changed this definition.';
+  }else{
+   status='conflict';reason='Both proposed and current sources differ from the baseline.';
+  }
+  rows.push({id,base:previous,proposed:proposedText,current:currentText,status,reason});
+ }
+ if(rows.length>MAX_CITATION_RECONCILIATION)
+  throw new Error('More than 12 changed definitions. Use a narrower retained revision comparison.');
+ return {rows,safe:rows.filter(row=>row.status==='safe').length,
+  conflicts:rows.filter(row=>row.status==='conflict').length,
+  blocked:rows.filter(row=>row.status==='blocked').length,
+  alreadyApplied:rows.filter(row=>row.status==='already-applied').length};
+}
+/** Explicitly decide every actionable source change; never infer conflict winners. */
+export function previewOfficeCitationThreeWay(
+ base:string,proposed:string,current:string,choices:Readonly<Record<string,OfficeCitationMergeDecision>>
+):OfficeCitationMergeResult{
+ const review=reviewOfficeCitationThreeWay(base,proposed,current);
+ if(review.blocked)throw new Error('Blocked citation changes must be resolved directly in the original source.');
+ const actionable=review.rows.filter(row=>row.status==='safe'||row.status==='conflict');
+ const names=new Set(actionable.map(row=>row.id));
+ if(Object.keys(choices).some(id=>!names.has(id))||
+    actionable.some(row=>choices[row.id]!=='keep-current'&&choices[row.id]!=='use-proposed'))
+  throw new Error('Choose Keep current or Use proposed for every changed citation.');
+ const ids=actionable.filter(row=>choices[row.id]==='use-proposed').map(row=>row.id);
+ if(!ids.length)throw new Error('No proposed definition changes selected for source recovery.');
+ const result=previewOfficeCitationReconciliation(proposed,current,ids);
+ return {...result,kept:actionable.filter(row=>choices[row.id]==='keep-current').map(row=>row.id),
+  conflictsResolved:actionable.filter(row=>row.status==='conflict').length,
+  baselineChanged:review.rows.length};
+}
+
+
+export interface OfficeIssueRevisionSource{revision:number;body:string}
+export interface OfficeIssueOccurrence{
+ revision:number;count:number;line:number;offset:number;message:string;
+}
+export type OfficeIssueLifecycle='introduced'|'persisting'|'reintroduced'|'resolved';
+export interface OfficeIssueLineage{
+ kind:ReferenceProblem['kind'];id:string;status:OfficeIssueLifecycle;
+ firstObserved:number;lastObserved:number;observed:OfficeIssueOccurrence[];
+ current:OfficeIssueOccurrence|null;
+}
+export interface OfficeIssueHistory{
+ retainedCount:number;firstRevision:number;currentRevision:number;
+ unresolved:number;resolved:number;rows:OfficeIssueLineage[];
+}
+/** Read-only diagnostics across *available* authentic source revisions. No external validation,
+ * no assertion about missing/expired snapshots, and no new persisted issue index.
+ */
+export function traceOfficeReferenceIssues(sources:readonly OfficeIssueRevisionSource[]):OfficeIssueHistory{
+ if(!Array.isArray(sources)||sources.length<1||sources.length>13)
+  throw new Error('Inspect between 1 and 13 retained Office source versions.');
+ const sorted=[...sources].sort((a,b)=>a.revision-b.revision);
+ if(sorted.some((s,i)=>!s||!Number.isSafeInteger(s.revision)||s.revision<0||
+     typeof s.body!=='string'||(i>0&&s.revision===sorted[i-1]?.revision)))
+  throw new Error('Original revision identities must be unique non-negative integers.');
+ const tracking=new Map<string,{
+  kind:ReferenceProblem['kind'];id:string;entries:OfficeIssueOccurrence[]
+ }>();
+ for(const source of sorted){
+  const report=analyzeOfficeReferences(source.body);
+  if(report.limited)throw new Error('Reference inspection is limited in a retained source revision.');
+  const found=new Map<string,OfficeIssueOccurrence>();
+  for(const problem of report.problems){
+   const key=problem.kind+'\x00'+problem.id;
+   const row=found.get(key);
+   if(row)row.count++;
+   else found.set(key,{revision:source.revision,count:1,line:problem.line,
+    offset:problem.offset,message:problem.message});
+   if(!tracking.has(key))tracking.set(key,{kind:problem.kind,id:problem.id,entries:[]});
+  }
+  if(tracking.size>160)throw new Error('Too many distinct source issues to inspect safely.');
+  for(const [key,item] of found)tracking.get(key)!.entries.push(item);
+ }
+ const currentRevision=sorted[sorted.length-1]!.revision;
+ const previousRevision=sorted.length>1?sorted[sorted.length-2]!.revision:null;
+ const rows:OfficeIssueLineage[]=[];
+ for(const item of tracking.values()){
+  const entries=item.entries;
+  const current=entries.find(x=>x.revision===currentRevision)??null;
+  let status:OfficeIssueLifecycle;
+  if(!current)status='resolved';
+  else if(previousRevision!==null&&entries.some(x=>x.revision===previousRevision))status='persisting';
+  else if(entries.length>1)status='reintroduced';
+  else status='introduced';
+  rows.push({kind:item.kind,id:item.id,status,
+   firstObserved:entries[0]!.revision,lastObserved:entries[entries.length-1]!.revision,
+   observed:entries,current});
+ }
+ rows.sort((a,b)=>Number(!!b.current)-Number(!!a.current)||
+  a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id));
+ return {retainedCount:sorted.length,firstRevision:sorted[0]!.revision,currentRevision,
+  unresolved:rows.filter(row=>row.current!==null).length,
+  resolved:rows.filter(row=>row.current===null).length,rows};
+}
+
+
+export interface OfficeDuplicateDefinition{
+ id:string;offset:number;line:number;content:string;rawLine:string;lineEnding:string;
+}
+export interface OfficeDuplicateGroup{
+ id:string;definitions:OfficeDuplicateDefinition[];uses:number;
+}
+export interface OfficeDuplicateInspection{
+ limited:boolean;groups:OfficeDuplicateGroup[];
+}
+export interface OfficeDuplicateRepair extends FootnoteInsertion{
+ kept:OfficeDuplicateDefinition;removed:OfficeDuplicateDefinition[];usesPreserved:number;
+}
+export const MAX_DUPLICATE_CHOICES=20;
+/** Derive duplicate candidates from genuine original definition lines, not rendered HTML or code. */
+export function inspectOfficeDuplicateFootnotes(source:string):OfficeDuplicateInspection{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)return {limited:true,groups:[]};
+ const groups=new Map<string,OfficeDuplicateDefinition[]>();
+ visibleLines(source,(line,offset,number)=>{
+  const match=line.match(definition);
+  if(!match)return;
+  const end=offset+line.length;
+  const ending=source.slice(end).match(/^(\r\n|\r|\n)/)?.[1]??'';
+  const entry:OfficeDuplicateDefinition={
+   id:match[1]!,offset,line:number,content:match[2]!,rawLine:line,lineEnding:ending
+  };
+  const rows=groups.get(entry.id)??[];rows.push(entry);groups.set(entry.id,rows);
+ });
+ const result:OfficeDuplicateGroup[]=[];
+ for(const [id,definitions] of groups){
+  if(definitions.length<=1)continue;
+  if(definitions.length>MAX_DUPLICATE_CHOICES)return {limited:true,groups:[]};
+  const original=report.definitions.find(row=>row.id===id);
+  if(!original||original.count!==definitions.length)return {limited:true,groups:[]};
+  result.push({id,definitions,uses:report.references.filter(ref=>
+    ref.kind==='footnote'&&ref.id===id).length});
+ }
+ return {limited:false,groups:result};
+}
+/** Remove ONLY complete competing original definition lines for one ID.
+ * The explicitly selected line remains byte-for-byte unchanged. No markers are retargeted.
+ */
+export function previewOfficeDuplicateResolution(
+ source:string,id:string,keepOffset:number
+):OfficeDuplicateRepair{
+ if(!footnoteId.test(id)||!Number.isSafeInteger(keepOffset)||keepOffset<0)
+  throw new Error('Invalid original duplicate definition selection.');
+ const inspection=inspectOfficeDuplicateFootnotes(source);
+ if(inspection.limited)throw new Error('Duplicate inspection exceeds the original source limits.');
+ const group=inspection.groups.find(item=>item.id===id);
+ if(!group)throw new Error('Choose a citation ID with multiple genuine definitions.');
+ const kept=group.definitions.find(row=>row.offset===keepOffset);
+ if(!kept)throw new Error('Selected definition offset is stale or not an original candidate.');
+ if(!kept.content.trim()||kept.content.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(kept.content))
+  throw new Error('The preserved definition must contain supported single-line text.');
+ // A following indented block can extend a Markdown footnote; never delete a
+ // definition header and silently reinterpret its original continuation.
+ for(const row of group.definitions){
+  const remainder=source.slice(row.offset+row.rawLine.length+row.lineEnding.length);
+  const following=remainder.split(/\r\n|\r|\n/);
+  const next=following.find(line=>line.trim()!=='')??'';
+  if(row.lineEnding&&/^(?: {4,}|\t)/.test(next))
+   throw new Error('Possible multiline definition continuation. Edit this original source manually.');
+  if(source.slice(row.offset,row.offset+row.rawLine.length+row.lineEnding.length)!==
+     row.rawLine+row.lineEnding)
+   throw new Error('Original definition source changed. Review duplicates again.');
+ }
+ const removed=group.definitions.filter(row=>row.offset!==keepOffset);
+ let value=source;
+ for(const row of [...removed].sort((a,b)=>b.offset-a.offset))
+  value=value.slice(0,row.offset)+value.slice(row.offset+row.rawLine.length+row.lineEnding.length);
+ const after=analyzeOfficeReferences(value),before=analyzeOfficeReferences(source);
+ const canonical=after.definitions.find(row=>row.id===id);
+ if(after.limited||!canonical||canonical.count!==1||canonical.content!==kept.content)
+  throw new Error('Original duplicate resolution cannot be validated.');
+ if(before.references.length!==after.references.length||before.references.some((ref,i)=>
+   ref.id!==after.references[i]?.id||ref.kind!==after.references[i]?.kind))
+  throw new Error('Original citation uses would change. Source unchanged.');
+ const start=keepOffset-removed.filter(row=>row.offset<keepOffset)
+   .reduce((total,row)=>total+row.rawLine.length+row.lineEnding.length,0);
+ if(canonical.offset!==start||value.slice(start,start+kept.rawLine.length)!==kept.rawLine)
+  throw new Error('Preserved original definition changed during preview.');
+ return {value,id,start,end:start+kept.rawLine.length,kept,removed,usesPreserved:group.uses};
+}
+
+
+export interface OfficeCitationImpactUse{
+ line:number;offset:number;excerpt:string;ordinal:number;
+}
+export interface OfficeCitationImpactEntry{
+ id:string;
+ currentDefinition:OfficeFootnoteDefinition|null;
+ historicalDefinition:OfficeFootnoteDefinition|null;
+ currentUses:OfficeCitationImpactUse[];
+ historicalUses:OfficeCitationImpactUse[];
+ addedUses:OfficeCitationImpactUse[];
+ removedUses:OfficeCitationImpactUse[];
+ currentProblems:ReferenceProblem['kind'][];
+ historicalProblems:ReferenceProblem['kind'][];
+ definitionChanged:boolean;
+}
+export interface OfficeCitationImpactReport{
+ compared:boolean;currentCount:number;historicalCount:number;
+ entries:OfficeCitationImpactEntry[];changed:number;
+}
+/** Source-only citation-use impact. Context is actual authored line text (never a guessed
+ * bibliography); exact line matches are compared as multisets, not line numbers.
+ */
+export function inspectOfficeCitationUseImpact(
+ current:string,historical?:string
+):OfficeCitationImpactReport{
+ const now=analyzeOfficeReferences(current),before=historical===undefined?null:analyzeOfficeReferences(historical);
+ if(now.limited||before?.limited)
+  throw new Error('Citation use audit exceeds original source reference limits.');
+ const ids=[...new Set([
+  ...now.definitions.map(row=>row.id),
+  ...now.references.filter(row=>row.kind==='footnote').map(row=>row.id),
+  ...(before?.definitions.map(row=>row.id)??[]),
+  ...(before?.references.filter(row=>row.kind==='footnote').map(row=>row.id)??[])
+ ])].sort();
+ if(ids.length>160)throw new Error('Citation use audit exceeds 160 distinct original IDs.');
+ function uses(source:string,report:ReferenceReport,id:string){
+  const seen=new Map<string,number>();
+  return report.references.filter(row=>row.kind==='footnote'&&row.id===id).map(ref=>{
+   const from=Math.max(source.lastIndexOf('\n',ref.offset-1),source.lastIndexOf('\r',ref.offset-1))+1;
+   const nextLf=source.indexOf('\n',ref.offset),nextCr=source.indexOf('\r',ref.offset);
+   const to=Math.min(nextLf<0?source.length:nextLf,nextCr<0?source.length:nextCr);
+   const line=source.slice(from,to);
+   const ordinal=(seen.get(line)??0)+1;seen.set(line,ordinal);
+   return {line:ref.line,offset:ref.offset,excerpt:line.trim().slice(0,240),ordinal,raw:line};
+  });
+ }
+ const entries:OfficeCitationImpactEntry[]=[];
+ let changed=0;
+ for(const id of ids){
+  const curDef=now.definitions.find(row=>row.id===id)??null;
+  const oldDef=before?.definitions.find(row=>row.id===id)??null;
+  const curr=uses(current,now,id),old=before?uses(historical!,before,id):[];
+  const known=new Set(old.map(x=>x.raw+'\x00'+x.ordinal));
+  const present=new Set(curr.map(x=>x.raw+'\x00'+x.ordinal));
+  const toPublic=(rows:typeof curr):OfficeCitationImpactUse[]=>rows.map(({line,offset,excerpt,ordinal})=>({line,offset,excerpt,ordinal}));
+  const added=before?curr.filter(row=>!known.has(row.raw+'\x00'+row.ordinal)):[];
+  const removed=before?old.filter(row=>!present.has(row.raw+'\x00'+row.ordinal)):[];
+  const nowProblems=[...new Set(now.problems.filter(p=>p.id===id&&p.kind!=='broken-heading').map(p=>p.kind))].sort();
+  const oldProblems=before?[...new Set(before.problems.filter(p=>p.id===id&&p.kind!=='broken-heading').map(p=>p.kind))].sort():[];
+  const definitionChanged=!!before&&
+   (curDef?.content!==oldDef?.content||curDef?.count!==oldDef?.count);
+  if(definitionChanged||added.length||removed.length||
+     (before!==null&&nowProblems.join('|')!==oldProblems.join('|')))changed++;
+  entries.push({
+   id,currentDefinition:curDef,historicalDefinition:oldDef,
+   currentUses:toPublic(curr),historicalUses:toPublic(old),
+   addedUses:toPublic(added),removedUses:toPublic(removed),
+   currentProblems:nowProblems,historicalProblems:oldProblems,definitionChanged
+  });
+ }
+ return {compared:before!==null,currentCount:now.references.filter(x=>x.kind==='footnote').length,
+  historicalCount:before?.references.filter(x=>x.kind==='footnote').length??0,
+  entries,changed};
+}
+/** Explicit portable plain-text snapshot, never a citation authority or a database export. */
+export function formatOfficeCitationUseAudit(
+ report:OfficeCitationImpactReport,documentTitle:string,currentRevision:number,
+ historicalRevision:number|null
+):string{
+ if(!Number.isSafeInteger(currentRevision)||currentRevision<0||
+    (historicalRevision!==null&&(!Number.isSafeInteger(historicalRevision)||historicalRevision<0)))
+  throw new Error('Invalid original citation audit revision identity.');
+ const title=documentTitle.replace(/[\r\n\t\x00-\x1f]/g,' ').trim().slice(0,120);
+ const lines=['Office citation use audit','Document: '+(title||'Untitled document'),
+  'Current saved revision: '+currentRevision,
+  'Compared retained revision: '+(historicalRevision??'none'),
+  'Source-derived use sites only; citation claims and external sources are not verified.',
+  'Offsets are UTF-16 positions in each original Markdown revision.',
+  'Citation IDs: '+report.entries.length+'; current uses: '+report.currentCount+
+    (report.compared?'; previous uses: '+report.historicalCount:''),
+  ''];
+ for(const row of report.entries){
+  lines.push('[^'+row.id+']','Current definitions: '+(row.currentDefinition?.count??0),
+   'Current definition: '+(row.currentDefinition?.content??'(missing)'),
+   'Current problems: '+(row.currentProblems.join(', ')||'none'),
+   'Current uses: '+row.currentUses.length);
+  for(const site of row.currentUses)
+   lines.push('  line '+site.line+'; offset '+site.offset+'; occurrence '+site.ordinal+'; '+site.excerpt);
+  if(report.compared){
+   lines.push('Historical definitions: '+(row.historicalDefinition?.count??0),
+    'Historical definition: '+(row.historicalDefinition?.content??'(missing)'),
+    'Historical problems: '+(row.historicalProblems.join(', ')||'none'),
+    'Definition changed: '+(row.definitionChanged?'yes':'no'),
+    'Added or changed use passages: '+row.addedUses.length);
+   for(const site of row.addedUses)
+    lines.push('  current line '+site.line+'; offset '+site.offset+'; '+site.excerpt);
+   lines.push('Removed or changed use passages: '+row.removedUses.length);
+   for(const site of row.removedUses)
+    lines.push('  historical line '+site.line+'; offset '+site.offset+'; '+site.excerpt);
+  }
+  lines.push('');
+ }
+ return lines.join('\n');
+}
+
+
+export const MAX_CITATION_SECTIONS=120;
+export interface OfficeSectionUse{
+ id:string;offset:number;line:number;excerpt:string;
+}
+export interface OfficeCitationSection{
+ key:string;title:string;path:string;level:number;offset:number;end:number;
+ headingLine:number|null;uses:OfficeSectionUse[];citationIds:string[];
+}
+export interface OfficeSectionCitation{
+ id:string;uses:number;definitionCount:number;definitionOffset:number|null;
+ definitionLine:number|null;sectionKeys:string[];
+}
+export interface OfficeCitationSectionMap{
+ sections:OfficeCitationSection[];citations:OfficeSectionCitation[];totalUses:number;
+}
+/** One in-memory, source-derived view of authentic citation routes through headings.
+ * Original footnote parser owns use offsets; original heading parser owns section boundaries.
+ * No generated index is stored and no guessed citations or external authorities are added.
+ */
+export function mapOfficeCitationSections(source:string):OfficeCitationSectionMap{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Citation section navigation exceeds original reference limits.');
+ const headings=officeHeadingReferences(source);
+ if(headings.length>MAX_CITATION_SECTIONS)
+  throw new Error('Citation navigation supports up to 120 original Markdown headings.');
+ const stack:{level:number;title:string}[]=[];
+ const sections:OfficeCitationSection[]=[{
+  key:'preamble',title:'Before first heading',path:'Before first heading',
+  level:0,offset:0,end:source.length,headingLine:null,uses:[],citationIds:[]
+ }];
+ for(let i=0;i<headings.length;i++){
+  const heading=headings[i]!;
+  while(stack.length&&stack[stack.length-1]!.level>=heading.level)stack.pop();
+  const title=heading.title.slice(0,160);
+  stack.push({level:heading.level,title});
+  const section:OfficeCitationSection={
+   key:'section-'+i,title,path:stack.map(entry=>entry.title).join(' › '),
+   level:heading.level,offset:heading.offset,end:source.length,
+   headingLine:heading.line+1,uses:[],citationIds:[]
+  };
+  sections[sections.length-1]!.end=heading.offset;
+  sections.push(section);
+ }
+ let cursor=0;
+ const footnotes=report.references.filter(row=>row.kind==='footnote');
+ for(const ref of footnotes){
+  while(cursor+1<sections.length&&sections[cursor+1]!.offset<=ref.offset)cursor++;
+  const endLf=source.indexOf('\n',ref.offset),endCr=source.indexOf('\r',ref.offset);
+  const begin=Math.max(source.lastIndexOf('\n',ref.offset-1),source.lastIndexOf('\r',ref.offset-1))+1;
+  const finish=Math.min(endLf<0?source.length:endLf,endCr<0?source.length:endCr);
+  sections[cursor]!.uses.push({
+   id:ref.id,offset:ref.offset,line:ref.line,excerpt:source.slice(begin,finish).trim().slice(0,180)
+  });
+ }
+ const citationIds=new Set<string>([
+  ...report.definitions.map(row=>row.id),...footnotes.map(row=>row.id)
+ ]);
+ if(citationIds.size>160)
+  throw new Error('Citation section navigation exceeds 160 distinct original IDs.');
+ for(const section of sections)section.citationIds=[...new Set(section.uses.map(row=>row.id))].sort();
+ const citations:OfficeSectionCitation[]=[...citationIds].sort().map(id=>{
+  const definition=report.definitions.find(row=>row.id===id);
+  return {
+   id,uses:footnotes.filter(row=>row.id===id).length,
+   definitionCount:definition?.count??0,definitionOffset:definition?.offset??null,
+   definitionLine:definition?.line??null,
+   sectionKeys:sections.filter(row=>row.citationIds.includes(id)).map(row=>row.key)
+  };
+ });
+ return {sections,citations,totalUses:footnotes.length};
+}
+
+
+export type OfficeFootnoteOrder='first-use'|'id';
+export interface OfficeFootnoteOrderRow{
+ id:string;line:number;offset:number;raw:string;firstUseLine:number|null;useCount:number;
+}
+export interface OfficeFootnoteOrderReview{
+ rows:OfficeFootnoteOrderRow[];totalDefinitions:number;trailingDefinitions:number;
+}
+export interface OfficeFootnoteOrderPreview{
+ value:string;before:string[];after:string[];lines:number[];order:OfficeFootnoteOrder;
+}
+/** Only rearrange single-line authentic definition slots in the existing terminal
+ * footnote block. Do not move definitions from unrelated paragraphs or code fences.
+ */
+export function inspectOfficeFootnoteOrder(source:string):OfficeFootnoteOrderReview{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Footnote ordering exceeds source reference limits.');
+ const chunks=source.split(/(\r\n|\r|\n)/);
+ const lines:{raw:string;ending:string;offset:number;line:number}[]=[];
+ let offset=0;
+ for(let i=0;i<chunks.length;i+=2){
+  const raw=chunks[i]!,ending=chunks[i+1]??'';
+  lines.push({raw,ending,offset,line:Math.floor(i/2)+1});
+  offset+=raw.length+ending.length;
+ }
+ let n=lines.length-1;while(n>=0&&!lines[n]!.raw.trim())n--;
+ const rows:OfficeFootnoteOrderRow[]=[];
+ for(let i=n;i>=0;i--){
+  const line=lines[i]!;
+  if(!line.raw.trim())continue;
+  const match=line.raw.match(definition);
+  if(!match)break;
+  const known=report.definitions.find(item=>item.id===match[1]&&item.offset===line.offset);
+  if(!known||known.count!==1)
+   throw new Error('Terminal footnote block has ambiguous or duplicate definitions.');
+  if(!known.content.trim()||known.content!==known.content.trim()||known.content.length>1000||
+    /[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(known.content))
+   throw new Error('Only complete single-line original footnote definitions can be ordered.');
+  const uses=report.references.filter(ref=>ref.kind==='footnote'&&ref.id===known.id);
+  rows.unshift({id:known.id,line:line.line,offset:line.offset,raw:line.raw,
+    firstUseLine:uses[0]?.line??null,useCount:uses.length});
+ }
+ if(rows.length<2)throw new Error('Add at least two genuine footnotes in one terminal definition block.');
+ if(rows.length>MAX_FOOTNOTES)throw new Error('Too many original footnotes to order.');
+ if(rows.some(row=>report.references.some(ref=>ref.kind==='footnote'&&ref.offset>=rows[0]!.offset)))
+  throw new Error('References within the terminal definition block are ambiguous.');
+ return {rows,totalDefinitions:report.definitions.length,trailingDefinitions:rows.length};
+}
+/** Reorder exact original definition *line bodies* within existing positions, preserving
+ * CRLF/LF/CR separators, blank lines, headings, all citation uses and original IDs.
+ */
+export function previewOfficeFootnoteOrder(
+ source:string,mode:OfficeFootnoteOrder
+):OfficeFootnoteOrderPreview{
+ if(mode!=='first-use'&&mode!=='id')throw new Error('Choose an original footnote ordering mode.');
+ const review=inspectOfficeFootnoteOrder(source),slots=review.rows;
+ const report=analyzeOfficeReferences(source);
+ const refs=report.references.filter(ref=>ref.kind==='footnote');
+ const ordered=[...slots].sort(mode==='id'
+  ?(a,b)=>a.id.localeCompare(b.id)
+  :(a,b)=>{
+   const firstA=refs.find(ref=>ref.id===a.id)?.offset??Infinity;
+   const firstB=refs.find(ref=>ref.id===b.id)?.offset??Infinity;
+   return firstA-firstB||a.line-b.line;
+  });
+ const before=slots.map(row=>row.id),after=ordered.map(row=>row.id);
+ if(before.every((id,i)=>id===after[i]))throw new Error('Original footnotes already follow this order.');
+ let value=source;
+ for(let i=slots.length-1;i>=0;i--){
+  const slot=slots[i]!,newRaw=ordered[i]!.raw;
+  if(value.slice(slot.offset,slot.offset+slot.raw.length)!==slot.raw)
+   throw new Error('Original footnote source offsets changed.');
+  value=value.slice(0,slot.offset)+newRaw+value.slice(slot.offset+slot.raw.length);
+ }
+ if(value.length>MAX_BODY)throw new Error('Ordered footnotes exceed original source limits.');
+ const check=analyzeOfficeReferences(value);
+ if(check.limited||check.problems.length!==report.problems.length||
+    check.definitions.length!==report.definitions.length||
+    check.definitions.some(row=>report.definitions.find(prev=>prev.id===row.id)?.content!==row.content)||
+    check.references.length!==report.references.length||
+    check.references.some((ref,i)=>ref.kind!==report.references[i]?.kind||
+      ref.id!==report.references[i]?.id||ref.offset!==report.references[i]?.offset))
+  throw new Error('Original citations or diagnostics changed during ordering preview.');
+ return {value,before,after,lines:slots.map(row=>row.line),order:mode};
+}
+
+
+export type OfficeProseCitationStatus='unmarked'|'cited'|'unresolved';
+export interface OfficeProseCitationParagraph{
+ offset:number;end:number;line:number;section:string;excerpt:string;
+ citationIds:string[];status:OfficeProseCitationStatus;
+}
+export interface OfficeProseCitationReview{
+ paragraphs:OfficeProseCitationParagraph[];unmarked:number;cited:number;unresolved:number;
+}
+export const MAX_PROSE_REVIEW_PARAGRAPHS=160;
+/** Bounded original-Markdown paragraph review, not a judgement that a passage
+ * requires an academic citation. Existing footnote references remain authoritative.
+ */
+export function reviewOfficeProseCitations(source:string):OfficeProseCitationReview{
+ const references=analyzeOfficeReferences(source);
+ if(references.limited)throw new Error('Original prose review exceeds reference limits.');
+ const headings=officeHeadingReferences(source);
+ const paragraphs:OfficeProseCitationParagraph[]=[];
+ const lines:{line:string;start:number;end:number;number:number}[]=[];
+ let previousEnd=-1;
+ const flush=()=>{
+  if(!lines.length)return;
+  const start=lines[0]!.start,end=lines[lines.length-1]!.end;
+  const sites=references.references.filter(ref=>
+   ref.kind==='footnote'&&ref.offset>=start&&ref.offset<end);
+  const ids=[...new Set(sites.map(ref=>ref.id))].sort();
+  const unresolved=ids.some(id=>{
+   const definition=references.definitions.find(row=>row.id===id);
+   return !definition||definition.count!==1;
+  });
+  const ancestry:{title:string;level:number}[]=[];
+  for(const heading of headings){
+   if(heading.offset>=start)break;
+   while(ancestry.length&&ancestry[ancestry.length-1]!.level>=heading.level)ancestry.pop();
+   ancestry.push({title:heading.title.slice(0,120),level:heading.level});
+  }
+  paragraphs.push({offset:start,end,line:lines[0]!.number,
+   section:ancestry.map(row=>row.title).join(' › ')||'Before first heading',
+   excerpt:source.slice(start,end).replace(/\s+/g,' ').trim().slice(0,220),
+   citationIds:ids,status:unresolved?'unresolved':ids.length?'cited':'unmarked'});
+  lines.length=0;
+  if(paragraphs.length>MAX_PROSE_REVIEW_PARAGRAPHS)
+   throw new Error('Original prose review exceeds 160 paragraphs.');
+ };
+ visibleLines(source,(line,offset,number)=>{
+  const stripped=withoutCode(line).trim();
+  // Exclude Markdown structure and explicit non-prose blocks. Empty lines break a
+  // paragraph; fenced code is skipped by visibleLines, creating an offset gap.
+  const other=!stripped||
+   /^ {0,3}(?:#{1,6}\s|>{1,}\s?|[-*+]\s|\d{1,4}[.)]\s|(?:-{3,}|\*{3,}|_{3,})\s*$)/.test(line)||
+   /^ {0,3}(?:\[\^[a-z][a-z0-9_-]{0,47}\]:|\[[^\]]{1,150}\]:|<!--|<\/?[a-zA-Z]|\|)/.test(line)||
+   /^(?: {4,}|\t)/.test(line);
+  if(other){flush();previousEnd=-1;return;}
+  if(lines.length&&offset!==previousEnd)flush();
+  const sep=source.slice(offset+line.length).match(/^(\r\n|\r|\n)/)?.[1]??'';
+  lines.push({line,start:offset,end:offset+line.length,number});
+  previousEnd=offset+line.length+sep.length;
+ });
+ flush();
+ return {paragraphs,unmarked:paragraphs.filter(p=>p.status==='unmarked').length,
+  cited:paragraphs.filter(p=>p.status==='cited').length,
+  unresolved:paragraphs.filter(p=>p.status==='unresolved').length};
+}
+
+/** Repair a missing definition without adding a second marker to original source. */
+export function defineMissingOfficeFootnote(source:string,id:string,content:string):FootnoteInsertion{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Source reference inspection is limited; shorten the document first.');
+ if(!footnoteId.test(id))throw new Error('Invalid footnote ID.');
+ if(report.definitions.some(row=>row.id===id)||
+    !report.problems.some(row=>row.kind==='missing-footnote'&&row.id===id))
+  throw new Error('This footnote is no longer missing. Source unchanged.');
+ if(typeof content!=='string'||!content.trim()||content.length>1000||/[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(content))
+  throw new Error('Footnote text must be 1–1000 characters on one line.');
+ const spacer=source.endsWith('\n\n')?'':source.endsWith('\n')?'\n':'\n\n';
+ const definition='[^'+id+']: '+content.trim()+'\n';
+ const value=source+spacer+definition;
+ if(value.length>MAX_BODY)throw new Error('Footnote would exceed the 200,000-character Office source limit.');
+ return {value,start:source.length+spacer.length,end:source.length+spacer.length+definition.length,id};
+}
+/** Retarget exactly one broken heading link, retaining its original label. */
+export function retargetBrokenOfficeHeading(source:string,offset:number,targetId:string):FootnoteInsertion{
+ const report=analyzeOfficeReferences(source);
+ if(report.limited)throw new Error('Source reference inspection is limited; shorten the document first.');
+ if(!Number.isSafeInteger(offset)||offset<0||offset>=source.length||
+    !report.problems.some(row=>row.kind==='broken-heading'&&row.offset===offset))
+  throw new Error('This heading reference is no longer broken. Source unchanged.');
+ if(!officeHeadingReferences(source).some(row=>row.id===targetId))
+  throw new Error('Choose an existing original heading first.');
+ const match=source.slice(offset).match(/^\[[^\]\r\n]{1,200}\]\(#office-ref-[a-z0-9-]+\)/);
+ if(!match)throw new Error('Original reference changed. Source unchanged.');
+ const label=match[0]!.slice(0,match[0]!.indexOf('](#office-ref-')+1);
+ const replacement=label+'(#'+targetId+')';
+ const value=source.slice(0,offset)+replacement+source.slice(offset+match[0]!.length);
+ if(value.length>MAX_BODY)throw new Error('Heading reference exceeds Office source limit.');
+ return {value,start:offset,end:offset+replacement.length,id:targetId};
+}
+
+/** Inserts an original Markdown footnote marker and a single definition into the SAME source. */
+export function insertOfficeFootnote(source:string,start:number,end:number,content:string,requestedId=''):FootnoteInsertion{
+ if(source.length>MAX_BODY||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>source.length)
+  throw new Error('Invalid original footnote selection.');
+ if(typeof content!=='string'||!content.trim()||content.length>1000||/[\r\n\x00-\x08\x0b-\x1f\x7f]/.test(content))
+  throw new Error('Footnote text must be 1–1000 characters on one line.');
+ const analysis=analyzeOfficeReferences(source);
+ if(analysis.limited)throw new Error('Footnote references exceed the safe source limit.');
+ const occupied=new Set([...analysis.definitions.map(x=>x.id),...analysis.references.filter(x=>x.kind==='footnote').map(x=>x.id)]);
+ let id=requestedId.trim();
+ if(id){
+  if(!footnoteId.test(id))throw new Error('Use a lowercase letter followed by up to 47 letters, digits, hyphens or underscores.');
+  if(occupied.has(id))throw new Error('Footnote ID already exists in this document.');
+ }else{
+  let counter=1;
+  while(occupied.has('note-'+counter))counter++;
+  id='note-'+counter;
+ }
+ const reference='[^'+id+']';
+ const updated=source.slice(0,start)+reference+source.slice(end);
+ const spacer=updated.endsWith('\n\n')?'':updated.endsWith('\n')?'\n':'\n\n';
+ const result=updated+spacer+'[^'+id+']: '+content.trim()+'\n';
+ if(result.length>MAX_BODY)throw new Error('Footnote would exceed the 200,000-character Office source limit.');
+ return {value:result,start:start,end:start+reference.length,id};
+}

@@ -1,0 +1,410 @@
+.office-root{display:grid;gap:18px;padding:20px;min-height:55vh;}
+.office-root .office-intro{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.office-intro h2{font-size:19px}.office-intro p{color:var(--ws-muted);font-size:12px;margin-top:4px}
+.office-grid{display:grid;grid-template-columns:minmax(160px,230px) minmax(0,1fr);gap:18px;min-width:0}
+.office-list{border-right:1px solid var(--ws-line);padding-right:12px;min-width:0}
+.office-list>p{margin-bottom:10px}
+.office-entry{display:block;text-align:left;width:100%;overflow-wrap:anywhere;padding:11px 8px;border:0;border-bottom:1px solid var(--ws-line);background:transparent}
+.office-entry[aria-current=page]{background:var(--ws-soft);font-weight:650}
+.office-editor{display:flex;flex-direction:column;gap:9px;min-width:0}
+.office-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.office-actions select{min-width:150px;max-width:230px}
+.office-editor label{font-weight:600;font-size:12px}
+.office-editor textarea{min-height:340px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:14px;line-height:1.75}
+.office-root [data-office-status]{font-size:13px;color:var(--ws-muted);border-top:1px solid var(--ws-line);padding-top:12px}
+@media(max-width:720px){.office-root{padding:14px}.office-grid{grid-template-columns:1fr}.office-list{border-right:0;border-bottom:1px solid var(--ws-line);padding:0 0 10px}.office-editor textarea{min-height:48vh}}
+
+.office-format{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}.office-format button,.office-modes button{border:1px solid var(--ws-line);border-radius:6px;background:var(--ws-surface);color:var(--ws-ink);padding:7px 10px;min-height:35px}.office-format button:disabled{opacity:.45}.office-format button:hover:not(:disabled),.office-modes button[aria-pressed=true]{background:var(--ws-soft)}.office-modes{display:flex;gap:6px;align-items:center;justify-content:flex-end}.office-compose{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px;min-width:0}.office-source{display:flex;flex-direction:column;gap:9px;min-width:0}.office-preview-panel{border:1px solid var(--ws-line);background:var(--ws-surface);border-radius:7px;min-width:0;overflow:auto;padding:14px}.office-preview-panel h3{font-size:12px;margin:0 0 12px;color:var(--ws-muted)}.office-preview{overflow-wrap:anywhere;line-height:1.65;font-size:14px}.office-preview > *{margin:0 0 12px}.office-preview h1{font-size:26px}.office-preview h2{font-size:21px}.office-preview h3{font-size:17px}.office-preview h4,.office-preview h5,.office-preview h6{font-size:14px}.office-preview pre{overflow:auto;background:var(--ws-soft);padding:12px;border-radius:5px;white-space:pre}.office-preview code{font-family:ui-monospace,Consolas,monospace}.office-preview table{border-collapse:collapse;max-width:100%;display:block;overflow-x:auto}.office-preview td,.office-preview th{border:1px solid var(--ws-line);padding:7px 10px;text-align:left}.office-preview blockquote{border-left:3px solid var(--ws-accent);padding-left:12px;color:var(--ws-muted)}.office-preview a{color:var(--ws-accent);text-decoration:underline}.office-root[data-office-mode=write] .office-compose,.office-root[data-office-mode=preview] .office-compose{grid-template-columns:minmax(0,1fr)}.office-root[data-office-mode=write] .office-preview-panel{display:none}.office-root[data-office-mode=preview] .office-source{display:none}@media(max-width:1100px){.office-compose{grid-template-columns:minmax(0,1fr)}}
+
+/* O3: searchable library and native long-document outline; do not imitate the KEEP vault. */
+.office-list{display:flex;flex-direction:column;gap:8px}
+.office-list label{font-size:12px;font-weight:600}
+.office-list input[type=search]{width:100%;min-width:0;padding:10px}
+.office-library-tools{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.office-library-tools select{min-width:0;max-width:155px}
+.office-list-heading{font-size:11px;text-transform:uppercase;letter-spacing:.065em;margin:12px 0 4px;color:var(--ws-muted)}
+.office-entry{display:flex;flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer}
+.office-entry strong{font-size:13px;line-height:1.35}
+.office-entry small,.office-match{font-size:11px;color:var(--ws-muted);line-height:1.35}
+.office-entry:focus-visible,.office-heading-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.office-backup-button{width:100%;margin-top:12px}
+.office-outline{border-top:1px solid var(--ws-line);padding-top:14px;margin-top:10px}
+.office-outline h3{font-size:13px;margin:0 0 9px}
+.office-outline nav{display:flex;flex-wrap:wrap;gap:5px}
+.office-heading-link{border:1px solid var(--ws-line);border-radius:3px;color:inherit;background:transparent;cursor:pointer;font-size:12px;min-height:32px;text-align:left}
+.office-heading-link:hover{background:var(--ws-soft)}
+@media(max-width:720px){.office-list{max-width:100%}.office-list>p{margin:4px 0}.office-outline nav{flex-direction:column}.office-heading-link{width:100%}}
+
+/* O4: template entry and print-only sheet, no additional document engine. */
+.office-create{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.office-create label{font-size:12px;color:var(--ws-muted)}
+.office-create select{max-width:210px;min-height:36px}
+.office-print-sheet{display:none}
+@media(max-width:720px){.office-create{width:100%;justify-content:flex-start}.office-create select{max-width:58vw}}
+@media print{
+ @page{margin:18mm}
+ body *{visibility:hidden!important}
+ .office-print-sheet,.office-print-sheet *{visibility:visible!important}
+ .office-print-sheet{display:block!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;background:#fff!important;color:#000!important;padding:0!important;margin:0!important;font:12pt/1.55 Georgia,serif!important;overflow:visible!important}
+ .office-print-sheet>h1{font-size:22pt;line-height:1.2;margin:0 0 22pt}
+ .office-print-sheet article{font:inherit!important;color:inherit!important}
+ .office-print-sheet article a{color:inherit!important}
+ .office-print-sheet pre,.office-print-sheet table{break-inside:avoid;max-width:100%}
+ .office-print-sheet th,.office-print-sheet td{border-color:#555!important}
+}
+
+.office-import-picker{border-top:1px solid var(--ws-line);padding-top:14px;margin-top:8px;display:grid;gap:8px}
+.office-import-picker label{font-size:12px;font-weight:650}
+.office-import-picker input{max-width:100%;font-size:12px}
+.office-import-preview{border:1px solid var(--ws-line);padding:16px;display:grid;gap:10px;background:var(--ws-soft);min-width:0}
+.office-import-preview[hidden]{display:none}
+.office-import-preview h3{font-size:16px;margin:0}
+.office-import-preview input{min-width:0;padding:9px}
+.office-import-render{border:1px solid var(--ws-line);padding:14px;background:var(--ws-surface);max-height:260px;overflow:auto;min-width:0}
+.office-import-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+/* O6 restore review: readable private rows and explicit collision policy. */
+.office-restore-picker{display:grid;gap:7px;padding-top:12px;border-top:1px solid var(--ws-line)}
+.office-restore-picker label{font-size:12px;font-weight:650}
+.office-restore-picker input{font-size:12px;max-width:100%}
+.office-backup-review{display:grid;gap:12px;padding:16px;background:var(--ws-soft);border:1px solid var(--ws-line)}
+.office-backup-review[hidden]{display:none}
+.office-backup-review h3{font-size:16px;margin:0}
+.office-restore-list{max-height:260px;overflow-y:auto;padding:6px 10px;background:var(--ws-surface);border:1px solid var(--ws-line)}
+.office-restore-entry{padding:8px 0;margin:0;border-bottom:1px solid var(--ws-line);font-size:12px;overflow-wrap:anywhere}
+.office-restore-entry:last-child{border:0}
+
+/* O7: explicit saved-document multi-selection with no implicit export. */
+.office-bundle-controls{display:grid;gap:8px;border-top:1px solid var(--ws-line);padding:12px 0}
+.office-bundle-controls p{font-size:11px;margin:0}
+.office-bundle-shortcuts{display:flex;gap:8px;flex-wrap:wrap}
+.office-bundle-shortcuts button{font-size:12px;border:1px solid var(--ws-line);border-radius:4px;background:var(--ws-surface);color:inherit;padding:7px 9px}
+.office-bundle-controls>.ws-button{width:100%}
+.office-entry-row{display:flex;align-items:flex-start;gap:7px;min-width:0}
+.office-entry-row>input[type=checkbox]{flex:none;margin-top:12px;accent-color:currentColor}
+.office-entry-row>.office-entry{flex:1;min-width:0}
+
+/* O8: bounded, explicit per-file import review. Staged bytes never leave memory. */
+.office-multi-picker{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--ws-line)}
+.office-multi-picker label{font-size:12px;font-weight:650}
+.office-multi-picker input{font-size:12px;max-width:100%}
+.office-multi-picker p{font-size:11px;margin:0;line-height:1.5}
+.office-multi-review{display:grid;gap:12px;padding:16px;background:var(--ws-soft);border:1px solid var(--ws-line);min-width:0}
+.office-multi-review[hidden]{display:none}
+.office-multi-review h3{font-size:16px;margin:0}
+.office-multi-list{display:grid;gap:12px;max-height:470px;overflow-y:auto}
+.office-multi-entry{display:grid;gap:7px;min-width:0;padding:12px;background:var(--ws-surface);border:1px solid var(--ws-line)}
+.office-multi-entry p{font-size:12px;margin:0;overflow-wrap:anywhere}
+.office-multi-entry label{font-size:12px}
+.office-multi-entry input{padding:8px;min-width:0;max-width:100%}
+.office-multi-sample{max-height:160px;overflow:auto;font-size:12px}
+
+/* O9 inline find/replace and section navigation extend the original Markdown textarea only. */
+.office-find{border:1px solid var(--ws-line);padding:12px;display:grid;gap:9px;min-width:0}
+.office-find-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.office-find-row>label{font-size:12px;font-weight:600}
+.office-find-row>input[type=text],.office-find-row>input[type=search]{min-width:140px;flex:1;padding:8px}
+.office-find-case{display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.office-find-row button,.office-section-buttons button{border:1px solid var(--ws-line);border-radius:3px;background:var(--ws-surface);color:inherit;min-height:34px;padding:7px 10px}
+.office-find-row p{font-size:12px;color:var(--ws-muted);margin:0;flex:1}
+.office-section-controls{display:grid;gap:8px;border-top:1px solid var(--ws-line);margin-top:12px;padding-top:12px}
+.office-section-controls label{font-size:12px;font-weight:600}
+.office-section-controls select{padding:8px;min-width:0;max-width:100%}
+.office-section-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.office-section-controls p{font-size:11px;line-height:1.5;margin:0}
+@media(max-width:720px){.office-find-row>input[type=text],.office-find-row>input[type=search]{min-width:0;width:100%;flex:1 1 100%}}
+
+/* O10: bounded, inert side-by-side historical text, not a shadow revision store. */
+.office-revision-review{display:grid;gap:12px;border:1px solid var(--ws-line);background:var(--ws-soft);padding:16px;min-width:0}
+.office-revision-review[hidden]{display:none}
+.office-revision-review h3{font-size:16px;margin:0}
+.office-revision-review p{font-size:12px;line-height:1.5}
+.office-revision-diffs{max-height:290px;overflow:auto;display:grid;gap:6px}
+.office-revision-diff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.office-revision-diff pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;padding:9px;margin:0;border:1px solid var(--ws-line);background:var(--ws-surface);min-width:0}
+.office-recover-range{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:1px solid var(--ws-line);min-width:0}
+.office-recover-range legend{font-size:12px;font-weight:650}
+.office-recover-range label{font-size:12px}
+.office-recover-range input{width:75px;padding:7px}
+.office-recover-range p{width:100%;margin:0}
+.office-recover-range pre{width:100%;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:12px;background:var(--ws-surface);border:1px solid var(--ws-line);margin:0}
+@media(max-width:720px){.office-revision-diff{grid-template-columns:1fr}.office-revision-review{padding:12px}}
+
+/* O11: bounded historical change navigation in the original comparison pane. */
+.office-hunk-navigation{display:grid;gap:8px;border:1px solid var(--ws-line);padding:12px;min-width:0}
+.office-hunk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-hunk-toolbar p{margin:0;flex:1;min-width:100px;font-size:12px}
+.office-hunk-toolbar button{min-height:34px;padding:6px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-hunk-navigation>.office-revision-diff pre{max-height:170px;overflow:auto}
+.office-hunk-navigation>p{overflow-wrap:anywhere;margin:0}
+
+/* O12: selected historical change groups and full combined-text preview. */
+.office-batch-recovery{display:grid;gap:10px;border:1px solid var(--ws-line);padding:12px;min-width:0}
+.office-batch-recovery h4{font-size:14px;margin:0}
+.office-batch-recovery p{font-size:12px;line-height:1.5;margin:0}
+.office-batch-change-list{display:grid;gap:4px;max-height:240px;overflow:auto}
+.office-batch-choice{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--ws-line);font-size:12px}
+.office-batch-choice input{flex:none;margin-top:2px}
+.office-batch-choice span{min-width:0;overflow-wrap:anywhere}
+.office-batch-recovery [data-office-batch-result]{display:grid;gap:10px}
+.office-batch-recovery [data-office-batch-result][hidden]{display:none}
+.office-batch-recovery label{font-size:12px}
+.office-batch-recovery textarea{display:block;width:100%;min-height:170px;max-height:320px;overflow:auto;font:12px/1.55 ui-monospace,monospace;background:var(--ws-surface);padding:12px;border:1px solid var(--ws-line);resize:vertical}
+
+/* O13: accessible source-owned revision timeline. No separate history persistence. */
+.office-timeline{border:1px solid var(--ws-line);padding:14px;display:grid;gap:12px;min-width:0}
+.office-timeline-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.office-timeline-heading h3{font-size:15px;margin:0}
+.office-timeline-heading p{font-size:11px;margin:0;line-height:1.5}
+.office-timeline-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:8px;max-height:260px;overflow-y:auto}
+.office-timeline-row{min-width:0}
+.office-timeline-row button{width:100%;min-height:80px;border:1px solid var(--ws-line);border-radius:3px;background:var(--ws-surface);color:inherit;display:grid;gap:5px;text-align:left;padding:10px}
+.office-timeline-row button[aria-pressed=true]{border-width:2px}
+.office-timeline-row strong{font-size:12px}
+.office-timeline-row span,.office-timeline-row small{font-size:11px;overflow-wrap:anywhere}
+.office-timeline-preview{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-timeline-preview[hidden]{display:none}
+.office-timeline-preview p{font-size:12px;line-height:1.5;margin:0}
+.office-timeline-preview pre{font:12px/1.6 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:260px;margin:0;padding:12px;background:var(--ws-surface);border:1px solid var(--ws-line)}
+
+/* O14 searches retained Office revisions in memory and compares two immutable snapshots. */
+.office-history-search{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.office-history-search>label{font-size:12px;font-weight:600}
+.office-history-search>input[type=search]{min-width:180px;flex:1;padding:9px}
+.office-history-case{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.office-history-search p{font-size:11px;margin:0;flex-basis:100%}
+.office-history-hit{font-family:ui-monospace,monospace;overflow-wrap:anywhere;line-height:1.4}
+.office-timeline-pair-diffs{display:grid;gap:8px;max-height:320px;overflow-y:auto}
+.office-timeline-pair-diffs p{font-size:12px}
+.office-timeline-pair-diffs pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;border:1px solid var(--ws-line);padding:9px;margin:0}
+[data-office-timeline-pair-panel]{display:grid;gap:9px;min-width:0}
+[data-office-timeline-pair-panel][hidden]{display:none}
+
+/* O15: original-source long-document navigation and safe Markdown block authoring. */
+.office-writing-tools{display:grid;gap:11px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-writing-stats{font-size:12px;font-variant-numeric:tabular-nums}
+.office-writing-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.office-writing-controls label{font-size:12px;font-weight:600}
+.office-writing-controls input,.office-writing-controls select{min-height:34px;border:1px solid var(--ws-line);border-radius:3px;background:var(--ws-surface);color:inherit;padding:6px 9px}
+.office-writing-controls input[type=number]{width:72px}
+.office-writing-controls input[data-office-writing-language]{width:112px}
+.office-writing-controls button{padding:7px 10px;min-height:34px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-writing-tools>p{font-size:11px;line-height:1.5;margin:0}
+
+/* O16: accessible source-section insertion and keyboard navigation. */
+.office-section-create{display:grid;gap:8px;margin-top:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-section-create>label{font-size:12px;font-weight:650}
+.office-section-create>input{width:100%;min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-section-create .ws-muted,.office-section-navigation .ws-muted{margin:0;line-height:1.5;font-size:11px}
+.office-section-navigation{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.office-section-navigation>button{min-height:34px;padding:6px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-section-navigation>p{width:100%}
+
+/* O17: in-memory source preview for original-section structural transformations. */
+.office-section-transform{display:grid;gap:8px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-section-transform h4{font-size:13px;margin:0}
+.office-section-transform>.ws-muted,.office-transform-review>.ws-muted{font-size:11px;line-height:1.5;margin:0}
+.office-transform-review{display:grid;gap:9px;border:1px solid var(--ws-line);padding:10px;min-width:0}
+.office-transform-review[hidden]{display:none}
+.office-transform-review label{font-size:12px;font-weight:600}
+.office-transform-review textarea{font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;padding:10px;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto}
+
+/* O18 original-source contents and internal references; no shadow index. */
+.office-toc-tools{display:grid;gap:10px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-toc-tools h3{font-size:14px;margin:0}
+.office-toc-tools p{font-size:11px;line-height:1.55;margin:0}
+.office-toc-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-toc-actions label{font-size:12px;font-weight:600}
+.office-toc-actions select{min-width:180px;flex:1;min-height:36px;padding:7px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-toc-actions button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-toc-review{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-toc-review[hidden]{display:none}
+.office-toc-review label{font-size:12px;font-weight:600}
+.office-toc-review textarea{width:100%;min-height:160px;max-height:340px;padding:10px;font:12px/1.55 ui-monospace,monospace;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;resize:vertical}
+
+/* O19 in-memory footnote insertion and accessible original-source reference diagnostics. */
+.office-footnotes{display:grid;gap:10px;padding:12px;border:1px solid var(--ws-line);min-width:0}
+.office-footnotes h3{font-size:14px;margin:0}
+.office-footnotes>.ws-muted{font-size:11px;line-height:1.5;margin:0}
+.office-footnote-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-footnote-controls label{font-size:12px;font-weight:600}
+.office-footnote-controls input{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-footnote-controls input[data-office-footnote-id]{width:160px}
+.office-footnote-controls input[data-office-footnote-text]{flex:1;min-width:min(220px,100%)}
+.office-footnote-controls button{padding:7px 10px;min-height:36px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-reference-check{display:grid;gap:9px}
+.office-reference-check p{font-size:12px;line-height:1.5;margin:0}
+.office-reference-problems{display:grid;gap:6px;max-height:240px;overflow-y:auto}
+.office-reference-problem{padding:9px 10px;text-align:left;min-height:34px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface);font-size:12px;overflow-wrap:anywhere}
+.office-reference-problem:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+
+/* O20 source-backed citation navigation, reuse and safe rename. */
+.office-citation-workbench{display:grid;gap:9px;padding-block:10px;border-top:1px solid var(--ws-line);min-width:0}
+.office-citation-workbench h4{font-size:13px;margin:0}
+.office-citation-workbench p{font-size:11px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-citation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.office-citation-actions label{font-size:12px;font-weight:600}
+.office-citation-actions select,.office-citation-actions input{min-height:36px;padding:7px;min-width:min(170px,100%);border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-citation-actions button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-actions input[data-office-citation-edit]{flex:1;min-width:min(220px,100%)}
+.office-preview [data-office-footnote-backref]{min-height:32px;margin-inline-start:8px;padding:3px 8px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font:inherit;cursor:pointer}
+.office-preview [data-office-footnote-backref]:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+
+.office-citation-audit{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:10px}
+.office-citation-audit h4{font-size:13px;margin:0}
+.office-citation-audit-changes{display:grid;gap:9px;max-height:360px;overflow-y:auto}
+.office-citation-audit-row{display:grid;gap:6px;padding:10px;border:1px solid var(--ws-line);min-width:0}
+.office-citation-audit-row strong{font-size:13px;overflow-wrap:anywhere}
+.office-citation-audit-row p{margin:0;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.office-citation-audit-row button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-restore-panel{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--ws-line);min-width:0}
+.office-citation-restore-panel[hidden]{display:none}
+.office-citation-restore-panel p,.office-citation-restore-panel label{font-size:13px;line-height:1.55;margin:0;overflow-wrap:anywhere}
+.office-citation-restore-panel textarea{font:13px/1.6 ui-monospace,monospace;width:100%;min-height:160px;max-height:320px;resize:vertical;white-space:pre;overflow:auto;padding:10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-citation-batch-choice{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5}
+.office-citation-batch-choice input{width:16px;height:16px;flex-shrink:0}
+
+.office-citation-merge{display:grid;gap:10px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-citation-merge h4{font-size:14px;margin:0}
+.office-citation-merge [data-office-citation-merge-preview]{justify-self:start;min-height:36px;padding:7px 12px}
+.office-citation-merge label:has(select){display:grid;gap:6px;font-size:13px;line-height:1.5}
+.office-citation-merge select{max-width:100%;min-height:38px}
+
+.office-issue-history{display:grid;gap:10px;padding-top:10px;border-top:1px solid var(--ws-line)}
+.office-issue-history-rows{display:grid;gap:8px;max-height:360px;overflow-y:auto}
+.office-issue-history-row{display:grid;gap:7px;border:1px solid var(--ws-line);padding:10px;min-width:0}
+.office-issue-history-row strong{font-size:14px;overflow-wrap:anywhere}
+.office-issue-history-row p,.office-issue-history [data-office-issue-history-summary]{font-size:13px;line-height:1.55;margin:0;overflow-wrap:anywhere}
+.office-issue-history-row button{min-height:36px;padding:7px 10px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+
+.office-duplicate-triage{display:grid;gap:9px;padding-top:10px;border-top:1px solid var(--ws-line)}
+.office-duplicate-triage [data-office-duplicate-panel]{display:grid;gap:9px}
+.office-duplicate-triage [hidden]{display:none!important}
+.office-duplicate-candidates{display:grid;gap:7px;max-height:340px;overflow-y:auto}
+.office-duplicate-choice{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--ws-line);padding:9px;min-width:0}
+.office-duplicate-choice label{display:flex;gap:9px;align-items:flex-start;flex:1;min-width:180px;font-size:13px;line-height:1.55}
+.office-duplicate-choice label span{overflow-wrap:anywhere}
+.office-duplicate-choice input{width:16px;height:16px;flex-shrink:0;margin-top:3px}
+.office-duplicate-choice button{min-height:36px;padding:7px 10px}
+.office-duplicate-triage p,.office-duplicate-triage label{font-size:13px;line-height:1.55}
+.office-duplicate-removed{max-height:160px;overflow:auto}
+.office-duplicate-removed p{margin:0 0 6px;overflow-wrap:anywhere}
+
+.office-citation-impact{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-citation-impact h4{font-size:14px;margin:0}
+.office-citation-impact p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-citation-impact-detail{display:grid;gap:6px}
+.office-citation-impact-detail strong{font-size:14px}
+.office-citation-impact select{max-width:100%;min-width:0}
+.office-citation-impact [data-office-impact-export]{justify-self:start;min-height:36px}
+
+.office-section-trail{display:grid;gap:9px;padding-top:10px;border-top:1px solid var(--ws-line);min-width:0}
+.office-section-trail h4{font-size:14px;margin:0}
+.office-section-trail p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-section-trail select{min-width:0;max-width:100%}
+.office-section-trail-details{display:grid;gap:5px}
+.office-section-trail-uses,.office-section-trail-related{display:grid;gap:6px;max-height:390px;overflow:auto}
+.office-section-trail-uses button,.office-section-trail-related button{text-align:left;white-space:normal;overflow-wrap:anywhere;padding:9px 11px;min-height:36px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit}
+.office-section-trail-related strong{font-size:14px}
+
+.office-footnote-order{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-footnote-order h4{font-size:14px;margin:0}
+.office-footnote-order p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-order-candidates{display:grid;gap:3px;max-height:240px;overflow:auto}
+.office-footnote-order select{min-width:0;max-width:100%}
+.office-footnote-order [hidden]{display:none!important}
+
+.office-prose-review{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:10px;min-width:0}
+.office-prose-review h4{font-size:14px;margin:0}
+.office-prose-review p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-prose-review select{max-width:100%;min-width:0}
+.office-prose-rows{display:grid;gap:8px;max-height:390px;overflow:auto}
+.office-prose-review-row{display:grid;gap:7px;border:1px solid var(--ws-line);padding:10px;min-width:0}
+.office-prose-review-row strong{font-size:14px}
+.office-prose-review-row button{min-height:36px}
+
+.office-external-links{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-external-links h3{font-size:16px;margin:0}
+.office-external-links p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-link-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-link-controls label{font-size:14px;font-weight:600}
+.office-link-controls select,.office-link-controls input{min-width:0;max-width:100%;flex:1 1 210px;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;padding:8px;font-size:14px}
+.office-external-links button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-link-uses{display:grid;gap:7px;max-height:360px;overflow:auto}
+.office-link-use{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px;border:1px solid var(--ws-line);min-width:0}
+.office-link-use span{overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+.office-link-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-link-plan[hidden]{display:none}
+.office-link-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+
+.office-terminology{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-terminology h3{font-size:16px;margin:0}
+.office-terminology p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-term-controls,.office-term-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-term-controls label{font-size:14px;font-weight:600}
+.office-term-controls input{min-width:0;max-width:100%;flex:1 1 190px;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px;padding:8px}
+.office-terminology button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-term-rows{display:grid;gap:7px;max-height:380px;overflow:auto}
+.office-term-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:9px;border:1px solid var(--ws-line);min-width:0}
+.office-term-row label{display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1 1 230px;font-size:14px}
+.office-term-row label span{overflow-wrap:anywhere;line-height:1.5}
+.office-term-row input[type=checkbox]{flex:0 0 auto;margin-top:4px}
+.office-term-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-term-plan[hidden]{display:none}
+.office-term-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace}
+
+.office-tables{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-tables h3{font-size:16px;margin:0}
+.office-tables p{font-size:14px;line-height:1.5;margin:0}
+.office-table-controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;min-width:0}
+.office-table-controls label{font-size:14px;font-weight:600}
+.office-tables button{min-height:38px;padding:8px 11px;font-size:14px;border:1px solid var(--ws-line);color:inherit;background:var(--ws-surface)}
+.office-table-controls select,.office-table-controls input,.office-table-new-cells input{min-width:0;max-width:100%;flex:1 1 170px;min-height:38px;padding:8px;font-size:14px;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line)}
+.office-table-grid{max-height:390px;max-width:100%;overflow:auto}
+.office-table-grid table{width:100%;border-collapse:collapse;font-size:14px}
+.office-table-grid th,.office-table-grid td{border:1px solid var(--ws-line);padding:8px;overflow-wrap:anywhere;text-align:left;min-width:80px}
+.office-table-grid th{font-weight:650}
+.office-table-new-cells{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.office-table-new-cells[hidden]{display:none}
+.office-table-new-cells label{display:grid;gap:5px;min-width:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.office-table-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-table-plan[hidden]{display:none}
+.office-table-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+@media(max-width:540px){.office-table-grid th,.office-table-grid td{min-width:100px}}
+
+.office-table-field{display:grid;gap:5px;flex:1 1 170px;min-width:0}
+.office-table-field[hidden]{display:none}
+
+.office-checklists{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-checklists h3{font-size:16px;margin:0}
+.office-checklists p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-checklist-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-checklist-controls label{font-size:14px;font-weight:600}
+.office-checklists button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-checklist-controls select{min-width:0;flex:1 1 150px;max-width:100%;min-height:38px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px;padding:8px}
+.office-checklist-items{display:grid;gap:7px;max-height:390px;overflow:auto}
+.office-checklist-item{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0;border:1px solid var(--ws-line);padding:9px}
+.office-checklist-item label{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1 1 220px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.office-checklist-item label input{flex:0 0 auto;margin-top:3px}
+.office-checklist-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-checklist-plan[hidden]{display:none}
+.office-checklist-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+
+.office-transfer{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-transfer h3{font-size:16px;margin:0}
+.office-transfer p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-transfer-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-transfer-controls label{font-size:14px;font-weight:600}
+.office-transfer button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-transfer-controls select{min-height:38px;min-width:0;max-width:100%;flex:1 1 210px;padding:8px;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);font-size:14px}
+.office-transfer-items{display:grid;gap:7px;max-height:390px;overflow:auto}
+.office-transfer-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border:1px solid var(--ws-line);padding:9px;min-width:0}
+.office-transfer-item label{display:flex;align-items:flex-start;gap:9px;flex:1 1 220px;min-width:0;font-size:14px;line-height:1.5}
+.office-transfer-item span{overflow-wrap:anywhere}
+.office-transfer-item input{flex:0 0 auto;margin-top:3px}
+.office-transfer-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-transfer-plan[hidden]{display:none}
+.office-transfer-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
