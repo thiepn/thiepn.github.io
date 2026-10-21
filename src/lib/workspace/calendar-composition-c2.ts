@@ -48,7 +48,7 @@ function validAcademic(input:unknown):AcademicCalendarProjection|null {
 export function verifiedAcademic(value:unknown):AcademicCalendarProjection|null {return validAcademic(value)}
 const ranges=(items:CalendarEntry[],lo:number,hi:number)=>items.filter(e=>e.blocksTime&&
   (e.allDay || e.end!==null)&&Date.parse(e.start)<hi&&e.end!==null&&Date.parse(e.end)>lo)
-    .map(e=>[Math.max(lo,Date.parse(e.start)),Math.min(hi,Date.parse(e.end))] as const);
+    .map(e=>[Math.max(lo,Date.parse(e.start)),Math.min(hi,Date.parse(e.end!))] as const);
 const subtract=(from:number,to:number,rangesIn:readonly (readonly [number,number])[])=>{
   const intervals=rangesIn.filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
   let cursor=from,remaining=0;
