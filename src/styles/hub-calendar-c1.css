@@ -8,3 +8,14 @@
 .ws-hub-calendar-events li strong { overflow-wrap:anywhere; font-weight:600; }
 .ws-hub-calendar-events li small { font:inherit; font-size:.88rem; opacity:.8; overflow-wrap:anywhere; }
 @media(max-width:520px) { .ws-hub-calendar-events li { grid-template-columns:1fr; gap:.25rem; } }
+
+.ws-hub-study-c3 { border-top:1px solid var(--ws-line,#5555);margin-top:1rem;padding-top:.9rem;font-size:1rem; }
+.ws-hub-study-c3 header { display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;justify-content:flex-start; }
+.ws-hub-study-c3 h3 { font-size:1.06rem;font-weight:600;margin:0; }
+.ws-hub-study-c3 h4 { font-size:1rem;font-weight:600;margin:.85rem 0 .35rem; }
+.ws-hub-study-c3 label { display:inline-flex;align-items:center;padding:.4rem .6rem;border:1px solid var(--ws-line,#5555);cursor:pointer; }
+.ws-hub-study-c3 input[type=file] { max-width:min(100%,18rem);font-size:.95rem; }
+.ws-hub-study-c3 ul { margin:.5rem 0;padding-left:1.5rem; }
+.ws-hub-study-c3 li { margin:.35rem 0;overflow-wrap:anywhere; }
+.ws-hub-study-c3 p { margin:.6rem 0;line-height:1.5;overflow-wrap:anywhere; }
+.ws-hub-study-c3 [data-hub-study-clear] { color:inherit;background:transparent;border:1px solid var(--ws-line,#5555);padding:.45rem .65rem;cursor:pointer; }
