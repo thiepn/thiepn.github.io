@@ -15,7 +15,8 @@ if(root&&panel) {
   let selected:string|null=null,mode:"day"|"week"="day",localTruncated=false;
   let zone="Europe/Berlin";
   let controller:AbortController|null=null,timeout:ReturnType<typeof setTimeout>|null=null;
-  const permitted=()=>workspace.dataset.calendarPrivate==="false"&&!document.hidden;
+  const visible=()=>workspace.dataset.view==="home"||workspace.dataset.view==="calendar";
+  const permitted=()=>visible()&&workspace.dataset.calendarPrivate==="false"&&!document.hidden;
   const day=()=>{
     const zone=workspace.dataset.calendarZone||"Europe/Berlin";
     const parts=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"})
@@ -38,6 +39,7 @@ if(root&&panel) {
     data=null;loading=false;error=false;render();
   }
   function render(){
+    view.hidden=!visible();
     const body=view.querySelector<HTMLElement>("[data-hub-calendar-content]");
     const actions=view.querySelector<HTMLElement>("[data-hub-calendar-actions]");
     if(!body||!actions)return;
@@ -139,6 +141,6 @@ if(root&&panel) {
   window.addEventListener("pagehide",()=>{local=[];discard();});
   document.addEventListener("visibilitychange",()=>{if(document.hidden){local=[];discard();}else render();});
   new MutationObserver(()=>{if(!permitted()){local=[];discard();}else render();})
-    .observe(workspace,{attributes:true,attributeFilter:["data-calendar-private","data-calendar-zone"]});
+    .observe(workspace,{attributes:true,attributeFilter:["data-calendar-private","data-calendar-zone","data-view"]});
   render();
 }
