@@ -3324,6 +3324,7 @@ test('O35 checklist review excludes fenced pseudo-tasks and navigates to exact o
 
 
 test('O36 transfers an actual second Office document passage into the first with original provenance and CAS history',async({page})=>{
+ test.setTimeout(60_000); // Real WebKit reload and full revision-readback can exceed the default 30s budget.
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
  await page.locator('[data-office-new]').click();
@@ -3379,6 +3380,7 @@ test('O36 source passages paginate and reject original source-local footnotes an
  await expect(page.locator('[data-office-body]')).toHaveValue('# Destination');
 });
 test('O36 mobile excerpt transfer cancel, target source edit and privacy erase pending original data',async({page})=>{
+ test.setTimeout(60_000); // Exact original-source rereview plus mobile privacy may exceed 30s in WebKit.
  await page.setViewportSize({width:390,height:844});
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
@@ -3405,6 +3407,8 @@ test('O36 mobile excerpt transfer cancel, target source edit and privacy erase p
  await page.locator('[data-office-transfer-load]').click();
  await page.locator('[data-office-transfer-source]').selectOption({index:1});
  await page.locator('[data-office-transfer-review]').click();
+ await expect(page.locator('[data-office-transfer-summary]')).toContainText('1 transferable');
+ await expect(page.locator('[data-office-transfer-all]')).toBeEnabled();
  await page.locator('[data-office-transfer-all]').click();
  await page.locator('[data-office-transfer-preview]').click();
  await page.locator('.ws-topbar-actions [data-action=account]').click();
