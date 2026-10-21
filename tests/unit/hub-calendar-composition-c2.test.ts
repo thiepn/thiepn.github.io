@@ -96,6 +96,19 @@ describe("C2 original native calendar composition",()=>{
     expect(windows.at(-1)!.end).toBe("2026-10-26T19:00:00.000Z");
     expect(windows.reduce((s,w)=>s+w.minutes,0)).toBe(result.days[0]!.availableMinutes);
   });
+  it("C3 respects original owner-selected recovery and weekend custom budgets",()=>{
+    const recovery=view({capacityOverrides:[{date:"2026-10-26",budgetMinutes:45}]});
+    expect(recovery.days[0]!.studyGoalMinutes).toBe(45);
+    const weekend=view({selected:"2026-10-31",capacityOverrides:[
+      {date:"2026-10-31",budgetMinutes:240}
+    ]});
+    expect(weekend.days[0]!.studyGoalMinutes).toBe(240);
+    expect(weekend.days[0]!.availableMinutes).toBe(240);
+    const capped=view({selected:"2026-10-31",capacityOverrides:[
+      {date:"2026-10-31",budgetMinutes:600}
+    ]});
+    expect(capped.days[0]!.studyGoalMinutes).toBe(240);
+  });
   it("C3 will not propose actual free windows from stale Google or incomplete academic sources",()=>{
     const stale=view({google:g([event("class","2026-10-26T08:00:00Z","2026-10-26T09:00:00Z")],{status:"stale"})});
     expect(stale.days[0]!.availableWindows).toEqual([]);
