@@ -1,0 +1,10 @@
+.ws-hub-calendar-c1 [data-hub-calendar-actions] { display:flex; flex-wrap:wrap; gap:.65rem; }
+.ws-hub-calendar-c1 [data-hub-calendar-actions] button { font:inherit; background:transparent; color:inherit; border:1px solid currentColor; padding:.45rem .7rem; cursor:pointer; }
+.ws-hub-calendar-c1 [data-hub-calendar-content] > p { margin:.6rem 0; }
+.ws-hub-calendar-events { margin:.8rem 0 0; padding:0; list-style:none; }
+.ws-hub-calendar-events li { display:grid; grid-template-columns:minmax(8rem, 10rem) minmax(0,1fr); gap:1rem; padding:.65rem 0; border-top:1px solid var(--ws-line, #5555); }
+.ws-hub-calendar-events li time { font-variant-numeric:tabular-nums; }
+.ws-hub-calendar-events li div { display:grid; gap:.2rem; min-width:0; }
+.ws-hub-calendar-events li strong { overflow-wrap:anywhere; font-weight:600; }
+.ws-hub-calendar-events li small { font:inherit; font-size:.88rem; opacity:.8; overflow-wrap:anywhere; }
+@media(max-width:520px) { .ws-hub-calendar-events li { grid-template-columns:1fr; gap:.25rem; } }
