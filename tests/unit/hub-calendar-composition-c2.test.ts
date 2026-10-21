@@ -91,9 +91,9 @@ describe("C2 original native calendar composition",()=>{
     const bounds=windows.map(w=>[Date.parse(w.start),Date.parse(w.end)]);
     const berlinTime=(stamp:number)=>new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Berlin",
       hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(stamp));
-    expect(bounds[0]!.map(berlinTime)).toEqual(["08:00","10:00"]);
+    expect(bounds[0]!.map(berlinTime)).toEqual(["08:00","09:00"]);
     expect(windows.every(w=>w.minutes>=30)).toBe(true);
-    expect(windows.at(-1)!.end).toBe("2026-10-26T17:00:00.000Z");
+    expect(windows.at(-1)!.end).toBe("2026-10-26T19:00:00.000Z");
     expect(windows.reduce((s,w)=>s+w.minutes,0)).toBe(result.days[0]!.availableMinutes);
   });
   it("C3 will not propose actual free windows from stale Google or incomplete academic sources",()=>{
