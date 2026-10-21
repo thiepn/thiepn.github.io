@@ -88,7 +88,7 @@ export function composeCalendarView(args:{
       allDay:e.allDay,blocksTime:e.blocksTime,label:e.calendarName,kind:e.role,sourceRoute:null});
   }
   const linked=new Set((validSource?.events??[]).map(e=>e.id));
-  for(const a of args.academic?.items??[]){
+  for(const a of (validSource ? args.academic?.items??[] : [])){
     if(a.calendarIdentity&&linked.has(a.calendarIdentity))continue; // Same original provider event.
     include({id:a.id,owner:"studyos",title:a.title,start:a.at,end:null,allDay:false,
       blocksTime:false,label:a.courseName??"StudyOS",kind:a.kind,sourceRoute:a.sourceRoute});
