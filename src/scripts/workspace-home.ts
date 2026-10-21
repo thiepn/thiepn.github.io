@@ -868,6 +868,21 @@ async function setup(root: HTMLElement) {
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
         renderAttention();
         renderPlanner();
+        // C2 read-only handoff from the ORIGINAL Hub calendar owner. Ephemeral and
+        // never an invitation to write back; source IDs and edit controls stay here.
+        // Clear on privacy transitions, account changes and unavailable storage.
+        window.dispatchEvent(new CustomEvent('hub:calendar-local', {detail: {
+            selected: view==='calendar' ? selected : today(),
+            mode: view==='calendar' ? agendaMode : 'day',
+            timezone: state.preferences.timezone,
+            private: privacyHeld || state.preferences.hidden || locked,
+            events: privacyHeld || state.preferences.hidden || locked ? [] :
+                state.events.slice(0,300).map(e=>({
+                  id:e.id,title:e.title,date:e.date,endDate:e.endDate,
+                  start:e.start,end:e.end,zone:e.zone,allDay:e.allDay,
+                })),
+            truncated: state.events.length>300,
+        }}));
         if (searchDialog.open) renderSearch();
         const mobileToday = $('[data-workspace-today]');
         if (staticView() || view === 'settings' || (view==='home' && (editing?'workspace':homeMode)!=='workspace')) {
