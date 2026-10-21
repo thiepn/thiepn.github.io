@@ -2975,6 +2975,7 @@ test('O33 selective prose terminology changes only explicitly chosen real source
  await expect(page.locator('[data-office-history] option')).not.toHaveCount(1);
 });
 test('O33 mobile selected prose preview cancels and privacy erases original text and choices',async({page})=>{
+ test.setTimeout(60_000); // Genuine mobile WebKit terminology rereview and Account privacy may exceed the default 30s.
  await page.setViewportSize({width:390,height:844});
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
@@ -3000,6 +3001,8 @@ test('O33 mobile selected prose preview cancels and privacy erases original text
  await page.locator('[data-office-term-all]').click();
  await page.locator('[data-office-term-replacement]').fill('idea');
  await page.locator('[data-office-term-preview]').click();
+ await expect(page.locator('[data-office-term-plan]')).toBeVisible();
+ await expect(page.locator('.ws-topbar-actions [data-action=account]')).toBeEnabled();
  await page.locator('.ws-topbar-actions [data-action=account]').click();
  await page.locator('[data-account-dialog] [data-action=privacy]').click();
  await expect(page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
