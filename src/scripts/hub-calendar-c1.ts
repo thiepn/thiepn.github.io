@@ -87,7 +87,7 @@ if(root&&panel) {
     if(data){
       const academic=verifiedAcademic(data.academic);
       const combined=composeCalendarView({local,google:data,academic,
-        selected:date,mode,timezone:zone});
+        selected:date,mode,timezone:zone,capacityOverrides:native?.capacities});
       const segments=combined.days.map(d=>
         "<li>"+esc(d.date)+" · "+(d.availableMinutes===null?
           "Availability unverified":esc((d.availableMinutes/60).toFixed(1))+"h unreserved capacity")+
@@ -131,6 +131,7 @@ if(root&&panel) {
     const academic=verifiedAcademic(data.academic);
     const composition=composeCalendarView({
       local,google:data,academic,selected:currentDate(),mode,timezone:zone,
+      capacityOverrides:verifyNativeStudyPlan(data.studyPlan)?.capacities,
     });
     const formatHours=(n:number)=>n%60===0?n/60+"h":Math.floor(n/60)+"h "+n%60+"m";
     const sections=composition.days.map(group=>{
