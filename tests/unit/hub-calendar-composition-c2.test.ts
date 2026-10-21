@@ -80,6 +80,29 @@ describe("C2 original native calendar composition",()=>{
     expect(r.days[6]!.date).toBe("2026-11-01");
     expect(r.days[6]!.studyGoalMinutes).toBe(210);
   });
+  it("C3 suggests unreserved windows, never before 08:00, across meals, or after 20:00",()=>{
+    const result=view({google:g([
+      event("class","2026-10-26T08:00:00Z","2026-10-26T10:00:00Z"),
+      event("class-again","2026-10-26T09:00:00Z","2026-10-26T10:30:00Z"),
+      event("late","2026-10-26T19:00:00Z","2026-10-26T21:00:00Z")
+    ])});
+    const windows=result.days[0]!.availableWindows;
+    expect(windows.length).toBeGreaterThan(1);
+    const bounds=windows.map(w=>[Date.parse(w.start),Date.parse(w.end)]);
+    const berlinTime=(stamp:number)=>new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Berlin",
+      hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(stamp));
+    expect(bounds[0]!.map(berlinTime)).toEqual(["08:00","10:00"]);
+    expect(windows.every(w=>w.minutes>=30)).toBe(true);
+    expect(windows.at(-1)!.end).toBe("2026-10-26T17:00:00.000Z");
+    expect(windows.reduce((s,w)=>s+w.minutes,0)).toBe(result.days[0]!.availableMinutes);
+  });
+  it("C3 will not propose actual free windows from stale Google or incomplete academic sources",()=>{
+    const stale=view({google:g([event("class","2026-10-26T08:00:00Z","2026-10-26T09:00:00Z")],{status:"stale"})});
+    expect(stale.days[0]!.availableWindows).toEqual([]);
+    expect(stale.days[0]!.availableMinutes).toBeNull();
+    const missing=view({academic:{status:"partial",reasons:["truncated"],items:[]}});
+    expect(missing.days[0]!.availableWindows).toEqual([]);
+  });
   it("rejects malformed academic links rather than displaying them in native calendar",()=>{
     expect(verifiedAcademic({status:"complete",reasons:[],items:[
       {id:"studyos:exam:"+course,at:"2026-10-26T11:00:00Z",kind:"exam",
