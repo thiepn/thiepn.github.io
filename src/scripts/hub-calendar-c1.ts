@@ -18,6 +18,7 @@ if(root&&panel) {
   let zone="Europe/Berlin";
   let roadmap:ImportedStudyRoadmap|null=null,roadmapError="",importEpoch=0;
   let controller:AbortController|null=null,timeout:ReturnType<typeof setTimeout>|null=null;
+  let expiryTimer:ReturnType<typeof setTimeout>|null=null;
   const visible=()=>workspace.dataset.view==="home"||workspace.dataset.view==="calendar";
   const permitted=()=>visible()&&workspace.dataset.calendarPrivate==="false"&&!document.hidden;
   const day=()=>{
@@ -102,6 +103,7 @@ if(root&&panel) {
     generation++;
     controller?.abort();controller=null;
     if(timeout)clearTimeout(timeout);timeout=null;
+    if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;
     data=null;loading=false;error=false;render();
   }
   function render(){
@@ -109,9 +111,9 @@ if(root&&panel) {
     const body=view.querySelector<HTMLElement>("[data-hub-calendar-content]");
     const actions=view.querySelector<HTMLElement>("[data-hub-calendar-actions]");
     if(!body||!actions)return;
-    renderRoadmap();
     const expired=data&&Date.parse(data.expiresAt)<=Date.now();
-    if(expired)data=null;
+    if(expired){data=null;if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;}
+    renderRoadmap();
     const authorized=hubIdentity.status==="signed-in";
     const allowed=permitted();
     const ready=Boolean(data&&authorized&&allowed);
@@ -175,6 +177,15 @@ if(root&&panel) {
       const result=await fetchHubCalendar(origin,token,sourceStart(),signal);
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
       data=result;
+      if(expiryTimer)clearTimeout(expiryTimer);
+      // The source validity window is owned by StudyOS, not Hub's local clock
+      // or a persistent timer. Expiry clears only the projection, not a user-
+      // explicitly imported private roadmap.
+      expiryTimer=setTimeout(()=>{
+        if(own===generation&&data?.expiresAt===result.expiresAt){
+          data=null;expiryTimer=null;render();
+        }
+      },Math.max(0,Date.parse(result.expiresAt)-Date.now()+25));
     }catch{
       if(own===generation&&!signal.aborted)error=true;
     }finally{
