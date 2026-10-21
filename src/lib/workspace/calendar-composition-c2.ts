@@ -18,6 +18,7 @@ export interface CalendarEntry {
 }
 export type ComposedDay = {date:string;items:CalendarEntry[];
   availableMinutes:number|null;studyGoalMinutes:number;sourceReliable:boolean;
+  availableWindows:{start:string;end:string;minutes:number}[];
   assumptions:"proposed_meals_and_free_time";};
 export type ComposedCalendar = {days:ComposedDay[];status:"connected"|"stale"|"partial"|"disconnected";
   reasons:string[];localCount:number;googleCount:number;academicCount:number};
@@ -58,6 +59,25 @@ const subtract=(from:number,to:number,rangesIn:readonly (readonly [number,number
   }
   return Math.round((remaining+Math.max(0,to-cursor))/60000);
 };
+/** Unreserved candidate gaps; does not select, write, or schedule study blocks. */
+function candidateWindows(lo:number,hi:number,rangesIn:readonly (readonly [number,number])[]) {
+  const intervals=rangesIn.filter(([a,b])=>b>a).map(([a,b])=>[Math.max(lo,a),Math.min(hi,b)] as const)
+    .filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
+  const result:{start:string;end:string;minutes:number}[]=[];
+  let cursor=lo;
+  const push=(end:number)=>{
+    if(end-cursor>=30*60_000)result.push({
+      start:new Date(cursor).toISOString(),end:new Date(end).toISOString(),
+      minutes:Math.floor((end-cursor)/60000)});
+  };
+  for(const [start,end] of intervals) {
+    if(start>cursor)push(start);
+    cursor=Math.max(cursor,end);
+    if(cursor>=hi)break;
+  }
+  if(cursor<hi)push(hi);
+  return result.slice(0,10);
+}
 export function composeCalendarView(args:{
   local: readonly CalendarEvent[];
   google: HubCalendarData|null;
@@ -112,6 +132,7 @@ export function composeCalendarView(args:{
     const busy=ranges(present,lo,hi);
     const minutes=subtract(lo,hi,[...meals,...busy]);
     return {date,items:present,availableMinutes:reliable?(weekend?Math.min(minutes,210):minutes):null,
+      availableWindows:reliable?candidateWindows(lo,hi,[...meals,...busy]):[],
       studyGoalMinutes:weekend?210:420,sourceReliable:reliable,
       assumptions:"proposed_meals_and_free_time" as const};
   });
