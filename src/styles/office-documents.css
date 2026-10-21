@@ -392,3 +392,19 @@
 .office-checklist-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
 .office-checklist-plan[hidden]{display:none}
 .office-checklist-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}
+
+.office-transfer{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--ws-line);min-width:0}
+.office-transfer h3{font-size:16px;margin:0}
+.office-transfer p{font-size:14px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.office-transfer-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;min-width:0}
+.office-transfer-controls label{font-size:14px;font-weight:600}
+.office-transfer button{min-height:38px;padding:8px 11px;border:1px solid var(--ws-line);background:var(--ws-surface);color:inherit;font-size:14px}
+.office-transfer-controls select{min-height:38px;min-width:0;max-width:100%;flex:1 1 210px;padding:8px;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);font-size:14px}
+.office-transfer-items{display:grid;gap:7px;max-height:390px;overflow:auto}
+.office-transfer-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border:1px solid var(--ws-line);padding:9px;min-width:0}
+.office-transfer-item label{display:flex;align-items:flex-start;gap:9px;flex:1 1 220px;min-width:0;font-size:14px;line-height:1.5}
+.office-transfer-item span{overflow-wrap:anywhere}
+.office-transfer-item input{flex:0 0 auto;margin-top:3px}
+.office-transfer-plan{display:grid;gap:9px;border-top:1px solid var(--ws-line);padding-top:12px;min-width:0}
+.office-transfer-plan[hidden]{display:none}
+.office-transfer-plan textarea{box-sizing:border-box;width:100%;min-height:160px;max-height:360px;white-space:pre;overflow:auto;font:14px/1.6 ui-monospace,Consolas,monospace;background:var(--ws-surface);color:inherit;border:1px solid var(--ws-line);padding:10px}

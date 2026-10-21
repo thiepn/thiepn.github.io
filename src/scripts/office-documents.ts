@@ -25,6 +25,7 @@ import {reviewOfficeExternalLinks,previewOfficeExternalLinkChange,type OfficeExt
 import {reviewOfficeTerminology,previewOfficeTerminologyChange,type OfficeTermReview,type OfficeTermChange} from '../lib/office/terminology';
 import {reviewOfficeTables,previewOfficeTableChange,type OfficeSourceTable,type OfficeTableEdit,type OfficeTableAction} from '../lib/office/tables';
 import {reviewOfficeChecklists,previewOfficeChecklistChange,type OfficeChecklistReview,type OfficeChecklistChange} from '../lib/office/checklists';
+import {reviewOfficeTransferSource,previewOfficeExcerptTransfer,MAX_OFFICE_TRANSFER_PARAGRAPHS,type OfficeTransferReview,type OfficeTransferPreview} from '../lib/office/excerpt-transfer';
 const root=document.querySelector<HTMLElement>('[data-office]')!;
 const shell=document.querySelector<HTMLElement>('[data-workspace]')!;
 if(root && shell){
@@ -192,6 +193,51 @@ if(root && shell){
   }
 
 
+
+
+  const transferLoad=pick<HTMLButtonElement>('[data-office-transfer-load]');
+  const transferSource=pick<HTMLSelectElement>('[data-office-transfer-source]');
+  const transferReview=pick<HTMLButtonElement>('[data-office-transfer-review]');
+  const transferSummary=pick<HTMLElement>('[data-office-transfer-summary]');
+  const transferAll=pick<HTMLButtonElement>('[data-office-transfer-all]');
+  const transferNone=pick<HTMLButtonElement>('[data-office-transfer-none]');
+  const transferItems=pick<HTMLElement>('[data-office-transfer-items]');
+  const transferPage=pick<HTMLElement>('[data-office-transfer-page]');
+  const transferPrev=pick<HTMLButtonElement>('[data-office-transfer-prev]');
+  const transferNext=pick<HTMLButtonElement>('[data-office-transfer-next]');
+  const transferPreview=pick<HTMLButtonElement>('[data-office-transfer-preview]');
+  const transferPanel=pick<HTMLElement>('[data-office-transfer-plan]');
+  const transferChange=pick<HTMLElement>('[data-office-transfer-change]');
+  const transferResult=pick<HTMLTextAreaElement>('[data-office-transfer-result]');
+  const transferConfirm=pick<HTMLButtonElement>('[data-office-transfer-confirm]');
+  const transferCancel=pick<HTMLButtonElement>('[data-office-transfer-cancel]');
+  const TRANSFER_PAGE_SIZE=15;
+  type TransferState={scope:string;targetId:string;targetRevision:number;targetBody:string;
+    targetTitle:string;source:OfficeDocument;report:OfficeTransferReview;selected:Set<number>;page:number};
+  type TransferPlan={review:TransferState;offsets:number[];change:OfficeTransferPreview};
+  let transferState:TransferState|null=null,transferPlan:TransferPlan|null=null,transferNonce=0;
+  function discardTransferPlan(){
+    transferPlan=null;transferPanel.hidden=true;transferChange.textContent='';
+    transferResult.value='';transferConfirm.disabled=true;
+  }
+  function clearTransferReview(){
+    transferState=null;discardTransferPlan();transferItems.replaceChildren();
+    transferSummary.textContent='No excerpt review.';transferPage.textContent='';
+  }
+  function clearTransfer(){
+    transferNonce++;clearTransferReview();
+    transferSource.replaceChildren(new Option('Choose source',''));
+    transferSource.disabled=transferReview.disabled=transferAll.disabled=transferNone.disabled=
+      transferPrev.disabled=transferNext.disabled=transferPreview.disabled=true;
+  }
+  function transferValid(state:TransferState|null):boolean{
+    return !!state&&!!active&&!!store&&!busy&&!blocked&&!dirty&&allowed()&&
+      state.scope===store.scope&&state.targetId===active.id&&
+      state.targetRevision===active.revision&&state.targetBody===body.value&&
+      state.targetTitle===title.value&&state.source.id!==active.id&&
+      transferSource.value===state.source.id;
+  }
+  const transferOffsets=(state:TransferState)=>[...state.selected].sort((a,b)=>a-b);
 
   const checklistReview=pick<HTMLButtonElement>('[data-office-checklist-review]');
   const checklistSummary=pick<HTMLElement>('[data-office-checklist-summary]');
@@ -799,6 +845,19 @@ if(root && shell){
     linkNext.disabled=!linkReady||!chosenLink||externalLinkState!.page>=maxLinkPage;
     linkConfirm.disabled=!linkReady||!externalLinkPlan||externalLinkPlan.review!==externalLinkState||
       externalLinkPlan.target!==linkTarget.value||externalLinkPlan.replacement!==linkReplacement.value;
+    transferLoad.disabled=!editing||dirty;
+    transferSource.disabled=!editing||dirty||transferSource.options.length<=1;
+    transferReview.disabled=!editing||dirty||!transferSource.value;
+    const transferReady=editing&&transferValid(transferState);
+    transferAll.disabled=!transferReady||!transferState?.report.passages.some(p=>p.eligible&&!transferState!.selected.has(p.offset))||
+      (transferState?.selected.size??0)>=MAX_OFFICE_TRANSFER_PARAGRAPHS;
+    transferNone.disabled=!transferReady||!transferState?.selected.size;
+    transferPrev.disabled=!transferReady||!transferState||transferState.page===0;
+    transferNext.disabled=!transferReady||!transferState||
+      transferState.page>=Math.max(0,Math.ceil(transferState.report.passages.length/TRANSFER_PAGE_SIZE)-1);
+    transferPreview.disabled=!transferReady||!transferState?.selected.size;
+    transferConfirm.disabled=!transferReady||!transferPlan||transferPlan.review!==transferState||
+      JSON.stringify(transferPlan.offsets)!==JSON.stringify(transferOffsets(transferState!));
     checklistReview.disabled=!editing||dirty;
     const checklistReady=editing&&checklistValid(checklistState);
     const checklistVisibleItems=checklistReady?checklistVisible(checklistState!):[];
@@ -1183,7 +1242,7 @@ if(root && shell){
     timelineTruncated.textContent='';renderHistoryMatches();enable();
   }
   function clearEditor(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
     discardContents();discardStructure();clearComparison();clearTimeline();active=null;dirty=false;title.value='';body.value='';
     writingLine.value='';writingLanguage.value='';sectionTitle.value='';
     footnoteId.value='';footnoteText.value='';
@@ -1262,7 +1321,7 @@ if(root && shell){
     focusEditor(match.start,match.end);renderFind();
   }
   function renderHistory(){
-    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
+    clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit();
     const chosen=citationAuditBase.value;
     citationAuditBase.replaceChildren(new Option('Choose retained revision',''));
     history.replaceChildren(new Option('History',''));
@@ -1336,7 +1395,7 @@ if(root && shell){
       const doc=await opened.read(id);
       if(ticket!==epoch||opened!==store||!allowed())return;
       if(!doc)throw new Error('Document no longer exists.');
-      clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
+      clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();clearFootnoteOrder();clearCitationTrail();clearCitationImpact(true);clearDuplicateTriage();clearIssueHistory();clearCitationMerge(true);clearCitationAudit(true);
       discardContents();discardStructure();clearComparison();active=doc;title.value=doc.title;body.value=doc.body;writingLine.value='';sectionTitle.value='';footnoteId.value='';footnoteText.value='';renderPreview();dirty=false;renderOutline();renderFind();
       renderHistory();await refreshList();enable();message('Revision '+doc.revision+' · saved on this device');
     }catch(e){message(e instanceof Error?e.message:'Cannot open document');}
@@ -1374,7 +1433,7 @@ if(root && shell){
       const chosen=getOfficeTemplate(templatePicker.value);
       const doc=await opened.create(chosen.id==='blank'?undefined:{title:chosen.title,body:chosen.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1477,7 +1536,7 @@ if(root && shell){
     try{
       const created=await opened.createBatch(records);
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=created[0]??active;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();active=created[0]??active;
       if(created[0]){
         title.value=created[0].title;body.value=created[0].body;dirty=false;
         renderPreview();renderOutline();renderFind();renderHistory();
@@ -1527,7 +1586,7 @@ if(root && shell){
     try{
       const doc=await opened.create({title:name,body:pending.body});
       if(ticket!==epoch||opened!==store||!allowed())return;
-      clearExternalLinks();clearTerminology();clearTables();clearChecklists();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
+      clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();active=doc;title.value=doc.title;body.value=doc.body;dirty=false;
       sectionTitle.value='';footnoteId.value='';footnoteText.value='';
       discardContents();discardStructure();
       renderPreview();renderOutline();renderFind();renderHistory();
@@ -1646,7 +1705,7 @@ if(root && shell){
   save.addEventListener('click',()=>void persist());
   for(const input of [title,body])input.addEventListener('input',()=>{
     if(!active||blocked||!allowed())return;
-    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
+    dirty=true;clearProseReview();clearExternalLinks();clearTerminology();clearTables();clearChecklists();clearTransfer();clearFootnoteOrder();clearCitationTrail();clearCitationImpact();clearDuplicateTriage();clearIssueHistory();clearCitationMerge();clearCitationAudit();discardContents();discardStructure();discardBatchPreview();renderPreview();renderOutline();renderFind();
     if(compared)renderComparison();enable();
     message('Unsaved edits · autosave pending');queueAutosave();
   });
@@ -1882,6 +1941,151 @@ if(root && shell){
 
 
 
+
+
+  function renderTransferRows(){
+    transferItems.replaceChildren();
+    const state=transferState;
+    if(!state||!transferValid(state)){clearTransferReview();enable();return;}
+    const passages=state.report.passages;
+    state.page=Math.min(state.page,Math.max(0,Math.ceil(passages.length/TRANSFER_PAGE_SIZE)-1));
+    const first=state.page*TRANSFER_PAGE_SIZE;
+    transferSummary.textContent=passages.length+' prose passages · '+state.report.eligible+
+      ' transferable · '+state.selected.size+' selected from '+state.source.title+'.';
+    transferPage.textContent=passages.length?
+      (first+1)+'–'+Math.min(passages.length,first+TRANSFER_PAGE_SIZE)+' of '+passages.length:
+      'No prose passages.';
+    for(const passage of passages.slice(first,first+TRANSFER_PAGE_SIZE)){
+      const row=document.createElement('div');row.className='office-transfer-item';
+      const label=document.createElement('label'),checkbox=document.createElement('input');
+      checkbox.type='checkbox';checkbox.dataset.officeTransferOffset=String(passage.offset);
+      checkbox.checked=state.selected.has(passage.offset);
+      checkbox.disabled=!passage.eligible||(!checkbox.checked&&state.selected.size>=MAX_OFFICE_TRANSFER_PARAGRAPHS);
+      checkbox.addEventListener('change',()=>{
+        if(!transferValid(state)||transferState!==state){clearTransfer();enable();return;}
+        if(checkbox.checked){
+          if(!passage.eligible||state.selected.size>=MAX_OFFICE_TRANSFER_PARAGRAPHS){checkbox.checked=false;return;}
+          state.selected.add(passage.offset);
+        }else state.selected.delete(passage.offset);
+        discardTransferPlan();renderTransferRows();
+      });
+      const detail=document.createElement('span');
+      detail.textContent='Line '+passage.line+' · '+passage.section+' · '+
+        passage.excerpt+(passage.eligible?'':' · '+passage.reason);
+      label.append(checkbox,detail);row.append(label);transferItems.append(row);
+    }
+    enable();
+  }
+  transferLoad.addEventListener('click',()=>void (async()=>{
+    if(!store||!active||dirty||blocked||busy||!allowed())return;
+    const opened=store,ticket=epoch,target=active,nonce=++transferNonce;
+    clearTransferReview();transferSource.replaceChildren(new Option('Choose source',''));
+    enable();
+    try{
+      const docs=await opened.list();
+      if(ticket!==epoch||nonce!==transferNonce||opened!==store||!allowed()||blocked||busy||dirty||
+        active!==target||body.value!==target.body||title.value!==target.title)return;
+      for(const doc of docs.filter(d=>d.id!==target.id))
+        transferSource.add(new Option(doc.title+' · revision '+doc.revision,doc.id));
+      transferSummary.textContent=Math.max(0,docs.length-1)+' other original Office documents.';
+      enable();
+    }catch(error){
+      if(ticket===epoch&&nonce===transferNonce&&opened===store&&allowed())
+        message(error instanceof Error?error.message:'Cannot list original Office documents.');
+    }
+  })());
+  transferSource.addEventListener('change',()=>{
+    transferNonce++;clearTransferReview();enable();
+  });
+  transferReview.addEventListener('click',()=>void (async()=>{
+    if(!store||!active||!transferSource.value||busy||dirty||blocked||!allowed())return;
+    const opened=store,ticket=epoch,target=active,id=transferSource.value,nonce=++transferNonce;
+    clearTransferReview();enable();
+    try{
+      const original=await opened.read(id);
+      if(ticket!==epoch||nonce!==transferNonce||opened!==store||!allowed()||busy||dirty||blocked||
+        active!==target||body.value!==target.body||title.value!==target.title||
+        transferSource.value!==id)return;
+      if(!original||original.id===target.id)throw new Error('Original source document is unavailable.');
+      const report=reviewOfficeTransferSource(original);
+      transferState={scope:opened.scope,targetId:target.id,targetRevision:target.revision,
+        targetBody:body.value,targetTitle:title.value,source:original,report,selected:new Set(),page:0};
+      renderTransferRows();
+    }catch(error){
+      if(ticket===epoch&&nonce===transferNonce&&opened===store&&allowed()){
+        clearTransferReview();enable();
+        message(error instanceof Error?error.message:'Source prose cannot be reviewed.');
+      }
+    }
+  })());
+  transferAll.addEventListener('click',()=>{
+    const state=transferState;
+    if(!transferValid(state)||!state){clearTransfer();enable();return;}
+    for(const p of state.report.passages)
+      if(p.eligible&&state.selected.size<MAX_OFFICE_TRANSFER_PARAGRAPHS)
+        state.selected.add(p.offset);
+    discardTransferPlan();renderTransferRows();
+  });
+  transferNone.addEventListener('click',()=>{
+    if(!transferValid(transferState)){clearTransfer();enable();return;}
+    transferState!.selected.clear();discardTransferPlan();renderTransferRows();
+  });
+  transferPrev.addEventListener('click',()=>{
+    if(!transferValid(transferState)){clearTransfer();enable();return;}
+    transferState!.page=Math.max(0,transferState!.page-1);renderTransferRows();
+  });
+  transferNext.addEventListener('click',()=>{
+    if(!transferValid(transferState)){clearTransfer();enable();return;}
+    transferState!.page++;renderTransferRows();
+  });
+  transferCancel.addEventListener('click',()=>{discardTransferPlan();enable();});
+  transferPreview.addEventListener('click',()=>void (async()=>{
+    const state=transferState;
+    if(!state||!transferValid(state)||transferPreview.disabled||!store)return;
+    const opened=store,ticket=epoch,nonce=transferNonce,offsets=transferOffsets(state);
+    try{
+      const current=await opened.read(state.source.id);
+      if(ticket!==epoch||nonce!==transferNonce||opened!==store||!transferValid(state)||state!==transferState)return;
+      if(!current||current.revision!==state.source.revision||current.body!==state.source.body||
+        current.title!==state.source.title)throw new Error('Original source changed in another tab. Review it again.');
+      const change=previewOfficeExcerptTransfer(body.value,current,offsets);
+      transferPlan={review:state,offsets,change};
+      transferChange.textContent=change.count+' original passage'+(change.count===1?'':'s')+
+        ' from '+current.title+' · source revision '+current.revision+'.';
+      transferResult.value=change.value;transferPanel.hidden=false;
+      enable();transferPanel.scrollIntoView({block:'nearest'});
+    }catch(error){
+      if(ticket===epoch&&nonce===transferNonce&&opened===store&&allowed()){
+        discardTransferPlan();enable();
+        message(error instanceof Error?error.message:'Original source transfer refused.');
+      }
+    }
+  })());
+  transferConfirm.addEventListener('click',()=>void (async()=>{
+    const plan=transferPlan,state=plan?.review;
+    if(!plan||!state||!transferValid(state)||state!==transferState||transferConfirm.disabled||!store)return;
+    const opened=store,ticket=epoch,nonce=transferNonce;
+    try{
+      const current=await opened.read(state.source.id);
+      if(ticket!==epoch||nonce!==transferNonce||opened!==store||!transferValid(state)||
+        state!==transferState||plan!==transferPlan||transferConfirm.disabled)return;
+      if(!current||current.revision!==state.source.revision||current.body!==state.source.body||
+        current.title!==state.source.title)throw new Error('Original source changed in another tab. Review it again.');
+      const verified=previewOfficeExcerptTransfer(body.value,current,transferOffsets(state));
+      if(verified.value!==plan.change.value||
+        JSON.stringify(verified.offsets)!==JSON.stringify(plan.offsets)){
+        discardTransferPlan();enable();message('Source or selection changed. Review before applying.');return;
+      }
+      body.value=verified.value;
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+      message('Appended '+verified.count+' original document excerpts. Revision-checked autosave pending.');
+    }catch(error){
+      if(ticket===epoch&&nonce===transferNonce&&opened===store&&allowed()){
+        discardTransferPlan();enable();
+        message(error instanceof Error?error.message:'Excerpt transfer refused. Target unchanged.');
+      }
+    }
+  })());
 
   function renderChecklistItems(){
     checklistItems.replaceChildren();

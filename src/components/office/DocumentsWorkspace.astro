@@ -451,6 +451,36 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
+      <section class="office-transfer" aria-label="Transfer prose from another Office document">
+        <h3>Source excerpts</h3>
+        <button type="button" data-office-transfer-load disabled>Find source documents</button>
+        <div class="office-transfer-controls">
+          <label for="office-transfer-source">Original Office document</label>
+          <select id="office-transfer-source" data-office-transfer-source disabled><option value="">Choose source</option></select>
+          <button type="button" data-office-transfer-review disabled>Review paragraphs</button>
+        </div>
+        <p data-office-transfer-summary role="status" aria-live="polite">No excerpt review.</p>
+        <div class="office-transfer-controls">
+          <button type="button" data-office-transfer-all disabled>Select eligible</button>
+          <button type="button" data-office-transfer-none disabled>Clear selection</button>
+        </div>
+        <div class="office-transfer-items" data-office-transfer-items></div>
+        <div class="office-transfer-controls">
+          <button type="button" data-office-transfer-prev disabled>Previous paragraphs</button>
+          <p data-office-transfer-page></p>
+          <button type="button" data-office-transfer-next disabled>Next paragraphs</button>
+        </div>
+        <button type="button" data-office-transfer-preview disabled>Preview transfer</button>
+        <section class="office-transfer-plan" data-office-transfer-plan hidden aria-label="Confirm original source excerpt transfer">
+          <p data-office-transfer-change role="status"></p>
+          <label for="office-transfer-result">Resulting Markdown</label>
+          <textarea id="office-transfer-result" data-office-transfer-result readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-transfer-controls">
+            <button type="button" data-office-transfer-confirm disabled>Append selected excerpts</button>
+            <button type="button" data-office-transfer-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
       <section class="office-checklists" aria-label="Review document checklists">
         <h3>Document checklists</h3>
         <button type="button" data-office-checklist-review disabled>Review checklists</button>
