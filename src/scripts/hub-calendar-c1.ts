@@ -4,6 +4,8 @@ import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,type HubCalendarD
 import { composeCalendarView,verifiedAcademic } from "../lib/workspace/calendar-composition-c2";
 import { weekDays } from "../lib/workspace/model";
 import type { CalendarEvent } from "../lib/workspace/types";
+import { parseStudyRoadmap,roadmapWeekForDate,weekCourseTargets,type ImportedStudyRoadmap } from "../lib/workspace/study-roadmap-c3";
+import { verifyNativeStudyPlan } from "../lib/workspace/study-week-c3";
 
 const root=document.querySelector<HTMLElement>("[data-workspace]");
 const panel=root?.querySelector<HTMLElement>("[data-hub-calendar-c1]");
@@ -14,6 +16,7 @@ if(root&&panel) {
   let local:CalendarEvent[]=[];
   let selected:string|null=null,mode:"day"|"week"="day",localTruncated=false;
   let zone="Europe/Berlin";
+  let roadmap:ImportedStudyRoadmap|null=null,roadmapError="",importEpoch=0;
   let controller:AbortController|null=null,timeout:ReturnType<typeof setTimeout>|null=null;
   const visible=()=>workspace.dataset.view==="home"||workspace.dataset.view==="calendar";
   const permitted=()=>visible()&&workspace.dataset.calendarPrivate==="false"&&!document.hidden;
@@ -32,6 +35,69 @@ if(root&&panel) {
        new Intl.DateTimeFormat("de-DE",{timeZone:zone,weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
        .format(new Date(date));
   };
+  function clearRoadmap(){
+    importEpoch++;roadmap=null;roadmapError="";
+    const file=view.querySelector<HTMLInputElement>("[data-hub-study-file]");
+    if(file)file.value="";
+  }
+  function renderRoadmap(){
+    const status=view.querySelector<HTMLElement>("[data-hub-study-status]");
+    const body=view.querySelector<HTMLElement>("[data-hub-study-content]");
+    const file=view.querySelector<HTMLInputElement>("[data-hub-study-file]");
+    const clear=view.querySelector<HTMLButtonElement>("[data-hub-study-clear]");
+    if(!status||!body||!file||!clear)return;
+    const allowed=permitted()&&hubIdentity.status==="signed-in";
+    file.disabled=!allowed;
+    clear.hidden=!allowed||!roadmap;
+    if(!allowed){
+      status.textContent="Sign in and show personal content to open your StudyOS roadmap.";
+      body.replaceChildren();return;
+    }
+    const native=verifyNativeStudyPlan(data?.studyPlan);
+    const date=currentDate();
+    const live=native?.weeks.find(w=>w.start<=date&&w.end>=date);
+    const week=roadmap?roadmapWeekForDate(roadmap,date):null;
+    status.textContent=roadmapError||
+      (live?"Active committed StudyOS week · revision "+live.revision:
+        week?"Imported StudyOS roadmap · not committed as a weekly plan":
+        native?.status==="no_active_week"?"No active committed StudyOS week":
+        "Open your StudyOS 23-week JSON roadmap");
+    if(live){
+      const entries=live.courses.map(w=>
+        "<li><strong>"+esc(w.label)+"</strong> · "+esc((w.targetMinutes/60).toFixed(1))+
+        "h · "+esc(w.actionTitle)+"</li>").join("");
+      body.innerHTML="<p>"+esc(live.start)+"–"+esc(live.end)+" · "+esc(live.objective)+"</p>"+
+        "<ul>"+entries+"</ul>";
+    }else if(week){
+      const targets=weekCourseTargets(week);
+      body.innerHTML="<p>Week "+week.week+" · "+esc(week.start)+"–"+esc(week.end)+
+        " · "+esc(week.independent_budget_hours)+"h proposed independent study</p>"+
+        "<h4>"+esc(week.focus)+"</h4>"+
+        "<ul>"+targets.map(t=>"<li><strong>"+esc(t.course)+"</strong> · "+esc((t.minutes/60).toFixed(1))+"h</li>").join("")+"</ul>"+
+        "<p>"+esc(week.actions)+"</p>"+
+        "<p><strong>Checkpoint:</strong> "+esc(week.checkpoint)+"</p>"+
+        "<p><strong>If blocked:</strong> "+esc(week.fallback)+"</p>";
+    }else{
+      body.textContent=native?.status==="partial"?
+        "StudyOS weekly coverage incomplete; consult the original weekly plan.":
+        "No weekly course targets are loaded for this date.";
+    }
+    // Calendar gaps remain proposals. Stale, incomplete or absent Google
+    // coverage must never be used to claim verified free time.
+    if(data){
+      const academic=verifiedAcademic(data.academic);
+      const combined=composeCalendarView({local,google:data,academic,
+        selected:date,mode,timezone:zone});
+      const segments=combined.days.map(d=>
+        "<li>"+esc(d.date)+" · "+(d.availableMinutes===null?
+          "Availability unverified":esc((d.availableMinutes/60).toFixed(1))+"h unreserved capacity")+
+          (d.availableWindows.length?
+            " · "+d.availableWindows.slice(0,2).map(v=>esc(time(v.start,false))+
+              "–"+esc(new Intl.DateTimeFormat("de-DE",{timeZone:zone,hour:"2-digit",minute:"2-digit"}).format(new Date(v.end)))).join(" / "):"")+
+          "</li>").join("");
+      body.innerHTML+="<h4>Available windows · not booked</h4><ul>"+segments+"</ul>";
+    }
+  }
   function discard() {
     generation++;
     controller?.abort();controller=null;
@@ -43,6 +109,7 @@ if(root&&panel) {
     const body=view.querySelector<HTMLElement>("[data-hub-calendar-content]");
     const actions=view.querySelector<HTMLElement>("[data-hub-calendar-actions]");
     if(!body||!actions)return;
+    renderRoadmap();
     const expired=data&&Date.parse(data.expiresAt)<=Date.now();
     if(expired)data=null;
     const authorized=hubIdentity.status==="signed-in";
@@ -113,10 +180,31 @@ if(root&&panel) {
       if(own===generation){loading=false;controller=null;if(timeout)clearTimeout(timeout);timeout=null;render();}
     }
   }
+  view.querySelector<HTMLInputElement>("[data-hub-study-file]")?.addEventListener("change",async event=>{
+    const input=event.currentTarget as HTMLInputElement;
+    const file=input.files?.[0];
+    if(!file||!permitted()||hubIdentity.status!=="signed-in")return;
+    const owner=hubIdentity.id,own=++importEpoch;
+    roadmap=null;roadmapError="";
+    try{
+      if(file.size>100000||file.size===0||!file.name.toLowerCase().endsWith(".json"))
+        throw Error("Choose a StudyOS roadmap JSON file below 100 KB.");
+      const raw=await file.text();
+      if(own!==importEpoch||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
+      const validated=parseStudyRoadmap(JSON.parse(raw) as unknown);
+      if(own!==importEpoch||!permitted()||hubIdentity.id!==owner)return;
+      roadmap=validated;
+    }catch{
+      if(own===importEpoch)roadmapError="Invalid StudyOS roadmap JSON. No records changed.";
+    }finally{
+      if(own===importEpoch)renderRoadmap();
+    }
+  });
   view.addEventListener("click",event=>{
     const el=event.target instanceof Element?event.target.closest<HTMLElement>("button"):null;
     if(el?.hasAttribute("data-hub-calendar-load"))void load();
     if(el?.hasAttribute("data-hub-calendar-hide"))discard();
+    if(el?.hasAttribute("data-hub-study-clear")){clearRoadmap();renderRoadmap();}
   });
   // Read the original calendar through its owner's nonpersistent, read-only
   // in-page projection. Never access or mutate Hub's local persistence here.
@@ -126,7 +214,7 @@ if(root&&panel) {
       events?:unknown;truncated?:unknown;
     }|undefined;
     if(!p||p.private!==false||workspace.dataset.calendarPrivate!=="false") {
-      local=[];selected=null;localTruncated=false;render();return;
+      local=[];selected=null;localTruncated=false;clearRoadmap();render();return;
     }
     if(typeof p.selected!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(p.selected)||
        !["day","week"].includes(String(p.mode))||
@@ -137,10 +225,10 @@ if(root&&panel) {
     render();
   });
   window.dispatchEvent(new Event("hub:calendar-local-request"));
-  window.addEventListener("hub:identity",()=>{local=[];selected=null;discard();});
-  window.addEventListener("pagehide",()=>{local=[];discard();});
-  document.addEventListener("visibilitychange",()=>{if(document.hidden){local=[];discard();}else render();});
-  new MutationObserver(()=>{if(!permitted()){local=[];discard();}else render();})
+  window.addEventListener("hub:identity",()=>{local=[];selected=null;clearRoadmap();discard();});
+  window.addEventListener("pagehide",()=>{local=[];clearRoadmap();discard();});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden){local=[];clearRoadmap();discard();}else render();});
+  new MutationObserver(()=>{if(!permitted()){local=[];clearRoadmap();discard();}else render();})
     .observe(workspace,{attributes:true,attributeFilter:["data-calendar-private","data-calendar-zone","data-view"]});
   render();
 }
