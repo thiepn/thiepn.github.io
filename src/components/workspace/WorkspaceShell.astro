@@ -20,6 +20,7 @@ import '../../styles/workspace-handoffs-h17.css';
 import '../../styles/workspace-planning-h18.css';
 import '../../styles/workspace-weekly-h19.css';
 import '../../styles/workspace-unified-h20.css';
+import '../../styles/hub-calendar-c1.css';
 import '@fontsource-variable/instrument-sans';
 interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows' }
 const {view='home'}=Astro.props;
@@ -52,6 +53,10 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
           <VisitorWelcome hidden={view !== 'home'}/>
           <div data-workspace-today hidden></div>
+          {(view==='home'||view==='calendar')&&<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar">
+            <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
+            <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>
+          </section>}
 
           {<details class="ws-calendar-details"><summary>Preview an external calendar</summary><section data-external-calendar data-calendar-status="disconnected" class="ws-calendar-export ws-surface" aria-labelledby="ws-external-calendar-title">
             <header class="ws-calendar-export-heading"><div><h2 id="ws-external-calendar-title">External calendar · read only</h2></div><a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" rel="noopener noreferrer">Open Google Calendar ↗</a></header>
@@ -88,4 +93,4 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
-<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';</script>
+<script>import '../../scripts/workspace-home';import '../../scripts/portal-library';import '../../scripts/workspace-calendar';import '../../scripts/workspace-continuation';import '../../scripts/hub-calendar-c1';</script>
