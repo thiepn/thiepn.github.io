@@ -27,7 +27,9 @@ for(const width of [1440,390]){
     await expect(page.locator("[data-workspace]")).toHaveAttribute("data-view","calendar");
     await expect(page.locator(".ws-main")).toContainText("Source-owned planning event");
     expect(calls).toEqual([]);
-    await page.locator("[data-action=privacy]").first().click();
+    await page.locator("[data-action=account]").first().click();
+    await expect(page.locator("[data-account-dialog]")).toBeVisible();
+    await page.locator("[data-account-dialog] [data-connection-privacy]").click();
     await expect(page.locator("[data-workspace]")).toHaveAttribute("data-calendar-private","true");
     await expect.poll(()=>page.evaluate(()=>{
       const items=(window as any).__calendarSnapshots as Array<{private:boolean;events:unknown[]}>;
