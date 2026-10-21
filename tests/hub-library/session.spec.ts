@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import {unexpectedGuestIndexedDbNames} from './guest-storage-contract';
 const HUB = 'https://thiepn.dev';
 const accountClient=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8')).clientId;
 const OWNER = path.resolve(process.env.H16_LIBRARY_DIST ?? '../library/dist/library');
@@ -61,10 +62,20 @@ async function connect(page: Page) { await page.getByRole('button',{name:'Connec
 test('no automatic owner load or reading-storage access; connection without consent reads nothing', async ({page}) => {
   const f = await fixture(page);
   expect(f.calls.some(u => u.includes('/library/hub/bridge'))).toBe(false);
-  expect(await page.evaluate(() => (window as any).__opens.filter((name:string)=>name!=='thiepn-adaptive-workspace'))).toEqual([]);
+  expect(unexpectedGuestIndexedDbNames(await page.evaluate(() => (window as any).__opens as string[]))).toEqual([]);
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click();
   await expect(page.locator('[data-library-status]')).toContainText('Choose sharing');
   expect(await page.evaluate(() => (window as any).__results)).toEqual([]);
+});
+test('the Account credential database is permitted but native Library databases remain forbidden before consent',async({page})=>{
+  const f=await fixture(page);
+  const opened=await page.evaluate(()=>(window as any).__opens as string[]);
+  expect(opened).toContain('thiepn-hub-account');
+  expect(unexpectedGuestIndexedDbNames(opened)).toEqual([]);
+  expect(unexpectedGuestIndexedDbNames([...opened,'thiepn-library','thiepn-library-personal-books']))
+    .toEqual(['thiepn-library','thiepn-library-personal-books']);
+  expect(f.calls.some(url=>url.includes('/library/hub/bridge'))).toBe(false);
+  expect(await page.evaluate(()=>(window as any).__results)).toEqual([]);
 });
 test('actual owner reads metadata, renders current/furthest separately, and search stays out of URLs', async ({page}) => {
   const f = await fixture(page); await seed(page); await connect(page);
@@ -141,7 +152,7 @@ test('identity transition erases device results without transferring consent to 
 test('absent native databases are empty without persisting new databases', async ({page}) => {
   await fixture(page); await page.evaluate(({KEY,grant})=>localStorage.setItem(KEY,JSON.stringify(grant)),{KEY,grant});
   await page.getByRole('button',{name:'Connect this browser',exact:true}).click(); await expect(page.locator('[data-library-status]')).toContainText('No matching saved progress');
-  expect(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name).filter(name=>name!=='thiepn-adaptive-workspace'))).toEqual([]);
+  expect(unexpectedGuestIndexedDbNames(await page.evaluate(async()=> (await indexedDB.databases()).map(db=>db.name)))).toEqual([]);
 });
 test('native progress events erase the prior snapshot and require reconnection', async ({page}) => {
   await fixture(page); await seed(page); await connect(page);
