@@ -1,0 +1,7 @@
+# Hub Calendar C1 — opt-in, owner-bound read-only preview
+
+Draft, not deployed. The native Hub calendar and existing manual .ics preview are preserved. C1 adds a separate opt-in Google Calendar source panel to Hub Today and /home/calendar/. It uses the existing THIEPN Hub signed OAuth token and the StudyOS owner projection endpoint. It does not copy credentials, persist event rows or create/edit calendar blocks.
+
+Configured only when `PUBLIC_STUDYOS_ORIGIN` matches `https://study.thiepn.dev`. Every fetch is GET, no-store, credentials-omitted, redirect-denied and no-referrer. The response validator bounds timestamps, IDs, content, event count and horizon; event text is escaped. Changes to Account identity, privacy state, page lifecycle or visibility abort pending reads and clear the ephemeral snapshot. Last StudyOS synchronization and stale/partial status remain visible rather than claiming real-time Google availability.
+
+Hub academic PR #174, workspace PR #166, and Account/Core owner code remain unchanged. The source-owned StudyOS calendar read endpoint is a separate C1 draft. Before live enablement, qualify exact-head tests/build, authenticated two-account/revocation/browser consent, original RLS rights, fresh Google sync, cross-browser behavior and joined native calendar deduplication. Account scopes and tokens must not be broadened silently. No production activation, migrations or billable CI were initiated.
