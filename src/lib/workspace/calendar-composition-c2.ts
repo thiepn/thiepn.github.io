@@ -84,7 +84,7 @@ export function composeCalendarView(args:{
   academic: AcademicCalendarProjection|null;
   selected:string;mode:"day"|"week";timezone:string;
   now?:number;
-  capacityOverrides?:readonly {date:string;budgetMinutes?:number|null}[];
+  capacityOverrides?:readonly {date:string;budgetMinutes?:number|null}[] | undefined;
 }):ComposedCalendar {
   const dates=args.mode==="week"?weekDays(args.selected):[args.selected];
   const google=args.google&&Date.parse(args.google.expiresAt)>(args.now??Date.now())?args.google:null;
