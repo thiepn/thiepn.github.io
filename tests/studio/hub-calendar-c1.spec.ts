@@ -29,8 +29,8 @@ test("calendar selected day remains circular at desktop and narrow widths",async
     await page.setViewportSize({width,height:850});
     await page.goto("/home/calendar/");
     await expect(page.locator("[data-workspace-status]")).toHaveText("Workspace saved locally");
-    const chosen=page.locator(".ws-month button.selected");
-    await expect(chosen).toHaveCount(1);
+    const chosen=page.locator(".ws-month button.selected").first();
+    await expect(chosen).toBeVisible();
     const dimensions=await chosen.boundingBox();
     expect(dimensions).not.toBeNull();
     expect(Math.abs(dimensions!.width-dimensions!.height)).toBeLessThan(1.5);

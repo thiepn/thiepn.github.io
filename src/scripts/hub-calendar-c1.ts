@@ -123,7 +123,7 @@ if(root&&panel) {
     const ready=Boolean(data&&authorized&&allowed);
     actions.innerHTML=allowed&&origin&&authorized?
       '<button type="button" data-hub-calendar-load>'+ (ready?"Refresh":"Load Google Calendar")+'</button>'+
-      '<a href="https://study.thiepn.dev/api/integrations/google-calendar/start" target="_blank" rel="noopener noreferrer">Connect in StudyOS</a>'+
+      '<a href="https://study.thiepn.dev/#today-schedule" target="_blank" rel="noopener noreferrer">Manage in StudyOS</a>'+
       (ready?'<button type="button" data-hub-calendar-hide>Hide events</button>':""):"";
     if(!allowed){body.textContent="Personal calendar hidden";return;}
     if(!origin){body.textContent="StudyOS calendar connection is not configured.";return;}
@@ -141,7 +141,7 @@ if(root&&panel) {
       return;
     }
     if(!data){body.textContent=expired?"Calendar snapshot expired. Refresh to view events.":"Load your connected StudyOS Google Calendar.";return;}
-    if(data.status==="disconnected"){body.textContent="Google Calendar is not connected. Use Connect in StudyOS to authorize it.";return;}
+    if(data.status==="disconnected"){body.textContent="Google Calendar is not connected. Use Manage in StudyOS to connect it.";return;}
     const t=data.sourceSyncedAt?time(data.sourceSyncedAt,false):"Not synced";
     const warning=data.status==="stale"?"Calendar cache is stale. Refresh the source in StudyOS before relying on its availability.":data.status==="partial"?
       "Calendar coverage is incomplete.":"";
