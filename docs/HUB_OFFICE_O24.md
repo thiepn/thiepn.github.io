@@ -1,0 +1,9 @@
+# O24 — review and reconcile selected original citation definitions
+
+Same draft PR #175 and branch `feature/hub-office-o1-native-documents`, parent O23 `5c81a8b7b774db0a6e381fb3cafde66f84c88208`.
+
+O24 adds an explicit multi-selection to O22's original citation revision audit. For actual authored text divergences where each original footnote is uniquely defined in both current and retained Markdown, the user may choose 1–12 historical definitions. A single all-or-nothing in-memory preview applies only their original definition texts using the already published O23 one-citation recovery and O21 source-edit primitive; existing Markdown citations, headings, paragraphs, canonical document identity, unrelated current content, and line endings are kept. Other conflicted/duplicate/missing IDs cannot be auto-resolved. The full result is shown read-only and requires independent confirmation. Only original textarea input and existing Office v1 IndexedDB CAS/autosave/history perform writes.
+
+Every preview and confirm is scoped to original account/device, document ID, saved revision, baseline revision/source, current source text and unchanged selection. Changed sources, selection, owner, document, privacy or revision clear staged results; unsupported, stale or excess selections fail closed with no partial edit. Original CAS blocks peer overwrites. No external authenticity/renaming claims.
+
+Unit tests cover deterministic selection, partial choices, Unicode, CRLF, code pseudoreferences, duplicate/missing/invalid IDs, source and selection limits. Browser tests cover multi-recovery/reload, selective exclusion, cancel, stale, mobile privacy and multi-tab CAS. O23 Quality 452 unit and 959 browser tests PASS at its exact HEAD; Account consent and historic WebKit refresh still separate release blockers. No merge, deployment, migrations, production writes, credential handling, paid manually triggered CI or costs.

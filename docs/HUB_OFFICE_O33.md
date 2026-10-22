@@ -1,0 +1,15 @@
+# Office O33 — selective prose terminology harmonization
+
+Original draft PR #175 on branch feature/hub-office-o1-native-documents. Exact qualified O32 parent 433b9bbcc2dac3d67d437e0f9afe7e8018179d04. Main diverged independently by one commit at O33 start.
+
+## Distinct writer workflow
+O33 adds a source-bound selective terminology harmonizer for original Markdown prose paragraphs. A writer enters a case-sensitive term, inspects genuine prose occurrences with original source line, paragraph heading path, and authored text context, navigates to the exact original selection, and explicitly selects 1–120 occurrences individually or as a bounded set. Twenty occurrences appear per page. A separate replacement term produces a full original-source read-only Markdown preview. Only after explicit confirmation does it dispatch normal input to the single original Office textarea, using existing Office IndexedDB v1 autosave, revision history and CAS conflicts. Cancel changes nothing.
+
+The scanner reuses O31's existing genuine prose paragraph boundaries and O19's fenced/inline-code offset masker. It additionally protects literal Markdown inline links, reference links, external URLs, footnote markers, HTML tags, headings, list/quote/table/footnote definition lines, code blocks and headings before searching. Original UTF-16 source offsets, CRLF, adjacent Unicode, other text and citations stay unchanged. Terms/replacements accept bounded Unicode letters/numbers/spaces/hyphens only, without Markdown control characters or line breaks. Exact-case match only; no automatic semantic equivalence, external validation, rewriting advice or fabricated fact-checking.
+
+Owner scope, canonical document ID, current saved revision, title, source, editability, privacy and busy state fence both inspection and confirmation. A changed document, switched account/device, privacy mask, source edit, replacement or selection cancels the stale in-memory preview. No persistent reviewer, index, schema, localStorage, second editor, duplicate parser or independent writer is introduced.
+
+## Verification
+Focused original-source Vitest exercises Unicode and CRLF offsets, prose-only exclusions, protected tokens, section context, partial selection, word/case boundaries, limits, malformed plans and all-or-nothing result. Four real Playwright journeys exercise selective source edits, reload/revision/CAS, native caret navigation, 20-use pagination and later-page selective choice, mobile cancel/privacy/changed-source fencing and a genuine peer-tab revision race in Chromium, Firefox and WebKit.
+
+Do not claim PASS until automatic exact-head CI reports executable results. Quality O32 #39426475305 qualified 495 original Vitest and 1079 browser cases (four skipped); independent Library #39426475171 and Reading #39426475166 reproduce Account IndexedDB-before-consent failures. Historical Account WebKit refresh blocker remains independent and unqualified. No merge, release, deployment, production writes, migrations, paid manually triggered CI or credentials.

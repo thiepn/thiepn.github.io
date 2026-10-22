@@ -1,0 +1,9 @@
+# Hub Office O1 — native Documents workspace (draft, not released)
+Source audit (2026-10-18):
+- thiepn/office: empty GitHub repository, no main commit, files, branches or open PRs. No Office editor source available to import.
+- thiepn/manuscript: separate standalone app, main 0e5c941756f42c6a02acef9ffd833690e1ea33b7, not an Office source or ownership handoff.
+- Hub main: 04618de9ffb08fc96c1b5086f10c55be3ae0256b. Existing Hub PR #166/#168/#174 remain separate drafts.
+O1 implements a first **new** native Markdown Documents workspace, not a claim that the missing Office rich-text editor has been migrated.
+Navigation at /home/documents/ is a full document route (intentionally not registered in Hub SPA routes) so its island lifecycle isn't lost on in-place route swaps. Data uses exclusively the NEW IndexedDB 'thiepn-hub-office-v1' / 'documents' store, partitioned by existing validated Hub owner namespace. It neither opens nor alters Hub's workspace store, KEEP notes, Manuscript, Folio or StudyOS. It performs no network writes or migrations. Revision-checked autosave, capped snapshots, restore and manual Markdown export are supported. Account 'checking' and Hub privacy hiding lock the editor and revoke the active store connection.
+Constraints: Markdown-only, browser-local, no DOCX/rich text, no original Office data migration, no Account sync, no deletion UI. Original Manuscript app and storage remain untouched. Existing content at a different origin cannot be read here. No production release or merge authorized.
+To qualify: install pinned dependencies; run `npm run typecheck`, `npm test -- tests/unit/office-documents.test.ts`, `npm run build`, and real desktop/mobile Chromium acceptance for save, reload, two-tab revision conflict, hide/identity switching, export and restore. Rebase against #166 / #168 only after their owners and merge gates are settled.

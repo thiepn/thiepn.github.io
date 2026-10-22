@@ -1,0 +1,140 @@
+import {MAX_DOCUMENTS,newDocument,nextDocument,validateDocument,type OfficeDocument} from './documents';
+// New private device store only. Does NOT open or upgrade thiepn-adaptive-workspace or KeepNotesDB.
+export class OfficeDeviceStore {
+  private db: IDBDatabase | null = null;
+  constructor(readonly scope: string) {
+    if (!/^(guest|user:[0-9a-f-]{36})$/.test(scope)) throw new Error('Invalid Office owner scope');
+  }
+  async open(): Promise<void> {
+    this.db = await new Promise<IDBDatabase>((resolve,reject)=>{
+      const request=indexedDB.open('thiepn-hub-office-v1',1);
+      request.onupgradeneeded=()=>{
+        if(!request.result.objectStoreNames.contains('documents'))request.result.createObjectStore('documents');
+      };
+      request.onsuccess=()=>{request.result.onversionchange=()=>request.result.close();resolve(request.result);};
+      request.onerror=()=>reject(request.error ?? new Error('Office storage unavailable'));
+      request.onblocked=()=>reject(new Error('Close other Office tabs to open device storage.'));
+    });
+  }
+  private get database(): IDBDatabase {
+    if(!this.db)throw new Error('Office storage is closed');
+    return this.db;
+  }
+  private key(id:string): string {return this.scope+':'+id;}
+  async list(): Promise<OfficeDocument[]> {
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readonly');
+      const request=tx.objectStore('documents').getAll(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      request.onsuccess=()=>{
+        try {
+          if(request.result.length>MAX_DOCUMENTS)throw new Error('Office document limit exceeded. Existing records remain untouched.');
+          resolve(request.result.map(validateDocument).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)));
+        }catch(error){reject(error);}
+      };
+      request.onerror=()=>reject(request.error);
+    });
+  }
+  async read(id:string): Promise<OfficeDocument|null> {
+    return new Promise((resolve,reject)=>{
+      const request=this.database.transaction('documents').objectStore('documents').get(this.key(id));
+      request.onsuccess=()=>{
+        try{resolve(request.result===undefined?null:validateDocument(request.result));}catch(error){reject(error);}
+      };
+      request.onerror=()=>reject(request.error);
+    });
+  }
+  async create(initial?:{title:string;body:string}):Promise<OfficeDocument>{
+    const blank=newDocument(crypto.randomUUID(),new Date().toISOString());
+    const doc=initial?validateDocument({...blank,title:initial.title,body:initial.body}):blank;
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite'),records=tx.objectStore('documents');
+      const keys=records.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null;
+      keys.onsuccess=()=>{
+        if(keys.result.length>=MAX_DOCUMENTS){fault=new Error('Limit of 100 local Office documents reached.');tx.abort();return;}
+        // add() is collision-safe and never overwrites an existing document.
+        records.add(doc,this.key(doc.id));
+      };
+      tx.oncomplete=()=>resolve(doc);
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Document was not saved'));
+    });
+  }
+  async createBatch(initial:readonly {title:string;body:string}[]):Promise<OfficeDocument[]>{
+    if(!initial.length||initial.length>20)throw new Error('Choose between 1 and 20 documents.');
+    const ids=new Set<string>(),now=new Date().toISOString();
+    const records=initial.map(item=>{
+      let id=crypto.randomUUID();
+      while(ids.has(id))id=crypto.randomUUID();
+      ids.add(id);
+      return validateDocument({...newDocument(id,now),title:item.title,body:item.body});
+    });
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite'),table=tx.objectStore('documents');
+      const request=table.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null;
+      request.onsuccess=()=>{
+        try{
+          if(request.result.length+records.length>MAX_DOCUMENTS)
+            throw new Error('Insufficient Office capacity for the entire batch. Nothing imported.');
+          const occupied=new Set(request.result.map(key=>String(key)));
+          for(const doc of records){
+            const key=this.key(doc.id);
+            if(occupied.has(key))throw new Error('Generated Office document ID collision. Batch cancelled.');
+            occupied.add(key);
+            table.add(doc,key); // all or nothing; never put() or replace source records
+          }
+        }catch(error){fault=error;tx.abort();}
+      };
+      tx.oncomplete=()=>resolve(records);
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office batch creation rolled back.'));
+    });
+  }
+  async save(previous:OfficeDocument,title:string,body:string):Promise<OfficeDocument>{
+    const key=this.key(previous.id);
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite');
+      const records=tx.objectStore('documents');
+      const request=records.get(key);
+      let updated:OfficeDocument|null=null, fault:unknown=null;
+      request.onsuccess=()=>{
+        try{
+          if(request.result===undefined)throw new Error('Original document is missing; nothing was overwritten.');
+          const current=validateDocument(request.result);
+          if(current.revision!==previous.revision)throw new Error('Document changed in another tab. Export your unsaved edits before reopening.');
+          updated=nextDocument(current,previous.revision,title,body,new Date().toISOString());
+          if(updated!==current)records.put(updated,key);
+        }catch(error){fault=error;tx.abort();}
+      };
+      tx.oncomplete=()=>resolve(updated!);
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office save failed'));
+    });
+  }
+  async restoreMissing(documents:readonly OfficeDocument[]):Promise<{added:number;skipped:number}>{
+    if(documents.length>MAX_DOCUMENTS)throw new Error('Backup exceeds 100 documents.');
+    const ids=new Set<string>();
+    for(const candidate of documents){
+      const doc=validateDocument(candidate);
+      if(ids.has(doc.id))throw new Error('Backup contains duplicate IDs.');
+      ids.add(doc.id);
+    }
+    return new Promise((resolve,reject)=>{
+      const tx=this.database.transaction('documents','readwrite'),records=tx.objectStore('documents');
+      const keys=records.getAllKeys(IDBKeyRange.bound(this.scope+':',this.scope+':\uffff'),MAX_DOCUMENTS+1);
+      let fault:unknown=null,added=0,skipped=0;
+      keys.onsuccess=()=>{
+        try{
+          const existing=new Set(keys.result.map(k=>String(k)));
+          if(existing.size>MAX_DOCUMENTS)throw new Error('Office capacity is damaged. No records restored.');
+          const missing=documents.filter(doc=>!existing.has(this.key(doc.id)));
+          skipped=documents.length-missing.length;
+          if(existing.size+missing.length>MAX_DOCUMENTS)throw new Error('Office document capacity exceeded. No records restored.');
+          for(const doc of missing)records.add(doc,this.key(doc.id)); // Never put() existing IDs.
+          added=missing.length;
+        }catch(error){fault=error;tx.abort();}
+      };
+      tx.oncomplete=()=>resolve({added,skipped});
+      tx.onabort=tx.onerror=()=>reject(fault??tx.error??new Error('Office restore rolled back without changes.'));
+    });
+  }
+  close(){this.db?.close();this.db=null;}
+}

@@ -1,0 +1,19 @@
+# Office O35 — original Markdown checklist review and selective completion
+
+SAME draft PR #175 and original branch feature/hub-office-o1-native-documents.
+Qualified O34 parent: bc18997d945ac4b9915245ebfb8b49e4cd80cba0; current original main at implementation start 01472979090bd42defe3ddb234ea98aff4cc148d.
+
+## Distinct original-document workflow
+Document checklists existed as Markdown authoring and inert rendered checkboxes, but writers had no document-level way to review, select, complete or reopen actual written tasks. O35 provides a bounded 120-item original-source checklist review, with section/line provenance, open/completed status, source-marker navigation, filters (all/open/completed), 20-item pages, selective across-page selection, action choices (complete/reopen), full resulting original Markdown preview and explicit confirmation. Users can also select all eligible filtered tasks and cancel without writing. It is an editing workflow inside the same Office document, not a Hub task scheduler, new to-do authority, task synchronization, or duplicate task persistence.
+
+## Source boundaries and trust
+The review reuses the original Markdown fenced-code visitor and original Office heading-source references. It recognizes precisely original unordered checkbox list lines rendered by the existing inert Markdown preview and excludes fenced code, plain lists, ordered lists, blockquote pseudo-tasks, and inline strings. Items retain original UTF-16 marker offsets, Unicode text, labels, section context, and CRLF/LF endings. A selected change replaces ONLY the original single-character checkbox marker (' ' or 'x'; accepts original uppercase X) with the requested status. It rejects stale or repeated offsets, unchanged-status selections, malformed decisions and over-limit documents; all changes are calculated as an all-or-nothing source string without external calls or interpretive task grading.
+
+The in-memory review and preview are fenced to the exact original owner scope, document ID, saved revision, source, title, current edit permission, dirty/busy/block status, and privacy mask. All source edits, save transitions, owner/identity transitions and privacy masking clear the private selection/preview. Confirm recalculates source spans and dispatches an original textarea input event to the existing IndexedDB v1 writer, original revision history and compare-and-swap conflict handling. No new schema, store, alternate editor, task engine, background syncing, hidden write, or permanent review record.
+
+## Original-source regressions
+Seven Vitest cases cover Unicode and CRLF source offsets and exact section provenance, code/quote/list exclusions, selective marker-only changes and citation integrity, reopen states, stale/mixed/malformed plans, 120-item limits and unchanged original source.
+
+Five actual-browser Playwright journeys cover multi-item source review with selective completion and real revision/reload, completed-item reopening across 20-item paged reviews, mobile cancel/changed-source/privacy fences, real two-tab CAS failure preserving the later peer document and exportability, and genuine source-marker navigation while excluding fenced pseudo-tasks. Chromium/Firefox/WebKit projects run the unchanged original Studio workflow, including mobile viewport. Do not claim PASS before exact-head automatic CI completes.
+
+Baseline qualified O34 Quality #39481364966: 508 original Vitest PASS, 1106 Chromium/Firefox/WebKit Playwright PASS, zero failures and four skipped. Seven other integration workflows passed. Independent Library #39481365052 (48 pass, six Account IndexedDB-before-consent failures) and Reading #39481364974 (42 pass, five independent failures), plus historical Account WebKit refresh blocker, remain separate. No merge, rebase, deploy, migration, credential or manually triggered billable CI.

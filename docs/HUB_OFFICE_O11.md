@@ -1,0 +1,13 @@
+# THIEPN Hub Office O11 — genuine navigable history hunks and selective recovery
+
+Continues original open/draft PR #175 on feature/hub-office-o1-native-documents from exact O10 starting HEAD 955bb85ece947c5c66cf523af8b50c266fa94e6b; main 04618de9ffb08fc96c1b5086f10c55be3ae0256b; no intervening commits at start.
+
+O10 exact-head Quality #39169404251 remained running during initial qualification check. The prior O9 #39168368145 was cancelled after 378/378 Vitest, Astro typecheck PASS, Vite/Astro PASS and Chromium/Firefox Office passes; no false WebKit/full-suite PASS claim. O10 Library #39169404245 failed 6 (48 pass) and Reading #39169404203 failed 5 (42 pass) due to unwanted thiepn-hub-account IndexedDB initialization prior to user consent. These Account gates remain independent NO-GO conditions.
+
+O11 extends the original O10 comparison with true separate changed-hunk analysis, not a misleading single contiguous region. Pure LCS computation is bounded to 800 historical/current lines each (<=1.3 MB of typed-array DP). Larger Markdown documents explicitly show a single bounded summary only, never claim an exact diff. Each hunk retains original historical/current line ranges, first eight text lines, added/removed counts; only the first 60 hunks are navigable with explicit truncation while preserving the total count.
+
+Inside the original comparison UI, Previous/Next change navigates historical/current hunk pairs in memory. "Choose historical lines" populates exact O10 historical range controls (capped to original 200 lines); pure additions disable historical selection. "Focus current change" selects the corresponding current textarea source span (or insertion point on deletion). User still must explicitly confirm O10 Insert/Replace using the original Office CAS autosave, preserving original IDs, MAX_HISTORY retention and existing conflict/export recovery paths. No raw HTML interpretation, new DB, duplicate revision writer, automatic recovery or ownership inference.
+
+Privacy and Account identity changes clear hunk text and selection in memory, as with O10; documents/history do not leak through hidden panels. Focused unit tests cover separate changes, Unicode, pure insertions, 60-hunk cap and large-source fallback. Playwright desktop/mobile covers end-to-end changed hunk navigation, original snapshot recovery, reload, insertion-only refusal and privacy clearing. These tests must be executed before claiming PASS. Preserve KEEP, Manuscript, StudyOS, Folio and Hub v1 authority.
+
+No merge, deployment, migration, credentials, costs or production writes. Same draft PR/branch only.

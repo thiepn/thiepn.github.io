@@ -1,0 +1,13 @@
+# THIEPN Hub Office O15 — durable original-source authoring toolkit
+
+Same original open draft PR #175 and branch feature/hub-office-o1-native-documents from verified O14 HEAD 5a2c144e6b658e3e32480d0eda37aea4bfa866c1, main 04618de9ffb08fc96c1b5086f10c55be3ae0256b; no intervening commits at the start.
+
+O14 original-head Quality #39175724791 was still in progress at O15 start; do not claim an O14 full green. Library #39175724749 48 passed/6 failed and Reading #39175724701 42 passed/5 failed from unrelated unwanted Account IndexedDB before-consent. The seven specialized workflows were green. Consent tests are unchanged and remain release NO-GO.
+
+Source evidence: original Markdown editor provided inline headings, bold, italics, bullet, numbered, quote, inline code, links and a fixed two-column table; did not support bounded structural block creation for fenced code, variable tables, checklist preview, exact line navigation or source writing statistics. O15 adds these to the ORIGINAL textarea, without new writer/store.
+
+New pure src/lib/office/authoring.ts provides exact one-based go-to-line, Unicode-aware word/paragraph/line/character counts, safe source-boundary replacement for a fenced code block with code-language whitelist and fence-length collision avoidance, configurable 1-12-row / 2-6-column Markdown tables, whole-line checklist conversion and a Markdown divider. It refuses invalid selections and any >200,000-character result before touching source. Each UI insertion dispatches the existing input event, preserving original autosave, conflict/CAS, history, unsaved draft recovery and canonical ownership. The existing inert Markdown renderer now previews task list markers as disabled checkboxes, without creating a grading or click-to-write engine.
+
+All toolbar controls disable for privacy mask, unknown owner, busy writes and original CAS conflicts. Stats are calculated on current owner-visible source only and cleared with original editor; line navigation returns from Preview mode to Write mode without storage changes. Tests/unit/office-authoring.test.ts covers line bounds, Unicode, exact source, long fence collisions, table limits, whole-line task conversion and fail-closed 200,000-character cap. Browser tests cover long document navigation/stats, configurable table persisted via original CAS and reload, safe inert fenced HTML, checklist preview and mobile privacy.
+
+No merge, deployment, production writes, migrations, credentials, new DB/index or costs. KEEP, Manuscript, StudyOS, Folio, Hub v1 and Account ownership untouched. Quality, desktop/mobile Chromium/Firefox/WebKit, Library and Reading must qualify exact head before release.

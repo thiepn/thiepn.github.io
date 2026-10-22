@@ -1,0 +1,8 @@
+# Hub Office O5: explicit bounded Markdown import
+Same draft PR #175, feature/hub-office-o1-native-documents, starting O4 SHA a4b225159345f7e0f000b0db24dcf31358a47ca6 and untouched main 04618de9ffb08fc96c1b5086f10c55be3ae0256b.
+
+O4 CI: 0 Astro errors, 356 Vitest PASS, 63 built pages, 745 browser PASS, 4 FAIL, 4 skipped. The print title test matched both title and embedded document heading; fixed exact direct child selector. One Chromium O3 search test intermittently got no results immediately after rapidly creating two documents; disabled stale editor until the new document's atomic IDB creation and re-render completed. Library and Reading tests still fail unrelated Account IDB initialization without consent. Their assertions remain intact.
+
+O5: explicit local .md/.markdown upload, max 256000 bytes, UTF-8 fatal decode, max 200000 chars, binary control and active HTML-document rejection. User sees file name/size, safe inert HTML-rendered excerpt, editable title and a distinct confirm/cancel button. Staged source exists only in live memory, never persists before confirmation. Confirmation saves any dirty original document via original CAS, then creates a new UUID in the original owner-partitioned Office IndexedDB using add (never put), with transactional max-100 check. Identity/privacy changes clear staged content and reject late file reads. No external reads/writes, source migrations or imports of HTML, DOCX, PDF or backup JSON. Original KEEP, Manuscript, StudyOS, Folio, Hub v1 and original document IDs/revisions remain untouched.
+
+No release, merge, deploy, credentials, production writes/migrations, costs. Qualification: npm ci, Astro, Vitest, Vite and desktop/mobile Chromium/Firefox/WebKit plus Library/Reading independent gates.
