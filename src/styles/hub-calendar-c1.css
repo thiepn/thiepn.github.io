@@ -19,3 +19,10 @@
 .ws-hub-study-c3 li { margin:.35rem 0;overflow-wrap:anywhere; }
 .ws-hub-study-c3 p { margin:.6rem 0;line-height:1.5;overflow-wrap:anywhere; }
 .ws-hub-study-c3 [data-hub-study-clear] { color:inherit;background:transparent;border:1px solid var(--ws-line,#5555);padding:.45rem .65rem;cursor:pointer; }
+
+.ws-hub-calendar-c1 [data-hub-calendar-actions] a,.ws-hub-study-c3 header a { font:inherit; color:inherit; text-decoration:underline; text-underline-offset:.2em; padding:.45rem 0; }
+.ws-hub-calendar-c1 [data-hub-calendar-content] a { text-decoration:underline; text-underline-offset:.2em; }
+.ws-hub-study-c3 details { margin-top:.75rem; }
+.ws-hub-study-c3 summary { cursor:pointer; width:fit-content; font-weight:600; }
+.ws-hub-study-c3 details label { margin-top:.6rem; margin-right:.5rem; }
+.ws-hub-study-c3 [data-hub-study-content]:empty { display:none; }

@@ -1,6 +1,6 @@
 import { hubIdentity } from "./portal-auth";
 import { readVerifiedHubToken } from "./hub-account";
-import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
+import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,CalendarConnectionFailure,type CalendarConnectionIssue,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
 import { composeCalendarView,verifiedAcademic } from "../lib/workspace/calendar-composition-c2";
 import { weekDays } from "../lib/workspace/model";
 import type { CalendarEvent } from "../lib/workspace/types";
@@ -12,7 +12,7 @@ const panel=root?.querySelector<HTMLElement>("[data-hub-calendar-c1]");
 if(root&&panel) {
   const workspace=root, view=panel;
   const origin=hubCalendarOrigin(import.meta.env.PUBLIC_STUDYOS_ORIGIN);
-  let data:HubCalendarData|null=null,loading=false,error=false,generation=0;
+  let data:HubCalendarData|null=null,loading=false,error:CalendarConnectionIssue|null=null,generation=0;
   let local:CalendarEvent[]=[];
   let selected:string|null=null,mode:"day"|"week"="day",localTruncated=false;
   let zone="Europe/Berlin";
@@ -61,8 +61,12 @@ if(root&&panel) {
     status.textContent=roadmapError||
       (live?"Active committed StudyOS week · revision "+live.revision:
         week?"Imported StudyOS roadmap · not committed as a weekly plan":
-        native?.status==="no_active_week"?"No active committed StudyOS week":
-        "Open your StudyOS 23-week JSON roadmap");
+        loading?"Loading StudyOS weekly plan…":
+        error?"StudyOS plan could not be loaded. Use Open weekly plan or retry the connection.":
+        !data?"Load the StudyOS connection to check committed weekly targets.":
+        native?.status==="no_active_week"?"No committed StudyOS week for this date. Open weekly plan to create one.":
+        native?.status==="partial"?"StudyOS weekly coverage is incomplete. Open weekly plan to verify.":
+        "No StudyOS weekly plan available for this date.");
     if(live){
       const entries=live.courses.map(w=>
         "<li><strong>"+esc(w.label)+"</strong> · "+esc((w.targetMinutes/60).toFixed(1))+
@@ -104,7 +108,7 @@ if(root&&panel) {
     controller?.abort();controller=null;
     if(timeout)clearTimeout(timeout);timeout=null;
     if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;
-    data=null;loading=false;error=false;render();
+    data=null;loading=false;error=null;render();
   }
   function render(){
     view.hidden=!visible();
@@ -119,14 +123,25 @@ if(root&&panel) {
     const ready=Boolean(data&&authorized&&allowed);
     actions.innerHTML=allowed&&origin&&authorized?
       '<button type="button" data-hub-calendar-load>'+ (ready?"Refresh":"Load Google Calendar")+'</button>'+
+      '<a href="https://study.thiepn.dev/api/integrations/google-calendar/start" target="_blank" rel="noopener noreferrer">Connect in StudyOS</a>'+
       (ready?'<button type="button" data-hub-calendar-hide>Hide events</button>':""):"";
     if(!allowed){body.textContent="Personal calendar hidden";return;}
     if(!origin){body.textContent="StudyOS calendar connection is not configured.";return;}
     if(!authorized){body.textContent="Sign in to THIEPN Account to view your Google Calendar.";return;}
     if(loading){body.textContent="Loading calendar…";return;}
-    if(error){body.textContent="Calendar data unavailable. Refresh to retry.";return;}
+    if(error){
+      body.textContent=({
+        session:"THIEPN Account session needs to be refreshed. Sign in again.",
+        permission:"StudyOS rejected this Account's calendar access. Reconnect your Account in StudyOS.",
+        endpoint:"StudyOS calendar service is not deployed. The Hub cannot load it yet.",
+        source:"StudyOS could not read the connected calendar. Check the source in StudyOS.",
+        network:"Cannot reach StudyOS. Check your connection and retry.",
+        timeout:"StudyOS did not respond in time. Retry the calendar connection."
+      } satisfies Record<CalendarConnectionIssue,string>)[error];
+      return;
+    }
     if(!data){body.textContent=expired?"Calendar snapshot expired. Refresh to view events.":"Load your connected StudyOS Google Calendar.";return;}
-    if(data.status==="disconnected"){body.textContent="Google Calendar is not connected in StudyOS.";return;}
+    if(data.status==="disconnected"){body.textContent="Google Calendar is not connected. Use Connect in StudyOS to authorize it.";return;}
     const t=data.sourceSyncedAt?time(data.sourceSyncedAt,false):"Not synced";
     const warning=data.status==="stale"?"Calendar cache is stale. Refresh the source in StudyOS before relying on its availability.":data.status==="partial"?
       "Calendar coverage is incomplete.":"";
@@ -169,10 +184,10 @@ if(root&&panel) {
     controller?.abort();if(timeout)clearTimeout(timeout);
     controller=new AbortController();const signal=controller.signal;
     timeout=setTimeout(()=>controller?.abort(),8000);
-    data=null;loading=true;error=false;render();
+    data=null;loading=true;error=null;render();
     try{
       const token=await readVerifiedHubToken(owner);
-      if(!token)throw Error("Unverified Account");
+      if(!token)throw new CalendarConnectionFailure("session");
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
       const result=await fetchHubCalendar(origin,token,sourceStart(),signal);
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
@@ -186,8 +201,9 @@ if(root&&panel) {
           data=null;expiryTimer=null;render();
         }
       },Math.max(0,Date.parse(result.expiresAt)-Date.now()+25));
-    }catch{
-      if(own===generation&&!signal.aborted)error=true;
+    }catch(cause){
+      if(own===generation)error=signal.aborted?"timeout":
+        cause instanceof CalendarConnectionFailure?cause.issue:"network";
     }finally{
       if(own===generation){loading=false;controller=null;if(timeout)clearTimeout(timeout);timeout=null;render();}
     }
