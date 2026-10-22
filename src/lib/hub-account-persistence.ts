@@ -50,8 +50,27 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       // record, but never replace a durable credential with an unchanged stale
       // local record left behind by a quota failure.
       const changed = record !== undefined && currentLegacy !== undefined && currentLegacy !== record.legacy;
-      cache.set(key, changed ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
-      if (record === undefined || changed) await write(key, cache.get(key)!, currentLegacy);
+      // A stale localStorage mirror must never roll back a freshly rotated
+      // refresh token from IndexedDB. This can otherwise trigger a SECOND
+      // OAuth refresh in another tab even after the cross-tab lease succeeded.
+      const tokenExpiry = (raw: string | null | undefined): number | null => {
+        if (typeof raw !== 'string') return null;
+        try {
+          const candidate: unknown = JSON.parse(raw);
+          if (!candidate || typeof candidate !== 'object' || !('expiresAt' in candidate)) return null;
+          const expiresAt = (candidate as {expiresAt?: unknown}).expiresAt;
+          return typeof expiresAt === 'number' && Number.isFinite(expiresAt) ? expiresAt : null;
+        } catch { return null; }
+      };
+      const durableExpiry = key.endsWith(':tokens') ? tokenExpiry(record?.value) : null;
+      const legacyExpiry = key.endsWith(':tokens') ? tokenExpiry(currentLegacy) : null;
+      const preventRollback = key.endsWith(':tokens') && record !== undefined &&
+        (record.value === null || durableExpiry !== null &&
+          durableExpiry > Date.now() + 30_000 &&
+          (legacyExpiry === null || legacyExpiry <= durableExpiry));
+      const importLegacy = changed && !preventRollback;
+      cache.set(key, importLegacy ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
+      if (record === undefined || importLegacy) await write(key, cache.get(key)!, currentLegacy);
     }
   }
   const storage: Storage = {
