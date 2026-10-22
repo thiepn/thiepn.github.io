@@ -3,6 +3,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Fallback for a missing push event; production authorization still requires
+  # a SUCCESSFUL exact-SHA push Quality run, not workflow_dispatch.
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
