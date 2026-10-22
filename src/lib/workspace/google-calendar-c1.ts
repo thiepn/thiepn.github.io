@@ -1,4 +1,11 @@
 /** Read-only StudyOS Google Calendar consumer. No second calendar store or OAuth tokens. */
+export type CalendarConnectionIssue = "session"|"permission"|"endpoint"|"source"|"network"|"timeout";
+export class CalendarConnectionFailure extends Error {
+  constructor(public readonly issue:CalendarConnectionIssue){
+    super("StudyOS calendar request failed: "+issue);
+    this.name="CalendarConnectionFailure";
+  }
+}
 export type HubCalendarEvent = {
   id:string;source:"google-calendar";title:string;calendarName:string;
   start:string;end:string;allDay:boolean;blocksTime:boolean;role:string;location:string|null;
@@ -61,7 +68,12 @@ export async function fetchHubCalendar(origin:string,token:string,from:string,si
     method:"GET",credentials:"omit",cache:"no-store",redirect:"error",referrerPolicy:"no-referrer",
     headers:{Accept:"application/json",Authorization:"Bearer "+token},signal
   });
-  if(!response.ok)throw Error("Calendar source unavailable");
+  if(!response.ok){
+    const issue:CalendarConnectionIssue=response.status===401?"session":
+      response.status===403?"permission":response.status===404?"endpoint":
+      response.status===503?"source":"network";
+    throw new CalendarConnectionFailure(issue);
+  }
   if(Number(response.headers.get("content-length")||0)>100000)throw Error("Calendar response too large");
   const text=await response.text();
   if(new TextEncoder().encode(text).byteLength>100000)throw Error("Calendar response too large");

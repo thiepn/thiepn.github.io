@@ -70,11 +70,14 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
             <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
             <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>
             <section data-hub-study-plan class="ws-hub-study-c3" aria-label="StudyOS study plan">
-              <header><h3>StudyOS weekly plan</h3><label for="hub-study-roadmap-import">Open roadmap JSON</label>
-                <input id="hub-study-roadmap-import" type="file" accept=".json,application/json" data-hub-study-file/></header>
+              <header><h3>StudyOS weekly plan</h3><a href="https://study.thiepn.dev/week" target="_blank" rel="noopener noreferrer">Open weekly plan</a></header>
               <div data-hub-study-status role="status"></div>
               <div data-hub-study-content></div>
-              <button type="button" data-hub-study-clear hidden>Clear imported roadmap</button>
+              <details data-hub-study-import><summary>Import roadmap JSON</summary>
+                <label for="hub-study-roadmap-import">Choose StudyOS roadmap</label>
+                <input id="hub-study-roadmap-import" type="file" accept=".json,application/json" data-hub-study-file/>
+                <button type="button" data-hub-study-clear hidden>Clear imported roadmap</button>
+              </details>
             </section>
           </section>}
 

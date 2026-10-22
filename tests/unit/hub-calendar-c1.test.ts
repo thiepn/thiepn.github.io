@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { calendarEsc,fetchHubCalendar,hubCalendarOrigin,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
+import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
 const NOW=Date.parse("2026-10-21T15:00:00Z");
 const source=()=>{
   const event={id:'["primary","event-1"]',source:"google-calendar",title:"TI Übung",
@@ -47,5 +47,18 @@ describe("C1 owner calendar client",()=>{
     expect(params.init?.credentials).toBe("omit");
     expect(params.init?.cache).toBe("no-store");
     expect((params.init?.headers as Record<string,string>).Authorization).toBe("Bearer signed.example.token");
+  });
+});
+
+describe("C1 actionable source failures",()=>{
+  for(const [status,issue] of [[401,"session"],[403,"permission"],[404,"endpoint"],[503,"source"]] as const){
+    it("classifies HTTP "+status+" without exposing response details",async()=>{
+      const fetcher=(async()=>new Response(JSON.stringify({error:"private"}),{status})) as typeof fetch;
+      await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,fetcher))
+        .rejects.toMatchObject({name:"CalendarConnectionFailure",issue});
+    });
+  }
+  it("does not mistake an unreachable provider for a connected calendar",()=>{
+    expect(new CalendarConnectionFailure("network").issue).toBe("network");
   });
 });
