@@ -182,13 +182,16 @@ if(root&&panel) {
     if(!origin||!permitted()||hubIdentity.status!=="signed-in")return;
     const owner=hubIdentity.id,own=++generation;
     controller?.abort();if(timeout)clearTimeout(timeout);
-    controller=new AbortController();const signal=controller.signal;
-    timeout=setTimeout(()=>controller?.abort(),8000);
+    const requestController=new AbortController();
+    controller=requestController;const signal=requestController.signal;
     data=null;loading=true;error=null;render();
     try{
       const token=await readVerifiedHubToken(owner);
       if(!token)throw new CalendarConnectionFailure("session");
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
+      // Start the network timeout only after Account verification completes.
+      // Never let a slow session check consume the StudyOS request budget.
+      timeout=setTimeout(()=>requestController.abort(),15000);
       const result=await fetchHubCalendar(origin,token,sourceStart(),signal);
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
       data=result;
