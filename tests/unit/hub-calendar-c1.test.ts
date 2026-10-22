@@ -51,13 +51,21 @@ describe("C1 owner calendar client",()=>{
 });
 
 describe("C1 actionable source failures",()=>{
-  for(const [status,issue] of [[401,"session"],[403,"permission"],[404,"endpoint"],[503,"source"]] as const){
+  for(const [status,issue] of [[400,"request"],[401,"session"],[403,"permission"],[404,"endpoint"],[500,"source"],[503,"source"]] as const){
     it("classifies HTTP "+status+" without exposing response details",async()=>{
       const fetcher=(async()=>new Response(JSON.stringify({error:"private"}),{status})) as typeof fetch;
       await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,fetcher))
         .rejects.toMatchObject({name:"CalendarConnectionFailure",issue});
     });
   }
+  it("classifies an invalid 200 payload separately from a failed network request",async()=>{
+    const html=(async()=>new Response("<html>Sign in</html>",{status:200,headers:{"content-type":"text/html"}})) as typeof fetch;
+    await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,html))
+      .rejects.toMatchObject({name:"CalendarConnectionFailure",issue:"invalid-response"});
+    const invalid=(async()=>new Response(JSON.stringify({ok:true,data:{...source(),generatedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString(),events:[{...source().events[0],end:"bad-date"}]}}),{status:200})) as typeof fetch;
+    await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,invalid))
+      .rejects.toMatchObject({name:"CalendarConnectionFailure",issue:"invalid-response"});
+  });
   it("does not mistake an unreachable provider for a connected calendar",()=>{
     expect(new CalendarConnectionFailure("network").issue).toBe("network");
   });

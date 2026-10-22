@@ -38,6 +38,8 @@ jobs:
       # Fail fast on the exact calendar browser path before running 1,000+ tests.
       # The studio Chromium project uses Playwright's full new-headless Chromium,
       # not chromium_headless_shell (which SIGSEGV'd twice on the runner).
+      - name: Live StudyOS Hub endpoint CORS/preflight (no credentials)
+        run: node scripts/check-studyos-calendar-edge.mjs
       - name: Full Chromium calendar startup smoke
         run: |
           npm run build

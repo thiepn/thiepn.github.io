@@ -134,8 +134,10 @@ if(root&&panel) {
         session:"THIEPN Account session needs to be refreshed. Sign in again.",
         permission:"StudyOS rejected this Account's calendar access. Reconnect your Account in StudyOS.",
         endpoint:"StudyOS calendar service is not deployed. The Hub cannot load it yet.",
-        source:"StudyOS could not read the connected calendar. Check the source in StudyOS.",
-        network:"Cannot reach StudyOS. Check your connection and retry.",
+        source:"StudyOS returned a server error. Open StudyOS and check its calendar connection.",
+        request:"StudyOS rejected the requested calendar date. Refresh Hub and try again.",
+        "invalid-response":"StudyOS returned an invalid calendar response. The service may need an update.",
+        network:"StudyOS request was blocked or could not reach the server. Check the browser Network panel for the failed request.",
         timeout:"StudyOS did not respond in time. Retry the calendar connection."
       } satisfies Record<CalendarConnectionIssue,string>)[error];
       return;
