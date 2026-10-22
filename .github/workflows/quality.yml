@@ -39,6 +39,8 @@ jobs:
         run: |
           npm run build
           npx playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-calendar-c1.spec.ts tests/studio/hub-calendar-composition-c2.spec.ts -g 'calendar selected day remains circular|C2 original local event flows through ephemeral native calendar projection'
+      - name: WebKit Account refresh fallback smoke
+        run: npx playwright test -c playwright.studio.config.ts --project=webkit tests/studio/hub-sync.spec.ts -g 'concurrent new tabs share one rotating refresh even without Web Locks'
       - run: npm run audit:studio
       - name: Hub public release profile gate
         run: npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke
