@@ -1,0 +1,12 @@
+# Office O29 — original section citation trail
+
+Same draft PR #175, branch `feature/hub-office-o1-native-documents`, originating at exact O28 `7fb80d04310cdde70f0a48bd3d6da2ed6677a724`.
+
+O28 exact-head CI: 473 Vitest tests passed, 1024 browser tests passed including all O27/O28 regressions across all three engines. Quality failed on one intermittent older O3 WebKit backup-button click timeout without sufficient evidence of the root cause; Library and Reading still fail Account IndexedDB-before-consent checks. This Office phase does not weaken assertions or make unsupported root-cause claims. WebKit Account refresh remains separately unqualified.
+
+O29 introduces section-based citation navigation in long, locally owned original Markdown. It derives genuine footnote marker positions exclusively from O19's original analyzer, and section boundaries and exact heading paths from O18's original heading references. A section chooser displays authored nested headings (including duplicate heading titles as distinct ordered sections), reference-use counts and distinctive citations. Selecting a source ID filters uses to that citation and exposes other actual sections where the same ID occurs. Readers may jump to any original use across distant sections, or a unique original definition; ambiguous/missing definitions are not treated as unique. A bounded 20-use page avoids massive lists on narrow screens, and preamble references remain reachable.
+
+All controls use source positions reverified against the original parser immediately before navigation; in-memory state is fenced by owner scope, document ID, current saved revision and exact Markdown text. It clears on edits, saves, document switches and privacy masks. More than 120 genuine headings or 160 footnote IDs, or existing analyzer limits, fail closed rather than silently discard items. Fenced/inline pseudoreferences never count as original citations. This is organizational navigation, not a citation verifier, new editor, persistent index, store, schema or writer. Office v1 CAS/history and KEEP, Manuscript, StudyOS, Folio, Hub v1 and Account remain independent.
+
+Focused source tests cover authentic nested/duplicate headings, CRLF/Unicode, referenced but missing and unused definitions, shared citations, preamble, fences, duplicates, and bounds; browser tests cover section route/navigation, paging, filters, long document, mobile privacy, original CAS/stale source and reload.
+No merge, deployment, migrations, credentials, production writes, manual billable CI or costs.

@@ -1,0 +1,614 @@
+---
+import '../../styles/office-documents.css';
+---
+<section class="office-root ws-surface" data-office data-office-mode="split" aria-labelledby="office-heading">
+  <header class="office-intro"><div><h2 id="office-heading">Documents</h2><p>Local Markdown drafts · no cloud sync or import from Manuscript</p></div><div class="office-create"><label for="office-template">Starting layout</label><select id="office-template" data-office-template disabled><option value="blank">Blank document</option><option value="meeting">Meeting notes</option><option value="brief">Project brief</option><option value="report">Structured report</option><option value="study">Study notes</option></select><button type="button" class="ws-button" data-office-new disabled>New document</button></div></header>
+  <div class="office-grid">
+    <nav class="office-list" aria-label="Your documents">
+      <label for="office-search">Find documents</label>
+      <input id="office-search" type="search" data-office-search maxlength="120" placeholder="Search titles and contents" autocomplete="off" disabled/>
+      <div class="office-library-tools"><label for="office-sort">Order</label><select id="office-sort" data-office-sort disabled><option value="recent">Recently edited</option><option value="title">Title A–Z</option></select></div>
+      <p class="ws-muted" data-office-count aria-live="polite">Documents on this device</p>
+      <div class="office-bundle-controls">
+        <p class="ws-muted" data-office-bundle-count aria-live="polite">0 documents selected</p>
+        <div class="office-bundle-shortcuts"><button type="button" data-office-select-visible disabled>Select visible</button><button type="button" data-office-clear-selection disabled>Clear selection</button></div>
+        <button type="button" class="ws-button" data-office-bundle disabled>Export selected Markdown (.zip)</button>
+        <p class="ws-muted">Exports saved Markdown only. For document history use the separate JSON backup; unsaved work is excluded.</p>
+      </div>
+      <div data-office-list></div>
+      <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
+<div class="office-multi-picker"><label for="office-multi-files">Import multiple Markdown documents</label><input id="office-multi-files" data-office-multi-files type="file" accept=".md,.markdown,text/markdown" multiple disabled/><p class="ws-muted">Select up to 20 files; each 256 KB maximum, 4 MB combined. All files must pass validation before importing any.</p></div>
+      <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
+      <div class="office-restore-picker"><label for="office-restore-file">Restore an Office backup</label><input id="office-restore-file" type="file" accept=".json,application/json" data-office-restore-file disabled/><p class="ws-muted">Only missing original document IDs will be added. Existing records are never replaced.</p></div>
+      <p class="ws-muted">A backup includes saved versions and revision history. Unsaved drafts must be exported separately.</p>
+    </nav>
+    <section class="office-editor" aria-label="Document editor">
+      <section class="office-multi-review" data-office-multi-panel hidden aria-label="Review multiple Markdown documents">
+        <h3>Review multi-document import</h3>
+        <p class="ws-muted" data-office-multi-summary></p>
+        <p class="ws-muted">Each file becomes a separate new document with a new internal ID. Similar titles are allowed; existing documents and revision histories are never overwritten.</p>
+        <div class="office-multi-list" data-office-multi-list></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-multi-confirm disabled>Import all as new documents</button><button type="button" class="ws-button" data-office-multi-cancel disabled>Cancel</button></div>
+      </section>
+      <section class="office-backup-review" data-office-restore-panel hidden aria-label="Review Office backup restoration">
+        <h3>Review backup restoration</h3>
+        <p data-office-restore-summary class="ws-muted"></p>
+        <p class="ws-muted">Records are added to the current local Office owner only. Backups have no verified owner identity; all existing IDs and history remain untouched.</p>
+        <div class="office-restore-list" data-office-restore-list></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-restore-confirm disabled>Restore missing documents</button><button type="button" class="ws-button" data-office-restore-cancel disabled>Cancel</button></div>
+      </section>
+      <section class="office-import-preview" data-office-import-panel hidden aria-label="Review Markdown import">
+        <h3>Review before importing</h3>
+        <p data-office-import-info class="ws-muted"></p>
+        <label for="office-import-title">New document title</label><input id="office-import-title" data-office-import-title maxlength="120" autocomplete="off" disabled/>
+        <p class="ws-muted">A separate new Office document will be created. This preview shows only the first part of the file.</p>
+        <div class="office-import-render office-preview" data-office-import-render></div>
+        <div class="office-import-actions"><button type="button" class="ws-button" data-office-import-confirm disabled>Import as new document</button><button type="button" class="ws-button" data-office-import-cancel disabled>Cancel</button></div>
+      </section>
+      <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button><button type="button" class="ws-button" data-office-compare disabled>Compare selected revision</button></div>
+      <section class="office-timeline" aria-label="Office revision timeline" data-office-timeline>
+        <div class="office-timeline-heading"><h3>Document history</h3><p data-office-timeline-note class="ws-muted">Create or open a document to inspect saved revisions.</p></div>
+        <div class="office-history-search">
+          <label for="office-history-search">Search retained history</label>
+          <input id="office-history-search" type="search" maxlength="120" data-office-history-search disabled autocomplete="off" placeholder="Find titles or saved Markdown"/>
+          <label class="office-history-case"><input type="checkbox" data-office-history-case disabled/> Match case</label>
+          <p data-office-history-count aria-live="polite" role="status">No versions available</p>
+        </div>
+        <div class="office-timeline-list" data-office-timeline-list role="list"></div>
+        <section data-office-timeline-preview hidden class="office-timeline-preview" aria-label="Selected saved revision">
+          <p class="ws-muted" data-office-timeline-summary></p>
+          <pre data-office-timeline-excerpt></pre>
+          <p class="ws-muted" data-office-timeline-truncated></p>
+          <p class="ws-muted" data-office-timeline-baseline-note>No baseline selected</p>
+          <section data-office-timeline-pair-panel hidden aria-label="Two saved revisions comparison">
+            <h4>Compare two retained revisions</h4>
+            <p data-office-timeline-pair-summary></p>
+            <div data-office-timeline-pair-diffs class="office-timeline-pair-diffs"></div>
+          </section>
+          <div class="office-import-actions">
+            <button type="button" class="ws-button" data-office-timeline-compare disabled>Compare with current</button>
+            <button type="button" class="ws-button" data-office-timeline-baseline disabled>Set comparison baseline</button>
+            <button type="button" class="ws-button" data-office-timeline-pair disabled>Compare two saved revisions</button>
+            <button type="button" class="ws-button" data-office-timeline-restore disabled>Restore this revision…</button>
+            <button type="button" class="ws-button" data-office-timeline-close>Close preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-revision-review" data-office-compare-panel hidden aria-label="Revision comparison and selective recovery">
+        <h3>Compare revision with current draft</h3>
+        <p class="ws-muted" data-office-compare-summary></p>
+        <section class="office-hunk-navigation" aria-label="Navigate changed sections of revision">
+          <div class="office-hunk-toolbar"><button type="button" data-office-hunk-prev disabled>Previous change</button><p data-office-hunk-position role="status" aria-live="polite">No differences selected</p><button type="button" data-office-hunk-next disabled>Next change</button></div>
+          <p class="ws-muted" data-office-hunk-details></p>
+          <div class="office-revision-diff" data-office-hunk-preview></div>
+          <div class="office-hunk-toolbar">
+            <button type="button" data-office-hunk-historical disabled>Choose historical lines</button>
+            <button type="button" data-office-hunk-current disabled>Focus current change</button>
+          </div>
+        </section>
+        <div class="office-revision-diffs" data-office-compare-diffs aria-label="Changed historical and current lines"></div>
+        <section class="office-batch-recovery" data-office-batch-panel aria-label="Recover several historical changes">
+          <h4>Recover several changes</h4>
+          <p class="ws-muted">Select up to 20 precise change groups below. Preview the complete resulting Markdown before one revision-checked save. This does not overwrite the original history.</p>
+          <div class="office-batch-change-list" data-office-batch-list></div>
+          <p class="ws-muted" data-office-batch-selection>0 changes selected</p>
+          <div class="office-import-actions"><button type="button" class="ws-button" data-office-batch-preview disabled>Preview combined recovery</button><button type="button" class="ws-button" data-office-batch-cancel disabled>Clear selection</button></div>
+          <div data-office-batch-result hidden>
+            <p data-office-batch-summary class="ws-muted"></p>
+            <label for="office-batch-document">Resulting Markdown — review before confirming</label>
+            <textarea id="office-batch-document" data-office-batch-document readonly spellcheck="false" rows="10"></textarea>
+            <div class="office-import-actions"><button type="button" class="ws-button" data-office-batch-confirm disabled>Confirm and save one new revision…</button><button type="button" class="ws-button" data-office-batch-dismiss>Dismiss preview</button></div>
+          </div>
+        </section>
+        <fieldset class="office-recover-range"><legend>Recover specific historical lines</legend>
+          <label for="office-recover-start">From line</label><input id="office-recover-start" data-office-recover-start type="number" min="1" step="1" disabled/>
+          <label for="office-recover-end">To line</label><input id="office-recover-end" data-office-recover-end type="number" min="1" step="1" disabled/>
+          <p class="ws-muted" data-office-recover-info></p><pre data-office-recover-preview></pre>
+        </fieldset>
+        <p class="ws-muted">Recovery modifies only the open editor. It cannot change the historical snapshot. Autosave creates a new revision and may reject concurrent edits.</p>
+        <div class="office-import-actions">
+          <button type="button" class="ws-button" data-office-recover-insert disabled>Insert at cursor…</button>
+          <button type="button" class="ws-button" data-office-recover-replace disabled>Replace current selection…</button>
+          <button type="button" class="ws-button" data-office-compare-close disabled>Close comparison</button>
+        </div>
+      </section>
+      <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
+      <div class="office-format" role="toolbar" aria-label="Markdown formatting">
+        <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>
+      </div>
+      <section class="office-writing-tools" aria-label="Long document writing tools">
+        <div class="office-writing-stats" data-office-writing-stats role="status" aria-live="polite">Open a document for writing statistics.</div>
+        <div class="office-writing-controls">
+          <label for="office-writing-line">Go to line</label><input id="office-writing-line" data-office-writing-line type="number" min="1" step="1" disabled placeholder="1"/>
+          <button type="button" data-office-writing-go disabled>Go to line</button>
+          <label for="office-writing-block">Insert Markdown block</label>
+          <select id="office-writing-block" data-office-writing-block disabled><option value="code">Fenced code</option><option value="table">Markdown table</option><option value="tasks">Task checklist</option><option value="rule">Horizontal divider</option></select>
+          <label for="office-writing-rows">Rows</label><input id="office-writing-rows" data-office-writing-rows type="number" min="1" max="12" step="1" value="2" disabled/>
+          <label for="office-writing-columns">Columns</label><input id="office-writing-columns" data-office-writing-columns type="number" min="2" max="6" step="1" value="2" disabled/>
+          <label for="office-writing-language">Code language</label><input id="office-writing-language" data-office-writing-language maxlength="24" placeholder="Optional" disabled/>
+          <button type="button" data-office-writing-insert disabled>Insert at selection</button>
+        </div>
+        <p class="ws-muted">Inserts safe Markdown into the existing editor, using the same original revision-checked autosave. Existing selected text may be replaced.</p>
+      </section>
+      <section class="office-toc-tools" aria-label="Source-backed contents and cross-references">
+        <h3>Contents and internal references</h3>
+        <p class="ws-muted">Create or refresh a navigable table of contents from genuine Markdown headings. Preview the entire result before saving. Reference links navigate to original source headings.</p>
+        <div class="office-toc-actions">
+          <button type="button" data-office-toc-review disabled>Preview table of contents…</button>
+          <label for="office-reference-heading">Reference heading</label>
+          <select id="office-reference-heading" data-office-reference-heading disabled><option value="">Choose a heading</option></select>
+          <button type="button" data-office-reference-insert disabled>Insert link at cursor</button>
+        </div>
+        <section class="office-toc-review" data-office-toc-panel hidden aria-label="Confirm Markdown table of contents">
+          <p data-office-toc-summary class="ws-muted"></p>
+          <label for="office-toc-source">Resulting source — review before confirmation</label>
+          <textarea id="office-toc-source" data-office-toc-source readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-toc-actions">
+            <button type="button" data-office-toc-confirm disabled>Confirm one saved revision…</button>
+            <button type="button" data-office-toc-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-footnotes" aria-label="Source footnotes and reference validation">
+        <h3>Footnotes and reference check</h3>
+        <p class="ws-muted">Insert a footnote or inspect missing, duplicate and unused footnotes and broken heading links. For a missing footnote, enter text above and use its Define action; to repair a broken link, select a genuine heading above and use Retarget. All changes use original revision-safe autosave, without a separate index.</p>
+        <div class="office-footnote-controls">
+          <label for="office-footnote-id">Footnote ID</label>
+          <input id="office-footnote-id" data-office-footnote-id maxlength="48" autocomplete="off" placeholder="Automatic note-1" disabled/>
+          <label for="office-footnote-text">Footnote text</label>
+          <input id="office-footnote-text" data-office-footnote-text maxlength="1000" autocomplete="off" placeholder="Add source details or a citation" disabled/>
+          <button type="button" data-office-footnote-insert disabled>Insert footnote at selection</button>
+        </div>
+        <div class="office-reference-check">
+          <p role="status" aria-live="polite" data-office-reference-summary>No open document.</p>
+          <div data-office-reference-problems class="office-reference-problems" aria-label="Reference issues"></div>
+
+          <section class="office-prose-review" aria-label="Review prose citation markers">
+            <h4>Prose review</h4>
+            <button type="button" data-office-prose-review disabled>Review prose paragraphs</button>
+            <p data-office-prose-summary role="status">No prose review.</p>
+            <div class="office-citation-actions">
+              <label for="office-prose-filter">References</label>
+              <select id="office-prose-filter" data-office-prose-filter disabled>
+                <option value="all">All prose</option>
+                <option value="unmarked">No footnote marker</option>
+                <option value="cited">Locally defined</option>
+                <option value="unresolved">Unresolved locally</option>
+              </select>
+              <label for="office-prose-section">Section</label>
+              <select id="office-prose-section" data-office-prose-section disabled>
+                <option value="">All sections</option>
+              </select>
+            </div>
+            <div data-office-prose-rows class="office-prose-rows"></div>
+            <div class="office-citation-actions">
+              <button type="button" data-office-prose-previous disabled>Previous 20</button>
+              <p data-office-prose-position></p>
+              <button type="button" data-office-prose-next disabled>Next 20</button>
+            </div>
+          </section>
+
+          <section class="office-footnote-order" aria-label="Reorder original footnote definitions">
+            <h4>Footnote order</h4>
+            <button type="button" data-office-order-review disabled>Inspect terminal definitions</button>
+            <p data-office-order-summary role="status">No footnote order reviewed.</p>
+            <div data-office-order-candidates class="office-order-candidates"></div>
+            <div class="office-citation-actions">
+              <label for="office-order-mode">Order</label>
+              <select id="office-order-mode" data-office-order-mode disabled>
+                <option value="first-use">First citation use</option>
+                <option value="id">Citation ID</option>
+              </select>
+              <button type="button" data-office-order-preview disabled>Preview reordered Markdown</button>
+            </div>
+            <section class="office-citation-restore-panel" data-office-order-panel hidden aria-label="Review reordered original footnotes">
+              <p role="status" data-office-order-change></p>
+              <label for="office-order-result">Resulting original Markdown</label>
+              <textarea id="office-order-result" data-office-order-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-order-confirm disabled>Apply definition order</button>
+                <button type="button" data-office-order-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+
+          <section class="office-section-trail" aria-label="Citations organized by document section">
+            <h4>Citations by section</h4>
+            <button type="button" data-office-section-trail-review disabled>Map source citations</button>
+            <p data-office-section-trail-summary role="status">No section citation review.</p>
+            <div class="office-citation-actions">
+              <label for="office-section-trail-section">Section</label>
+              <select id="office-section-trail-section" data-office-section-trail-section disabled>
+                <option value="">Choose section</option>
+              </select>
+              <label for="office-section-trail-citation">Citation</label>
+              <select id="office-section-trail-citation" data-office-section-trail-citation disabled>
+                <option value="">All citations</option>
+              </select>
+              <button type="button" data-office-section-trail-definition disabled>Go to definition</button>
+            </div>
+            <div data-office-section-trail-details class="office-section-trail-details"></div>
+            <div data-office-section-trail-uses class="office-section-trail-uses"></div>
+            <div class="office-citation-actions">
+              <button type="button" data-office-section-trail-previous disabled>Previous 20</button>
+              <p data-office-section-trail-page></p>
+              <button type="button" data-office-section-trail-next disabled>Next 20</button>
+            </div>
+            <div data-office-section-trail-related class="office-section-trail-related"></div>
+          </section>
+
+          <section class="office-citation-impact" aria-label="Citation use impact and source audit">
+            <h4>Citation use impact</h4>
+            <div class="office-citation-actions">
+              <label for="office-impact-base">Compare with</label>
+              <select id="office-impact-base" data-office-impact-base disabled>
+                <option value="">Current source only</option>
+              </select>
+              <button type="button" data-office-impact-review disabled>Review source uses</button>
+            </div>
+            <p data-office-impact-summary role="status" aria-live="polite">No use impact reviewed.</p>
+            <div class="office-citation-actions">
+              <label for="office-impact-citation">Footnote</label>
+              <select id="office-impact-citation" data-office-impact-citation disabled>
+                <option value="">Choose footnote</option>
+              </select>
+              <button type="button" data-office-impact-history disabled>View compared revision</button>
+            </div>
+            <div class="office-citation-impact-detail" data-office-impact-detail></div>
+            <div class="office-citation-actions">
+              <label for="office-impact-current-use">Current use</label>
+              <select id="office-impact-current-use" data-office-impact-current-use disabled>
+                <option value="">Choose current use</option>
+              </select>
+              <button type="button" data-office-impact-jump disabled>Go to source use</button>
+            </div>
+            <button type="button" data-office-impact-export disabled>Export source-use audit (.txt)</button>
+          </section>
+
+          <section class="office-duplicate-triage" aria-label="Resolve duplicate footnote definitions">
+            <button type="button" data-office-duplicate-review disabled>Review duplicate definitions</button>
+            <div data-office-duplicate-panel hidden>
+              <label for="office-duplicate-group">Duplicate citation ID</label>
+              <select id="office-duplicate-group" data-office-duplicate-group disabled>
+                <option value="">Choose duplicate ID</option>
+              </select>
+              <p data-office-duplicate-status role="status"></p>
+              <div data-office-duplicate-candidates class="office-duplicate-candidates"></div>
+              <button type="button" data-office-duplicate-preview disabled>Preview exact resolution</button>
+              <section data-office-duplicate-result-panel hidden class="office-citation-restore-panel" aria-label="Review original definition removal">
+                <p data-office-duplicate-result-summary role="status"></p>
+                <div data-office-duplicate-removed class="office-duplicate-removed"></div>
+                <label for="office-duplicate-result">Resulting original Markdown</label>
+                <textarea id="office-duplicate-result" data-office-duplicate-result readonly rows="10" spellcheck="false"></textarea>
+                <div class="office-citation-actions">
+                  <button type="button" data-office-duplicate-confirm disabled>Keep selected definition</button>
+                  <button type="button" data-office-duplicate-cancel>Cancel preview</button>
+                </div>
+              </section>
+            </div>
+          </section>
+
+        <section class="office-issue-history" aria-label="Reference issue history">
+          <div class="office-citation-actions">
+            <button type="button" data-office-issue-history-review disabled>Review issue history</button>
+            <label for="office-issue-history-filter">Show</label>
+            <select id="office-issue-history-filter" data-office-issue-history-filter disabled>
+              <option value="unresolved">Unresolved</option>
+              <option value="resolved">Resolved</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <p data-office-issue-history-summary role="status" aria-live="polite">No issue history reviewed.</p>
+          <div data-office-issue-history-rows class="office-issue-history-rows"></div>
+        </section>
+        </div>
+        <section class="office-citation-workbench" aria-label="Existing source citations">
+          <h4>Reuse and navigate citations</h4>
+          <p class="ws-muted">Select a genuine footnote, jump between source uses, cite it again, or rename its ID throughout original Markdown. Inline and fenced code remains unchanged.</p>
+          <div class="office-citation-actions">
+            <label for="office-citation-select">Existing footnote</label>
+            <select id="office-citation-select" data-office-citation-select disabled><option value="">Choose existing footnote</option></select>
+            <button type="button" data-office-citation-definition disabled>Go to definition</button>
+            <button type="button" data-office-citation-usage disabled>Next use</button>
+            <button type="button" data-office-citation-insert disabled>Cite at cursor</button>
+          </div>
+          <p class="ws-muted" data-office-citation-summary role="status" aria-live="polite">No citation selected.</p>
+          <div class="office-citation-actions">
+            <label for="office-citation-new-id">Rename selected ID</label>
+            <input id="office-citation-new-id" data-office-citation-new-id maxlength="48" autocomplete="off" placeholder="e.g. research-source" disabled/>
+            <button type="button" data-office-citation-rename disabled>Rename across source</button>
+          </div>
+          <div class="office-citation-actions">
+            <label for="office-citation-edit">Definition text</label>
+            <input id="office-citation-edit" data-office-citation-edit maxlength="1000" disabled autocomplete="off"/>
+            <button type="button" data-office-citation-edit-apply disabled>Update definition</button>
+            <button type="button" data-office-citation-edit-cancel disabled>Discard edit</button>
+          </div>
+          <p data-office-citation-edit-status role="status" aria-live="polite"></p>
+
+          <section class="office-citation-merge" aria-label="Resolve changes across three original revisions">
+            <h4>Three-revision citation reconciliation</h4>
+            <div class="office-citation-actions">
+              <label for="office-citation-merge-base">Baseline</label>
+              <select id="office-citation-merge-base" data-office-citation-merge-base disabled>
+                <option value="">Choose baseline revision</option>
+              </select>
+              <label for="office-citation-merge-incoming">Proposed</label>
+              <select id="office-citation-merge-incoming" data-office-citation-merge-incoming disabled>
+                <option value="">Choose proposed revision</option>
+              </select>
+              <button type="button" data-office-citation-merge-review disabled>Compare three revisions</button>
+            </div>
+            <p role="status" aria-live="polite" data-office-citation-merge-summary>No three-way comparison selected.</p>
+            <div class="office-citation-audit-changes" data-office-citation-merge-rows></div>
+            <button type="button" data-office-citation-merge-preview disabled>Preview resolved citations</button>
+            <section data-office-citation-merge-panel hidden class="office-citation-restore-panel" aria-label="Review three-revision citation result">
+              <p data-office-citation-merge-preview-summary role="status"></p>
+              <label for="office-citation-merge-result">Resulting original Markdown</label>
+              <textarea id="office-citation-merge-result" data-office-citation-merge-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-citation-merge-confirm disabled>Apply resolved definitions</button>
+                <button type="button" data-office-citation-merge-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+
+          <section class="office-citation-audit" aria-label="Review citation changes against saved revision">
+            <h4>Changes since saved revision</h4>
+            <div class="office-citation-actions">
+              <label for="office-citation-audit-base">Compare with</label>
+              <select id="office-citation-audit-base" data-office-citation-audit-base disabled>
+                <option value="">Choose retained revision</option>
+              </select>
+              <button type="button" data-office-citation-audit-compare disabled>Compare citations</button>
+            </div>
+            <p role="status" aria-live="polite" data-office-citation-audit-summary>No comparison selected.</p>
+            <div data-office-citation-audit-changes class="office-citation-audit-changes"></div>
+            <div class="office-citation-actions">
+              <p data-office-citation-batch-selected role="status">0 of 12 definitions selected</p>
+              <button type="button" data-office-citation-batch-preview disabled>Preview selected definitions</button>
+            </div>
+            <section data-office-citation-batch-panel hidden class="office-citation-restore-panel" aria-label="Review selected historical citation definitions">
+              <p data-office-citation-batch-summary role="status"></p>
+              <label for="office-citation-batch-result">Resulting original Markdown</label>
+              <textarea id="office-citation-batch-result" data-office-citation-batch-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-citation-batch-confirm disabled>Apply selected definitions</button>
+                <button type="button" data-office-citation-batch-cancel>Cancel preview</button>
+              </div>
+            </section>
+            <section data-office-citation-restore-panel hidden class="office-citation-restore-panel" aria-label="Review selective citation recovery">
+              <p data-office-citation-restore-summary role="status"></p>
+              <label for="office-citation-restore-result">Resulting original Markdown — review before saving</label>
+              <textarea id="office-citation-restore-result" data-office-citation-restore-result readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-citation-actions">
+                <button type="button" data-office-citation-restore-confirm disabled>Restore this definition</button>
+                <button type="button" data-office-citation-restore-cancel>Cancel</button>
+              </div>
+            </section>
+          </section>
+        </section>
+      </section>
+      <section class="office-external-links" aria-label="External Markdown link review">
+        <h3>External links</h3>
+        <button type="button" data-office-link-review disabled>Review source links</button>
+        <p data-office-link-summary role="status" aria-live="polite">No link review.</p>
+        <div class="office-link-controls">
+          <label for="office-link-target">Original target</label>
+          <select id="office-link-target" data-office-link-target disabled><option value="">Choose link target</option></select>
+        </div>
+        <div data-office-link-uses class="office-link-uses"></div>
+        <div class="office-link-controls">
+          <button type="button" data-office-link-previous disabled>Previous uses</button>
+          <p data-office-link-page></p>
+          <button type="button" data-office-link-next disabled>Next uses</button>
+        </div>
+        <div class="office-link-controls">
+          <label for="office-link-replacement">New HTTPS target</label>
+          <input id="office-link-replacement" data-office-link-replacement type="url" maxlength="2048" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-link-preview disabled>Preview replacing this target</button>
+        </div>
+        <section data-office-link-plan hidden class="office-link-plan" aria-label="Confirm external Markdown link changes">
+          <p data-office-link-change role="status"></p>
+          <label for="office-link-result">Resulting Markdown</label>
+          <textarea id="office-link-result" data-office-link-result readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-link-controls">
+            <button type="button" data-office-link-confirm disabled>Apply target change</button>
+            <button type="button" data-office-link-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-terminology" aria-label="Selective prose terminology editing">
+        <h3>Prose terminology</h3>
+        <div class="office-term-controls">
+          <label for="office-term-query">Original term (exact case)</label>
+          <input id="office-term-query" data-office-term-query type="search" maxlength="60" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-term-review disabled>Find in prose</button>
+        </div>
+        <p data-office-term-summary role="status" aria-live="polite">No terminology review.</p>
+        <div class="office-term-actions">
+          <button type="button" data-office-term-all disabled>Select all</button>
+          <button type="button" data-office-term-none disabled>Clear selection</button>
+        </div>
+        <div data-office-term-rows class="office-term-rows"></div>
+        <div class="office-term-actions">
+          <button type="button" data-office-term-previous disabled>Previous occurrences</button>
+          <p data-office-term-page></p>
+          <button type="button" data-office-term-next disabled>Next occurrences</button>
+        </div>
+        <div class="office-term-controls">
+          <label for="office-term-replacement">Replacement term</label>
+          <input id="office-term-replacement" data-office-term-replacement maxlength="80" autocomplete="off" spellcheck="false" disabled/>
+          <button type="button" data-office-term-preview disabled>Preview selected changes</button>
+        </div>
+        <section data-office-term-plan hidden class="office-term-plan" aria-label="Confirm selected prose terminology changes">
+          <p data-office-term-change role="status"></p>
+          <label for="office-term-result">Resulting Markdown</label>
+          <textarea id="office-term-result" data-office-term-result rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-term-actions">
+            <button type="button" data-office-term-confirm disabled>Apply selected changes</button>
+            <button type="button" data-office-term-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-transfer" aria-label="Transfer prose from another Office document">
+        <h3>Source excerpts</h3>
+        <button type="button" data-office-transfer-load disabled>Find source documents</button>
+        <div class="office-transfer-controls">
+          <label for="office-transfer-source">Original Office document</label>
+          <select id="office-transfer-source" data-office-transfer-source disabled><option value="">Choose source</option></select>
+          <button type="button" data-office-transfer-review disabled>Review paragraphs</button>
+        </div>
+        <p data-office-transfer-summary role="status" aria-live="polite">No excerpt review.</p>
+        <div class="office-transfer-controls">
+          <button type="button" data-office-transfer-all disabled>Select eligible</button>
+          <button type="button" data-office-transfer-none disabled>Clear selection</button>
+        </div>
+        <div class="office-transfer-items" data-office-transfer-items></div>
+        <div class="office-transfer-controls">
+          <button type="button" data-office-transfer-prev disabled>Previous paragraphs</button>
+          <p data-office-transfer-page></p>
+          <button type="button" data-office-transfer-next disabled>Next paragraphs</button>
+        </div>
+        <button type="button" data-office-transfer-preview disabled>Preview transfer</button>
+        <section class="office-transfer-plan" data-office-transfer-plan hidden aria-label="Confirm original source excerpt transfer">
+          <p data-office-transfer-change role="status"></p>
+          <label for="office-transfer-result">Resulting Markdown</label>
+          <textarea id="office-transfer-result" data-office-transfer-result readonly rows="10" spellcheck="false"></textarea>
+          <div class="office-transfer-controls">
+            <button type="button" data-office-transfer-confirm disabled>Append selected excerpts</button>
+            <button type="button" data-office-transfer-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-checklists" aria-label="Review document checklists">
+        <h3>Document checklists</h3>
+        <button type="button" data-office-checklist-review disabled>Review checklists</button>
+        <p data-office-checklist-summary role="status" aria-live="polite">No checklist review.</p>
+        <div class="office-checklist-controls">
+          <label for="office-checklist-filter">Show</label>
+          <select data-office-checklist-filter id="office-checklist-filter" disabled>
+            <option value="all">All tasks</option>
+            <option value="open">Open tasks</option>
+            <option value="completed">Completed tasks</option>
+          </select>
+          <label for="office-checklist-action">Change selected to</label>
+          <select data-office-checklist-action id="office-checklist-action" disabled>
+            <option value="complete">Completed</option>
+            <option value="open">Open</option>
+          </select>
+        </div>
+        <div class="office-checklist-controls">
+          <button type="button" data-office-checklist-all disabled>Select eligible</button>
+          <button type="button" data-office-checklist-none disabled>Clear selection</button>
+        </div>
+        <div data-office-checklist-items class="office-checklist-items"></div>
+        <div class="office-checklist-controls">
+          <button type="button" data-office-checklist-prev disabled>Previous tasks</button>
+          <p data-office-checklist-page></p>
+          <button type="button" data-office-checklist-next disabled>Next tasks</button>
+        </div>
+        <button type="button" data-office-checklist-preview disabled>Preview selected changes</button>
+        <section data-office-checklist-plan class="office-checklist-plan" aria-label="Confirm original checklist changes" hidden>
+          <p data-office-checklist-change role="status"></p>
+          <label for="office-checklist-result">Resulting Markdown</label>
+          <textarea data-office-checklist-result id="office-checklist-result" rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-checklist-controls">
+            <button type="button" data-office-checklist-confirm disabled>Apply selected changes</button>
+            <button type="button" data-office-checklist-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-tables" aria-label="Edit existing Markdown tables">
+        <h3>Markdown tables</h3>
+        <button type="button" data-office-table-review disabled>Review tables</button>
+        <p data-office-table-summary role="status" aria-live="polite">No table review.</p>
+        <div class="office-table-controls">
+          <label for="office-table-choice">Table</label>
+          <select id="office-table-choice" data-office-table-choice disabled><option value="">Choose table</option></select>
+          <button type="button" data-office-table-jump disabled>Go to source</button>
+        </div>
+        <div class="office-table-grid" data-office-table-rows></div>
+        <div class="office-table-controls">
+          <label for="office-table-action">Change</label>
+          <select id="office-table-action" data-office-table-action disabled>
+            <option value="cell">Edit cell</option>
+            <option value="append-row">Append row</option>
+            <option value="delete-row">Remove row</option>
+          </select>
+          <div class="office-table-field" data-office-table-row-field>
+            <label for="office-table-row">Data row</label>
+            <select id="office-table-row" data-office-table-row disabled><option value="">Choose row</option></select>
+          </div>
+          <div class="office-table-field" data-office-table-column-field>
+            <label for="office-table-column">Column</label>
+            <select id="office-table-column" data-office-table-column disabled><option value="">Choose column</option></select>
+          </div>
+          <div class="office-table-field" data-office-table-cell-field>
+            <label for="office-table-cell">Cell text</label>
+            <input id="office-table-cell" data-office-table-cell type="text" maxlength="240" autocomplete="off" disabled/>
+          </div>
+        </div>
+        <div data-office-table-new-cells class="office-table-new-cells" hidden></div>
+        <button type="button" data-office-table-preview disabled>Preview table change</button>
+        <section data-office-table-plan class="office-table-plan" aria-label="Confirm original Markdown table change" hidden>
+          <p data-office-table-change role="status"></p>
+          <label for="office-table-result">Resulting Markdown</label>
+          <textarea data-office-table-result id="office-table-result" rows="10" readonly spellcheck="false"></textarea>
+          <div class="office-table-controls">
+            <button type="button" data-office-table-confirm disabled>Apply table change</button>
+            <button type="button" data-office-table-cancel>Cancel preview</button>
+          </div>
+        </section>
+      </section>
+      <section class="office-find" aria-label="Find and replace in document">
+        <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
+        <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>
+        <div class="office-find-row"><label for="office-replace-value">Replace with</label><input id="office-replace-value" data-office-replace-value type="text" maxlength="120" autocomplete="off" disabled/><button type="button" data-office-replace-all disabled>Replace all…</button></div>
+      </section>
+      <div class="office-modes" role="group" aria-label="Editor layout"><button type="button" data-office-mode="write" aria-pressed="false">Write</button><button type="button" data-office-mode="split" aria-pressed="true">Split</button><button type="button" data-office-mode="preview" aria-pressed="false">Preview</button></div>
+      <div class="office-compose"><div class="office-source"><label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea></div><section class="office-preview-panel" aria-label="Markdown preview"><h3>Preview</h3><div data-office-preview class="office-preview" aria-live="off"></div></section></div>
+      <aside class="office-outline" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav>
+        <div class="office-section-controls" aria-label="Section actions">
+          <label for="office-section-select">Edit a heading section</label><select id="office-section-select" data-office-section-select disabled><option value="">Choose heading</option></select>
+          <div class="office-section-buttons"><button type="button" data-office-section-focus disabled>Select full section</button><button type="button" data-office-section-up disabled>Move earlier</button><button type="button" data-office-section-down disabled>Move later</button></div>
+          <div class="office-section-create" aria-label="Insert an original Markdown section">
+            <label for="office-section-title">New section title</label><input id="office-section-title" data-office-section-title maxlength="100" disabled autocomplete="off" placeholder="e.g. Key findings"/>
+            <div class="office-section-buttons">
+              <button type="button" data-office-section-add-sibling disabled>Insert following section</button>
+              <button type="button" data-office-section-add-child disabled>Insert nested subsection</button>
+            </div>
+            <p class="ws-muted">Choose a heading above or place your cursor in a section. Ctrl/⌘ + Shift + Enter inserts a following section using this title.</p>
+          </div>
+          <section class="office-section-transform" aria-label="Restructure complete Markdown sections">
+            <h4>Restructure a saved section</h4>
+            <p class="ws-muted">Choose an original heading above. Make a whole-section copy or adjust every genuine nested heading level together. Save current edits first.</p>
+            <div class="office-section-buttons">
+              <button type="button" data-office-transform-duplicate disabled>Preview duplicate</button>
+              <button type="button" data-office-transform-promote disabled>Preview promote</button>
+              <button type="button" data-office-transform-demote disabled>Preview demote</button>
+            </div>
+            <section class="office-transform-review" data-office-transform-review hidden aria-label="Review source section transformation">
+              <p class="ws-muted" data-office-transform-summary></p>
+              <label for="office-transform-source">Resulting Markdown — read-only before confirmation</label>
+              <textarea id="office-transform-source" data-office-transform-source readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-section-buttons">
+                <button type="button" data-office-transform-confirm disabled>Confirm one revision…</button>
+                <button type="button" data-office-transform-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+          <div class="office-section-navigation" aria-label="Document heading navigation">
+            <button type="button" data-office-heading-previous disabled>Previous heading</button>
+            <button type="button" data-office-heading-next disabled>Next heading</button>
+            <p class="ws-muted">In the editor, Ctrl/⌘ + Alt + ↑ or ↓ navigates genuine headings (fenced-code headings are ignored).</p>
+          </div>
+          <p class="ws-muted">Moves the complete heading and its nested subsections. Changes are saved through the normal revision history.</p>
+        </div></aside>
+      <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
+    </section>
+  </div>
+  <div class="office-print-sheet" data-office-print-sheet aria-hidden="true"></div>
+  <p data-office-status role="status" aria-live="polite">Checking Hub privacy and local storage…</p>
+</section>
+<script>import '../../scripts/office-documents';</script>
