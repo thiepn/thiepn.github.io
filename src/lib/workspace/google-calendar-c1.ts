@@ -22,6 +22,7 @@ const date=(value:unknown):value is string=>typeof value==="string"&&/^\d{4}-\d{
   !Number.isNaN(Date.parse(value+"T12:00:00Z"))&&new Date(value+"T12:00:00Z").toISOString().slice(0,10)===value;
 const timestamp=(v:unknown):v is string=>typeof v==="string"&&Number.isFinite(Date.parse(v));
 const str=(v:unknown,max:number):v is string=>typeof v==="string"&&v.length<=max;
+export const validHubCalendarDay=(value:unknown):value is string=>date(value);
 export function hubCalendarOrigin(value:unknown):string|null {
   if(typeof value!=="string"||!value)return null;
   try{

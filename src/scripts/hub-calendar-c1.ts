@@ -1,6 +1,6 @@
 import { hubIdentity } from "./portal-auth";
 import { readVerifiedHubToken } from "./hub-account";
-import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,CalendarConnectionFailure,type CalendarConnectionIssue,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
+import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,validHubCalendarDay,CalendarConnectionFailure,type CalendarConnectionIssue,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
 import { composeCalendarView,verifiedAcademic } from "../lib/workspace/calendar-composition-c2";
 import { weekDays } from "../lib/workspace/model";
 import type { CalendarEvent } from "../lib/workspace/types";
@@ -244,7 +244,7 @@ if(root&&panel) {
     if(!p||p.private!==false||workspace.dataset.calendarPrivate!=="false") {
       local=[];selected=null;localTruncated=false;clearRoadmap();render();return;
     }
-    if(typeof p.selected!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(p.selected)||
+    if(!validHubCalendarDay(p.selected)||
        !["day","week"].includes(String(p.mode))||
        typeof p.timezone!=="string"||!Array.isArray(p.events))return;
     local=p.events.slice(0,300) as CalendarEvent[];

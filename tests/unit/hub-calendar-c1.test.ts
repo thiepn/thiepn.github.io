@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
+import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,validHubCalendarDay,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
 const NOW=Date.parse("2026-10-21T15:00:00Z");
 const source=()=>{
   const event={id:'["primary","event-1"]',source:"google-calendar",title:"TI Übung",
@@ -60,5 +60,15 @@ describe("C1 actionable source failures",()=>{
   }
   it("does not mistake an unreachable provider for a connected calendar",()=>{
     expect(new CalendarConnectionFailure("network").issue).toBe("network");
+  });
+});
+
+describe("Calendar C2 local selected-day handoff",()=>{
+  it("accepts the real local owner date and rejects malformed or impossible dates",()=>{
+    expect(validHubCalendarDay("2026-10-22")).toBe(true);
+    expect(validHubCalendarDay("2026-10-26")).toBe(true);
+    expect(validHubCalendarDay("2026-02-30")).toBe(false);
+    expect(validHubCalendarDay("2026-10-2")).toBe(false);
+    expect(validHubCalendarDay("\\d{4}-\\d{2}-\\d{2}")).toBe(false);
   });
 });
