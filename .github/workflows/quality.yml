@@ -32,6 +32,13 @@ jobs:
         run: node scripts/validate-runtime-p11.mjs
       - run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - run: npx playwright install --with-deps chromium firefox webkit
+      # Fail fast on the exact calendar browser path before running 1,000+ tests.
+      # The studio Chromium project uses Playwright's full new-headless Chromium,
+      # not chromium_headless_shell (which SIGSEGV'd twice on the runner).
+      - name: Full Chromium calendar startup smoke
+        run: |
+          npm run build
+          npx playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-calendar-c1.spec.ts tests/studio/hub-calendar-composition-c2.spec.ts -g 'calendar selected day remains circular|C2 original local event flows through ephemeral native calendar projection'
       - run: npm run audit:studio
       - name: Hub public release profile gate
         run: npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke

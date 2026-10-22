@@ -3352,7 +3352,10 @@ test('O36 transfers an actual second Office document passage into the first with
   '> Original **measurement** from source.\n';
  await expect(page.locator('[data-office-transfer-result]')).toHaveValue(expected);
  await page.locator('[data-office-transfer-confirm]').click();
- await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ // Confirmed text and a new committed revision are both required before reload.
+ // The previous document revision's "Saved locally" label is not evidence of transfer persistence.
+ await expect(page.locator('[data-office-body]')).toHaveValue(expected);
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally · revision');
  await page.reload();
  await expect(page.locator('[data-office-body]')).toHaveValue(expected);
  await expect(page.locator('[data-office-preview] blockquote')).toContainText('Original measurement from source.');
