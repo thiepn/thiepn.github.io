@@ -129,6 +129,22 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
  for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
   expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
 });
+test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
+  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+  expect(api.exchanges()).toBe(1);
+  await a.page.evaluate(()=>{
+    const key='thiepn:hub-sso:v1:tokens';
+    const original=JSON.parse(localStorage.getItem(key)!);
+    localStorage.setItem(key,JSON.stringify({...original,expiresAt:0}));
+  });
+  await a.page.close();
+  const next=await a.context.newPage();
+  await next.goto('https://thiepn.dev/');
+  await expect(next.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  expect(api.exchanges()).toBe(1);
+  expect(api.refreshes()).toBe(0);
+  await a.context.close();
+});
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
  const preserved=()=>a.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('fixture:app-data:')).reduce((size,key)=>size+localStorage.getItem(key)!.length,0));
