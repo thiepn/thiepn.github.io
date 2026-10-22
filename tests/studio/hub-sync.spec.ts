@@ -109,7 +109,7 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
  expect(api.exchanges()).toBe(1);expect(destinations.every(url=>new URL(url).origin==='https://thiepn.dev')).toBe(true);
  await a.context.close();
 });
-test('concurrent new tabs share a single rotating refresh instead of reconnecting',async({browser})=>{
+test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
  await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
@@ -118,9 +118,16 @@ test('concurrent new tabs share a single rotating refresh instead of reconnectin
    tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
   };request.onerror=()=>reject(request.error);
  }));
- await a.page.close();const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await a.page.close();
+  // Force the Safari/browser fallback on both new tabs; a single rotating
+  // refresh must still be shared without navigator.locks.
+  await a.context.addInitScript(()=>{
+    Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+  });
+  const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
- expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+ for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
+  expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
 });
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');

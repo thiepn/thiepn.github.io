@@ -77,6 +77,39 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       pending = pending.then(() => write(key, null, previous)).catch(error => { writeError = error; });
     },
   };
+
+  // Web Locks may be absent in Safari. This IndexedDB transaction provides a
+  // cross-tab lease before reading or rotating any Account credentials.
+  // The lease never contains tokens and is not exposed through SDK storage.
+  const leaseKey = 'thiepn:hub-account-storage:refresh-lease';
+  async function withIdbLease<T>(operation: () => Promise<T>): Promise<T> {
+    if (!db) return operation(); // Preserve the restricted-storage fallback.
+    const owner = crypto.randomUUID();
+    const deadline = Date.now() + 20_000;
+    const transact = (mode:'acquire'|'release'):Promise<boolean>=>new Promise((resolve,reject)=>{
+      const tx=db!.transaction('session','readwrite'),store=tx.objectStore('session');
+      const request=store.get(leaseKey);
+      let acquired=false;
+      request.onsuccess=()=>{
+        const lease=request.result as {owner?:unknown;expiresAt?:unknown}|undefined;
+        if(mode==='release') {
+          if(lease?.owner===owner)store.delete(leaseKey);
+        } else if(!lease||typeof lease.expiresAt!=='number'||lease.expiresAt<=Date.now()){
+          store.put({owner,expiresAt:Date.now()+45_000},leaseKey);
+          acquired=true;
+        }
+      };
+      tx.oncomplete=()=>resolve(acquired);
+      tx.onabort=()=>reject(tx.error??new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE'));
+      tx.onerror=()=>{};
+    });
+    while(!(await transact('acquire'))){
+      if(Date.now()>=deadline)throw new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE');
+      await new Promise<void>(resolve=>setTimeout(resolve,100));
+    }
+    try { return await operation(); }
+    finally { await transact('release'); }
+  }
   // Serializing entire SDK operations also protects rotating refresh tokens.
   // Locking just the IDB writes would let two tabs refresh the same old token.
   let tail = Promise.resolve();
@@ -88,7 +121,7 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
     };
     const work = tail.then(() => navigator.locks
       ? navigator.locks.request('thiepn:hub-account-storage', perform)
-      : perform());
+      : withIdbLease(perform));
     tail = work.then(() => {}, () => {});
     return work;
   }
