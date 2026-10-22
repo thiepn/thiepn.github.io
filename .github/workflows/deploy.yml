@@ -77,6 +77,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLIC_HUB_ACCOUNT_ENTRY: ${{ vars.HUB_ACCOUNT_ENTRY }}
           PUBLIC_HUB_AUTH_ORIGIN: https://thiepn.dev
+          PUBLIC_STUDYOS_ORIGIN: https://study.thiepn.dev
           PUBLIC_THIEPN_SUPABASE_URL: https://hycegznamzjhwinegaai.supabase.co
           PUBLIC_THIEPN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.THIEPN_SUPABASE_PUBLISHABLE_KEY }}
           PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
