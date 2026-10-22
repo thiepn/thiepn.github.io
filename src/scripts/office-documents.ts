@@ -2065,6 +2065,9 @@ if(root && shell){
     const plan=transferPlan,state=plan?.review;
     if(!plan||!state||!transferValid(state)||state!==transferState||transferConfirm.disabled||!store)return;
     const opened=store,ticket=epoch,nonce=transferNonce;
+    // Clear the previously saved status before the asynchronous source reread.
+    // A reload must never mistake the previous revision for a committed transfer.
+    message('Verifying original source before transfer…');
     try{
       const current=await opened.read(state.source.id);
       if(ticket!==epoch||nonce!==transferNonce||opened!==store||!transferValid(state)||
@@ -2078,7 +2081,11 @@ if(root && shell){
       }
       body.value=verified.value;
       body.dispatchEvent(new Event('input',{bubbles:true}));
-      message('Appended '+verified.count+' original document excerpts. Revision-checked autosave pending.');
+      // Persist the explicitly confirmed cross-document transfer immediately,
+      // not via the 600ms generic editor autosave. Retain original revision CAS
+      // and the unsaved draft/export path when IndexedDB rejects the write.
+      message('Saving transferred excerpts…');
+      await persist();
     }catch(error){
       if(ticket===epoch&&nonce===transferNonce&&opened===store&&allowed()){
         discardTransferPlan();enable();
