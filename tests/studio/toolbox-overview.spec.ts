@@ -1,8 +1,20 @@
 import {hubFixture} from './launch-fixture';
 import { test, expect } from '@playwright/test';
+import { additionalShortcutLaunches } from '../../src/lib/launches/shortcut-directory';
 
 const hub=hubFixture;
-const expectedCounts = hub.expectedCategoryCounts;
+const publishedCounts = hub.expectedCategoryCounts;
+const currentApps = additionalShortcutLaunches;
+const currentCounts: Record<string, number> = Object.fromEntries(
+  Object.keys(publishedCounts).map(category => [
+    category, currentApps.filter(app => app.category === category).length,
+  ]),
+);
+const displayedCounts = Object.fromEntries(
+  Object.entries(publishedCounts).map(([category, count]) => [
+    category, count + currentCounts[category]!,
+  ]),
+);
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -13,13 +25,16 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
     const catalogue = page.locator('[data-hub-catalogue]');
     await expect(catalogue).toBeVisible();
     await expect(catalogue.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+    await expect(catalogue.locator('[data-hub-current-app]')).toHaveCount(currentApps.length);
+    await expect(catalogue.locator('[data-hub-category="all"] span')).toHaveText(String(hub.expectedCount + currentApps.length));
+    await expect(catalogue.locator('.hub-published-section h2')).toHaveText('Published apps');
     await expect(catalogue.locator('.hub-category')).toHaveCount(7);
     await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
-    for (const [category, count] of Object.entries(expectedCounts)) {
+    for (const [category, count] of Object.entries(displayedCounts)) {
       const button = catalogue.locator(`button[data-hub-category="${category}"]`);
       await expect(button).toBeVisible();
-      await expect(button).toContainText(String(count));
+      await expect(button.locator('span')).toHaveText(String(count));
     }
 
     for (const card of await catalogue.locator('[data-hub-item]').all()) {
@@ -49,10 +64,32 @@ test('Tiny Tools appears once as an ordinary Hub app card, not an embedded toolb
 test('each category filter reveals exactly its locked app count', async ({ page }) => {
   await page.goto('/apps/');
   const visibleCards = page.locator('[data-hub-item]:visible');
-  for (const [category, count] of Object.entries(expectedCounts)) {
+  const visibleShortcuts = page.locator('[data-hub-current-app]:visible');
+  const currentSection = page.locator('[data-hub-current-section]');
+  for (const [category, count] of Object.entries(publishedCounts)) {
     const button = page.locator(`button[data-hub-category="${category}"]`);
     await button.click();
     await expect(visibleCards).toHaveCount(count);
+    await expect(visibleShortcuts).toHaveCount(currentCounts[category]!);
+    await expect(button.locator('span')).toHaveText(String(displayedCounts[category]!));
+    if (currentCounts[category]) await expect(currentSection).toBeVisible();
+    else await expect(currentSection).toBeHidden();
     await expect(button).toHaveAttribute('aria-pressed', 'true');
   }
+});
+
+test('current app destinations remain opt-in and separate from the 31 published IDs', async ({ page }) => {
+  expect(hub.expectedCount).toBe(31);
+  expect(currentApps).toHaveLength(12);
+  const published = new Set(hub.projects.map(project => project.slug));
+  expect(new Set(currentApps.map(app => app.id)).size).toBe(currentApps.length);
+  await page.goto('/apps/');
+  for (const app of currentApps) {
+    expect(published.has(app.id)).toBe(false);
+    const item = page.locator(`[data-hub-current-app="${app.id}"]`);
+    await expect(item).toHaveCount(1);
+    await expect(item).toHaveAttribute('data-hub-current-category', app.category);
+    await expect(item.locator('a.hub-current-link')).toHaveAttribute('href', app.url);
+  }
+  await expect(page.locator('[data-hub-item]')).toHaveCount(31);
 });
