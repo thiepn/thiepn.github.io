@@ -4,6 +4,7 @@ import {selectedShortcuts} from '../lib/workspace/selectors';
 import {clearSourceStates} from '../lib/providers/connection-state';
 import {customLinks, setShortcuts, toggleShortcut, shortcutIds} from '../lib/workspace/commands';
 import {resolveLaunch, safeCustomUrl} from '../lib/launches/resolver';
+import { partitionShortcutChoices, additionalShortcutLaunches } from '../lib/launches/shortcut-directory';
 import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
 import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
 import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
@@ -19,7 +20,7 @@ import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
-import { icon } from '../lib/workspace/icons';
+import { icon, appIcon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
@@ -85,7 +86,11 @@ async function setup(root: HTMLElement) {
         history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
     } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
-    const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
+    const catalogueApps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
+    const apps: AppShortcut[] = [
+        ...additionalShortcutLaunches.map(({id, title, url, category}) => ({id, title, url, icon: appIcon(id), category})),
+        ...catalogueApps.map(app => app.id === 'french-3000' ? {...app, title: 'French'} : app),
+    ];
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
@@ -984,7 +989,7 @@ async function setup(root: HTMLElement) {
                 if (incoming) document.head.append(incoming.cloneNode(true));
             }
             $('[data-workspace-content]').innerHTML = next === 'apps' ? doc.querySelector('[data-workspace-content]')!.innerHTML : '';
-            $('[data-workspace-date]').textContent = next === 'apps' ? `${apps.length} apps for work, learning and everything in between` : '';
+            $('[data-workspace-date]').textContent = next === 'apps' ? `${catalogueApps.length} apps for work, learning and everything in between` : '';
             if (state) {render();if(next==='home'){languageOwner=hubIdentity.status==='signed-in'?hubIdentity.id:null;void refreshLanguages();}}
             else { $('#ws-title').textContent = next === 'apps' ? 'Apps' : 'Personal workspace'; $('[data-toolbar]').replaceChildren(); if (next !== 'apps') $('[data-workspace-content]').textContent = 'Your personal workspace is unavailable. Use recovery or retry opening local storage.'; }
             committedUrl = location.pathname + location.search;
@@ -1541,9 +1546,13 @@ async function setup(root: HTMLElement) {
     });
     function editShortcuts(widget: Widget) {
         const links=customLinks(widget), selected=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id);
-        const choices=[...apps,...links.map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
-        const rows=[...selected.map(id=>choices.find(a=>a.id===(resolveLaunch(id)?.id??id))??{id,title:'Unavailable shortcut: '+id,icon:'warning'}),...choices.filter(a=>!selected.some(id=>(resolveLaunch(id)?.id??id)===a.id))];
-        openForm('Choose app shortcuts', field('Widget title','title',String(widget.config.title??'App shortcuts'),'text','required maxlength="80"')+select('Show','shortcutSource',[['pinned','Pinned apps'],['recent','Recently opened apps'],['connected','Apps sharing fresh summaries']],String(widget.config.shortcutSource??'pinned'))+'<p>Choose up to 12 shortcuts. Move rows to set their order.</p><label class="ws-field">Find an app<input type="search" data-pin-search /></label><div data-shortcut-choices>'+rows.map(a=>`<div class="ws-shortcut-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><label class="ws-choice"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selected.includes(a.id)?'checked':''}/>${esc(a.title)}</label><button type="button" class="ws-button" data-shortcut-move="-1" aria-label="Move ${esc(a.title)} earlier">↑</button><button type="button" class="ws-button" data-shortcut-move="1" aria-label="Move ${esc(a.title)} later">↓</button></div>`).join('')+'</div><details><summary>Add an external shortcut</summary>'+field('Name','customTitle','','text','maxlength="80"')+field('HTTPS address','customUrl','','url','placeholder="https://…"')+'</details>',async data=>{
+        const choices:AppShortcut[]=[...apps,...links.map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
+        const parts=partitionShortcutChoices(choices,selected);
+        const unavailable=selected.filter(id=>!choices.some(app=>app.id===id)).map(id=>({id,title:'Unavailable shortcut: '+id,icon:'warning',category:'external',url:''}));
+        const row=(app:AppShortcut)=>`<div class="ws-shortcut-choice" data-app-choice="${esc((app.title+' '+app.id).toLocaleLowerCase())}"><label class="ws-choice"><input type="checkbox" name="appIds" value="${esc(app.id)}" ${selected.includes(app.id)?'checked':''}/>${esc(app.title)}</label><button type="button" class="ws-button" data-shortcut-move="-1" aria-label="Move ${esc(app.title)} earlier">↑</button><button type="button" class="ws-button" data-shortcut-move="1" aria-label="Move ${esc(app.title)} later">↓</button></div>`;
+        const section=(title:string,items:readonly AppShortcut[])=>items.length?`<fieldset class="ws-shortcut-group"><legend>${esc(title)}</legend>${items.map(row).join('')}</fieldset>`:'';
+        const picker=section('Pinned', [...parts.pinned,...unavailable])+section('Current apps',parts.primary)+`<details data-other-shortcuts><summary>Other apps (${parts.other.length})</summary>${parts.other.map(row).join('')}</details>`;
+        openForm('Choose app shortcuts', field('Widget title','title',String(widget.config.title??'App shortcuts'),'text','required maxlength="80"')+select('Show','shortcutSource',[['pinned','Pinned apps'],['recent','Recently opened apps'],['connected','Apps sharing fresh summaries']],String(widget.config.shortcutSource??'pinned'))+'<label class="ws-field">Find an app<input type="search" data-pin-search placeholder="Search apps"/></label><div data-shortcut-choices>'+picker+'</div><details><summary>Add an external shortcut</summary>'+field('Name','customTitle','','text','maxlength="80"')+field('HTTPS address','customUrl','','url','placeholder="https://…"')+'</details>',async data=>{
             const widgetTitle=String(data.get('title')??'').trim();if(!widgetTitle)throw new Error('Enter a widget title.');
             const ids=data.getAll('appIds').map(String), title=String(data.get('customTitle')??'').trim(), url=String(data.get('customUrl')??'').trim();
             const nextLinks=[...links];
@@ -1568,7 +1577,10 @@ async function setup(root: HTMLElement) {
         let config = '';
         if (w.type === 'app-shortcuts') {
             const selectedIds = Array.isArray(w.config.appIds) ? w.config.appIds : pins();
-            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="App name…"/></label>${apps.map(a => `<label class="ws-choice" data-app-choice="${esc(a.title.toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''}/>${icon(a.icon)} ${esc(a.title)}</label>`).join('')}`;
+            const groups=partitionShortcutChoices(apps,selectedIds);
+            const row=(app:AppShortcut)=>`<label class="ws-choice" data-app-choice="${esc((app.title+' '+app.id).toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(app.id)}" ${selectedIds.includes(app.id)?'checked':''}/>${icon(app.icon)} ${esc(app.title)}</label>`;
+            const group=(name:string,items:readonly AppShortcut[])=>items.length?`<fieldset class="ws-shortcut-group"><legend>${esc(name)}</legend>${items.map(row).join('')}</fieldset>`:'';
+            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="Search apps"/></label>`+group('Pinned',groups.pinned)+group('Current apps',groups.primary)+`<details data-other-shortcuts><summary>Other apps (${groups.other.length})</summary>${groups.other.map(row).join('')}</details>`;
         }
         else if (w.type.startsWith('tracker')) {
             const ids = w.config.trackerIds;
@@ -2684,7 +2696,7 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
-        if (el.hasAttribute('data-pin-search')) { const query = el.value.toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); }
+        if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
             renderSearch();

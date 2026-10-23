@@ -271,6 +271,12 @@
 .ws-shortcut-choice{display:flex;align-items:center;gap:8px;}
 .ws-shortcut-choice .ws-choice{flex:1;min-width:0;}
 .ws-shortcut-choice[hidden]{display:none;}
+.ws-dialog .ws-shortcut-group{border:0;min-width:0;margin:12px 0 16px;padding:0;}
+.ws-dialog .ws-shortcut-group legend{font-size:14px;font-weight:600;padding:0 0 7px;}
+.ws-dialog [data-other-shortcuts]{border-top:1px solid var(--ws-line);margin-top:12px;padding-top:8px;}
+.ws-dialog [data-other-shortcuts]>summary{cursor:pointer;font-size:14px;font-weight:600;padding:10px 0;}
+.ws-dialog [data-other-shortcuts]>.ws-shortcut-choice{margin-left:8px;}
+
 .ws-main>.portal-home,.ws-main [data-workspace-content]>.page-shell{max-width:none;width:auto;padding:0;}
 
 .ws-mode-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;font-size:13px;flex-wrap:wrap;}

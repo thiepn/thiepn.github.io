@@ -1,9 +1,11 @@
 import manifest from '../../generated/launch-manifest.json';
+import { additionalShortcutLaunches, type ShortcutLaunch } from './shortcut-directory';
 export type Launch = (typeof manifest.entries)[number];
 export const launches: readonly Launch[] = manifest.entries;
-export function resolveLaunch(id: string): Launch | undefined {
+const shortcutResolutions: readonly (Launch | ShortcutLaunch)[] = [...launches, ...additionalShortcutLaunches];
+export function resolveLaunch(id: string): Launch | ShortcutLaunch | undefined {
  const key=id.toLocaleLowerCase();
- return launches.find(entry=>entry.id===key || entry.aliases.some(alias=>alias.toLocaleLowerCase()===key));
+ return shortcutResolutions.find(entry=>entry.id===key || entry.aliases.some(alias=>alias.toLocaleLowerCase()===key));
 }
 export function safeCustomUrl(value:string):string {
  const url=new URL(value);
