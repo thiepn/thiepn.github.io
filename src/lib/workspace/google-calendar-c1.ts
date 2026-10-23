@@ -1,4 +1,5 @@
 /** Read-only StudyOS Google Calendar consumer. No second calendar store or OAuth tokens. */
+import { addDays } from "./model";
 export type CalendarConnectionIssue = "session"|"permission"|"endpoint"|"source"|"request"|"invalid-response"|"network"|"timeout";
 export class CalendarConnectionFailure extends Error {
   constructor(public readonly issue:CalendarConnectionIssue){
@@ -61,6 +62,13 @@ export function parseHubCalendar(input:unknown,now=Date.now()):HubCalendarData {
     ids.add(item.id);
   }
   return input as HubCalendarData;
+}
+/** A cached seven-day response is not evidence for a different selected day/week. */
+export function hubCalendarCoversWindow(
+  data:HubCalendarData|null,from:string,days:1|7,now=Date.now()
+):boolean {
+  return data!==null&&date(from)&&Date.parse(data.expiresAt)>now&&
+    data.from<=from&&addDays(data.from,data.days)>=addDays(from,days);
 }
 export async function fetchHubCalendar(origin:string,token:string,from:string,signal:AbortSignal,fetcher:typeof fetch=fetch):Promise<HubCalendarData>{
   if(!hubCalendarOrigin(origin)||!date(from)||!token||token.length>16000||
