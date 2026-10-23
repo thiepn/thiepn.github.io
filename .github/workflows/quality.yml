@@ -27,6 +27,8 @@ jobs:
         run: node --test tests/hub-account-ci-boundaries.test.mjs
       - name: Product registry v2 contract
         run: node scripts/validate-product-registry-v2.mjs
+      - name: Canonical Hub capability and ownership check
+        run: node scripts/check-hub-phase01-inventory.mjs
       - name: Platform P9 Folio projection
         run: node scripts/validate-folio-p9.mjs
       - name: Platform P10 Bible + Games projection
@@ -38,6 +40,8 @@ jobs:
       # Fail fast on the exact calendar browser path before running 1,000+ tests.
       # The studio Chromium project uses Playwright's full new-headless Chromium,
       # not chromium_headless_shell (which SIGSEGV'd twice on the runner).
+      - name: Live StudyOS Hub endpoint CORS/preflight (no credentials)
+        run: node scripts/check-studyos-calendar-edge.mjs
       - name: Full Chromium calendar startup smoke
         run: |
           npm run build
