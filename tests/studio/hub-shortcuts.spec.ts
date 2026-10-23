@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import manifest from '../../src/generated/launch-manifest.json';
+import manifest from '../../src/generated/launch-manifest.json' with { type: 'json' };
 
 async function openEditor(page: Page) {
   await page.locator('[data-widget-type="app-shortcuts"] [data-action="configure-widget"]').click();
