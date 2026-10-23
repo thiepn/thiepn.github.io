@@ -4,7 +4,7 @@ import {selectedShortcuts} from '../lib/workspace/selectors';
 import {clearSourceStates} from '../lib/providers/connection-state';
 import {customLinks, setShortcuts, toggleShortcut, shortcutIds} from '../lib/workspace/commands';
 import {resolveLaunch, safeCustomUrl} from '../lib/launches/resolver';
-import { partitionShortcutChoices } from '../lib/launches/shortcut-directory';
+import { partitionShortcutChoices, additionalShortcutLaunches } from '../lib/launches/shortcut-directory';
 import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
 import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
 import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
@@ -20,7 +20,7 @@ import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
-import { icon } from '../lib/workspace/icons';
+import { icon, appIcon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
 import { WorkspaceStore, namespace, RevisionConflict } from '../lib/workspace/store';
 import { WIDGETS, specification } from '../lib/workspace/registry';
@@ -86,7 +86,11 @@ async function setup(root: HTMLElement) {
         history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
     } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
-    const apps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
+    const catalogueApps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
+    const apps: AppShortcut[] = [
+        ...additionalShortcutLaunches.map(({id, title, url, category}) => ({id, title, url, icon: appIcon(id), category})),
+        ...catalogueApps.map(app => app.id === 'french-3000' ? {...app, title: 'French'} : app),
+    ];
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
@@ -985,7 +989,7 @@ async function setup(root: HTMLElement) {
                 if (incoming) document.head.append(incoming.cloneNode(true));
             }
             $('[data-workspace-content]').innerHTML = next === 'apps' ? doc.querySelector('[data-workspace-content]')!.innerHTML : '';
-            $('[data-workspace-date]').textContent = next === 'apps' ? `${apps.length} apps for work, learning and everything in between` : '';
+            $('[data-workspace-date]').textContent = next === 'apps' ? `${catalogueApps.length} apps for work, learning and everything in between` : '';
             if (state) {render();if(next==='home'){languageOwner=hubIdentity.status==='signed-in'?hubIdentity.id:null;void refreshLanguages();}}
             else { $('#ws-title').textContent = next === 'apps' ? 'Apps' : 'Personal workspace'; $('[data-toolbar]').replaceChildren(); if (next !== 'apps') $('[data-workspace-content]').textContent = 'Your personal workspace is unavailable. Use recovery or retry opening local storage.'; }
             committedUrl = location.pathname + location.search;
