@@ -44,25 +44,25 @@
       "id": "navigation",
       "owner": "hub",
       "source": "src/components/workspace/WorkspaceShell.astro",
-      "state": "on_main",
-      "scope": "Shared Hub shell and local state; later cross-surface refinements",
+      "state": "phase02_candidate",
+      "scope": "Today-first sidebar, mobile Today/Apps/Tasks, Plan/Trackers/Documents via More, all current routes preserved",
       "next": "P03"
     },
     {
       "id": "tasks",
       "owner": "hub",
       "source": "src/lib/workspace/store.ts",
-      "state": "on_main_partial",
-      "scope": "Local tasks and commands; persistent task/block links and version negotiation outstanding",
-      "next": "P04-P06"
+      "state": "phase02_candidate",
+      "scope": "Native weekly review plus reviewed 3/5/7-day Hub due-date distribution using existing task writer; no calendar booking",
+      "next": "P06"
     },
     {
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "on_main_partial",
-      "scope": "Daily local/source views exist; PR166's additional planning features require selective integration",
-      "next": "P03-P06"
+      "state": "phase02_candidate",
+      "scope": "Today default plus bounded source-owned next-action queue, original local Focus and Workspace modes",
+      "next": "P03"
     },
     {
       "id": "calendar",
@@ -231,6 +231,27 @@
       "physical phones",
       "KEEP encrypted vault",
       "production release"
+    ]
+  },
+  "phase02": {
+    "parent": "1f9e8f0b995506a7ae096b51aaf796cf0a233abd",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "scope": "Selective owner-sourced Today and native task due-date distribution",
+    "state": "candidate_pending_exact_head_CI",
+    "originalSources": [
+      "src/lib/workspace/daily-source-queue.ts",
+      "src/lib/workspace/source-today.ts",
+      "src/lib/workspace/distributed-planning.ts",
+      "src/lib/workspace/folio-continuity.ts",
+      "src/lib/workspace/source-time-review.ts"
+    ],
+    "preserved": [
+      "WorkspaceStore/CAS, native tasks and events, schema v1",
+      "Apps 31 published + 12 launch-only",
+      "StudyOS Calendar transport",
+      "Hub Account and device Library consent",
+      "Documents route",
+      "Folio/Notes owner stores and IDs"
     ]
   }
 }

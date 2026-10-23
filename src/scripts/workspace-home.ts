@@ -34,6 +34,8 @@ import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type R
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
+import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
+import { freshFolioPlanningShare } from '../lib/workspace/folio-continuity';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
@@ -99,6 +101,7 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number;folio:FolioDeviceSnapshot|null}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
@@ -107,7 +110,7 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -257,7 +260,8 @@ async function setup(root: HTMLElement) {
             todayPanel.outerHTML = renderSourceToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
-                languages: {status: languageStatus, cards: languageCards}, apps
+                languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state.events, day: today(), timezone: state.preferences.timezone
             });
         }
     }
@@ -390,6 +394,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeSpreadReview=null;
         activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
@@ -781,7 +786,8 @@ async function setup(root: HTMLElement) {
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
+                    languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state.events, day: today(), timezone: state.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
@@ -854,7 +860,7 @@ async function setup(root: HTMLElement) {
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? (homeMode==='today'?'Today':homeMode==='focus'?'Focus':current().title)) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
@@ -1188,6 +1194,105 @@ async function setup(root: HTMLElement) {
         } catch(error) {
             el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
         }
+    }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        if(!state || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return owner&&owner===folioOwner?freshFolioPlanningShare(folioSnapshot):null;
+    }
+    function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');
+        if(!panel || !state || origin!==epoch)return;
+        const date=dialog.querySelector<HTMLInputElement>('[name=spreadStart]')?.value??'';
+        const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
+        try {
+            if(date<today())throw new Error('Choose today or a future starting date.');
+            const useFolio=dialog.querySelector<HTMLInputElement>('[name=includeFolio]')?.checked===true;
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio sharing changed or expired. Refresh and reopen the review.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw),useFolio?pinned:null);
+            panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
+              <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
+                ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
+              <p>${prepared.folioConsidered?'Hub workload plus explicitly shared Folio hints':'Existing Hub workload'} for these days:</p>
+              <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
+              ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}${prepared.folioConsidered?', '+row.folioTasks+' Folio task hints, '+row.folioTimed+' timed and '+row.folioAllDay+' all-day Folio blocks':''}</li>`).join('')}</ul>
+              <p>Distribution balances record counts, not task duration or calendar availability.
+              It does not create appointments or change imported/owner-app data.</p>`;
+        } catch(error) {
+            panel.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the distribution fields.')}</p>`;
+        }
+    }
+    function reviewDistributedWeek() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)return;
+        if(!storageReady || dirty || conflict || !store) {
+            toast('Resolve storage or saved-state conflicts before spreading task due dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks to distribute.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
+        const own=epoch,source=store;
+        const availableFolio=activeFolioPlanningSnapshot();
+        activeSpreadReview={snapshots,epoch:own,folio:availableFolio};
+        const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
+          <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
+          <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
+            and dates with fewer existing Hub deadlines/events are considered first.</p>
+          ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
+          ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          ${availableFolio?'<label class="ws-week-confirm"><input type="checkbox" name="includeFolio"/>Consider this one-time Folio snapshot as *partial* day-load hints. The planner changes only Hub task due dates; refresh if the source share expires.</label>':'<p class="ws-muted">Share from Folio separately to optionally include its workload in this task review.</p>'}
+          <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed every proposed due date and authorize changes to these Hub tasks only,
+            without scheduling event blocks or updating Folio, Notes, or external calendars.</label>
+          <p class="ws-muted">Original IDs, titles, priorities and completion states survive; clock times on moved tasks are cleared.
+            All changes use one existing owner-scoped workspace mutation and its undo/conflict protection.</p>
+        </div>`;
+        openForm('Review multi-day task distribution',formHtml,async data=>{
+            if(epoch!==own || store!==source || !state || !storageReady || locked ||
+              privacyHeld || state.preferences.hidden || dirty || conflict)
+                throw new Error('Identity or storage changed. Reopen this planning review.');
+            if(!data.has('confirm'))throw new Error('Confirm all proposed Hub task due-date changes.');
+            const requestedStart=String(data.get('spreadStart')??'');
+            if(!validDate(requestedStart) || requestedStart<today())
+                throw new Error('Select a current or future distribution date.');
+            const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
+            const useFolio=data.has('includeFolio');
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio share changed or expired. Review the distribution again.');
+            const hint=useFolio?pinned:null;
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon,hint);
+            await mutate(next=>{
+                if(useFolio && pinned!==activeFolioPlanningSnapshot())
+                    throw new Error('Folio share changed while saving. No Hub task dates were changed.');
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon,hint);
+                activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
+            },'Reviewed multi-day task plan updated');
+            if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
+            if(preview.changes.some(change=>{
+                const record=state!.tasks.find(task=>task.id===change.id);
+                return !record || record.due!==change.after || !!record.time;
+            }))throw new Error('The due-date distribution was not applied. Reopen planning.');
+            if(dirty || conflict)throw new Error('The plan remains unsaved in this tab. Export or retry before resubmitting.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=requestedStart;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed distribution');
+        paintDistributedPreview(snapshots,own);
     }
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
@@ -2204,6 +2309,9 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-spread':
+                reviewDistributedWeek();
+                break;
             case 'week-scroll-review':
                 if(view==='calendar' && agendaMode==='week') {
                     root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
@@ -2636,6 +2744,11 @@ async function setup(root: HTMLElement) {
             root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
             return;
         }
+        if (el.closest('[data-week-spread-review]')) {
+            const review=activeSpreadReview;
+            if(review && review.epoch===epoch)paintDistributedPreview(review.snapshots,review.epoch);
+            return;
+        }
         if (el.closest('[data-week-review-form]')) {
             const review=activeWeekReview;
             if(review && review.epoch===epoch)paintWeekChangePreview(review.snapshots,review.epoch);
@@ -2891,13 +3004,14 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else homeMode='today';
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
+        activeSpreadReview=null;
         weekFilter='carry';
         const own = ++epoch;
         cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();
