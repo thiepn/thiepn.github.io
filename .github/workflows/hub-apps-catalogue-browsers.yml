@@ -44,6 +44,8 @@ jobs:
     timeout-minutes: 95
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - name: Preview Calendar PR 185 with Apps fix without touching either ref
         run: |
           git fetch --no-tags origin 1d947e51d77d9e9fd525919af80a14ea15d1cd13
