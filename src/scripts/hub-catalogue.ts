@@ -4,6 +4,8 @@ export function setupHubCatalogue(root: HTMLElement) {
   if (existing) { existing(); return; }
   const categoryButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-hub-category]'));
   const items = Array.from(root.querySelectorAll<HTMLElement>('[data-hub-item]'));
+  const currentApps = Array.from(root.querySelectorAll<HTMLElement>('[data-hub-current-app]'));
+  const currentSection = root.querySelector<HTMLElement>('[data-hub-current-section]');
 
   if (!categoryButtons.length || !items.length) return;
 
@@ -23,6 +25,11 @@ export function setupHubCatalogue(root: HTMLElement) {
       const categoryMatch = activeCategory === 'all' || item.dataset.hubItemCategory === activeCategory;
       item.hidden = !categoryMatch;
     }
+    for (const app of currentApps) {
+      app.hidden = activeCategory !== 'all' && app.dataset.hubCurrentCategory !== activeCategory;
+    }
+    if (currentSection) currentSection.hidden = currentApps.every(app => app.hidden);
+
 
     for (const button of categoryButtons) {
       const active = button.dataset.hubCategory === activeCategory;

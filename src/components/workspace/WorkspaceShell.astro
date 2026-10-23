@@ -6,6 +6,7 @@ import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
 import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
+import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
@@ -35,7 +36,7 @@ const apps=entries.map(({project,hub})=>{
 });
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
 ---
-<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
+<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse ${apps.length} published apps and ${additionalShortcutLaunches.length} additional app shortcuts.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
@@ -47,7 +48,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
-          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} apps`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
+          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>

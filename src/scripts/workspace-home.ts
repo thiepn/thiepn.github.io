@@ -989,7 +989,7 @@ async function setup(root: HTMLElement) {
                 if (incoming) document.head.append(incoming.cloneNode(true));
             }
             $('[data-workspace-content]').innerHTML = next === 'apps' ? doc.querySelector('[data-workspace-content]')!.innerHTML : '';
-            $('[data-workspace-date]').textContent = next === 'apps' ? `${catalogueApps.length} apps for work, learning and everything in between` : '';
+            $('[data-workspace-date]').textContent = next === 'apps' ? `${catalogueApps.length} published · ${additionalShortcutLaunches.length} current` : '';
             if (state) {render();if(next==='home'){languageOwner=hubIdentity.status==='signed-in'?hubIdentity.id:null;void refreshLanguages();}}
             else { $('#ws-title').textContent = next === 'apps' ? 'Apps' : 'Personal workspace'; $('[data-toolbar]').replaceChildren(); if (next !== 'apps') $('[data-workspace-content]').textContent = 'Your personal workspace is unavailable. Use recovery or retry opening local storage.'; }
             committedUrl = location.pathname + location.search;

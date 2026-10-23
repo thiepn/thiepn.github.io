@@ -42,10 +42,13 @@ function shortcut(id: string, title: string, url: string, category: Category, ow
 export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
   shortcut('languages', 'Languages', 'https://languages.thiepn.dev/', 'learn', 'thiepn/languages'),
   shortcut('chinese', 'Chinese', 'https://chinese.thiepn.dev/', 'learn', 'thiepn/chinese'),
-  shortcut('japanese', 'Japanese', 'https://thiepn.dev/japanese/', 'learn', 'thiepn/japanese'),
+  shortcut('japanese', 'Japanese', 'https://japanese.thiepn.dev/', 'learn', 'thiepn/japanese'),
   shortcut('studyos', 'StudyOS', 'https://study.thiepn.dev/', 'learn', 'thiepn/studyOS'),
   shortcut('mdd', 'My Daily Devotion', 'https://mdd.thiepn.dev/', 'faith', 'thiepn/my-daily-devotion'),
   shortcut('selah', 'Selah', 'https://thiepn.dev/selah/', 'faith', 'thiepn/selah'),
+  shortcut('korea', 'KOREA', 'https://korea.thiepn.dev/', 'learn', 'thiepn/korea'),
+  shortcut('chess', 'Chess', 'https://chess.thiepn.dev/', 'games', 'thiepn/chess'),
+  shortcut('karaoke', 'ROOMTONE Karaoke', 'https://karaoke.thiepn.dev/', 'create', 'thiepn/karaoke'),
   shortcut('ion', 'ION', 'https://ion.thiepn.dev/', 'games', 'thiepn/ion'),
   shortcut('ligoquiz', 'LiGoQuiz', 'https://thiepn.dev/ligoquiz/', 'games', 'thiepn/ligoquiz'),
   shortcut('control', 'Control', 'https://control.thiepn.dev/', 'tools', 'thiepn/control'),
@@ -53,9 +56,9 @@ export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
 
 /** Prioritize actively used apps without altering old IDs or saved pins. */
 export const primaryShortcutIds: readonly string[] = [
-  'languages', 'french-3000', 'chinese', 'japanese', 'studyos',
+  'languages', 'french-3000', 'chinese', 'japanese', 'korea', 'studyos',
   'mdd', 'selah', 'tms60', 'thiepn-library',
-  'ion', 'ligoquiz', 'gomoku', 'control', 'notes', 'tiny-tools',
+  'ion', 'chess', 'ligoquiz', 'karaoke', 'gomoku', 'control', 'notes', 'tiny-tools',
 ];
 
 /** Keep any already pinned apps at the top, then current options, then the rest. */
