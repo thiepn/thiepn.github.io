@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,validHubCalendarDay,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
+import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,hubCalendarCoversWindow,validHubCalendarDay,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
 const NOW=Date.parse("2026-10-21T15:00:00Z");
 const source=()=>{
   const event={id:'["primary","event-1"]',source:"google-calendar",title:"TI Übung",
@@ -31,6 +31,17 @@ describe("C1 owner calendar client",()=>{
   it("escapes malicious event text instead of inserting markup",()=>{
     expect(calendarEsc('<img src=x onerror="alert(1)">')).toContain("&lt;img");
     expect(calendarEsc('<img src=x onerror="alert(1)">')).not.toContain("<img");
+  });
+  it("rejects a stale or out-of-window projection when the selected day/week changes",()=>{
+    const cached=parseHubCalendar(source(),NOW);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",1,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",7,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-27",1,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-20",1,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-28",1,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-22",7,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",1,NOW+300001)).toBe(false);
+    expect(hubCalendarCoversWindow(null,"2026-10-21",1,NOW)).toBe(false);
   });
   it("sends only a bearer, read-only, no-store request and checks its window",async()=>{
     const params:{url?:string;init?:RequestInit}={};
