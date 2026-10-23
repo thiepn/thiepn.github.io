@@ -7,7 +7,11 @@ import { getHubCategoryCounts, HUB_CATEGORY_CONFIG, type HubProjectEntry } from 
 interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; }
 const { entries, heading = 'Apps', headingLevel = 1, showHeading = true } = Astro.props;
 const counts = getHubCategoryCounts(entries);
-for (const app of additionalShortcutLaunches) counts[app.category] += 1;
+for (const app of additionalShortcutLaunches) {
+  const category = HUB_CATEGORY_CONFIG.find(item => item.id === app.category);
+  if (!category) throw new Error(`Unknown current app category for ${app.id}.`);
+  counts[category.id] += 1;
+}
 ---
 <section class="hub-catalogue" id="apps" aria-labelledby={showHeading?"apps-heading":undefined} aria-label={showHeading?undefined:heading} data-hub-catalogue>
   {showHeading && <header class="hub-catalogue__heading">
