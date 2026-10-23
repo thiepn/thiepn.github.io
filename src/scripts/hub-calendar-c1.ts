@@ -1,6 +1,6 @@
 import { hubIdentity } from "./portal-auth";
 import { readVerifiedHubToken } from "./hub-account";
-import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,validHubCalendarDay,CalendarConnectionFailure,type CalendarConnectionIssue,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
+import { calendarEsc as esc,fetchHubCalendar,hubCalendarOrigin,hubCalendarCoversWindow,validHubCalendarDay,CalendarConnectionFailure,type CalendarConnectionIssue,type HubCalendarData } from "../lib/workspace/google-calendar-c1";
 import { composeCalendarView,verifiedAcademic } from "../lib/workspace/calendar-composition-c2";
 import { weekDays } from "../lib/workspace/model";
 import type { CalendarEvent } from "../lib/workspace/types";
@@ -13,6 +13,7 @@ if(root&&panel) {
   const workspace=root, view=panel;
   const origin=hubCalendarOrigin(import.meta.env.PUBLIC_STUDYOS_ORIGIN);
   let data:HubCalendarData|null=null,loading=false,error:CalendarConnectionIssue|null=null,generation=0;
+  let requestedFrom:string|null=null,consented=false;
   let local:CalendarEvent[]=[];
   let selected:string|null=null,mode:"day"|"week"="day",localTruncated=false;
   let zone="Europe/Berlin";
@@ -108,7 +109,7 @@ if(root&&panel) {
     controller?.abort();controller=null;
     if(timeout)clearTimeout(timeout);timeout=null;
     if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;
-    data=null;loading=false;error=null;render();
+    data=null;loading=false;error=null;requestedFrom=null;consented=false;render();
   }
   function render(){
     view.hidden=!visible();
@@ -120,7 +121,8 @@ if(root&&panel) {
     renderRoadmap();
     const authorized=hubIdentity.status==="signed-in";
     const allowed=permitted();
-    const ready=Boolean(data&&authorized&&allowed);
+    const inWindow=hubCalendarCoversWindow(data,sourceStart(),mode==="week"?7:1);
+    const ready=Boolean(inWindow&&authorized&&allowed);
     actions.innerHTML=allowed&&origin&&authorized?
       '<button type="button" data-hub-calendar-load>'+ (ready?"Refresh":"Load Google Calendar")+'</button>'+
       '<a href="https://study.thiepn.dev/#today-schedule" target="_blank" rel="noopener noreferrer">Manage in StudyOS</a>'+
@@ -143,6 +145,7 @@ if(root&&panel) {
       return;
     }
     if(!data){body.textContent=expired?"Calendar snapshot expired. Refresh to view events.":"Load your connected StudyOS Google Calendar.";return;}
+    if(!inWindow){body.textContent="Selected date is outside the loaded calendar range. Load this date to view its events.";return;}
     if(data.status==="disconnected"){body.textContent="Google Calendar is not connected. Use Manage in StudyOS to connect it.";return;}
     const t=data.sourceSyncedAt?time(data.sourceSyncedAt,false):"Not synced";
     const warning=data.status==="stale"?"Calendar cache is stale. Refresh the source in StudyOS before relying on its availability.":data.status==="partial"?
@@ -182,7 +185,8 @@ if(root&&panel) {
   }
   async function load(){
     if(!origin||!permitted()||hubIdentity.status!=="signed-in")return;
-    const owner=hubIdentity.id,own=++generation;
+    const owner=hubIdentity.id,from=sourceStart(),own=++generation;
+    requestedFrom=from;
     controller?.abort();if(timeout)clearTimeout(timeout);
     const requestController=new AbortController();
     controller=requestController;const signal=requestController.signal;
@@ -194,7 +198,7 @@ if(root&&panel) {
       // Start the network timeout only after Account verification completes.
       // Never let a slow session check consume the StudyOS request budget.
       timeout=setTimeout(()=>requestController.abort(),15000);
-      const result=await fetchHubCalendar(origin,token,sourceStart(),signal);
+      const result=await fetchHubCalendar(origin,token,from,signal);
       if(own!==generation||!permitted()||hubIdentity.status!=="signed-in"||hubIdentity.id!==owner)return;
       data=result;
       if(expiryTimer)clearTimeout(expiryTimer);
@@ -235,7 +239,7 @@ if(root&&panel) {
   });
   view.addEventListener("click",event=>{
     const el=event.target instanceof Element?event.target.closest<HTMLElement>("button"):null;
-    if(el?.hasAttribute("data-hub-calendar-load"))void load();
+    if(el?.hasAttribute("data-hub-calendar-load")){consented=true;void load();}
     if(el?.hasAttribute("data-hub-calendar-hide"))discard();
     if(el?.hasAttribute("data-hub-study-clear")){clearRoadmap();renderRoadmap();}
   });
@@ -255,7 +259,13 @@ if(root&&panel) {
     local=p.events.slice(0,300) as CalendarEvent[];
     localTruncated=p.truncated===true;
     selected=p.selected;mode=p.mode==="week"?"week":"day";zone=p.timezone;
-    render();
+    // Once the owner has explicitly loaded Google Calendar, follow date navigation
+    // without displaying unrelated cached weeks. Never perform the initial load eagerly.
+    const from=sourceStart();
+    if(consented&&!error&&requestedFrom!==from&&
+      !hubCalendarCoversWindow(data,from,mode==="week"?7:1)&&
+      permitted()&&hubIdentity.status==="signed-in")void load();
+    else render();
   });
   window.dispatchEvent(new Event("hub:calendar-local-request"));
   window.addEventListener("hub:identity",()=>{local=[];selected=null;clearRoadmap();discard();});
