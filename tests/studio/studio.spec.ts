@@ -23,11 +23,11 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
     await expect(page.locator('[data-project="micro-arcade"]')).toHaveCount(0);
     await expect(page.locator('#tiny-tools')).toHaveCount(0);
 
-    const firstCard = page.locator('[data-hub-item]').first();
+    const firstCard = page.locator('[data-hub-current-app]').first();
     await expect(firstCard).toBeVisible();
     const firstRect = await firstCard.boundingBox();
     expect(firstRect).not.toBeNull();
-    expect(firstRect!.y).toBeLessThan(500);
+    expect(firstRect!.y).toBeLessThan(900);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);

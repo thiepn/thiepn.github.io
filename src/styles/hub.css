@@ -22,3 +22,22 @@
 .ws .hub-card__media .media-unavailable{display:grid;place-content:center;height:100%;padding:16px;text-align:center;color:var(--ws-muted);font-size:13px;background:var(--ws-soft);}
 @media(max-width:767px){.ws .hub-controls{position:static;}.ws .hub-category{min-height:44px;}.ws .hub-card__actions a{min-height:44px;}}
 @media(forced-colors:active){.ws .hub-category.is-active{border-color:Highlight;outline:1px solid Highlight;}}
+
+.ws .hub-section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:14px 0;}
+.ws .hub-section-heading h2{margin:0;font-size:19px;line-height:1.35;font-weight:650;}
+.ws .hub-section-heading>span{font-size:14px;color:var(--ws-muted);font-variant-numeric:tabular-nums;}
+.ws .hub-current-section{margin:0 0 28px;}
+.ws .hub-current-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px;}
+.ws .hub-current-app{display:flex;align-items:stretch;min-width:0;min-height:76px;border:1px solid var(--ws-line);border-radius:8px;background:var(--ws-surface);}
+.ws .hub-current-link{display:flex;align-items:center;min-width:0;flex:1;gap:10px;padding:12px;color:var(--ws-ink);text-decoration:none;}
+.ws .hub-current-link:hover{background:var(--ws-soft);}
+.ws .hub-current-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid var(--ws-line);border-radius:7px;}
+.ws .hub-current-name{display:flex;flex-direction:column;min-width:0;gap:2px;}
+.ws .hub-current-name strong{font-size:15px;font-weight:650;overflow-wrap:anywhere;}
+.ws .hub-current-name small{font-size:14px;color:var(--ws-muted);}
+.ws .hub-current-arrow{margin-left:auto;flex:none;}
+.ws .hub-current-pin{align-self:center;flex:none;margin:0 10px 0 0;min-height:42px;font-size:13px;}
+.ws .hub-current-pin[aria-pressed="true"]{border-color:var(--ws-accent);color:var(--ws-accent);}
+.ws .hub-current-section[hidden],.ws .hub-current-app[hidden]{display:none;}
+.ws .hub-current-link:focus-visible,.ws .hub-current-pin:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px;}
+@media(max-width:420px){.ws .hub-current-app{flex-wrap:wrap;}.ws .hub-current-link{width:100%;flex-basis:100%;min-height:58px;padding-bottom:4px;}.ws .hub-current-pin{margin:0 10px 10px auto;}}

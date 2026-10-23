@@ -1,19 +1,41 @@
 ---
 import HubCard from './HubCard.astro';
 import HubFilters from './HubFilters.astro';
-import { getHubCategoryCounts, type HubProjectEntry } from '../../lib/hub';
+import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
+import { icon, appIcon } from '../../lib/workspace/icons';
+import { getHubCategoryCounts, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
 interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; }
 const { entries, heading = 'Apps', headingLevel = 1, showHeading = true } = Astro.props;
 const counts = getHubCategoryCounts(entries);
+for (const app of additionalShortcutLaunches) counts[app.category] += 1;
 ---
 <section class="hub-catalogue" id="apps" aria-labelledby={showHeading?"apps-heading":undefined} aria-label={showHeading?undefined:heading} data-hub-catalogue>
   {showHeading && <header class="hub-catalogue__heading">
     {headingLevel === 1 ? <h1 id="apps-heading">{heading}</h1> : <h2 id="apps-heading">{heading}</h2>}
   </header>}
 
-  <HubFilters total={entries.length} counts={counts} />
+  <HubFilters total={entries.length + additionalShortcutLaunches.length} counts={counts} />
 
-  <div class="hub-grid" data-hub-grid>
-    {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
-  </div>
+  <section class="hub-current-section" data-hub-current-section aria-labelledby="hub-current-title">
+    <header class="hub-section-heading"><h2 id="hub-current-title">Current apps</h2><span>{additionalShortcutLaunches.length}</span></header>
+    <div class="hub-current-grid">
+      {additionalShortcutLaunches.map((app) => (
+        <article class="hub-current-app" data-hub-current-app={app.id} data-hub-current-category={app.category}>
+          <a href={app.url} class="hub-current-link" rel="noreferrer">
+            <span class="hub-current-icon"><Fragment set:html={icon(appIcon(app.id))}/></span>
+            <span class="hub-current-name"><strong>{app.title}</strong><small>{HUB_CATEGORY_CONFIG.find(c => c.id === app.category)?.label ?? app.category}</small></span>
+            <span class="hub-current-arrow"><Fragment set:html={icon('arrow-up-right')}/></span>
+          </a>
+          <button type="button" class="ws-button hub-current-pin" data-action="pin-app" data-id={app.id} aria-pressed="false">Pin shortcut</button>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="hub-published-section" aria-labelledby="hub-published-title">
+    <header class="hub-section-heading"><h2 id="hub-published-title">Published apps</h2><span>{entries.length}</span></header>
+    <div class="hub-grid" data-hub-grid>
+      {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
+    </div>
+  </section>
 </section>

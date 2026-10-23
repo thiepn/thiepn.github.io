@@ -63,3 +63,32 @@ test('mobile shortcut editor keeps current and older apps searchable without ove
   await expect(dialog).not.toBeVisible();
   await expect(page.locator('[data-widget-type="app-shortcuts"] .ws-shortcuts')).toContainText('WORDSTRIKE');
 });
+
+
+test('Apps tab displays current independent apps while the published catalogue stays frozen', async ({ page }) => {
+  await page.goto('/apps/');
+  await expect(page.locator('[data-hub-current-app]')).toHaveCount(12);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(manifest.entries.length);
+  for (const app of ['languages', 'chinese', 'japanese', 'korea', 'studyos', 'mdd', 'ion', 'chess', 'karaoke', 'ligoquiz', 'control']) {
+    await expect(page.locator(`[data-hub-current-app="${app}"] a`)).toHaveAttribute('href', /https:\/\//);
+  }
+  const publiclyRegistered = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
+  expect(publiclyRegistered.map(app => app.id)).toEqual(manifest.entries.map(entry => entry.id));
+});
+
+test('Apps tab filters both current and published apps, with pin persistence on mobile', async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/apps/');
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.locator('[data-hub-category="games"]').click();
+  await expect(page.locator('[data-hub-current-app="chess"]')).toBeVisible();
+  await expect(page.locator('[data-hub-current-app="japanese"]')).toBeHidden();
+  await page.locator('[data-hub-category="all"]').click();
+  const pin = page.locator('[data-hub-current-app="chess"] [data-action="pin-app"]');
+  await pin.click();
+  await expect(pin).toHaveAttribute('aria-pressed','true');
+  await page.reload();
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(page.locator('[data-hub-current-app="chess"] [data-action="pin-app"]')).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
