@@ -27,7 +27,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
     await expect(catalogue.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
     await expect(catalogue.locator('[data-hub-current-app]')).toHaveCount(currentApps.length);
     await expect(catalogue.locator('[data-hub-category="all"] span')).toHaveText(String(hub.expectedCount + currentApps.length));
-    await expect(catalogue.locator('.hub-published-section h2')).toHaveText('Published apps');
+    await expect(catalogue.locator('#hub-published-title')).toHaveText('Published apps');
     await expect(catalogue.locator('.hub-category')).toHaveCount(7);
     await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
