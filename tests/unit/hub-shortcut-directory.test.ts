@@ -12,7 +12,7 @@ describe('Hub shortcut directory', () => {
     const extensions = new Set(additionalShortcutLaunches.map(entry => entry.id));
     expect(extensions.size).toBe(additionalShortcutLaunches.length);
     expect([...extensions].every(id => !original.has(id))).toBe(true);
-    expect(launches).toHaveLength(original.size + extensions.size);
+    expect(launches.map(entry => entry.id)).toEqual(manifest.entries.map(entry => entry.id));
     for (const entry of additionalShortcutLaunches) {
       expect(resolveLaunch(entry.id)?.url).toBe(entry.url);
       expect(entry.visibility).toBe('shortcut-only');
