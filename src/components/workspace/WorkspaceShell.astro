@@ -6,7 +6,6 @@ import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
 import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
-import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
@@ -29,16 +28,14 @@ const staticView=['apps','connections','search','inbox','flows','documents'].inc
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
 const readingHost = Astro.url.pathname === '/home/' || Astro.url.pathname === '/home';
 const entries=await getHubProjects();
-const apps=[...additionalShortcutLaunches.map(({id,title,url,category})=>({
- id, title, url, icon:appIcon(id), category
-})), ...entries.map(({project,hub})=>{
+const apps=entries.map(({project,hub})=>{
  const id=project.data.slug;
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
- return {id,title:id==='french-3000'?'French':project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
-})];
+ return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
+});
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
 ---
-<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${entries.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
+<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse all ${apps.length} THIEPN apps, with your shortcuts, tasks and agenda in the same workspace.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
