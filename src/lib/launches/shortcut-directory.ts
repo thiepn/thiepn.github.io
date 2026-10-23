@@ -8,10 +8,25 @@
  */
 import type manifest from '../../generated/launch-manifest.json';
 
-type CoreLaunch = (typeof manifest.entries)[number];
-type Category = CoreLaunch['category'];
+type Category = (typeof manifest.entries)[number]['category'];
+export interface ShortcutLaunch {
+  id: string;
+  title: string;
+  url: string;
+  category: Category;
+  ownerRepo: string;
+  description: string;
+  badge: null;
+  aliases: string[];
+  moduleRef: null;
+  visibility: 'shortcut-only';
+  state: 'candidate';
+  platforms: string[];
+  contentSlug: null;
+  keywords: string[];
+}
 
-function shortcut(id: string, title: string, url: string, category: Category, ownerRepo: string): CoreLaunch {
+function shortcut(id: string, title: string, url: string, category: Category, ownerRepo: string): ShortcutLaunch {
   return {
     id, title, url, category, ownerRepo,
     description: '', badge: null, aliases: [], moduleRef: null,
@@ -24,7 +39,7 @@ function shortcut(id: string, title: string, url: string, category: Category, ow
 // Only owner-established or repository-documented canonical app entrypoints.
 // Do not add a proposed hostname, preview build, private dashboard or a
 // not-yet-published application here.
-export const additionalShortcutLaunches: readonly CoreLaunch[] = [
+export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
   shortcut('languages', 'Languages', 'https://languages.thiepn.dev/', 'learn', 'thiepn/languages'),
   shortcut('chinese', 'Chinese', 'https://chinese.thiepn.dev/', 'learn', 'thiepn/chinese'),
   shortcut('japanese', 'Japanese', 'https://thiepn.dev/japanese/', 'learn', 'thiepn/japanese'),
