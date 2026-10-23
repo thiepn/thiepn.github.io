@@ -1,8 +1,8 @@
 import manifest from '../../generated/launch-manifest.json';
-import { additionalShortcutLaunches } from './shortcut-directory';
+import { additionalShortcutLaunches, type ShortcutLaunch } from './shortcut-directory';
 export type Launch = (typeof manifest.entries)[number];
 export const launches: readonly Launch[] = manifest.entries;
-const shortcutResolutions: readonly Launch[] = [...launches, ...additionalShortcutLaunches];
+const shortcutResolutions: readonly (Launch | ShortcutLaunch)[] = [...launches, ...additionalShortcutLaunches];
 export function resolveLaunch(id: string): Launch | undefined {
  const key=id.toLocaleLowerCase();
  return shortcutResolutions.find(entry=>entry.id===key || entry.aliases.some(alias=>alias.toLocaleLowerCase()===key));
