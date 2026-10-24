@@ -30,11 +30,16 @@ export function planningHorizon(value: string): PlanningHorizon {
   throw new Error('Choose three, five or seven planning days.');
 }
 /** Show known Hub workload, not a free-time or appointment availability claim. */
+function validPlanningDate(value:string):boolean {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  try { return validDate(value); }
+  catch { return false; }
+}
 export function prepareDistributedWeek(
   state: WorkspaceState, originals: readonly TaskBeforeMove[], start: string, days: PlanningHorizon,
   folio: FolioDeviceSnapshot|null=null,
 ): DistributedWeekPreview {
-  if (!validDate(start) || ![3, 5, 7].includes(days))
+  if (!validPlanningDate(start) || ![3, 5, 7].includes(days))
     throw new Error('Choose a valid date and planning horizon.');
   if (originals.length < 1 || originals.length > MAX_WEEK_BATCH)
     throw new Error('Select between 1 and 25 unfinished Hub tasks.');
