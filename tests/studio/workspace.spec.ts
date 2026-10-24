@@ -34,7 +34,7 @@ test('blocked IndexedDB keeps content in memory and never claims it was saved',a
 });
 async function taskWithoutSave(page:Page){await page.locator('[data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill('Unsaved task');await page.locator('[data-dialog-submit]').click();}
 test('identity changes clear private local content and do not import it into a guest',async({page})=>{
- await ready(page);await task(page,'Guest task');const owner='11111111-1111-4111-8111-111111111111';await page.evaluate(id=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-in',id,label:'Test owner'}})),owner);await expect(page.locator('.ws-task-title')).toHaveCount(0);await task(page,'Owner task');await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'checking'}})));await expect(page.locator('[data-workspace-content]')).not.toContainText('Owner task');await expect(page.locator('[data-planner]')).toBeEmpty();await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-out'}})));await expect(page.locator('.ws-task-title')).toHaveText('Guest task');
+ await ready(page);await task(page,'Guest task');const owner='11111111-1111-4111-8111-111111111111';await page.evaluate(id=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-in',id,label:'Test owner'}})),owner);await expect(page.locator('[data-workspace-content]')).not.toContainText('Guest task');await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveCount(0);await task(page,'Owner task');await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'checking'}})));await expect(page.locator('[data-workspace-content]')).not.toContainText('Owner task');await expect(page.locator('[data-planner]')).toBeEmpty();await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-out'}})));await expect(page.locator('[data-home-mode=today]')).toBeVisible();await expect(page.locator('[data-workspace-content]')).not.toContainText('Owner task');await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveText('Guest task');
 });
 test('layout edit draft resumes after navigation and local search opens real notes',async({page})=>{
  await ready(page);await page.locator('[data-capture-draft]').fill('Resume this note');await page.locator('[data-capture-form]').getByRole('button',{name:'Capture',exact:true}).click();await page.getByRole('button',{name:'Customize',exact:true}).click();await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await page.reload();await page.getByRole('button',{name:'Resume edit',exact:true}).click();await expect(page.getByText('Editing layout',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Done',exact:true}).click();await page.locator('[data-action=search]').click();await page.locator('#workspace-search').fill('Resume this note');await page.locator('[data-command=edit-note][data-palette-primary]').click();await expect(page.getByLabel('Note',{exact:true})).toHaveValue('Resume this note');
@@ -53,7 +53,7 @@ test('future saved documents are exported for recovery and never overwritten',as
 });
 test('the public workspace shell reloads offline without caching auth or connections',async({page,context,browserName})=>{
  test.skip(browserName!=='chromium','Chromium offline shell scenario');await ready(page);await task(page,'Offline task');
- await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.reload();await page.waitForFunction(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.reload();await expect(page.locator('.ws-task-title')).toHaveText('Offline task');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.reload();await page.waitForFunction(()=>!!navigator.serviceWorker.controller);await page.goto('/');await expect(page.locator('[data-home-mode=today]')).toBeVisible();await context.setOffline(true);await page.reload();await expect(page.locator('[data-workspace-content]')).toContainText('Offline task');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  const cached=await page.evaluate(async()=>{const keys=await caches.keys();const cache=await caches.open(keys.find(k=>k.startsWith('thiepn-workspace-'))!);return (await cache.keys()).map(r=>new URL(r.url).pathname);});expect(cached).not.toContain('/home/auth/callback/');expect(cached).not.toContain('/home/connections/');expect(cached.filter(p=>/auth\/v1|rest\/v1/.test(p))).toEqual([]);await context.setOffline(false);
 });
 test('populated workspace remains readable and keyboard scrollable in both themes',async({page})=>{
@@ -67,14 +67,14 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  await page.goto('/home/?mode=workspace'); await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  const origin = new URL(page.url()).origin;
  await task(page, 'Keep existing Home data');
- await page.locator('.ws-brand a').click(); await expect(new URL(page.url()).pathname).toBe('/');
- await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await page.locator('.ws-brand a').click(); await expect(page).toHaveURL(url=>url.pathname==='/');
+ await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
  await expect(page.locator('[data-library-pilot]')).toHaveCount(0);
  await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
  await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
  await page.locator('.ws-nav').getByRole('link',{name:'Today',exact:true}).click();
- await expect(new URL(page.url()).pathname).toBe('/'); await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
+ await expect(page).toHaveURL(url=>url.pathname==='/');await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
  await page.locator('.ws-topbar [data-action=account]').click();
  await page.getByRole('link',{name:'Open reading connection',exact:true}).click();
  await expect(new URL(page.url()).pathname).toBe('/home/');

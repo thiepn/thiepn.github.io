@@ -20,6 +20,7 @@ import { renderSourceToday } from '../lib/workspace/source-today';
 import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
 import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
 import { renderEventPreparation, renderUpcomingEventPreparation, preparationTaskSeed, preparationNoteSeed } from '../lib/workspace/event-preparation';
+import { taskEventLinks, linkTaskEvent, unlinkTaskEvent, renderTaskEventBoard, renderTaskEventContext, type RelationDraft } from '../lib/workspace/task-event-links';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -754,6 +755,7 @@ async function setup(root: HTMLElement) {
             case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div>${dirty ? '<small class="ws-error">Draft not saved yet</small>' : ''}</form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
+            case 'task-event-links': return renderTaskEventBoard(state!,w.view==='compact');
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
@@ -791,6 +793,7 @@ async function setup(root: HTMLElement) {
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
                 renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot())+
                 renderUpcomingEventPreparation(state!,today())+
+                (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
@@ -1080,6 +1083,7 @@ async function setup(root: HTMLElement) {
         const details=`<div class="ws-context-summary">
             <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
             ${renderTaskKnowledgeContext(state!,task,contextOwnerInput())}
+            ${renderTaskEventContext(state!,'task',id)}
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
@@ -1113,6 +1117,7 @@ async function setup(root: HTMLElement) {
         const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
           <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
           ${renderEventPreparation(state!,item,contextOwnerInput())}
+          ${renderTaskEventContext(state!,'event',id)}
           <div class="ws-context-actions">
             ${button('edit-event','Edit original event',id)}
             ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
@@ -1311,6 +1316,43 @@ async function setup(root: HTMLElement) {
         },'Apply reviewed distribution');
         paintDistributedPreview(snapshots,own);
     }
+    function reviewTaskEventLink(reference='') {
+        if(editing){toast('Finish editing the layout before linking records.');return;}
+        const [kind,sourceId]=reference.includes(':')?[reference.split(':')[0],reference.slice(reference.indexOf(':')+1)]:['',''];
+        const currentTask=kind==='task'?sourceId:'';
+        const currentEvent=kind==='event'?sourceId:'';
+        const workspaceId=state!.active;
+        const currentTasks=state!.tasks.map(t=>[t.id,t.title+(t.completedAt?' · completed':'')]);
+        const currentEvents=state!.events.map(e=>[e.id,e.title+' · '+e.date]);
+        if(currentTasks.length===0||currentEvents.length===0){
+          toast('Create an original Hub task and calendar event before linking them.');return;
+        }
+        openForm('Link original Hub task and event',
+          select('Original Hub task','taskId',currentTasks,currentTask||currentTasks[0]![0]!)+
+          select('Original Hub calendar event','eventId',currentEvents,currentEvent||currentEvents[0]![0]!)+
+          select('Relationship','role',[['work','Scheduled work'],['prepare','Preparation'],['followup','Follow-up']],'work')+
+          '<p>Review an explicit reference only. Neither task dates nor calendar times change; no external calendar receives anything.</p>',
+          async data=>{
+            const draft:RelationDraft={taskId:String(data.get('taskId')??''),eventId:String(data.get('eventId')??''),
+              role:String(data.get('role')??'') as RelationDraft['role']};
+            await mutate(s=>{
+              if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the link review.');
+              linkTaskEvent(s,draft);
+            },'Task–calendar relationship saved',true,false,true);
+          },'Link originals');
+    }
+    function reviewTaskEventUnlink(idValue:string) {
+        if(editing){toast('Finish editing the layout before unlinking.');return;}
+        const original=taskEventLinks(state!).find(x=>x.id===idValue);
+        if(!original){toast('Link no longer available.');return;}
+        const snapshot=JSON.stringify(original),workspaceId=state!.active;
+        openForm('Unlink task and event','<p>Remove only the relationship? Both original records, dates, status and activity remain unchanged.</p>',
+          async()=>mutate(s=>{
+            if(s.active!==workspaceId)throw Error('Workspace changed. Reopen this relationship.');
+            unlinkTaskEvent(s,idValue,snapshot);
+          },'Task–calendar relationship removed',true,false,true),'Unlink');
+    }
+
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
             return;
@@ -1767,7 +1809,7 @@ async function setup(root: HTMLElement) {
         if (!editing)
             beginEdit();
         const groups: Array<{title:string;description:string;types:string[]}> = [
-            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
             {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
         ];
@@ -2142,6 +2184,12 @@ async function setup(root: HTMLElement) {
             case 'context-event':
                 showEventContext(id);
                 break;
+            case 'review-task-event-link':
+                reviewTaskEventLink(id);
+                break;
+            case 'unlink-task-event':
+                reviewTaskEventUnlink(id);
+                break;
             case 'plan-task-event':
                 planTaskInCalendar(id);
                 break;
@@ -2470,6 +2518,7 @@ async function setup(root: HTMLElement) {
                 widgetPicker();
                 break;
             case 'add-type': {
+                if(id==='task-event-links' && editing?.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One task–calendar links widget per workspace.');break;}
                 const spec = specification(id);
                 if (!spec)
                     return;

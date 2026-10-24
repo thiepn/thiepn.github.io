@@ -1,0 +1,12 @@
+.ws-task-event-board,.ws-task-event-context{display:grid;gap:.6rem;min-width:0}
+.ws-task-event-board>header{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.ws-task-event-board h3,.ws-task-event-context h4{font-size:1rem;margin:0}
+.ws-task-event-rows{list-style:none;padding:0;margin:0;display:grid;gap:.6rem}
+.ws-task-event-rows>li{border-bottom:1px solid var(--ws-line);padding:.4rem 0 .7rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.ws-task-event-source{display:flex;align-items:center;gap:.4rem;min-width:0;flex:1 1 14rem;flex-wrap:wrap}
+.ws-task-event-source button{overflow-wrap:anywhere;max-width:100%;text-align:start}
+.ws-task-event-source small{display:block;width:100%;font-size:.875rem}
+.ws-task-event-board button,.ws-task-event-context button{min-height:40px}
+.ws-task-event-context{margin-block:1rem;border-top:1px solid var(--ws-line);padding-top:.7rem}
+.ws-task-event-board>button{justify-self:start}
+@media(max-width:600px){.ws-task-event-source{flex-direction:column;align-items:flex-start}.ws-task-event-rows>li>button{min-height:44px}}

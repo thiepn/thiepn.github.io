@@ -14,6 +14,9 @@ test('opt-in Folio summary accepts only its popup and clears on command', async 
  await page.evaluate(() => window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'checking'}})));
  await page.evaluate(() => window.dispatchEvent(new CustomEvent('hub:identity',{detail:{status:'signed-out'}})));
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await expect(page.locator('[data-home-mode=today]')).toBeVisible();
+ await expect(page.locator('[data-workspace-content]')).not.toContainText('Source-owned task');
+ await page.locator('[data-action=unified-mode][data-id=workspace]').click();
  await popup.getByRole('button',{name:'Approve Folio share'}).click();
  await expect(page.locator('[data-folio-device]')).toContainText('Source-owned task');
  await expect(page.locator('[data-folio-device]')).toContainText('Private Folio note title');

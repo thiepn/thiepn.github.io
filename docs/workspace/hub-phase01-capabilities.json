@@ -52,9 +52,9 @@
       "id": "tasks",
       "owner": "hub",
       "source": "src/lib/workspace/store.ts",
-      "state": "phase03_candidate",
-      "scope": "Canonical task writer, 3/5/7-day previewed distribution, workbench continuation and knowledge suggestions without cloned task IDs",
-      "next": "P04"
+      "state": "phase05_candidate",
+      "scope": "Original Hub tasks, native planning/CAS, plus explicit task↔event ID references in existing schema-v1 workspace widget",
+      "next": "P06"
     },
     {
       "id": "today",
@@ -69,9 +69,9 @@
       "owner": "hub",
       "nativeSourceOwner": "studyos",
       "source": "src/lib/workspace/google-calendar-c1.ts",
-      "state": "phase01_candidate",
-      "scope": "Read-only StudyOS composition and original Hub event writer, plus reviewed optional prep/follow-up drafts using native task/note forms",
-      "next": "P07"
+      "state": "phase05_candidate",
+      "scope": "Original native Hub event writer and read-only StudyOS composition, event preparation plus explicit local task references",
+      "next": "P06"
     },
     {
       "id": "knowledge",
@@ -304,6 +304,31 @@
       "StudyOS data",
       "KEEP vault",
       "release deployment"
+    ]
+  },
+  "phase05": {
+    "parent": "89a2793698e8b075e0bc8fc1253ee86d037e996f",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "candidate_pending_exact_head_CI",
+    "scope": "Original workspace-scoped Hub task↔event references, native review/create/unlink and strict schema-v1 validation",
+    "provenance": {
+      "Quality": "40075785481: FAIL 20 browser tests, 1188 passed/4 skipped; Astro 0 errors and 584/584 Vitest PASS; Account refresh concurrent Chromium/WebKit PASS",
+      "Library": "40075785522 PASS original owner three-engine consent",
+      "Reading": "40075785484 PASS original pilot 52 browser test release"
+    },
+    "contracts": [
+      "Canonical workspace Store and existing mutate/CAS/undo/revision",
+      "Widget config.links preserves original Hub task/event IDs only, max 32, schemaVersion 1",
+      "Current workspace is association authority; no source cloning or calendar time changes",
+      "Exactly one relationship widget per workspace, optional in Customize",
+      "Ephemeral source owner shares remain read-only and unpersisted",
+      "Retain Today default and identity-owned restoration"
+    ],
+    "openChecks": [
+      "20 remaining legacy consent/identity/accessibility tests: explicitly restore Workspace only after identity transition",
+      "Offlined SW root navigation test must stay meaningful",
+      "Do not claim exact-head browser pass until CI finished",
+      "KEEP #168 and Account ownership remain separate"
     ]
   }
 }

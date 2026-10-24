@@ -92,7 +92,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
  await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
  await expect(capture).toHaveValue('Still typing');await sync(a.page);await expect(capture).toHaveValue('Still typing');
- await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');await expect(a.page.locator('.ws-task-title')).toHaveCount(0);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+ await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Remote task');await workspace(a.page);await expect(a.page.locator('.ws-task-title')).toHaveCount(0);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
  await Promise.all([a.context.close(),b.context.close()]);
 });
 test('mobile account dialog exposes cloud status and recovery actions',async({browser})=>{
@@ -165,12 +165,24 @@ test('Try again restarts Account initialization after session storage recovers',
  await a.page.evaluate(()=>localStorage.setItem('fixture:session-recovered','1'));await a.page.locator('[data-auth-retry]').click();
  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});expect(api.exchanges()).toBe(1);await a.context.close();
 });
-test('visitors get an introduction and can choose their local workspace without signing in',async({browser})=>{
- const api=backend(),a=await api.device(browser,null);
- await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
- await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
- await a.page.goto('https://thiepn.dev/?mode=workspace');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
- await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
+test('guest opens Today without forced onboarding and can use the native workspace',async({browser})=>{
+  const api=backend(),a=await api.device(browser,null);
+  await expect(a.page.locator('[data-workspace][data-home-mode=today]')).toBeVisible();
+  await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');
+  await a.page.locator('.ws-nav a[href="/apps/"]').click();
+  await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
+  await a.page.goto('https://thiepn.dev/?mode=workspace');
+  await expect(a.page.locator('[data-home-mode=workspace]')).toBeVisible();
+  await a.page.locator('[data-planner] [data-action=new-task]').first().click();
+  await a.page.getByLabel('Task',{exact:true}).fill('Guest local work');
+  await a.page.locator('[data-workspace-dialog] [data-dialog-submit]').click();
+  await a.page.reload();
+  await expect(a.page.locator('[data-home-mode=workspace]')).toBeVisible();
+  await expect(a.page.locator('.ws-task-title')).toContainText('Guest local work');
+  expect(api.exchanges()).toBe(0);
+  expect(api.writes).toHaveLength(0);
+  await a.context.close();
 });
 test('Account initialization failure leaves local tasks usable and persistent',async({browser})=>{
  const api=backend(),a=await api.device(browser,null,undefined,false,'session-blocked');await workspace(a.page);
@@ -187,6 +199,8 @@ test('consented Notes, Library and TMS60 insights appear together and clear with
 test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
  const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
  await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
+ await expect(a.page.locator('[data-home-mode=today]')).toBeVisible();
+ await workspace(a.page);
  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
  const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
  expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
@@ -237,7 +251,7 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
    await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
    await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
    await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
-   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await expect.poll(()=>new URL(a.page.url()).pathname).toBe('/');
    await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
