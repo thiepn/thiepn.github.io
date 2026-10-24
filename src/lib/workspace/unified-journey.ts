@@ -3,8 +3,8 @@ import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
 import type { WorkspaceState, Task, CalendarEvent } from './types';
 
-export type HomeJourneyMode = 'today'|'focus'|'workspace';
-export const HOME_JOURNEY_MODES:readonly HomeJourneyMode[]=['today','focus','workspace'];
+export type HomeJourneyMode = 'today'|'focus'|'review'|'workspace';
+export const HOME_JOURNEY_MODES:readonly HomeJourneyMode[]=['today','focus','review','workspace'];
 export interface JourneyStatus {
   offline:boolean;
   dirty:boolean;
@@ -38,6 +38,7 @@ export function renderUnifiedJourneyNav(mode:HomeJourneyMode,state:WorkspaceStat
   const modes:{id:HomeJourneyMode;title:string;detail:string}[]=[
     {id:'today',title:'Today',detail:(counts.today+counts.inbox)+' to triage'},
     {id:'focus',title:'Focus',detail:'One task at a time'},
+    {id:'review',title:'Review',detail:'Weekly review'},
     {id:'workspace',title:'Workspace',detail:'Notes, apps & widgets'}
   ];
   const warning=status.conflict?'Another tab changed saved records':status.dirty?'Unsaved changes in this tab':
@@ -59,6 +60,8 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
       <h2 id="ws-unified-title">What needs your attention?</h2></div>
       <div class="ws-unified-head-actions">
         ${textButton('capture-task','Inbox task')}
+        ${textButton('capture','Quick note')}
+        ${textButton('new-event','Add event')}
         <a href="/home/calendar/?mode=week" class="ws-unified-action">Plan the week</a>
       </div></header>
     ${pending?`<div class="ws-unified-draft"><strong>Unfinished local capture</strong><span>${state.captureDraft.length} characters</span>${textButton('capture','Resume draft')}</div>`:''}

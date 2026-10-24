@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('daily Hub summary uses original local planner commands and preserves layout editing', async ({ page }) => {
   await page.setViewportSize({width:1440,height:900});
-  await page.goto('/');
+  await page.goto('/?mode=workspace');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-native-overview]')).toBeVisible();
   await expect(page.locator('[data-native-overview]')).toContainText('Sign in to Hub');
@@ -27,7 +27,7 @@ test('daily Hub summary uses original local planner commands and preserves layou
 
 test('mobile overview projects genuine tracker logs and local note titles', async ({page}) => {
   await page.setViewportSize({width:375,height:812});
-  await page.goto('/');
+  await page.goto('/?mode=workspace');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await page.locator('[data-native-overview] [data-action="brief-capture"]').click();
   await page.getByLabel('Title',{exact:true}).fill('Reading reflections');
