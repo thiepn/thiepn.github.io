@@ -1962,7 +1962,7 @@ async function setup(root: HTMLElement) {
             toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
             return;
         }
-        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
+        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '<p>Saved outcomes, decisions, pins and task–calendar links stay with the original workspace.</p>' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
             const title = String(data.get('title')).trim();
             if (!title)
                 throw new Error('Choose a name.');
@@ -1992,6 +1992,9 @@ async function setup(root: HTMLElement) {
                 }
                 else {
                     const index = s.workspaces.findIndex(w => w.id === s.active);
+                    if(index<0)throw Error('Original workspace unavailable.');
+                    if(workspaceOwnedSummary(s.workspaces[index]!).length)
+                        throw Error('This layout contains original Hub groupings or relationships. Remove them explicitly before replacing it, or create a new workspace.');
                     next.id = s.active;
                     next.title = s.workspaces[index]!.title;
                     next.revision = s.workspaces[index]!.revision + 1;
