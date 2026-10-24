@@ -74,13 +74,23 @@
       "next": "P08"
     },
     {
+      "id": "hub-native-knowledge",
+      "owner": "hub",
+      "consumer": "hub",
+      "source": "src/pages/home/knowledge/index.astro",
+      "state": "phase10_candidate",
+      "sourcePr": 166,
+      "scope": "Native read-only search, browse and full-text view of original Hub-local Notes through existing owner-specific WorkspaceStore; original Hub note editor only; no KEEP encrypted material, no external Notes copies",
+      "next": "P11"
+    },
+    {
       "id": "knowledge",
       "owner": "keep",
       "consumer": "hub",
-      "source": "src/pages/home/knowledge/index.astro",
+      "source": "unmerged-PR-168/KEEP-native-vault",
       "state": "draft_only",
       "sourcePr": 168,
-      "scope": "Confirmed Hub-only task/note decision/outcome backlinks and explicit pinboard implemented in Home/Workspace; the separate Knowledge route and KEEP encrypted vault remain draft and unmerged",
+      "scope": "Encrypted KEEP B3 native integration remains an independent draft on PR #168; /home/knowledge/ in PR #189 reads only Hub original local notes and is not the KEEP vault",
       "next": "P10"
     },
     {
@@ -428,5 +438,28 @@
     "previousLibrary": "40102049054: PASS",
     "previousReading": "40102048871: PASS",
     "inventoryCorrection": "No Knowledge route claimed; preserved original draft-only source check instead of fabricating page or relaxing inventory."
+  },
+  "phase10": {
+    "parent": "74bfdb969967d5adbc411c64aff18ea2c851eee4",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "candidate_pending_exact_head_CI",
+    "feature": "Native original Hub-note Knowledge view and search, not encrypted KEEP vault",
+    "implemented": [
+      "Route /home/knowledge/ with existing WorkspaceShell and same owner-scoped WorkspaceStore",
+      "Original source personal-index-knowledge read-only projection, bounded to 60 rows and max 100-character query",
+      "Full original note body escaped; original edit-note and context-note actions only",
+      "Private search terms and current selection remain memory-only, wiped on identity/privacy",
+      "Responsive Knowledge navigation in existing desktop sidebar/mobile More menu",
+      "Original source units and responsive Chromium/Firefox/WebKit browser tests"
+    ],
+    "protected": [
+      "Separate unmerged encrypted KEEP remains draft_only",
+      "No cloud or external Notes source import",
+      "No source-ID URLs or new storage/writer",
+      "Today, Calendar, task-event links, Apps 31+12, Documents, Account and consent unchanged"
+    ],
+    "priorQuality": "40106262919 remained running full audit:studio at Phase10 start; preliminary Calendar/Account/regression checks passed",
+    "priorLibrary": "40106262957 PASS",
+    "priorReading": "40106262933 PASS"
   }
 }

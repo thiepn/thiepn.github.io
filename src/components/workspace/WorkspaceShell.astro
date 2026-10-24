@@ -31,8 +31,9 @@ import '../../styles/workspace-phase06-focus.css';
 import '../../styles/workspace-phase07-notes-reminders.css';
 import '../../styles/workspace-phase08-review.css';
 import '../../styles/workspace-phase09-pins.css';
+import '../../styles/workspace-phase10-knowledge.css';
 import '@fontsource-variable/instrument-sans';
-interface Props { view?: 'home'|'tasks'|'calendar'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows'|'documents' }
+interface Props { view?: 'home'|'tasks'|'calendar'|'knowledge'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows'|'documents' }
 const {view='home'}=Astro.props;
 const staticView=['apps','connections','search','inbox','flows','documents'].includes(view);
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
@@ -43,7 +44,7 @@ const apps=entries.map(({project,hub})=>{
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
 });
-const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Plan','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
+const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Plan','/home/calendar/','calendar-blank'],['knowledge','Knowledge','/home/knowledge/','book-open'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
 ---
 <BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse ${apps.length} published apps and ${additionalShortcutLaunches.length} additional app shortcuts.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
@@ -57,7 +58,7 @@ const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
-          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
+          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':view==='knowledge'?'Knowledge':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>

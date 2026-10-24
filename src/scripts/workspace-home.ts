@@ -47,6 +47,7 @@ import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type Focu
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
 import {renderHubPinboard,hubPinboard,hubPinnedKeys,hasHubPin,enableHubPinboard,toggleHubRecordPin,moveHubRecordPin} from '../lib/workspace/record-pinboard';
 import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
+import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -121,6 +122,7 @@ async function setup(root: HTMLElement) {
     let privacyHeld = false;
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
+    let knowledgeNoteId:string|null=null,knowledgeQuery='';
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let weeklyReviewStage:WeeklyReviewStage='triage';
@@ -645,6 +647,7 @@ async function setup(root: HTMLElement) {
         focus.elapsed=false;
     }
     function clearFocusIdentity() {
+        knowledgeNoteId=null;knowledgeQuery='';
         weeklyReviewStage='triage';
         weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};
         focusWork.clear();
@@ -800,6 +803,7 @@ async function setup(root: HTMLElement) {
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('No widgets', '', 'add-widget', 'Add widget') : ''}`; }
     function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
     function fullContent() {
+        if (view === 'knowledge') return renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery);
         if (view === 'settings')
             return settingsHTML();
         if (view === 'tasks') {
@@ -897,8 +901,9 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
+        if(knowledgeNoteId && !state.notes.some(n=>n.id===knowledgeNoteId)) knowledgeNoteId=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { knowledgeNoteId=null;knowledgeQuery='';focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
@@ -995,7 +1000,7 @@ async function setup(root: HTMLElement) {
     $('[data-more-close]').addEventListener('click', () => more.close());
     let moreNavigation = false;
     more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
-    const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
+    const routes: Record<string, string> = { '/': 'home', '/home/knowledge/': 'knowledge', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
     const documents = new Map<string, Document>();
     let navigationTicket = 0;
     let committedUrl = location.pathname + location.search;
@@ -2349,6 +2354,18 @@ async function setup(root: HTMLElement) {
             case 'context-task':
                 showTaskContext(id);
                 break;
+            case 'knowledge-open': {
+                if(view!=='knowledge'||!state||locked||privacyHeld||state.preferences.hidden)break;
+                const chosen=projectHubKnowledge(state,knowledgeQuery,id);
+                if(!chosen.notes.some(n=>n.id===id))break;
+                knowledgeNoteId=id;
+                const list=root.querySelector<HTMLElement>('[data-knowledge-results]');
+                const preview=root.querySelector<HTMLElement>('[data-knowledge-document]');
+                if(list)list.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,id);
+                if(preview && chosen.selected)preview.innerHTML=renderHubKnowledgePreview(state,chosen.selected);
+                root.querySelector<HTMLElement>('#ws-knowledge-preview-title')?.focus();
+                break;
+            }
             case 'context-note':
                 showNoteContext(id);
                 break;
@@ -2819,7 +2836,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { knowledgeNoteId=null;knowledgeQuery='';resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -3106,6 +3123,18 @@ async function setup(root: HTMLElement) {
             focusWork.set(taskId,next);
             source.querySelector<HTMLButtonElement>('[data-action=focus-work-note]')!.disabled=!hasFocusWork(next);
             source.querySelector<HTMLButtonElement>('[data-action=focus-work-clear]')!.disabled=!hasFocusWork(next);
+            return;
+        }
+        if(el.hasAttribute('data-knowledge-query')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge')return;
+            knowledgeQuery=el.value.slice(0,100);
+            const result=projectHubKnowledge(state,knowledgeQuery,knowledgeNoteId);
+            knowledgeNoteId=result.selected?.id??null;
+            const list=root.querySelector<HTMLElement>('[data-knowledge-results]');
+            const preview=root.querySelector<HTMLElement>('[data-knowledge-document]');
+            if(list)list.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,knowledgeNoteId);
+            if(preview)preview.innerHTML=result.selected?renderHubKnowledgePreview(state,result.selected):
+                '<div class="ws-knowledge-blank"><h3>No matching Hub notes</h3></div>';
             return;
         }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
