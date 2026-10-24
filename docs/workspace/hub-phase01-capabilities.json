@@ -78,9 +78,9 @@
       "owner": "keep",
       "consumer": "hub",
       "source": "src/pages/home/knowledge/index.astro",
-      "state": "phase09_candidate",
+      "state": "draft_only",
       "sourcePr": 168,
-      "scope": "Existing Hub local notes/Tasks, confirmed decision/outcome backlinks and explicit original-record pinboard, KEEP vault independent",
+      "scope": "Confirmed Hub-only task/note decision/outcome backlinks and explicit pinboard implemented in Home/Workspace; the separate Knowledge route and KEEP encrypted vault remain draft and unmerged",
       "next": "P10"
     },
     {
@@ -426,6 +426,7 @@
     ],
     "previousQuality": "40102048965: in_progress executing audit:studio at Phase09 start; preliminary Calendar, Account, TypeScript release gate checks passed, no terminal 3-browser result",
     "previousLibrary": "40102049054: PASS",
-    "previousReading": "40102048871: PASS"
+    "previousReading": "40102048871: PASS",
+    "inventoryCorrection": "No Knowledge route claimed; preserved original draft-only source check instead of fabricating page or relaxing inventory."
   }
 }
