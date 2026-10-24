@@ -60,18 +60,18 @@
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "phase06_candidate",
-      "scope": "Original native Today and seven-day tasks, Focus task-bound working pad and explicit note handoff, owner-safe sources",
-      "next": "P07"
+      "state": "phase07_candidate",
+      "scope": "Original Today, 7-day workbench, Focus pad and owner-scoped expiry-guarded Notes reminder horizon",
+      "next": "P08"
     },
     {
       "id": "calendar",
       "owner": "hub",
       "nativeSourceOwner": "studyos",
       "source": "src/lib/workspace/google-calendar-c1.ts",
-      "state": "phase05_candidate",
-      "scope": "Original native Hub event writer and read-only StudyOS composition, event preparation plus explicit local task references",
-      "next": "P06"
+      "state": "phase07_candidate",
+      "scope": "Original Hub events, read-only StudyOS Calendar, user-reviewed task associations, and ephemeral Notes due reminders",
+      "next": "P08"
     },
     {
       "id": "knowledge",
@@ -352,6 +352,34 @@
       "Task/event link source IDs and workspace CAS untouched",
       "31+12 Apps and Documents untouched",
       "No external owner permission or write"
+    ]
+  },
+  "phase07": {
+    "parent": "ce65cfd49b84e824df6060d77021ee5d2f5bc946",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "exact_head_ci_pending",
+    "feature": "Consent-only original Notes reminder continuity in native Today and Calendar",
+    "implementation": [
+      "Reuse existing same-origin popup nonce and opener validation of Notes",
+      "Permit acceptance only during a known signed-in or signed-out Hub identity",
+      "Reject source shares from mismatched owners during identity checking and prevent projection when identity, revocation, privacy or freshness no longer match",
+      "Fresh Notes reminder summaries live in memory only, bounded to six source reminders and five-minute validity",
+      "Expire the projection automatically without persisting, importing or completing Notes reminders",
+      "Display original source deadlines in the native Today seven-day horizon and day/week Calendar, never as Hub events or tasks",
+      "Refresh/clear share repaints active Today and Calendar without duplicating their engines",
+      "Original unit and three-browser owner-popup tests retained"
+    ],
+    "provenance": {
+      "quality": "40091862265 running audit:studio at Phase07 start; Calendar and Account cross-tab smoke PASS, Vitest and Focus mobile pending",
+      "library": "40091862244 PASS",
+      "reading": "40091862291 PASS"
+    },
+    "protected": [
+      "WorkspaceStore schema v1, CAS/undo, original IDs",
+      "Today's native task/focus and task↔event relationship modules",
+      "Folio/Notes source rights and Account guest partition",
+      "31 published+12 shortcut apps, native Documents and StudyOS Calendar",
+      "No migrations, OAuth grants, private writes, deploys or merge"
     ]
   }
 }

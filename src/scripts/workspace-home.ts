@@ -18,6 +18,7 @@ import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } 
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
 import { renderSourceToday } from '../lib/workspace/source-today';
 import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
+import {renderNotesCalendarContinuity,freshNotesReminderShare,NOTES_REMINDER_MAX_AGE_MS} from '../lib/workspace/notes-reminder-continuity';
 import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
 import { renderEventPreparation, renderUpcomingEventPreparation, preparationTaskSeed, preparationNoteSeed } from '../lib/workspace/event-preparation';
 import { taskEventLinks, linkTaskEvent, unlinkTaskEvent, renderTaskEventBoard, renderTaskEventContext, type RelationDraft } from '../lib/workspace/task-event-links';
@@ -129,7 +130,11 @@ async function setup(root: HTMLElement) {
     let notesSourceNonce: string | null = null;
     let notesSourceWindow: Window | null = null;
     let notesSourceDeadline: ReturnType<typeof setTimeout> | null = null;
+    let notesSourceExpiry: ReturnType<typeof setTimeout> | null = null;
     function clearNotesSource() {
+        root.querySelectorAll('[data-context-owner="notes"]').forEach(node=>node.remove());
+        if(notesSourceExpiry)clearTimeout(notesSourceExpiry);
+        notesSourceExpiry=null;
         notesSourceNonce = null;
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
@@ -139,7 +144,8 @@ async function setup(root: HTMLElement) {
         notesSourceStatus = 'disconnected';
     }
     function openNotesSource() {
-        if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        if (!state || locked || editing || privacyHeld || state.preferences.hidden ||
+            (hubIdentity.status!=='signed-in'&&hubIdentity.status!=='signed-out')) return;
         clearNotesSource();
         notesSourceOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
         notesSourceNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)),
@@ -166,7 +172,7 @@ async function setup(root: HTMLElement) {
             hubIdentity.status === 'signed-out' ? 'guest' : null;
         if (!notesSourceNonce || event.origin !== location.origin ||
             event.source !== notesSourceWindow || !notesSourceOwner ||
-            (scope && scope !== notesSourceOwner) || privacyHeld || state?.preferences.hidden)
+            !scope || scope !== notesSourceOwner || privacyHeld || state?.preferences.hidden)
             return;
         try {
             notesSource = acceptNotesReply(event.data, notesSourceNonce);
@@ -178,6 +184,12 @@ async function setup(root: HTMLElement) {
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
         notesSourceDeadline = null;
+        const approved=freshNotesReminderShare(notesSource);
+        if(!approved){clearNotesSource();repaintOverview();return;}
+        const captured=approved;
+        notesSourceExpiry=setTimeout(()=>{
+            if(notesSource===captured){clearNotesSource();repaintOverview();}
+        },Math.max(0,Date.parse(approved.generatedAt)+NOTES_REMINDER_MAX_AGE_MS-Date.now()));
         repaintOverview();
     });
     let folioSnapshot: FolioDeviceSnapshot | null = null;
@@ -266,7 +278,11 @@ async function setup(root: HTMLElement) {
         }
         const workbench = root.querySelector<HTMLElement>('[data-today-workbench]');
         if(workbench && state && view==='home' && !privacyHeld && !state.preferences.hidden)
-            workbench.outerHTML = renderTodayWorkbench(state,today(),activeFolioPlanningSnapshot());
+            workbench.outerHTML = renderTodayWorkbench(state,today(),activeFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot());
+        const notesCalendarPanel=root.querySelector<HTMLElement>('[data-notes-reminder-continuity]');
+        if(notesCalendarPanel && state && view==='calendar' && !privacyHeld && !state.preferences.hidden)
+            notesCalendarPanel.outerHTML=renderNotesCalendarContinuity(
+                selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
             todayPanel.outerHTML = renderSourceToday({
@@ -790,14 +806,14 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot())+
+                renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot())+
                 renderUpcomingEventPreparation(state!,today())+
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 renderSourceToday({
@@ -1232,6 +1248,12 @@ async function setup(root: HTMLElement) {
         const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
             hubIdentity.status==='signed-out'?'guest':null;
         return owner&&owner===folioOwner?freshFolioPlanningShare(folioSnapshot):null;
+    }
+    function authorizedNotesPlanningSnapshot():NotesDeviceSummary|null {
+        if(!state||locked||privacyHeld||state.preferences.hidden||notesSourceStatus!=='ready')return null;
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return owner && owner===notesSourceOwner?freshNotesReminderShare(notesSource):null;
     }
     function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
         const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');

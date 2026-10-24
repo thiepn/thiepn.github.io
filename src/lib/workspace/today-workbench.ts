@@ -7,6 +7,8 @@ import { addDays, formatTrackerValue, trackerTotal } from './model';
 import { reviewDay } from './planning-review';
 import { freshFolioPlanningShare, folioDayLoad, folioConflictActions } from './folio-continuity';
 import type { FolioDeviceSnapshot } from './folio-device';
+import {renderNotesTodayHorizon} from './notes-reminder-continuity';
+import type {NotesDeviceSummary} from './notes-device';
 import type { WorkspaceState, Task, Note, Tracker } from './types';
 
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({
@@ -92,6 +94,7 @@ const btn=(action:string,name:string,id:string)=>'<button type="button" data-act
   action+'" data-id="'+esc(id)+'" class="ws-unified-action">'+esc(name)+'</button>';
 export function renderTodayWorkbench(
   state:WorkspaceState,day:string,shared:FolioDeviceSnapshot|null=null,now=Date.now(),
+  notesShare:NotesDeviceSummary|null=null,
 ):string {
   const data=projectTodayWorkbench(state,day);
   const approved=freshFolioPlanningShare(shared,now);
@@ -178,5 +181,6 @@ export function renderTodayWorkbench(
     (data.noteCount>data.recentNotes.length?'<small>Showing '+data.recentNotes.length+
       ' of '+data.noteCount+' notes.</small>':'')+'</section></div>'+
     '<p class="ws-workbench-disclosure">Folio data requires a one-time share; source records remain in Folio. A task clock is not a calendar block. No external records are modified.</p>'+
+    renderNotesTodayHorizon(day,state.preferences.timezone,notesShare,now)+
     '</section>';
 }
