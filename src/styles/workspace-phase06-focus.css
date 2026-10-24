@@ -1,0 +1,10 @@
+.ws-focus-work{display:grid;gap:.8rem;min-width:0;padding-block:.8rem;border-top:1px solid var(--ws-line)}
+.ws-focus-work header{display:flex;justify-content:space-between;align-items:baseline;gap:.65rem;flex-wrap:wrap}
+.ws-focus-work h3{font-size:1rem;margin:0}
+.ws-focus-work-fields{display:grid;gap:.65rem}
+.ws-focus-work-field{display:grid;gap:.25rem;font-size:.9375rem}
+.ws-focus-work-field textarea{box-sizing:border-box;resize:vertical;min-height:4.5rem;width:100%;font:inherit;line-height:1.5}
+.ws-focus-work-actions{display:flex;flex-wrap:wrap;gap:.4rem}
+.ws-focus-work-actions button{min-height:44px}
+.ws-focus-work-provenance{font-size:.875rem}
+@media(max-width:600px){.ws-focus-work-actions button{flex:1 1 10rem}}

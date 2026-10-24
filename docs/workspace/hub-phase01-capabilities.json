@@ -60,9 +60,9 @@
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "phase03_candidate",
-      "scope": "Today default, existing seven-day projection plus actual upcoming native Hub event preparation with source-owned hints",
-      "next": "P04"
+      "state": "phase06_candidate",
+      "scope": "Original native Today and seven-day tasks, Focus task-bound working pad and explicit note handoff, owner-safe sources",
+      "next": "P07"
     },
     {
       "id": "calendar",
@@ -329,6 +329,29 @@
       "Offlined SW root navigation test must stay meaningful",
       "Do not claim exact-head browser pass until CI finished",
       "KEEP #168 and Account ownership remain separate"
+    ]
+  },
+  "phase06": {
+    "parent": "4931a015827b20d8ebcc847717b7942d550f1979",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "exact_head_ci_pending",
+    "added": [
+      "Original Focus session scratch bound to original task ID, tab-only, wiped on identity and privacy",
+      "Existing Hub Notes editor receives draft only on explicit Review as Hub note",
+      "Task plan and task context continue in original source actions",
+      "Home ?mode=workspace navigation accepts explicit mode on full-document and SPA navigation"
+    ],
+    "provenance": {
+      "Quality": "40080382518 FAIL after 589/589 Vitest, 1208 browser PASS, 6 FAIL/4 SKIP: 2 Hub sync presentation/navigation scenarios repeated Chromium/Firefox/WebKit",
+      "Library": "40080382517 PASS",
+      "Reading": "40080382540 PASS"
+    },
+    "preserved": [
+      "Original Account refresh and checks unchanged",
+      "No new store or scheduler, Focus working pad not saved",
+      "Task/event link source IDs and workspace CAS untouched",
+      "31+12 Apps and Documents untouched",
+      "No external owner permission or write"
     ]
   }
 }

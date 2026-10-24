@@ -1,5 +1,6 @@
 import type { Task, WorkspaceState } from './types';
 import { taskCounts } from './task-flow';
+import {renderFocusWorkHandoff,EMPTY_FOCUS_WORK,type FocusWorkDraft} from './focus-work-handoff';
 
 export type FocusQueue = 'due' | 'priority' | 'inbox' | 'all';
 export type FocusDuration = 15 | 25 | 45;
@@ -44,7 +45,7 @@ function btn(action:string,label:string,id='') {
   return `<button type="button" class="ws-focus-button" data-action="${action}"${id?` data-id="${esc(id)}"`:''}>${esc(label)}</button>`;
 }
 /** Pure projection of existing Hub task records. No focus record or progress authority. */
-export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresentation):string {
+export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresentation,workDraft:Readonly<FocusWorkDraft>=EMPTY_FOCUS_WORK):string {
   const tasks=focusTasks(state,today,p.queue),counts=taskCounts(state.tasks,today);
   const selected=p.selectedId?state.tasks.find(t=>t.id===p.selectedId&&!t.completedAt):undefined;
   const visible=tasks.slice(0,p.limit);
@@ -76,6 +77,7 @@ export function renderFocusPanel(state:WorkspaceState,today:string,p:FocusPresen
     <div class="ws-focus-main">
       <section class="ws-focus-primary" aria-label="Selected task and optional focus timer">
         ${selectedMarkup}
+        ${renderFocusWorkHandoff(selected,workDraft,p.elapsed)}
         <div class="ws-focus-timer">
           <span class="ws-focus-clock" role="timer" aria-label="Remaining focus time" data-focus-clock>${focusClock(p.remainingMs)}</span>
           <div class="ws-focus-timer-controls">
