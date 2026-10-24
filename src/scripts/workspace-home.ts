@@ -44,6 +44,9 @@ import { freshFolioPlanningShare } from '../lib/workspace/folio-continuity';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
+import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
+import {decisions,saveDecision,decide,transitionDecision,renderDecisions,type DecisionDraft} from '../lib/workspace/decision-register';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -70,6 +73,7 @@ async function setup(root: HTMLElement) {
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
     let homeModeRestorePending=true;
+    let lastVerifiedHomeOwner:string|null=null;
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
     let initialCalendarDate = calendarParams && safeNavigationDay(calendarParams.get('date')) ? calendarParams.get('date') : null;
@@ -83,7 +87,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -115,12 +119,14 @@ async function setup(root: HTMLElement) {
     let handoffOrigin: WorkOrigin | null = null;
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
+    let weeklyReviewStage:WeeklyReviewStage='triage';
+    let weeklyReviewDraft:WeeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
     const focusWork=new Map<string,FocusWorkDraft>();
     function focusWorkForSelection():Readonly<FocusWorkDraft>{
         return focus.selectedId?(focusWork.get(focus.selectedId)??EMPTY_FOCUS_WORK):EMPTY_FOCUS_WORK;
     }
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -635,6 +641,8 @@ async function setup(root: HTMLElement) {
         focus.elapsed=false;
     }
     function clearFocusIdentity() {
+        weeklyReviewStage='triage';
+        weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};
         focusWork.clear();
         pauseFocusSession();
         focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
@@ -778,6 +786,8 @@ async function setup(root: HTMLElement) {
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
             case 'task-event-links': return renderTaskEventBoard(state!,w.view==='compact');
+            case 'outcome-board': return renderOutcomes(state!,today(),w.view==='compact');
+            case 'decision-register': return renderDecisions(state!,today(),w.view==='compact');
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
@@ -816,6 +826,7 @@ async function setup(root: HTMLElement) {
                 renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot())+
                 renderUpcomingEventPreparation(state!,today())+
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
+                '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
@@ -823,6 +834,7 @@ async function setup(root: HTMLElement) {
                 hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
+            if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,activeFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
@@ -880,11 +892,11 @@ async function setup(root: HTMLElement) {
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { focusWork.clear(); pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'?mode=workspace':mode==='today'?'':'?mode=focus');
+            const url=location.pathname+(mode==='workspace'?'?mode=workspace':mode==='review'?'?mode=review':mode==='today'?'':'?mode=focus');
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -1019,7 +1031,7 @@ async function setup(root: HTMLElement) {
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             if(next==='home'){
                 const requested=url.searchParams.get('mode');
-                homeMode=requested==='workspace'||requested==='focus'?requested:'today';
+                homeMode=requested==='workspace'||requested==='focus'||requested==='review'?requested:'today';
             }
             view = next; root.dataset.view = next;
             if(next!=='home')resetLanguages();
@@ -1348,6 +1360,87 @@ async function setup(root: HTMLElement) {
         },'Apply reviewed distribution');
         paintDistributedPreview(snapshots,own);
     }
+    function editOutcome(id='') {
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=id?outcomes(state!).find(o=>o.id===id):undefined;
+        if(id&&!prior){toast('Outcome no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const tasks=[...state!.tasks.filter(t=>prior?.taskIds.includes(t.id)),...state!.tasks.filter(t=>!prior?.taskIds.includes(t.id)&&!t.completedAt)].slice(0,80);
+        const trackers=state!.trackers;
+        const fields=field('Outcome title','title',prior?.title??'','text','maxlength="100" required')+
+          field('Target date','target',prior?.target??'','date')+
+          '<p>Link original Hub records only. At most 16 tasks and 8 trackers; no source data is copied.</p>'+
+          '<fieldset><legend>Tasks</legend>'+tasks.map(t=>'<label class="ws-choice"><input type="checkbox" name="taskIds" aria-label="Link task '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.taskIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          '<fieldset><legend>Trackers</legend>'+trackers.map(t=>'<label class="ws-choice"><input type="checkbox" name="trackerIds" aria-label="Link tracker '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.trackerIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          (state!.tasks.length>tasks.length?'<p>Showing selected and up to 80 open tasks. Other Hub tasks remain in Tasks.</p>':'');
+        openForm(prior?'Edit outcome':'Create outcome',fields,async data=>{
+          const draft:OutcomeDraft={title:String(data.get('title')??''),target:String(data.get('target')??''),
+            taskIds:data.getAll('taskIds').map(String),trackerIds:data.getAll('trackerIds').map(String)};
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the editor.');saveOutcome(s,id||null,draft,snapshot);},'Outcome saved',true,false,true);
+        });
+    }
+    function updateOutcome(id:string,remove=false){
+       if(editing){toast('Finish editing the layout first.');return;}
+       const prior=outcomes(state!).find(o=>o.id===id);
+       if(!prior){toast('Outcome no longer exists.');return;}
+       const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+       const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');changeOutcome(s,id,snapshot,remove);},
+         remove?'Outcome grouping removed':prior.archived?'Outcome restored':'Outcome archived',true,false,remove);
+       if(remove)openForm('Remove outcome','<p>Remove this grouping only? All original tasks and tracker logs will remain.</p>',apply,'Remove grouping');
+       else void apply().catch(error=>toast(error instanceof Error?error.message:'Unable to change outcome.'));
+    }
+
+
+    function editDecision(idValue=''){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=idValue?decisions(state!).find(d=>d.id===idValue):undefined;
+        if(idValue&&!prior){toast('Decision no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const choice=(items:{id:string;title:string}[],label:string,fieldName:string,current='')=>
+          select(label,fieldName,[['','None'],...items.map(x=>[x.id,x.title])],current);
+        const fields=field('Decision title','title',prior?.title??'','text','required maxlength="100"')+
+          area('Situation and criteria','context',prior?.context??'',300)+
+          area('Options, one per line','options',prior?.options.join('\n')??'',370)+
+          field('Review date','review',prior?.review??'','date')+
+          choice(state!.tasks,'Related original task','taskId',prior?.taskId??'')+
+          choice(state!.notes,'Related original note','noteId',prior?.noteId??'')+
+          '<p class="ws-muted">Two to four distinct options, each at most 90 characters. Decisions are Hub-owned; linked original records are not copied or edited.</p>';
+        openForm(prior?'Edit decision':'New decision',fields,async data=>{
+          const draft:DecisionDraft={
+            title:String(data.get('title')??''),context:String(data.get('context')??''),
+            options:String(data.get('options')??'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
+            review:String(data.get('review')??''),taskId:String(data.get('taskId')??''),noteId:String(data.get('noteId')??'')
+          };
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen decision.');saveDecision(s,idValue||null,draft,snapshot);},'Decision saved',true,false,true);
+        });
+    }
+    function chooseDecision(idValue:string){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior||prior.status==='archived'){toast('Restore or reopen the decision first.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const fields=select('Selected option','choice',prior.options.map(x=>[x,x]),prior.choice||prior.options[0]!)+
+          area('Why this option?','reason',prior.reason,500)+
+          '<p>Confirm the chosen alternative and rationale; earlier decision text is replaced, not historically versioned.</p>';
+        openForm(prior.status==='open'?'Make decision':'Revise decision',fields,async data=>{
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');decide(s,idValue,snapshot,String(data.get('choice')??''),String(data.get('reason')??''));},
+            'Decision recorded',true,false,true);
+        },'Record decision');
+    }
+    function decisionTransition(idValue:string,mode:'reopen'|'archive'|'restore'|'remove'){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior){toast('Decision no longer exists.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');transitionDecision(s,idValue,snapshot,mode);},
+          mode==='remove'?'Decision removed':'Decision updated',true,false,true);
+        if(mode==='remove'||mode==='reopen')
+          openForm(mode==='remove'?'Remove decision?':'Reopen decision?',
+            '<p>'+ (mode==='remove'?'Remove this Hub-owned decision record? Original linked records remain unchanged.':'Clear the current choice and rationale to deliberate again? The previous choice is not retained in a decision history.')+'</p>',apply,mode==='remove'?'Remove':'Reopen');
+        else void apply().catch(e=>toast(e instanceof Error?e.message:'Unable to update decision.'));
+    }
+
+
     function reviewTaskEventLink(reference='') {
         if(editing){toast('Finish editing the layout before linking records.');return;}
         const [kind,sourceId]=reference.includes(':')?[reference.split(':')[0],reference.slice(reference.indexOf(':')+1)]:['',''];
@@ -1841,7 +1934,7 @@ async function setup(root: HTMLElement) {
         if (!editing)
             beginEdit();
         const groups: Array<{title:string;description:string;types:string[]}> = [
-            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links']},
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links','outcome-board','decision-register']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
             {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
         ];
@@ -2142,6 +2235,19 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
                 }
                 break;
+            case 'weekly-review-stage':
+                if(view==='home' && homeMode==='review' &&
+                    (WEEKLY_REVIEW_STAGES as readonly string[]).includes(id)){
+                    weeklyReviewStage=id as WeeklyReviewStage;
+                    render();
+                    root.querySelector<HTMLHeadingElement>('#ws-review-stage-title')?.focus();
+                }
+                break;
+            case 'weekly-review-note':
+                if(view!=='home'||homeMode!=='review'||!state || locked ||
+                    privacyHeld || state.preferences.hidden || editing)break;
+                editNote('',weeklyReviewNoteSeed(state,today(),weeklyReviewDraft));
+                break;
             case 'unified-triage':
                 reviewUnifiedTask(id);
                 break;
@@ -2245,6 +2351,17 @@ async function setup(root: HTMLElement) {
             case 'context-event':
                 showEventContext(id);
                 break;
+            case 'new-decision':editDecision();break;
+            case 'edit-decision':editDecision(id);break;
+            case 'choose-decision':chooseDecision(id);break;
+            case 'reopen-decision':decisionTransition(id,'reopen');break;
+            case 'archive-decision':decisionTransition(id,'archive');break;
+            case 'restore-decision':decisionTransition(id,'restore');break;
+            case 'remove-decision':decisionTransition(id,'remove');break;
+            case 'new-outcome':editOutcome();break;
+            case 'edit-outcome':editOutcome(id);break;
+            case 'toggle-outcome':updateOutcome(id);break;
+            case 'remove-outcome':updateOutcome(id,true);break;
             case 'review-task-event-link':
                 reviewTaskEventLink(id);
                 break;
@@ -2579,6 +2696,7 @@ async function setup(root: HTMLElement) {
                 widgetPicker();
                 break;
             case 'add-type': {
+                if(['outcome-board','decision-register'].includes(id) && editing?.workspace.widgets.some(w=>w.type===id)){toast('This workspace already has that record grouping.');break;}
                 if(id==='task-event-links' && editing?.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One task–calendar links widget per workspace.');break;}
                 const spec = specification(id);
                 if (!spec)
@@ -2811,6 +2929,7 @@ async function setup(root: HTMLElement) {
                     void mutate(s => s.active = draft.workspaceId, '', false).then(() => {
                         if(dirty || !state || epoch!==draftEpoch) return;
                         editing=draft;
+                        homeMode='workspace';
                         recoveryDraft=null;
                         notice('');
                         render();
@@ -2950,6 +3069,13 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(el.hasAttribute('data-weekly-review-field')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||
+                view!=='home'||homeMode!=='review'||weeklyReviewStage!=='finish')return;
+            weeklyReviewDraft=weeklyReviewField(weeklyReviewDraft,
+                el.dataset.weeklyReviewField??'',el.value);
+            return;
+        }
         if(el.hasAttribute('data-focus-work-field')){
             const source=el.closest<HTMLElement>('[data-focus-work]');
             const taskId=source?.dataset.sourceTask;
@@ -3156,10 +3282,14 @@ async function setup(root: HTMLElement) {
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
-        if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
+        const currentOwner=identity.status==='signed-in'?'user:'+identity.id:
+            identity.status==='signed-out'?'guest':null;
+        if(homeModeRestorePending && currentOwner) {
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='today';
+        } else if(lastVerifiedHomeOwner && (!currentOwner || lastVerifiedHomeOwner!==currentOwner))
+            homeMode='today';
+        if(currentOwner)lastVerifiedHomeOwner=currentOwner;
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();

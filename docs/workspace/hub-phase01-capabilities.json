@@ -60,9 +60,9 @@
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "phase07_candidate",
-      "scope": "Original Today, 7-day workbench, Focus pad and owner-scoped expiry-guarded Notes reminder horizon",
-      "next": "P08"
+      "state": "phase08_candidate",
+      "scope": "Today-first with user-selected guided weekly review and ephemeral owner shares, no review completion automation",
+      "next": "P09"
     },
     {
       "id": "calendar",
@@ -80,8 +80,8 @@
       "source": "src/pages/home/knowledge/index.astro",
       "state": "draft_only",
       "sourcePr": 168,
-      "scope": "Full encrypted KEEP remains separate PR168. Phase03 adds only source-bound contextual suggestions over existing Hub local notes and authorized one-time owner titles, no KEEP vault access",
-      "next": "P08"
+      "scope": "Native local decision and outcome records in original WorkspaceStore schema-v1; encrypted KEEP B3 still separate and unmerged",
+      "next": "P09"
     },
     {
       "id": "documents",
@@ -381,5 +381,28 @@
       "31 published+12 shortcut apps, native Documents and StudyOS Calendar",
       "No migrations, OAuth grants, private writes, deploys or merge"
     ]
+  },
+  "phase08": {
+    "parent": "eed0cfd694b4458b26a63d9a8de6cfbcbd9f1da3",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "pending_exact_head_quality",
+    "feature": "Five-stage guided Weekly Review: actual tasks, Calendar, trackers, optional owner shares, outcomes, decisions and explicit original Hub note",
+    "preserved": [
+      "Today default, explicit ?mode=review restored after initial owner verification",
+      "Same schema-v1 WorkspaceStore/CAS + undo, original task/Calendar event/trackers IDs",
+      "Owner approvals and revocation for Notes/Folio; no provider writes",
+      "All original Account durable-token security assertions untouched",
+      "Documents/31+12 Apps/StudyOS read-only Calendar unchanged"
+    ],
+    "tests": [
+      "Original source unit tests for weekly review, decision register and outcome grouping",
+      "Source-authored Chromium/Firefox/WebKit mobile review, decision and outcome journeys",
+      "Original browser regression suite without removing protected assertions"
+    ],
+    "phase07Evidence": {
+      "quality": "40093354970 FAIL: 600/600 Vitest, 1216 PASS, 7 FAIL, 4 SKIP; Notes popup day/week and Today revocation 3-engine PASS; Account rotating-refresh race reproduced Chromium only",
+      "library": "40093354972 PASS",
+      "reading": "40093354986 PASS"
+    }
   }
 }
