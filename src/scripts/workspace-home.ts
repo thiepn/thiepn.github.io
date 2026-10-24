@@ -19,6 +19,7 @@ import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/note
 import { renderSourceToday } from '../lib/workspace/source-today';
 import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
 import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
+import { renderEventPreparation, renderUpcomingEventPreparation, preparationTaskSeed, preparationNoteSeed } from '../lib/workspace/event-preparation';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -789,6 +790,7 @@ async function setup(root: HTMLElement) {
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
                 renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot())+
+                renderUpcomingEventPreparation(state!,today())+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
@@ -857,7 +859,7 @@ async function setup(root: HTMLElement) {
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='workspace'?'?mode=workspace':mode==='today'?'':'?mode=focus');
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -1110,6 +1112,7 @@ async function setup(root: HTMLElement) {
         const item=state!.events.find(e=>e.id===id)!;
         const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
           <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
+          ${renderEventPreparation(state!,item,contextOwnerInput())}
           <div class="ws-context-actions">
             ${button('edit-event','Edit original event',id)}
             ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
@@ -2142,6 +2145,20 @@ async function setup(root: HTMLElement) {
             case 'plan-task-event':
                 planTaskInCalendar(id);
                 break;
+            case 'prep-event-task':
+            case 'followup-event-task': {
+                if(!startHandoff('event',id))break;
+                const original=state.events.find(e=>e.id===id);
+                if(original)editTask('',preparationTaskSeed(original,today(),
+                    action==='prep-event-task'?'prepare':'followup'));
+                break;
+            }
+            case 'prep-event-note': {
+                if(!startHandoff('event',id))break;
+                const original=state.events.find(e=>e.id===id);
+                if(original)editNote('',preparationNoteSeed(original));
+                break;
+            }
             case 'create-note-from-task': {
                 if(!startHandoff('task',id))break;
                 const task=state.tasks.find(t=>t.id===id);

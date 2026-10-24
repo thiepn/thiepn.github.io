@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+test.use({serviceWorkers:'block'});
+test('Phase 04 event preparation drafts remain owner-native and require explicit save',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('[data-home-mode=today]')).toBeVisible();
+ await page.locator('.ws-unified-head-actions [data-action=new-event]').click();
+ await expect(page.locator('[data-workspace-dialog]')).toBeVisible();
+ await page.getByLabel('Event',{exact:true}).fill('Study seminar');
+ await page.locator('[data-workspace-dialog] [data-dialog-submit]').click();
+ await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
+ await page.goto('/home/calendar/');
+ await expect(page.locator('[data-planning-review]')).toBeVisible();
+ await page.locator('[data-action=context-event]').first().click();
+ await expect(page.locator('[data-event-preparation]')).toBeVisible();
+ await expect(page.locator('[data-event-preparation]')).toContainText('Study seminar');
+ await expect(page.locator('[data-event-preparation] [data-action=prep-event-task]')).toBeVisible();
+ await expect(page.locator('[data-event-preparation] [data-action=followup-event-task]')).toBeVisible();
+ await expect(page.locator('[data-event-preparation] [data-action=prep-event-note]')).toBeVisible();
+ await expect(page.locator('[data-event-preparation] [data-context-owner]')).toHaveCount(0);
+});
+test('Phase 04 explicit Workspace survives reload but default Home remains Today',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('[data-home-mode=today]')).toBeVisible();
+ await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+ await expect(page.locator('[data-home-mode=workspace]')).toBeVisible();
+ await expect(page).toHaveURL(/mode=workspace/);
+ await page.reload();
+ await expect(page.locator('[data-home-mode=workspace]')).toBeVisible();
+ await page.goto('/');
+ await expect(page.locator('[data-home-mode=today]')).toBeVisible();
+});

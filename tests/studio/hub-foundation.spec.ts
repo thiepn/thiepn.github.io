@@ -27,7 +27,7 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
 
 test('legacy pins migrate once, customization persists and the Apps catalogue stays separate', async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
-  await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.goto('/home/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
   await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
@@ -39,7 +39,7 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
 test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/?mode=workspace');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
@@ -74,7 +74,7 @@ test('Apps route, Home privacy, and no-JavaScript launchers', async ({ browser, 
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
-  await page.goto('http://127.0.0.1:4321/'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await page.goto('http://127.0.0.1:4321/?mode=workspace'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(hub.expectedCount);
   await context.close();
 });

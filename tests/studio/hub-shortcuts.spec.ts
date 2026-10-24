@@ -10,7 +10,7 @@ async function openEditor(page: Page) {
 }
 
 test('newer apps can be pinned, reordered with existing IDs preserved, and unpinned after reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?mode=workspace');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   const published = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
   expect(published.map(a => a.id)).toEqual(manifest.entries.map(e => e.id));
@@ -50,7 +50,7 @@ test('newer apps can be pinned, reordered with existing IDs preserved, and unpin
 
 test('mobile shortcut editor keeps current and older apps searchable without overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?mode=workspace');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   const dialog = await openEditor(page);
   await expect(dialog.getByRole('checkbox', { name: 'ION', exact: true })).toBeVisible();

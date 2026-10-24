@@ -25,6 +25,6 @@ test('Phase 02 mobile keeps Today, Apps, Tasks and original Plan/Documents route
 test('Phase 02 calendar exposes reviewed distribution and original weekly carryover',async({page})=>{
  await page.goto('/home/calendar/?mode=week');
  await expect(page.locator('[data-planning-review]')).toBeVisible();
- await expect(page.locator('[data-action="week-preview"]')).toBeVisible();
+ await expect(page.locator('[data-action="week-preview"].ws-week-primary')).toBeVisible();
  await expect(page.locator('[data-action="week-spread"]')).toBeVisible();
 });

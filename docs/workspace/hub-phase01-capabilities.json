@@ -45,7 +45,7 @@
       "owner": "hub",
       "source": "src/components/workspace/WorkspaceShell.astro",
       "state": "phase02_candidate",
-      "scope": "Today-first sidebar, mobile Today/Apps/Tasks, Plan/Trackers/Documents via More, all current routes preserved",
+      "scope": "Today on fresh Home; explicit ?mode=workspace deep-link persists on reload, Focus and app navigation preserve native state",
       "next": "P03"
     },
     {
@@ -61,7 +61,7 @@
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
       "state": "phase03_candidate",
-      "scope": "Native Today + seven-day workbench, approved ephemeral Folio day hints, tracker check-in, recent notes, source-owned next-action queue",
+      "scope": "Today default, existing seven-day projection plus actual upcoming native Hub event preparation with source-owned hints",
       "next": "P04"
     },
     {
@@ -70,7 +70,7 @@
       "nativeSourceOwner": "studyos",
       "source": "src/lib/workspace/google-calendar-c1.ts",
       "state": "phase01_candidate",
-      "scope": "Local Hub events plus opt-in read-only StudyOS projection; robust errors and date-window invalidation; real-owner admission not yet qualified",
+      "scope": "Read-only StudyOS composition and original Hub event writer, plus reviewed optional prep/follow-up drafts using native task/note forms",
       "next": "P07"
     },
     {
@@ -277,5 +277,33 @@
       "library": "40035679137: PASS all owner build/three browser consent steps",
       "reading": "40035679257: CANCELLED after device release check PASS and before browser stage"
     }
+  },
+  "phase04": {
+    "parent": "1222de4b6675511544880657a55f3ee9857c1203",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "scope": "Keep Today default while preserving explicitly selected Workspace across reload; native event preparation and follow-up",
+    "state": "candidate_pending_exact_head_CI",
+    "provenance": {
+      "Quality": "40045953195 FAIL: 1047 PASS, 155 FAIL, 4 SKIP browser; 579/579 unit and Astro 0 errors; legacy layout default mismatch",
+      "Library": "40045953328 PASS genuine 3-engine device consent and original Library build",
+      "Reading": "40045953182 FAIL 51/52; one WebKit locator.click account control stability timeout in optional-join fixture"
+    },
+    "adoptedPr166": [
+      "src/lib/workspace/event-preparation.ts",
+      "tests/unit/event-preparation.test.ts"
+    ],
+    "sourceOfTruth": [
+      "WorkspaceStore and native task/event/note writers",
+      "ephemeral owner-scoped Folio/Notes reads",
+      "exact current Account and Read-only StudyOS Calendar",
+      "original 31+12 Apps registry and Documents files"
+    ],
+    "noWrites": [
+      "external owners",
+      "Account grants",
+      "StudyOS data",
+      "KEEP vault",
+      "release deployment"
+    ]
   }
 }
