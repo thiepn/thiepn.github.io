@@ -60,9 +60,9 @@
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "phase08_candidate",
-      "scope": "Today-first with user-selected guided weekly review and ephemeral owner shares, no review completion automation",
-      "next": "P09"
+      "state": "phase09_candidate",
+      "scope": "Today-first Workbench plus current Hub owner IDs pinned explicitly, no external note copies",
+      "next": "P10"
     },
     {
       "id": "calendar",
@@ -78,10 +78,10 @@
       "owner": "keep",
       "consumer": "hub",
       "source": "src/pages/home/knowledge/index.astro",
-      "state": "draft_only",
+      "state": "phase09_candidate",
       "sourcePr": 168,
-      "scope": "Native local decision and outcome records in original WorkspaceStore schema-v1; encrypted KEEP B3 still separate and unmerged",
-      "next": "P09"
+      "scope": "Existing Hub local notes/Tasks, confirmed decision/outcome backlinks and explicit original-record pinboard, KEEP vault independent",
+      "next": "P10"
     },
     {
       "id": "documents",
@@ -404,5 +404,28 @@
       "library": "40093354972 PASS",
       "reading": "40093354986 PASS"
     }
+  },
+  "phase09": {
+    "parent": "545bd7a01c1523af7cba9e5fdfe1a2229346c739",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "pending_exact_head_ci",
+    "feature": "Original-record pinboard, confirmed Hub record backlinks and safe metadata-preserving layout/import contracts",
+    "adopted": [
+      "Up to 20 pins in original active schema-v1 Workspace widget, original task/note/event/tracker IDs only",
+      "Today and native Workspace pinboard with explicit pin/unpin/reorder, missing originals remain non-resurrected",
+      "Confirmed outcome and decision backlinks from original task/note contexts",
+      "Metadata-safe removal/preset/duplication and CAS current-revision safeguards",
+      "Typed collision-safe rebase of additive backup imports across independent record kinds and original metadata links",
+      "Original unit and real browser safety/owner continuity tests"
+    ],
+    "sourceConstraints": [
+      "Hub Account/token code unchanged",
+      "Today default, Notes/Folio consent and StudyOS read-only Calendar unchanged",
+      "No new persistence, migration, OAuth or external provider writes",
+      "31+12 Apps and Documents unchanged"
+    ],
+    "previousQuality": "40102048965: in_progress executing audit:studio at Phase09 start; preliminary Calendar, Account, TypeScript release gate checks passed, no terminal 3-browser result",
+    "previousLibrary": "40102049054: PASS",
+    "previousReading": "40102048871: PASS"
   }
 }

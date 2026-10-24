@@ -1,5 +1,6 @@
 import {customLinks} from './commands';
 import {validRelationConfig} from './task-event-links';
+import {validateHubPinConfig} from './record-pinboard';
 import {validOutcomeConfig} from './outcome-board';
 import {validDecisionConfig} from './decision-register';
 import type { Widget } from './types';
@@ -18,6 +19,7 @@ export const WIDGETS = {
     'owner-handoffs': { title: 'Connected app handoffs', icon: 'arrow-up-right', description: 'Source-honest owner-app actions and existing access routes.', views: ['compact', 'detailed'], width: 6, height: 28, minWidth: 4, minHeight: 20 },
     'outcome-board': { title: 'Outcomes', icon: 'target', description: '', views: ['detailed','compact'], width: 6, height: 36, minWidth: 4, minHeight: 20 },
     'decision-register': { title: 'Decisions', icon: 'notebook', description: '', views: ['detailed','compact'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
+    'record-pinboard': { title:'Pinned records',icon:'pin',description:'',views:['detailed','compact'],width:6,height:34,minWidth:4,minHeight:20 },
     'task-event-links': { title: 'Task–calendar links', icon: 'calendar-blank', description: '', views: ['detailed','compact'], width: 6, height: 34, minWidth: 4, minHeight: 20 },
 } as const;
 export type WidgetType = keyof typeof WIDGETS;
@@ -31,6 +33,7 @@ export function validWidget(widget: Widget): boolean {
         return false;
     if (!spec || widget.typeVersion > 1)
         return true; // Future widgets are retained, never rewritten.
+    if (widget.type === 'record-pinboard' && !validateHubPinConfig(widget.config.pins)) return false;
     if (widget.type === 'task-event-links' && !validRelationConfig(widget.config.links)) return false;
     if (widget.type === 'outcome-board' && !validOutcomeConfig(widget.config.outcomes)) return false;
     if (widget.type === 'decision-register' && !validDecisionConfig(widget.config.decisions)) return false;

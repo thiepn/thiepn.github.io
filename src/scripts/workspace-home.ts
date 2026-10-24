@@ -45,6 +45,10 @@ import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, 
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
 import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
 import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {renderHubPinboard,hubPinboard,hubPinnedKeys,hasHubPin,enableHubPinboard,toggleHubRecordPin,moveHubRecordPin} from '../lib/workspace/record-pinboard';
+import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
+import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
+import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
 import {decisions,saveDecision,decide,transitionDecision,renderDecisions,type DecisionDraft} from '../lib/workspace/decision-register';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
@@ -788,6 +792,7 @@ async function setup(root: HTMLElement) {
             case 'task-event-links': return renderTaskEventBoard(state!,w.view==='compact');
             case 'outcome-board': return renderOutcomes(state!,today(),w.view==='compact');
             case 'decision-register': return renderDecisions(state!,today(),w.view==='compact');
+            case 'record-pinboard': return renderHubPinboard(state!,false);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
@@ -818,7 +823,7 @@ async function setup(root: HTMLElement) {
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}${hubPinAction('tracker',t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
@@ -827,6 +832,7 @@ async function setup(root: HTMLElement) {
                 renderUpcomingEventPreparation(state!,today())+
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
+                (hubPinnedKeys(hubPinboard(state!)).length?renderHubPinboard(state!,true):'')+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
@@ -1115,6 +1121,10 @@ async function setup(root: HTMLElement) {
             notes:notesSourceStatus==='ready'&&owner&&notesSourceOwner===owner?notesSource:null,
             now:Date.now()};
     }
+    function hubPinAction(kind:'task'|'note'|'event'|'tracker',id:string){
+        const key=kind+':'+id;
+        return button('toggle-record-pin',hasHubPin(state!,key)?'Unpin from Workspace':'Pin to Workspace',key,'ws-button');
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
@@ -1122,8 +1132,10 @@ async function setup(root: HTMLElement) {
             <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
             ${renderTaskKnowledgeContext(state!,task,contextOwnerInput())}
             ${renderTaskEventContext(state!,'task',id)}
+            ${renderConfirmedHubBacklinks(state!,'task',id)}
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
+              ${hubPinAction('task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
               ${button('create-note-from-task','Draft a local note',id)}
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
@@ -1140,8 +1152,10 @@ async function setup(root: HTMLElement) {
         const html=`<div class="ws-context-summary"><strong>${esc(note.title)}</strong>
           <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
           ${renderNoteWorkContext(state!,note,contextOwnerInput())}
+          ${renderConfirmedHubBacklinks(state!,'note',id)}
           <div class="ws-context-actions">
             ${button('edit-note','Edit original note',id)}
+            ${hubPinAction('note',id)}
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
@@ -1156,6 +1170,7 @@ async function setup(root: HTMLElement) {
           <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
           ${renderEventPreparation(state!,item,contextOwnerInput())}
           ${renderTaskEventContext(state!,'event',id)}
+          ${hubPinAction('event',id)}
           <div class="ws-context-actions">
             ${button('edit-event','Edit original event',id)}
             ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
@@ -1809,7 +1824,7 @@ async function setup(root: HTMLElement) {
             notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
             return;
         }
-        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
+        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); if(index<0)throw Error('Original layout unavailable.');assertWorkspaceMetadataRetained(s.workspaces[index]!,draft.workspace); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
         if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
             editing = null;
             recoveryDraft = null;
@@ -1934,7 +1949,7 @@ async function setup(root: HTMLElement) {
         if (!editing)
             beginEdit();
         const groups: Array<{title:string;description:string;types:string[]}> = [
-            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links','outcome-board','decision-register']},
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links','outcome-board','decision-register','record-pinboard']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
             {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
         ];
@@ -1952,9 +1967,9 @@ async function setup(root: HTMLElement) {
             if (!title)
                 throw new Error('Choose a name.');
             await mutate(s => {
-                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
-                if (original)
-                    workspace.widgets.forEach(w => w.id = uid());
+                const existing=original?s.workspaces.find(w=>w.id===original.id):undefined;
+                if(original&&!existing)throw Error('Source workspace changed.');
+                const workspace = existing ? duplicatePresentationLayout(existing,title) : preset(title, pins(), Number(data.get('preset')));
                 s.workspaces.push(workspace);
                 s.active = workspace.id;
             }, 'Workspace created');
@@ -1980,6 +1995,7 @@ async function setup(root: HTMLElement) {
                     next.id = s.active;
                     next.title = s.workspaces[index]!.title;
                     next.revision = s.workspaces[index]!.revision + 1;
+                    assertWorkspaceMetadataRetained(s.workspaces[index]!,next);
                     s.workspaces[index] = next;
                 }
             }, 'Layout applied', true, true);
@@ -2024,23 +2040,8 @@ async function setup(root: HTMLElement) {
                     Object.assign(s, clone(imported), { revision });
                     return;
                 }
-                const copy = clone(imported), ids = new Map<string, string>();
-            copy.trackers.forEach(t => ids.set(t.id,uid()));
-                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
-                    for (const record of list) {
-                        const id = uid();
-                        ids.set(record.id, id);
-                        record.id = id;
-                    }
-                for (const w of copy.workspaces) {
-                    w.widgets.forEach(widget => {
-                        widget.id = uid();
-                        if (Array.isArray(widget.config.trackerIds))
-                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
-                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
-                    });
-                }
-                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
+                const copy = rebaseAddedHubBackup(imported);
+                /* IDs and typed widget-owned references were atomically rebased before merge. */
                 s.workspaces.push(...copy.workspaces);
                 s.tasks.push(...copy.tasks);
                 s.notes.push(...copy.notes);
@@ -2696,7 +2697,7 @@ async function setup(root: HTMLElement) {
                 widgetPicker();
                 break;
             case 'add-type': {
-                if(['outcome-board','decision-register'].includes(id) && editing?.workspace.widgets.some(w=>w.type===id)){toast('This workspace already has that record grouping.');break;}
+                if(['outcome-board','decision-register','record-pinboard'].includes(id) && editing?.workspace.widgets.some(w=>w.type===id)){toast('This workspace already has that record grouping.');break;}
                 if(id==='task-event-links' && editing?.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One task–calendar links widget per workspace.');break;}
                 const spec = specification(id);
                 if (!spec)
@@ -2720,10 +2721,30 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'enable-record-pinboard':
+                if(editing){toast('Finish layout editing before adding a pinboard.');break;}
+                void mutate(s=>enableHubPinboard(s),'Pinboard ready')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to create pinboard.'));
+                break;
+            case 'toggle-record-pin':
+                if(editing){toast('Finish layout editing before changing pins.');break;}
+                void mutate(s=>{toggleHubRecordPin(s,id);},'Pinned records updated')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to change pin.'));
+                break;
+            case 'move-record-pin-up':
+            case 'move-record-pin-down':
+                if(editing){toast('Finish layout editing before changing pins.');break;}
+                void mutate(s=>{moveHubRecordPin(s,id,action==='move-record-pin-up'?-1:1);},'Pinboard updated')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to move pin.'));
+                break;
             case 'configure-widget':
                 configureWidget(id);
                 break;
             case 'remove-widget':
+                if(hasWidgetOwnedRecords((editing?.workspace??current()).widgets.find(x=>x.id===id))){
+                    toast('Remove saved links or records from this widget before removing the layout.');
+                    break;
+                }
                 changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
                 dialog.close();
                 toast('Widget removed; its content is kept.');
@@ -2943,11 +2964,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'save-draft-as':
                 if (editing && state.workspaces.length < 10) {
-                    const w = clone(editing.workspace);
-                    w.id = uid();
-                    w.title += ' recovered';
-                    w.revision = 0;
-                    w.widgets.forEach(x => x.id = uid());
+                    const w = duplicatePresentationLayout(editing.workspace,(editing.workspace.title.slice(0,68)+' recovered').slice(0,80));
                     editing = null;
                     conflict = false;
                     void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
