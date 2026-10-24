@@ -17,6 +17,8 @@ import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
 import { renderSourceToday } from '../lib/workspace/source-today';
+import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
+import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -255,13 +257,16 @@ async function setup(root: HTMLElement) {
                 status: folioStatus, snapshot: folioSnapshot,
             }, {status: notesSourceStatus, snapshot: notesSource});
         }
+        const workbench = root.querySelector<HTMLElement>('[data-today-workbench]');
+        if(workbench && state && view==='home' && !privacyHeld && !state.preferences.hidden)
+            workbench.outerHTML = renderTodayWorkbench(state,today(),activeFolioPlanningSnapshot());
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
             todayPanel.outerHTML = renderSourceToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
                 languages: {status: languageStatus, cards: languageCards}, apps,
-                hubEvents: state.events, day: today(), timezone: state.preferences.timezone
+                hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
             });
         }
     }
@@ -783,11 +788,12 @@ async function setup(root: HTMLElement) {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+                renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot())+
                 renderSourceToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
                     languages: {status: languageStatus, cards: languageCards}, apps,
-                hubEvents: state.events, day: today(), timezone: state.preferences.timezone
+                hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
@@ -1059,12 +1065,19 @@ async function setup(root: HTMLElement) {
         renderHandoffBar();
         return true;
     }
+    function contextOwnerInput() {
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return {folio:activeFolioPlanningSnapshot(),
+            notes:notesSourceStatus==='ready'&&owner&&notesSourceOwner===owner?notesSource:null,
+            now:Date.now()};
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
         const details=`<div class="ws-context-summary">
             <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
-
+            ${renderTaskKnowledgeContext(state!,task,contextOwnerInput())}
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
@@ -1082,6 +1095,7 @@ async function setup(root: HTMLElement) {
         const ownerUrl=providerAction('notes','capture-text');
         const html=`<div class="ws-context-summary"><strong>${esc(note.title)}</strong>
           <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
+          ${renderNoteWorkContext(state!,note,contextOwnerInput())}
           <div class="ws-context-actions">
             ${button('edit-note','Edit original note',id)}
             ${button('create-task-from-note','Draft a Hub task',id)}

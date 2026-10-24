@@ -52,17 +52,17 @@
       "id": "tasks",
       "owner": "hub",
       "source": "src/lib/workspace/store.ts",
-      "state": "phase02_candidate",
-      "scope": "Native weekly review plus reviewed 3/5/7-day Hub due-date distribution using existing task writer; no calendar booking",
-      "next": "P06"
+      "state": "phase03_candidate",
+      "scope": "Canonical task writer, 3/5/7-day previewed distribution, workbench continuation and knowledge suggestions without cloned task IDs",
+      "next": "P04"
     },
     {
       "id": "today",
       "owner": "hub",
       "source": "src/lib/workspace/source-today.ts",
-      "state": "phase02_candidate",
-      "scope": "Today default plus bounded source-owned next-action queue, original local Focus and Workspace modes",
-      "next": "P03"
+      "state": "phase03_candidate",
+      "scope": "Native Today + seven-day workbench, approved ephemeral Folio day hints, tracker check-in, recent notes, source-owned next-action queue",
+      "next": "P04"
     },
     {
       "id": "calendar",
@@ -80,7 +80,7 @@
       "source": "src/pages/home/knowledge/index.astro",
       "state": "draft_only",
       "sourcePr": 168,
-      "scope": "Native KEEP editing remains source-only in large draft; encryption must fail closed; no vault bypass or copied owner data",
+      "scope": "Full encrypted KEEP remains separate PR168. Phase03 adds only source-bound contextual suggestions over existing Hub local notes and authorized one-time owner titles, no KEEP vault access",
       "next": "P08"
     },
     {
@@ -253,5 +253,29 @@
       "Documents route",
       "Folio/Notes owner stores and IDs"
     ]
+  },
+  "phase03": {
+    "parent": "b215a471cc2e35fc3abcb18866d4219e68e3aa37",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "awaiting_exact_head_ci",
+    "adopted": [
+      "Native 7-day Today and approved Folio read-only projection",
+      "native upcoming task, trackers and recent note actions",
+      "knowledge work context over original Hub task/note IDs and explicit fresh owner shares",
+      "Phase02 TypeScript null-state fix verified in source"
+    ],
+    "retained": [
+      "Existing WorkspaceStore and CAS",
+      "existing Focus and task dialog writers",
+      "source-owned Folio and Notes rights",
+      "owner-scoped read-only StudyOS calendar",
+      "31 published plus 12 shortcut apps",
+      "Documents and reading privacy boundaries"
+    ],
+    "provenance": {
+      "quality": "40035679127: FAIL at astro check on 2 TS18047 references in workspace-home.ts line 790; preceding calendar/account smoke PASS",
+      "library": "40035679137: PASS all owner build/three browser consent steps",
+      "reading": "40035679257: CANCELLED after device release check PASS and before browser stage"
+    }
   }
 }
