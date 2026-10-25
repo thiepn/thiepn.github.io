@@ -408,3 +408,44 @@ jobs:
       - if: failure()
         name: Print disposable PostgREST diagnostics only
         run: docker logs tms60-audit-postgrest 2>&1 | tail -80 || true
+
+  tms60-sw-race-observation:
+    name: Pinned TMS60 original controller assertions + repeated timing diagnostics (non-gating)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hub
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: thiepn/tms60
+          ref: 12343b974417c3ba23b64f592961c151e52f7ede
+          path: tms60
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Chromium and pinned public-only staged build
+        run: |
+          cd tms60
+          node scripts/build-cloudflare-pages.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Re-run unmodified source-to-staged forward/rollback browser assertions three times
+        run: |
+          cd tms60
+          failed=0
+          for attempt in 1 2 3; do
+            echo "BEGIN original TMS60 controller transition attempt $attempt"
+            node tests/cloudflare-pages-browser-transition.mjs || failed=$((failed+1))
+          done
+          echo "Original asserted transition failures: $failed of 3"
+          test "$failed" -eq 0
+      - name: Preserve immediate vs eventually controlled lifecycle data without accepting eventual as PASS
+        if: always()
+        run: |
+          cd tms60
+          TMS60_SW_RACE_CYCLES=10 node ../hub/scripts/release/tms60-sw-race-probe.mjs
