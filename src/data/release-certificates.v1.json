@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "policyId": "thiepn-release-gate-v1.0",
+  "certificates": [
+    {
+      "appId": "tms60",
+      "repository": "thiepn/tms60",
+      "version": null,
+      "scopeContract": null,
+      "productionUrl": "https://tms60.thiepn.dev/",
+      "releaseSha": "12343b974417c3ba23b64f592961c151e52f7ede",
+      "deployedSha": "12343b974417c3ba23b64f592961c151e52f7ede",
+      "authModel": "unknown",
+      "storageModel": "unknown",
+      "checks": {
+        "G1": "NOT_TESTED",
+        "G2": "NOT_TESTED",
+        "G3": "NOT_TESTED",
+        "G4": "NOT_TESTED",
+        "G5": "NOT_TESTED",
+        "G6": "NOT_TESTED",
+        "G7": "NOT_TESTED",
+        "G8": "NOT_TESTED",
+        "G9": "NOT_TESTED"
+      },
+      "notApplicableReasons": {},
+      "review": {
+        "decision": "pending",
+        "reviewer": null,
+        "reviewedAt": null
+      },
+      "evidence": [
+        {
+          "gate": "G2",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/tms60/actions/runs/39065569813",
+          "description": "Exact-SHA static migration and browser staging checks passed"
+        },
+        {
+          "gate": "G8",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/tms60/actions/runs/39065569813",
+          "description": "Matching source migration workflow completed successfully"
+        }
+      ],
+      "blockers": [
+        "Authenticated production account and data restore not tested",
+        "Direct production HTTP and device/offline workflows could not be executed"
+      ],
+      "recertifyTriggers": [
+        "scope change",
+        "authentication or storage change",
+        "deployment or domain change",
+        "offline or security change",
+        "critical incident"
+      ],
+      "checkedAt": "2026-10-25T02:30:00Z"
+    },
+    {
+      "appId": "clean30",
+      "repository": "thiepn/clean30",
+      "version": null,
+      "scopeContract": null,
+      "productionUrl": "https://thiepn.dev/clean30/",
+      "releaseSha": "052731bd44f7e2113fd789be55dfb199d4f82fae",
+      "deployedSha": null,
+      "authModel": "unknown",
+      "storageModel": "unknown",
+      "checks": {
+        "G1": "NOT_TESTED",
+        "G2": "NOT_TESTED",
+        "G3": "NOT_TESTED",
+        "G4": "NOT_TESTED",
+        "G5": "NOT_TESTED",
+        "G6": "NOT_TESTED",
+        "G7": "NOT_TESTED",
+        "G8": "NOT_TESTED",
+        "G9": "NOT_TESTED"
+      },
+      "notApplicableReasons": {},
+      "review": {
+        "decision": "pending",
+        "reviewer": null,
+        "reviewedAt": null
+      },
+      "evidence": [
+        {
+          "gate": "G5",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/clean30/actions/runs/34709741131",
+          "description": "Exact SHA RC1 Chromium browser certification succeeded"
+        },
+        {
+          "gate": "G2",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/clean30/actions/runs/34709741122",
+          "description": "Exact SHA GitHub Pages deploy completed successfully"
+        }
+      ],
+      "blockers": [
+        "GitHub Pages published path not independently linked to the serving application artifact",
+        "Offline and real-device production journeys not tested"
+      ],
+      "recertifyTriggers": [
+        "scope change",
+        "authentication or storage change",
+        "deployment or domain change",
+        "offline or security change",
+        "critical incident"
+      ],
+      "checkedAt": "2026-10-25T02:30:00Z"
+    },
+    {
+      "appId": "pdf-studio",
+      "repository": "thiepn/pdf",
+      "version": null,
+      "scopeContract": null,
+      "productionUrl": "https://thiepn.dev/pdf/",
+      "releaseSha": "52166ed4c454db32e52d5260f82479ea289b1462",
+      "deployedSha": null,
+      "authModel": "unknown",
+      "storageModel": "unknown",
+      "checks": {
+        "G1": "NOT_TESTED",
+        "G2": "NOT_TESTED",
+        "G3": "NOT_TESTED",
+        "G4": "NOT_TESTED",
+        "G5": "NOT_TESTED",
+        "G6": "NOT_TESTED",
+        "G7": "NOT_TESTED",
+        "G8": "FAIL",
+        "G9": "NOT_TESTED"
+      },
+      "notApplicableReasons": {},
+      "review": {
+        "decision": "pending",
+        "reviewer": null,
+        "reviewedAt": null
+      },
+      "evidence": [
+        {
+          "gate": "G8",
+          "result": "FAIL",
+          "url": "https://github.com/thiepn/pdf/actions/runs/39238748282",
+          "description": "Operational policy confirms R10_BLOCKED_BY_R9 rather than certified release"
+        },
+        {
+          "gate": "G2",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/pdf/actions/runs/39238748247",
+          "description": "Exact SHA GitHub Pages deploy succeeded"
+        }
+      ],
+      "blockers": [
+        "R10 source explicitly requires blocked status until human and real-device R9 evidence exists",
+        "Real PDF transformation and output integrity not tested in production"
+      ],
+      "recertifyTriggers": [
+        "scope change",
+        "authentication or storage change",
+        "deployment or domain change",
+        "offline or security change",
+        "critical incident"
+      ],
+      "checkedAt": "2026-10-25T02:30:00Z"
+    },
+    {
+      "appId": "tiny-tools",
+      "repository": "thiepn/tools",
+      "version": null,
+      "scopeContract": null,
+      "productionUrl": "https://thiepn.dev/tools/",
+      "releaseSha": "bad426c8324435f5f23e89a4114d2cefa7f631be",
+      "deployedSha": null,
+      "authModel": "unknown",
+      "storageModel": "unknown",
+      "checks": {
+        "G1": "NOT_TESTED",
+        "G2": "FAIL",
+        "G3": "NOT_TESTED",
+        "G4": "NOT_TESTED",
+        "G5": "NOT_TESTED",
+        "G6": "NOT_TESTED",
+        "G7": "NOT_TESTED",
+        "G8": "FAIL",
+        "G9": "NOT_TESTED"
+      },
+      "notApplicableReasons": {},
+      "review": {
+        "decision": "pending",
+        "reviewer": null,
+        "reviewedAt": null
+      },
+      "evidence": [
+        {
+          "gate": "G2",
+          "result": "FAIL",
+          "url": "https://github.com/thiepn/tools/actions/runs/39239337872",
+          "description": "Deployment run failed before build and production publication"
+        },
+        {
+          "gate": "G8",
+          "result": "FAIL",
+          "url": "https://github.com/thiepn/tools/actions/runs/39239337867",
+          "description": "Final independent certification failed at dependency audit"
+        }
+      ],
+      "blockers": [
+        "Matching SHA deployment aborted at dependency audit",
+        "Matching SHA R18 independent certification aborted at dependency audit"
+      ],
+      "recertifyTriggers": [
+        "scope change",
+        "authentication or storage change",
+        "deployment or domain change",
+        "offline or security change",
+        "critical incident"
+      ],
+      "checkedAt": "2026-10-25T02:30:00Z"
+    },
+    {
+      "appId": "recipe",
+      "repository": "thiepn/recipe",
+      "version": null,
+      "scopeContract": null,
+      "productionUrl": "https://recipe.thiepn.dev/",
+      "releaseSha": "b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b",
+      "deployedSha": "b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b",
+      "authModel": "unknown",
+      "storageModel": "unknown",
+      "checks": {
+        "G1": "NOT_TESTED",
+        "G2": "NOT_TESTED",
+        "G3": "NOT_TESTED",
+        "G4": "NOT_TESTED",
+        "G5": "NOT_TESTED",
+        "G6": "NOT_TESTED",
+        "G7": "NOT_TESTED",
+        "G8": "NOT_TESTED",
+        "G9": "NOT_TESTED"
+      },
+      "notApplicableReasons": {},
+      "review": {
+        "decision": "pending",
+        "reviewer": null,
+        "reviewedAt": null
+      },
+      "evidence": [
+        {
+          "gate": "G8",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/recipe/actions/runs/39239056639",
+          "description": "Matching-SHA pnpm verify CI passed"
+        }
+      ],
+      "blockers": [
+        "Production session authorization and non-admin RLS not tested",
+        "Cross-session recipe persistence and restore not tested"
+      ],
+      "recertifyTriggers": [
+        "scope change",
+        "authentication or storage change",
+        "deployment or domain change",
+        "offline or security change",
+        "critical incident"
+      ],
+      "checkedAt": "2026-10-25T02:30:00Z"
+    }
+  ]
+}
