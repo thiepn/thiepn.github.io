@@ -71,12 +71,19 @@
           "result": "PASS",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40189594789",
           "description": "Disposable PostgreSQL 17 and locally signed PostgREST JWT A/B passed original TMS60 owner RLS, cross-account state/backup isolation, invalid signature and identity-bound delete; real THIEPN Account backend NOT_TESTED."
+        },
+        {
+          "gate": "G5",
+          "result": "FAIL",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40189987665",
+          "description": "Pinned original TMS60 desktop/mobile local upgrade/rollback browser suite failed intermittently at 'Previous worker controls the source generation'; immutable source regression and PG17 JWT tests separately passed."
         }
       ],
       "blockers": [
         "Authenticated production account and data restore not tested",
         "Direct production HTTP and device/offline workflows could not be executed",
-        "Live production THIEPN Account token verification and cloud backup restore were not performed; disposable PostgreSQL 17/JWT source policy tests pass."
+        "Live production THIEPN Account token verification and cloud backup restore were not performed; disposable PostgreSQL 17/JWT source policy tests pass.",
+        "Exact-SHA local desktop/mobile service-worker transition is nondeterministic: final-head Chromium occasionally sees navigator.serviceWorker.controller unset after ready, whereas previous pinned runs passed. Original owner test and product need independent race qualification."
       ],
       "recertifyTriggers": [
         "scope change",
@@ -85,7 +92,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T11:36:00Z"
+      "checkedAt": "2026-10-25T11:44:00Z"
     },
     {
       "appId": "clean30",
