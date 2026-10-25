@@ -65,12 +65,18 @@
           "result": "PASS",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
           "description": "Exact production source successfully reproduced desktop/mobile browser PWA install, offline, forward-upgrade and same-origin rollback continuity with disposable local state."
+        },
+        {
+          "gate": "G3",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40189594789",
+          "description": "Disposable PostgreSQL 17 and locally signed PostgREST JWT A/B passed original TMS60 owner RLS, cross-account state/backup isolation, invalid signature and identity-bound delete; real THIEPN Account backend NOT_TESTED."
         }
       ],
       "blockers": [
         "Authenticated production account and data restore not tested",
         "Direct production HTTP and device/offline workflows could not be executed",
-        "Actual two-user authenticated Supabase JWT/RLS and cloud backup restore on disposable backend not tested"
+        "Live production THIEPN Account token verification and cloud backup restore were not performed; disposable PostgreSQL 17/JWT source policy tests pass."
       ],
       "recertifyTriggers": [
         "scope change",
@@ -79,7 +85,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T10:30:15Z"
+      "checkedAt": "2026-10-25T11:36:00Z"
     },
     {
       "appId": "clean30",
@@ -152,6 +158,12 @@
           "result": "PASS",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
           "description": "Exact frozen Clean30 original RC1 test passed focus, full clean completion, progress, history, backup restore and offline recovery, in addition to disposable production smoke."
+        },
+        {
+          "gate": "G8",
+          "result": "FAIL",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40189594789",
+          "description": "Frozen Clean30 release still has 2 high-severity advisories; disposable lockfile-only npm audit fix reached zero known advisories and passed original source tests/build. No owner repo or deployed correction was made."
         }
       ],
       "blockers": [
@@ -166,7 +178,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T10:30:15Z"
+      "checkedAt": "2026-10-25T11:36:00Z"
     },
     {
       "appId": "pdf-studio",
@@ -334,12 +346,18 @@
           "result": "PASS",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184803947",
           "description": "Exact deployed Recipe source passed 51 targeted authentication/restore regressions and 143 total local tests with fake IndexedDB; actual backend RLS remains untested."
+        },
+        {
+          "gate": "G3",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40189594789",
+          "description": "Seven pinned original Recipe migrations (one known terminal typo normalized only in temporary test copy), 15 RLS tables, non-BYPASSRLS JWT A/B isolation, service-only gateway, invalid signature and privilege escalation denial passed in PG17; production Core gateway NOT_TESTED."
         }
       ],
       "blockers": [
         "Production session authorization and non-admin RLS not tested",
         "Cross-session recipe persistence and restore not tested",
-        "Live account JWT and non-BYPASSRLS PostgreSQL 17 row ownership verification remain untested"
+        "Live THIEPN Account tokens and private Core gateway enforcement remain NOT_TESTED; PG17 non-BYPASSRLS and signed disposable JWT A/B source-policy tests now pass."
       ],
       "recertifyTriggers": [
         "scope change",
@@ -348,7 +366,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T10:27:00Z"
+      "checkedAt": "2026-10-25T11:36:00Z"
     }
   ]
 }
