@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "tms60",
+      "repo": "thiepn/tms60",
+      "productionUrl": "https://tms60.thiepn.dev/",
+      "hosting": {
+        "provider": "cloudflare-pages",
+        "project": "tms60"
+      },
+      "expectedTitle": "TMS 60",
+      "appSelector": "#app-frame",
+      "ci": [
+        {
+          "workflow": ".github/workflows/gated-pages-release.yml",
+          "job": "Test candidate before deployment",
+          "step": "Run release-blocking regression suite"
+        }
+      ],
+      "requiredJourneys": [
+        "start-review",
+        "complete-review",
+        "retain-progress"
+      ],
+      "journeyEvidence": [],
+      "review": null
+    },
+    {
+      "id": "roomtone-karaoke",
+      "repo": "thiepn/karaoke",
+      "productionUrl": "https://karaoke.thiepn.dev/",
+      "hosting": {
+        "provider": "cloudflare-pages",
+        "project": "roomtone-karaoke"
+      },
+      "expectedTitle": "ROOMTONE",
+      "appSelector": ".shell",
+      "ci": [],
+      "requiredJourneys": [
+        "microphone-input",
+        "safe-output",
+        "recording-playback"
+      ],
+      "journeyEvidence": [],
+      "review": null
+    }
+  ]
+}

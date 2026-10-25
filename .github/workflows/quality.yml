@@ -21,6 +21,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Release readiness provenance and adversarial tests (read-only)
+        run: npm run test:release-check
       - name: Owner-approved release gate regression tests (no publishing)
         run: node --test tests/hub-owner-release-gate.test.mjs
       - name: Account CI boundary regressions
