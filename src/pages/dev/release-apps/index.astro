@@ -1,8 +1,8 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import HubCatalogue from '../../components/hub/HubCatalogue.astro';
-import { getReleasedHubProjects } from '../../lib/hub';
-import '../../styles/hub.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import HubCatalogue from '../../../components/hub/HubCatalogue.astro';
+import { getReleasedHubProjects } from '../../../lib/hub';
+import '../../../styles/hub.css';
 const released = await getReleasedHubProjects();
 ---
 <BaseLayout title="Released Apps — THIEPN" description="Certificate-qualified THIEPN applications." noindex>
@@ -10,4 +10,4 @@ const released = await getReleasedHubProjects();
     <HubCatalogue entries={released} heading="Released apps" mode="released" />
   </main>
 </BaseLayout>
-<script>import '../../scripts/hub-catalogue';</script>
+<script>import '../../../scripts/hub-catalogue';</script>
