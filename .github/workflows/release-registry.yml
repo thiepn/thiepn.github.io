@@ -8,6 +8,7 @@ on:
       - "src/generated/launch-manifest.json"
       - "contracts/release-certificates.v1.schema.json"
       - "tests/release-certificates.test.mjs"
+      - "tests/release-live-readonly.mjs"
       - ".github/workflows/release-registry.yml"
   workflow_dispatch:
 
@@ -28,3 +29,23 @@ jobs:
           node-version: "22"
       - name: Validate original launch identities and adversarial approval gating
         run: node --test tests/release-certificates.test.mjs
+
+  anonymous-live-smoke:
+    name: Anonymous production loads (observational, non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install pinned browser dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Read-only anonymous 1440px and 390px load probes (no account interaction)
+        run: node tests/release-live-readonly.mjs
