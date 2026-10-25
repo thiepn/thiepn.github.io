@@ -1,0 +1,13 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import HubCatalogue from '../../components/hub/HubCatalogue.astro';
+import { getReleasedHubProjects } from '../../lib/hub';
+import '../../styles/hub.css';
+const released = await getReleasedHubProjects();
+---
+<BaseLayout title="Released Apps — THIEPN" description="Certificate-qualified THIEPN applications." noindex>
+  <main id="main-content" style="max-width:1200px;margin:0 auto;padding:2rem 1rem;">
+    <HubCatalogue entries={released} heading="Released apps" mode="released" />
+  </main>
+</BaseLayout>
+<script>import '../../scripts/hub-catalogue';</script>
