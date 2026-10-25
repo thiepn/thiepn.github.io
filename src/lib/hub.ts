@@ -1,5 +1,6 @@
 import manifest from '../generated/launch-manifest.json';
 import releaseRegistry from '../data/release-certificates.v1.json';
+import releasePromotions from '../data/release-promotions.v1.json';
 import { certifiedLaunchEntries } from './release-certificates.mjs';
 const hubData = {schemaVersion:1,expectedCount:manifest.entries.length,categories:manifest.categories,excluded:manifest.excluded,projects:manifest.entries.map((entry,index)=>({slug:entry.id,order:index+1,category:entry.category,description:entry.description,badge:entry.badge}))};
 import { HUB_BADGES, HUB_CATEGORIES, type HubBadge, type HubCategory } from '../data/taxonomy';
@@ -100,7 +101,7 @@ export function getHubSearchText(entry: HubProjectEntry) {
 
 /** Certified-only Apps listing. Legacy getHubProjects() remains unchanged until explicit publication. */
 export async function getReleasedHubProjects(): Promise<HubProjectEntry[]> {
-  const approvedIds = new Set(certifiedLaunchEntries(manifest, releaseRegistry).map(entry => entry.id));
+  const approvedIds = new Set(certifiedLaunchEntries(manifest, releaseRegistry, releasePromotions).map(entry => entry.id));
   const legacy = await getHubProjects();
   return legacy.filter(entry => approvedIds.has(entry.project.data.slug));
 }
