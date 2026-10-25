@@ -9,6 +9,11 @@ on:
       - "contracts/release-certificates.v1.schema.json"
       - "tests/release-certificates.test.mjs"
       - "tests/release-live-readonly.mjs"
+      - "tests/studio/release-catalogue.spec.ts"
+      - "tests/studio/toolbox-overview.spec.ts"
+      - "src/lib/hub.ts"
+      - "src/components/hub/HubCatalogue.astro"
+      - "src/pages/dev/release-apps/index.astro"
       - ".github/workflows/release-registry.yml"
   workflow_dispatch:
 
@@ -49,3 +54,21 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Read-only anonymous 1440px and 390px load probes (no account interaction)
         run: node tests/release-live-readonly.mjs
+
+  draft-catalogue-browser:
+    name: Qualified roster and legacy browser regression (no deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Assert certified-only preview, legacy Apps unchanged and real category counts
+        run: npx playwright test -c playwright.studio.config.ts --project=chromium tests/studio/release-catalogue.spec.ts tests/studio/toolbox-overview.spec.ts
