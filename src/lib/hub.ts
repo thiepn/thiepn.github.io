@@ -101,7 +101,7 @@ export function getHubSearchText(entry: HubProjectEntry) {
 
 /** Certified-only Apps listing. Legacy getHubProjects() remains unchanged until explicit publication. */
 export async function getReleasedHubProjects(): Promise<HubProjectEntry[]> {
-  const approvedIds = new Set(certifiedLaunchEntries(manifest, releaseRegistry, releasePromotions).map(entry => entry.id));
+  const approvedIds = new Set(certifiedLaunchEntries(manifest, releaseRegistry, releasePromotions, process.env.THIEPN_RELEASE_PROMOTION_TRUST_FINGERPRINT ?? null).map(entry => entry.id));
   const legacy = await getHubProjects();
   return legacy.filter(entry => approvedIds.has(entry.project.data.slug));
 }
