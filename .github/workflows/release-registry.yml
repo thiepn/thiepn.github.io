@@ -100,6 +100,24 @@ jobs:
           npm run verify:release
           npm run verify:runtime
           node --check public/sw.js
+      - name: Verify exact-built public asset bytes against immutable deployed production paths
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const origin="https://thiepn.dev/clean30/";
+          const files=["sw.js","manifest.webmanifest"];
+          const hash=buf=>createHash('sha256').update(buf).digest('hex');
+          for(const file of files){
+            const build=await readFile('dist/'+file);
+            const response=await fetch(new URL(file,origin),{cache:'no-store'});
+            assert.equal(response.status,200,'Public '+file+' must be available');
+            const production=Buffer.from(await response.arrayBuffer());
+            assert.equal(hash(production),hash(build),file+' serving bytes differ from pinned source build');
+            console.log('PASS exact public asset '+file,hash(build));
+          }
+          NODE
       - run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: npm run certify:rc1
@@ -141,6 +159,24 @@ jobs:
           node --test tests/cloudflare-pages-integrity.test.mjs
           node --test tests/cloudflare-pages-cutover-authority.test.mjs
           node --test tests/cloudflare-pages-preview-negative.test.mjs
+      - name: Verify exact-built public asset bytes against immutable deployed production paths
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const origin="https://tms60.thiepn.dev/";
+          const files=["sw.js","account-sync.js","manifest.webmanifest"];
+          const hash=buf=>createHash('sha256').update(buf).digest('hex');
+          for(const file of files){
+            const build=await readFile('dist/'+file);
+            const response=await fetch(new URL(file,origin),{cache:'no-store'});
+            assert.equal(response.status,200,'Public '+file+' must be available');
+            const production=Buffer.from(await response.arrayBuffer());
+            assert.equal(hash(production),hash(build),file+' serving bytes differ from pinned source build');
+            console.log('PASS exact public asset '+file,hash(build));
+          }
+          NODE
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps chromium
       - name: Same-origin local PWA, offline and upgrade/rollback browser tests
