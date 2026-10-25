@@ -1,8 +1,17 @@
 import {test,expect} from '@playwright/test';
+import {readFileSync} from 'node:fs';
 import {hubFixture} from './launch-fixture';
 import {additionalShortcutLaunches} from '../../src/lib/launches/shortcut-directory';
 
-test('DISPOSABLE fixture: exactly one independently signed app is in Released roster',async({page})=>{
+test('DISPOSABLE fixture: independently signed app is selected only in the isolated signed build',async({page})=>{
+  const fixtureEnabled=process.env.THIEPN_SIGNED_RELEASE_FIXTURE==='1';
+  const authority=JSON.parse(readFileSync(new URL('../../src/data/release-promotions.v1.json',import.meta.url),'utf8'));
+  if(!fixtureEnabled) {
+    expect(authority.receipts).toHaveLength(0);
+    await page.goto('/dev/release-apps/');
+    await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+    return;
+  }
   await page.goto('/dev/release-apps/');
   await expect(page.locator('[data-hub-item]')).toHaveCount(1);
   await expect(page.locator('[data-hub-item][data-hub-slug="tms60"]')).toHaveCount(1);
