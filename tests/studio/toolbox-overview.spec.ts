@@ -1,8 +1,11 @@
 import {hubFixture} from './launch-fixture';
+import {additionalShortcutLaunches} from '../../src/lib/launches/shortcut-directory';
 import { test, expect } from '@playwright/test';
 
 const hub=hubFixture;
-const expectedCounts = hub.expectedCategoryCounts;
+const expectedPublishedCounts = hub.expectedCategoryCounts;
+const expectedShortcutCounts = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, additionalShortcutLaunches.filter(app => app.category === category).length]));
+const expectedFilterCounts = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, expectedPublishedCounts[category] + expectedShortcutCounts[category]]));
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -16,7 +19,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
     await expect(catalogue.locator('.hub-category')).toHaveCount(7);
     await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
-    for (const [category, count] of Object.entries(expectedCounts)) {
+    for (const [category, count] of Object.entries(expectedFilterCounts)) {
       const button = catalogue.locator(`button[data-hub-category="${category}"]`);
       await expect(button).toBeVisible();
       await expect(button).toContainText(String(count));
@@ -49,10 +52,12 @@ test('Tiny Tools appears once as an ordinary Hub app card, not an embedded toolb
 test('each category filter reveals exactly its locked app count', async ({ page }) => {
   await page.goto('/apps/');
   const visibleCards = page.locator('[data-hub-item]:visible');
-  for (const [category, count] of Object.entries(expectedCounts)) {
+  await expect(page.locator('[data-hub-current-app]')).toHaveCount(additionalShortcutLaunches.length);
+  for (const [category, count] of Object.entries(expectedPublishedCounts)) {
     const button = page.locator(`button[data-hub-category="${category}"]`);
     await button.click();
     await expect(visibleCards).toHaveCount(count);
+    await expect(page.locator('[data-hub-current-app]:visible')).toHaveCount(expectedShortcutCounts[category]);
     await expect(button).toHaveAttribute('aria-pressed', 'true');
   }
 });
