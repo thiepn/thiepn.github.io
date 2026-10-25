@@ -9,6 +9,7 @@ on:
       - "contracts/release-certificates.v1.schema.json"
       - "tests/release-certificates.test.mjs"
       - "tests/release-live-readonly.mjs"
+      - "tests/release-production-workflows.mjs"
       - "tests/studio/release-catalogue.spec.ts"
       - "tests/studio/toolbox-overview.spec.ts"
       - "src/lib/hub.ts"
@@ -161,3 +162,21 @@ jobs:
           pnpm exec vitest run tests/p2.test.ts tests/p14-local-signout.test.ts tests/p15-auth-startup.test.ts tests/p15b-sync-recovery.test.ts tests/p15d-recovery.test.ts tests/p15e-restore.test.ts
       - name: Confirm baseline complete suite without backend credentials
         run: pnpm test
+
+  anonymous-production-journeys:
+    name: Clean30 and TMS60 disposable browser recovery (observational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Exercise disposable local-only workflows; remote non-GET requests blocked
+        run: node tests/release-production-workflows.mjs
