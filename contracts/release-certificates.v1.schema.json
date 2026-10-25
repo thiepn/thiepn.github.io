@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thiepn.dev/contracts/release-certificates.v1.schema.json",
+  "title": "THIEPN Release Certificates v1",
+  "description": "Schema shape only. Cross-record uniqueness, strict evidence and approval eligibility are enforced by src/lib/release-certificates.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "policyId",
+    "certificates"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "policyId": {
+      "const": "thiepn-release-gate-v1.0"
+    },
+    "certificates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appId",
+          "repository",
+          "version",
+          "scopeContract",
+          "productionUrl",
+          "releaseSha",
+          "deployedSha",
+          "authModel",
+          "storageModel",
+          "checks",
+          "notApplicableReasons",
+          "review",
+          "evidence",
+          "blockers",
+          "recertifyTriggers",
+          "checkedAt"
+        ],
+        "properties": {
+          "appId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "repository": {
+            "type": "string",
+            "pattern": "^thiepn/[a-zA-Z0-9._-]+$"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+              }
+            ]
+          },
+          "scopeContract": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 20
+              }
+            ]
+          },
+          "productionUrl": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "releaseSha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "deployedSha": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              }
+            ]
+          },
+          "authModel": {
+            "enum": [
+              "unknown",
+              "local-only",
+              "optional-account",
+              "required-account"
+            ]
+          },
+          "storageModel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "G1": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G2": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G3": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G4": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G5": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G6": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G7": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G8": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "G9": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_TESTED",
+                  "NOT_APPLICABLE"
+                ]
+              }
+            },
+            "required": [
+              "G1",
+              "G2",
+              "G3",
+              "G4",
+              "G5",
+              "G6",
+              "G7",
+              "G8",
+              "G9"
+            ],
+            "additionalProperties": false
+          },
+          "notApplicableReasons": {
+            "type": "object",
+            "propertyNames": {
+              "enum": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G5",
+                "G6",
+                "G7",
+                "G8",
+                "G9"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 16
+            }
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "enum": [
+                  "pending",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "reviewer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "decision",
+              "reviewer",
+              "reviewedAt"
+            ],
+            "additionalProperties": false
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate",
+                "result",
+                "url",
+                "description"
+              ],
+              "properties": {
+                "gate": {
+                  "enum": [
+                    "G1",
+                    "G2",
+                    "G3",
+                    "G4",
+                    "G5",
+                    "G6",
+                    "G7",
+                    "G8",
+                    "G9"
+                  ]
+                },
+                "result": {
+                  "enum": [
+                    "PASS",
+                    "FAIL",
+                    "NOT_TESTED"
+                  ]
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 8
+                }
+              }
+            }
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 10
+            }
+          },
+          "recertifyTriggers": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 5
+            }
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}
