@@ -357,7 +357,8 @@
       "blockers": [
         "Production session authorization and non-admin RLS not tested",
         "Cross-session recipe persistence and restore not tested",
-        "Live THIEPN Account tokens and private Core gateway enforcement remain NOT_TESTED; PG17 non-BYPASSRLS and signed disposable JWT A/B source-policy tests now pass."
+        "Live THIEPN Account tokens and private Core gateway enforcement remain NOT_TESTED; PG17 non-BYPASSRLS and signed disposable JWT A/B source-policy tests now pass.",
+        "Original P3 Recipe migration ends with a stray literal backslash-n SQL terminator; unmodified psql migration fails. Disposable test normalizes only those two terminal bytes; owner-source correction remains required."
       ],
       "recertifyTriggers": [
         "scope change",
@@ -366,7 +367,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T11:36:00Z"
+      "checkedAt": "2026-10-25T11:39:00Z"
     }
   ]
 }
