@@ -327,6 +327,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm audit --audit-level=low
           git diff --exit-code -- package.json || { echo 'Package manifest changed unexpectedly'; exit 1; }
+          node -e "const p=require('./package-lock.json').packages; console.log('Remediated pinned dependencies:',JSON.stringify({vite:p['node_modules/vite']?.version,sourceMapJs:p['node_modules/source-map-js']?.version}))"
           git diff --numstat -- package-lock.json
       - name: Qualify altered disposable dependencies without editing owner repository
         run: |
