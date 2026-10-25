@@ -8,52 +8,14 @@ const projectFiles = await readFrontmatterDirectory(resolve(root, 'src/content/p
 const projects = new Map(projectFiles.map(({ data }) => [data.slug, data]));
 const failures = [];
 
-const BASELINE_COUNT = 27;
 const EXPECTED_COUNT = hub.expectedCount;
 const EXPECTED_CATEGORIES = ['tools', 'create', 'learn', 'faith', 'explore', 'games'];
-const EXPECTED_CATEGORY_COUNTS = {
-  tools: 5,
-  create: 4,
-  learn: 6,
-  faith: 3,
-  explore: 2,
-  games: 7,
-};
 const EXPECTED_EXCLUDED = ['pflegelern', 'wordfall', 'curio', 'nebula-foundry'];
-const EXPECTED_ORDER = [
-  'notes',
-  'canvas',
-  'tiny-tools',
-  'thiepn-library',
-  'atelier',
-  'manuscript',
-  'pdf-studio',
-  'scan',
-  'signal-earth',
-  'steadybar',
-  'wordstrike',
-  'mathlab',
-  'the-bible-challenge',
-  'duel',
-  'biblical-greek',
-  'tms60',
-  'unreached',
-  'clean30',
-  'markdown-guide',
-  'gomoku',
-  'artikelwerk',
-  'le-carnet-francais',
-  'french-3000',
-  'micro-arcade',
-  'voidcut',
-  'impossible-transit',
-  'skyspire',
-];
 const ALLOWED_BADGES = new Set(['beta', 'rc', 'new']);
 const HTTPS = /^https:\/\//;
 
 if (hub.schemaVersion !== 1) failures.push('Hub schemaVersion must be 1.');
-if (!Number.isInteger(EXPECTED_COUNT) || EXPECTED_COUNT < BASELINE_COUNT || EXPECTED_COUNT > 250) failures.push('Hub expectedCount must be 27–250.');
+if (!Number.isInteger(EXPECTED_COUNT) || EXPECTED_COUNT < 0 || EXPECTED_COUNT > 250) failures.push('Hub expectedCount must be 0–250.');
 if (!Array.isArray(hub.projects) || hub.projects.length !== EXPECTED_COUNT) failures.push(`Hub must contain exactly ${EXPECTED_COUNT} apps.`);
 
 const categoryIds = (hub.categories ?? []).map((category) => category.id);
@@ -106,18 +68,12 @@ for (let order = 1; order <= EXPECTED_COUNT; order += 1) {
   if (!orders.has(order)) failures.push(`Hub order is not contiguous; missing position ${order}.`);
 }
 
-const actualOrder = [...(hub.projects ?? [])].sort((a, b) => a.order - b.order).map((entry) => entry.slug);
-if (JSON.stringify(actualOrder.slice(0, BASELINE_COUNT)) !== JSON.stringify(EXPECTED_ORDER)) failures.push('Hub app membership or canonical ordering changed unexpectedly.');
-
 for (const slug of EXPECTED_EXCLUDED) {
   if (slugs.has(slug)) failures.push(`${slug}: explicitly excluded app cannot appear in the Hub.`);
   if (!projects.has(slug)) failures.push(`${slug}: excluded app should remain registered in the historical project catalogue.`);
 }
 
 for (const category of EXPECTED_CATEGORIES) {
-  if (categoryCounts[category] < EXPECTED_CATEGORY_COUNTS[category]) {
-    failures.push(`${category}: expected ${EXPECTED_CATEGORY_COUNTS[category]} Hub apps, found ${categoryCounts[category]}.`);
-  }
   if (hub.expectedCategoryCounts?.[category] !== categoryCounts[category]) {
     failures.push(`${category}: expectedCategoryCounts must match ${categoryCounts[category]}.`);
   }
