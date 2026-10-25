@@ -335,3 +335,70 @@ jobs:
           npm run verify:release
           npm run verify:runtime
           node --check public/sw.js
+
+  tms60-pg17-signed-jwt:
+    name: TMS60 original account-state/backup policies with actual disposable JWT ownership
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: release_audit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d release_audit"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable-test-only
+      PGDATABASE: release_audit
+      TMS60_TEST_JWT_SECRET: disposable-jwt-only-000000000000000000000000000000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hub
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: thiepn/tms60
+          ref: 12343b974417c3ba23b64f592961c151e52f7ede
+          path: tms60
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Bootstrap only disposable Account prerequisites, verify PG17
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num' | grep -E '^17[0-9]{4}$'
+          psql -v ON_ERROR_STOP=1 -f hub/scripts/release/tms60-pg17-bootstrap.sql
+      - name: Apply five pinned original TMS60 Account migrations and inspect owner policies
+        run: |
+          set -euo pipefail
+          mapfile -t migrations < <(find tms60/supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          test "${#migrations[@]}" -eq 6
+          for migration in "${migrations[@]:0:5}"; do
+            echo "Applying original $(basename "$migration")"
+            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+          test "${migrations[5]}" = "tms60/supabase/migrations/20261003221217_hub_h15_tms60_projection.sql"
+          echo "NOT_TESTED: H15 projection requires upstream H12/H13 Account schema, not fabricated here"
+          psql -v ON_ERROR_STOP=1 -f hub/scripts/release/tms60-pg17-assert.sql
+      - name: Exercise signed JWT two-owner state/backups and identity-bound deletion over local PostgREST
+        run: |
+          docker run -d --name tms60-audit-postgrest --network host \
+            -e PGRST_DB_URI=postgresql://authenticator:disposable-audit-only-password@127.0.0.1:5432/release_audit \
+            -e PGRST_DB_SCHEMAS=public \
+            -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_JWT_SECRET="$TMS60_TEST_JWT_SECRET" \
+            -e PGRST_SERVER_PORT=3039 \
+            postgrest/postgrest:v12.2.12
+          node hub/scripts/release/tms60-jwt-postgrest.mjs
+      - if: failure()
+        name: Print disposable PostgREST diagnostics only
+        run: docker logs tms60-audit-postgrest 2>&1 | tail -80 || true
