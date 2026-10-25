@@ -23,6 +23,14 @@ const tmsRuns=[
  ['hub-integration.yml',39065569694]
 ].map(([workflow,id])=>({id,head_sha:shaByApp.tms60,
  path:'.github/workflows/'+workflow,status:'completed',conclusion:'success'}));
+const tmsJobs=[{
+  id:882100,name:'staged-static-check',status:'completed',conclusion:'success',
+  steps:[
+    {name:'Source and migration regressions',status:'completed',conclusion:'success'},
+    {name:'Build public-only static artifact',status:'completed',conclusion:'success'},
+    {name:'Locally test staged desktop and mobile Chromium',status:'completed',conclusion:'success'}
+  ]
+}];
 const data=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
 const app=scenario.includes('karaoke')?'roomtone-karaoke':'tms60';
 globalThis.fetch=async (raw,options={})=>{
@@ -46,6 +54,13 @@ globalThis.fetch=async (raw,options={})=>{
   if(url.pathname==='/repos/thiepn/tms60/actions/runs'){
     if(url.searchParams.get('head_sha')!==shaByApp.tms60)throw Error('CI request lacks exact deployed SHA');
     return data({workflow_runs:tmsRuns,total_count:tmsRuns.length});
+  }
+  if(url.pathname==='/repos/thiepn/tms60/actions/runs/39065569813/jobs'){
+    const jobs=structuredClone(tmsJobs);
+    if(scenario==='ci-skipped') jobs[0].steps[2].conclusion='skipped';
+    if(scenario==='ci-partial') jobs[0].steps[2].status='in_progress';
+    if(scenario==='ci-job-missing') return data({jobs:[],total_count:0});
+    return data({jobs,total_count:jobs.length});
   }
   throw Error('Unexpected GitHub request: '+url);
  }

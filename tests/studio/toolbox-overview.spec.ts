@@ -4,11 +4,10 @@ import { test, expect } from '@playwright/test';
 
 const hub=hubFixture;
 const expectedCounts = hub.expectedCategoryCounts;
-const shortcutCounts = Object.fromEntries(Object.keys(expectedCounts).map(category => [
-  category, additionalShortcutLaunches.filter(app => app.category === category).length
-]));
+const shortcutCount = (category: string): number =>
+  additionalShortcutLaunches.filter(app => app.category === category).length;
 const totalCounts = Object.fromEntries(Object.entries(expectedCounts).map(([category, count]) => [
-  category, count + shortcutCounts[category]
+  category, count + shortcutCount(category)
 ]));
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
@@ -62,7 +61,7 @@ test('each category filter reveals exactly its locked app count', async ({ page 
     const button = page.locator(`button[data-hub-category="${category}"]`);
     await button.click();
     await expect(publishedCards).toHaveCount(count);
-    await expect(shortcutCards).toHaveCount(shortcutCounts[category]);
+    await expect(shortcutCards).toHaveCount(shortcutCount(category));
     await expect(button).toContainText(String(totalCounts[category]));
     await expect(button).toHaveAttribute('aria-pressed', 'true');
   }

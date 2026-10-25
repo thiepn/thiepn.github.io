@@ -23,7 +23,7 @@ Cloudflare Pages metadata must identify the expected repository, canonical hostn
 
 `review` is intentionally null for both initial pilots. A future release review may record `sha`, `reviewer: "thiepn"`, `reviewedAt`, `decision` and `blockers`. This is an owner attestation, not independent security proof or authorization to publish the Hub listing. In particular, a passing anonymous browser smoke does not prove accounts, data isolation, offline operation or durable persistence.
 
-**Pilot limitations:** TMS60's selected existing workflow is a GitHub Pages release workflow; its Cloudflare production SHA may be different, and the checker must not combine their evidence. ROOMTONE has no verified exact-SHA release workflow and needs genuine physical microphone/speaker qualification; its empty CI contract is deliberately `NOT_TESTED`. Do not invent release workflows or device measurements.
+**Pilot limitations:** TMS60's exact-SHA Cloudflare Pages migration-readiness workflow ran source regressions, a static artifact build and desktop/mobile Chromium staging checks. The CI gate tracks only those specific successful steps; the workflow explicitly did **not** deploy, and CI passing does not prove the deployed bytes, core learning persistence, account safety, offline recovery or owner approval. ROOMTONE has no verified exact-SHA release workflow and needs genuine physical microphone/speaker qualification; its empty CI contract is deliberately `NOT_TESTED`. Do not invent release workflows or device measurements.
 
 ## Deliberate v1 boundary
 
@@ -42,6 +42,8 @@ The existing Hub quality, deployment authorization, profile checks and productio
 
 The full Hub browser suite includes shortcut-only current apps that are intentionally separate from frozen published apps. Its category test now validates both the published-card counts and shortcut counts while preserving every card and legacy launch identity. It does not certify those shortcut-only entries for release.
 
-**Pilot source evidence:** TMS60 production SHA `12343b974417c3ba23b64f592961c151e52f7ede` has five completed successful exact-SHA workflows, but not the specifically required GitHub Pages release workflow in this v1 candidate contract. ROOMTONE production SHA `0503e5c500d9e69f72cb75d3ed1e04d49ed8fd35` had no matching Actions runs. Both continue to return HOLD pending core-journey evidence and owner review, irrespective of other gates.
+**Pilot source evidence:** TMS60 production SHA `12343b974417c3ba23b64f592961c151e52f7ede` has five completed successful exact-SHA workflows; the selected Cloudflare migration-readiness workflow #39065569813 includes three directly verified successful steps. These allow only the narrowly defined staged CI gate to pass. ROOMTONE production SHA `0503e5c500d9e69f72cb75d3ed1e04d49ed8fd35` had no matching Actions runs. Both continue to return HOLD pending core-journey evidence and owner review, irrespective of other gates.
 
 Credentialed live CLI execution remains `NOT_TESTED` unless actually run with read-only API credentials and, for real browser checks, `--browser`. Test fixtures are never a substitute for provider authentication or physical hardware tests.
+
+The 2026-10-25 exact-head Hub Quality run #40184639777 passed the 26 release-checker tests but failed before the full browser audit because `tests/studio/toolbox-overview.spec.ts` had two strict-TypeScript errors from optional shortcut count indexing. The correction uses a count function with a guaranteed numeric result; a focused cross-browser category-count suite was added before the full audit to qualify the original 24 observed mismatches directly. No Hub registry or runtime counts changed.

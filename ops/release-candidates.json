@@ -13,9 +13,19 @@
       "appSelector": "#app-frame",
       "ci": [
         {
-          "workflow": ".github/workflows/gated-pages-release.yml",
-          "job": "Test candidate before deployment",
-          "step": "Run release-blocking regression suite"
+          "workflow": ".github/workflows/cloudflare-pages-migration-readiness.yml",
+          "job": "staged-static-check",
+          "step": "Source and migration regressions"
+        },
+        {
+          "workflow": ".github/workflows/cloudflare-pages-migration-readiness.yml",
+          "job": "staged-static-check",
+          "step": "Build public-only static artifact"
+        },
+        {
+          "workflow": ".github/workflows/cloudflare-pages-migration-readiness.yml",
+          "job": "staged-static-check",
+          "step": "Locally test staged desktop and mobile Chromium"
         }
       ],
       "requiredJourneys": [

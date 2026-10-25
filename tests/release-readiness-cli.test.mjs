@@ -21,7 +21,7 @@ function run(app,scenario=app,extra=[],env={}){
  return {exit:run.status,output:JSON.parse(run.stdout),stderr:run.stderr};
 }
 
-test('TMS60 CLI follows real production snapshot, rejects unrelated exact-SHA successful workflows',()=>{
+test('TMS60 CLI matches exact-SHA Cloudflare readiness workflow, not release approval',()=>{
  const r=run('tms60');
  assert.equal(r.exit,2);
  assert.equal(r.output.decision,'HOLD');
@@ -29,10 +29,23 @@ test('TMS60 CLI follows real production snapshot, rejects unrelated exact-SHA su
  assert.equal(r.output.provenance.deploymentId,'24c8b827-b6a8-42bc-8c16-a2b1c14ed4be');
  assert.equal(r.output.gates.identity.state,'PASS');
  assert.equal(r.output.gates.deployment.state,'PASS');
- assert.equal(r.output.gates.ci.state,'NOT_TESTED');
+ assert.equal(r.output.gates.ci.state,'PASS');
+ assert.equal(r.output.gates.ci.evidence.length,3);
+ assert(r.output.gates.ci.evidence.every(e=>e.runId===39065569813));
+ assert.equal(r.output.gates.journeys.state,'NOT_TESTED');
  assert.equal(r.output.gates.live.state,'NOT_TESTED');
  assert.equal(r.output.gates.journeys.state,'NOT_TESTED');
  assert.equal(r.output.gates.review.state,'NOT_TESTED');
+});
+
+test('CLI cannot certify incomplete staged Chromium evidence despite successful workflow',()=>{
+ for(const scenario of ['ci-skipped','ci-partial','ci-job-missing']){
+  const r=run('tms60',scenario);
+  assert.equal(r.exit,2);
+  assert.equal(r.output.decision,'HOLD');
+  assert.equal(r.output.gates.ci.state,'NOT_TESTED',scenario);
+  assert.equal(r.output.gates.journeys.state,'NOT_TESTED');
+ }
 });
 
 test('ROOMTONE CLI follows production snapshot without promoting missing CI or hardware evidence',()=>{
