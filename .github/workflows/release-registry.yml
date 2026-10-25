@@ -9,6 +9,7 @@ on:
       - "contracts/release-certificates.v1.schema.json"
       - "tests/release-certificates.test.mjs"
       - "scripts/release/**"
+      - "tests/release-recipe-provenance.test.mjs"
       - "tests/release-live-readonly.mjs"
       - "tests/release-production-workflows.mjs"
       - "tests/studio/release-catalogue.spec.ts"
@@ -272,6 +273,10 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num' | grep -E '^17[0-9]{4}$'
           psql -v ON_ERROR_STOP=1 -f hub/scripts/release/recipe-pg17-bootstrap.sql
+      - name: Verify immutable production SQL Git blobs and adversarial missing/tampered/extra migration cases
+        run: |
+          node hub/scripts/release/recipe-provenance.mjs recipe
+          RECIPE_SOURCE_ROOT=recipe node --test hub/tests/release-recipe-provenance.test.mjs
       - name: Apply all seven pinned Recipe migrations; explicitly normalize known terminal typo in disposable copy
         run: |
           set -euo pipefail
