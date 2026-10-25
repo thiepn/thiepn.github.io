@@ -19,8 +19,8 @@ async function request(path,{sub,method='GET',body,token}={}){
 }
 function okay(x,allowed=[200,201,204]){assert.ok(allowed.includes(x.status),JSON.stringify(x));return x.data;}
 async function ready(){
- for(let i=0;i<60;i++){
-  try{await fetch(origin+'/');return}catch{}
+ for(let i=0;i<100;i++){
+  try{const r=await fetch(origin+'/');if(![500,502,503].includes(r.status))return}catch{}
   await new Promise(r=>setTimeout(r,200));
  }
  throw Error('Disposable PostgREST did not start');
