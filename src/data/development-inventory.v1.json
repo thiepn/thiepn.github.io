@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "policyId": "thiepn-release-gate-v1.0",
+  "entries": [
+    {
+      "appId": "notes",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "canvas",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "tiny-tools",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "thiepn-library",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "atelier",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "manuscript",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "pdf-studio",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "scan",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "signal-earth",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "steadybar",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "wordstrike",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "mathlab",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "the-bible-challenge",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "duel",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "biblical-greek",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "tms60",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "unreached",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "clean30",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "markdown-guide",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "gomoku",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "artikelwerk",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "le-carnet-francais",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "french-3000",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "micro-arcade",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "voidcut",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "impossible-transit",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "skyspire",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "diet",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "recipe",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "bikes",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    },
+    {
+      "appId": "orrery",
+      "status": "in-development",
+      "reason": "No complete approved THIEPN Release Gate v1.0 certificate exists"
+    }
+  ]
+}
