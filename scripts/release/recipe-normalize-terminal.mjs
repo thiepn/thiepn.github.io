@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+const file=process.argv[2],destination=process.argv[3];
+assert.ok(file?.endsWith('20261006163029_recipe_p3_collection_lint_hardening.sql'),'Only exact known malformed migration may be repaired in disposable copy');
+assert.equal(destination,'/tmp/recipe-p3-terminator-normalized.sql');
+const original=readFileSync(file);
+const raw=original.toString('utf8');
+assert.ok(raw.endsWith('$$;\\n'),'Source no longer has the known literal backslash-n terminal defect');
+const normalized=Buffer.from(raw.slice(0,-2)+'\n','utf8');
+assert.equal(createHash('sha256').update(original.subarray(0,original.length-2)).digest('hex'),createHash('sha256').update(normalized.subarray(0,normalized.length-1)).digest('hex'),'Non-terminal SQL bytes must remain identical');
+writeFileSync(destination,normalized);
+console.log(JSON.stringify({normalization:'only terminal literal backslash-n converted to line break, disposable copy only',originalSha256:createHash('sha256').update(original).digest('hex'),normalizedSha256:createHash('sha256').update(normalized).digest('hex')}));

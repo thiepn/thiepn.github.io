@@ -19,5 +19,9 @@ for (const feature of HUB_DISABLED_FEATURES) it(`H8 rejects uncertified ${featur
 it('H8 rejects missing/unknown fields, stale profiles and invalid roster sizes', () => {
   const c = candidate();
   for (const value of [null, [], {}, { ...c, extra: true }, { ...c, profile: 'full-integration' }, { ...c, releaseId: 'old' }, { ...c, features: { ...c.features, extra: false } }]) expect(() => validateHubReleaseStatus(value)).toThrow();
-  for (const appCount of [26, 251, 27.5, '27', NaN]) expect(() => validateHubReleaseStatus({ ...c, appCount })).toThrow();
+  for (const appCount of [-1, 251, 27.5, '27', NaN]) expect(() => validateHubReleaseStatus({ ...c, appCount })).toThrow();
+});
+
+it('H8 permits a deliberately small or empty release directory without inventing apps', () => {
+  for (const appCount of [0,1,5,26]) expect(validateHubReleaseStatus({...candidate(),appCount}).appCount).toBe(appCount);
 });

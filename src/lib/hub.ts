@@ -1,4 +1,7 @@
 import manifest from '../generated/launch-manifest.json';
+import releaseRegistry from '../data/release-certificates.v1.json';
+import releasePromotions from '../data/release-promotions.v1.json';
+import { certifiedLaunchEntries } from './release-certificates.mjs';
 const hubData = {schemaVersion:1,expectedCount:manifest.entries.length,categories:manifest.categories,excluded:manifest.excluded,projects:manifest.entries.map((entry,index)=>({slug:entry.id,order:index+1,category:entry.category,description:entry.description,badge:entry.badge}))};
 import { HUB_BADGES, HUB_CATEGORIES, type HubBadge, type HubCategory } from '../data/taxonomy';
 import { getAllProjects, type ProjectEntry } from './catalogue';
@@ -35,7 +38,7 @@ function assertHubRegistryShape() {
     throw new Error(`Hub registry expected ${HUB_EXPECTED_COUNT} apps but contains ${HUB_PROJECT_CONFIG.length}.`);
   }
 
-  if (!Number.isInteger(HUB_EXPECTED_COUNT) || HUB_EXPECTED_COUNT < 27 || HUB_EXPECTED_COUNT > 250) throw new Error('Hub supports 27–250 reviewed apps.');
+  if (!Number.isInteger(HUB_EXPECTED_COUNT) || HUB_EXPECTED_COUNT < 0 || HUB_EXPECTED_COUNT > 250) throw new Error('Hub supports 0–250 reviewed apps.');
   const slugs = new Set<string>();
   const orders = new Set<number>();
   for (const entry of HUB_PROJECT_CONFIG) {
@@ -94,4 +97,11 @@ export function getHubSearchText(entry: HubProjectEntry) {
     hub.category,
     ...p.tags,
   ].join(' ').toLocaleLowerCase();
+}
+
+/** Certified-only Apps listing. Legacy getHubProjects() remains unchanged until explicit publication. */
+export async function getReleasedHubProjects(): Promise<HubProjectEntry[]> {
+  const approvedIds = new Set(certifiedLaunchEntries(manifest, releaseRegistry, releasePromotions, process.env.THIEPN_RELEASE_PROMOTION_TRUST_FINGERPRINT ?? null).map(entry => entry.id));
+  const legacy = await getHubProjects();
+  return legacy.filter(entry => approvedIds.has(entry.project.data.slug));
 }

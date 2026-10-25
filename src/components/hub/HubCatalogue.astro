@@ -4,10 +4,11 @@ import HubFilters from './HubFilters.astro';
 import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import { getHubCategoryCounts, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
-interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; }
-const { entries, heading = 'Apps', headingLevel = 1, showHeading = true } = Astro.props;
+interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; mode?: 'legacy' | 'released'; }
+const { entries, heading = 'Apps', headingLevel = 1, showHeading = true, mode = 'legacy' } = Astro.props;
+const shortcuts = mode === 'released' ? [] : additionalShortcutLaunches;
 const counts = getHubCategoryCounts(entries);
-for (const app of additionalShortcutLaunches) {
+for (const app of shortcuts) {
   const category = HUB_CATEGORY_CONFIG.find(item => item.id === app.category);
   if (!category) throw new Error(`Unknown current app category for ${app.id}.`);
   counts[category.id] += 1;
@@ -18,12 +19,13 @@ for (const app of additionalShortcutLaunches) {
     {headingLevel === 1 ? <h1 id="apps-heading">{heading}</h1> : <h2 id="apps-heading">{heading}</h2>}
   </header>}
 
-  <HubFilters total={entries.length + additionalShortcutLaunches.length} counts={counts} />
+  {(entries.length + shortcuts.length) > 0 && <HubFilters total={entries.length + shortcuts.length} counts={counts} />}
+  {mode === 'released' && entries.length === 0 && <p role="status">No apps have passed release certification.</p>}
 
-  <section class="hub-current-section" data-hub-current-section aria-labelledby="hub-current-title">
-    <header class="hub-section-heading"><h2 id="hub-current-title">Current apps</h2><span>{additionalShortcutLaunches.length}</span></header>
+  {mode === 'legacy' && <section class="hub-current-section" data-hub-current-section aria-labelledby="hub-current-title">
+    <header class="hub-section-heading"><h2 id="hub-current-title">Current apps</h2><span>{shortcuts.length}</span></header>
     <div class="hub-current-grid">
-      {additionalShortcutLaunches.map((app) => (
+      {shortcuts.map((app) => (
         <article class="hub-current-app" data-hub-current-app={app.id} data-hub-current-category={app.category}>
           <a href={app.url} class="hub-current-link" rel="noreferrer">
             <span class="hub-current-icon"><Fragment set:html={icon(appIcon(app.id))}/></span>
@@ -34,12 +36,12 @@ for (const app of additionalShortcutLaunches) {
         </article>
       ))}
     </div>
-  </section>
+  </section>}
 
-  <section class="hub-published-section" aria-labelledby="hub-published-title">
-    <header class="hub-section-heading"><h2 id="hub-published-title">Published apps</h2><span>{entries.length}</span></header>
+  {entries.length > 0 && <section class="hub-published-section" aria-labelledby="hub-published-title">
+    <header class="hub-section-heading"><h2 id="hub-published-title">{mode === 'released' ? 'Released apps' : 'Published apps'}</h2><span>{entries.length}</span></header>
     <div class="hub-grid" data-hub-grid>
       {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
     </div>
-  </section>
+  </section>}
 </section>
