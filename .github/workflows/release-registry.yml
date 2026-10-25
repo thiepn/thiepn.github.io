@@ -1,0 +1,30 @@
+name: THIEPN Release Registry v1
+on:
+  pull_request:
+    paths:
+      - "src/lib/release-certificates.mjs"
+      - "src/data/release-certificates.v1.json"
+      - "src/data/development-inventory.v1.json"
+      - "src/generated/launch-manifest.json"
+      - "contracts/release-certificates.v1.schema.json"
+      - "tests/release-certificates.test.mjs"
+      - ".github/workflows/release-registry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-registry:
+    name: Validate draft release certificates (no publishing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate original launch identities and adversarial approval gating
+        run: node --test tests/release-certificates.test.mjs
