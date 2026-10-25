@@ -147,15 +147,13 @@ export function certifiedLaunchEntries(manifest,registry,promotions={schemaVersi
   }
   let key=null;
   if(promotions.publicKeyPem) {
-    try {
-      key=createPublicKey(promotions.publicKeyPem);
-      assert(key.asymmetricKeyType==='ed25519','promotion key must be Ed25519');
-      if(promotions.receipts.length){
-        const actual=createHash('sha256').update(key.export({format:'der',type:'spki'})).digest('hex');
-        assert(actual===trustedKeyFingerprint,'promotion key differs from independently trusted authority');
-      }
-    }
+    try { key=createPublicKey(promotions.publicKeyPem); }
     catch { throw new Error('Release registry: invalid promotion public key'); }
+    assert(key.asymmetricKeyType==='ed25519','promotion key must be Ed25519');
+    if(promotions.receipts.length){
+      const actual=createHash('sha256').update(key.export({format:'der',type:'spki'})).digest('hex');
+      assert(actual===trustedKeyFingerprint,'promotion key differs from independently trusted authority');
+    }
   }
   const seen=new Set();
   for(const receipt of promotions.receipts) {
