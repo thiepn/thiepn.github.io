@@ -20,8 +20,8 @@ async function request(path,{token=null,profile='audit'}={}){
  return {status:r.status,body:text,parsed:(()=>{try{return JSON.parse(text)}catch{return null}})()};
 }
 async function ready(){
- for(let i=0;i<40;i++){
-  try{const r=await fetch(origin+'/');if(r.status>0)return;}catch{}
+ for(let i=0;i<100;i++){
+  try{const r=await fetch(origin+'/');if(r.status!==503 && r.status!==502 && r.status!==500)return;}catch{}
   await new Promise(resolve=>setTimeout(resolve,200));
  }
  throw Error('Local PostgREST did not start');
