@@ -3,9 +3,9 @@ import {additionalShortcutLaunches} from '../../src/lib/launches/shortcut-direct
 import { test, expect } from '@playwright/test';
 
 const hub=hubFixture;
-const expectedPublishedCounts = hub.expectedCategoryCounts;
-const expectedShortcutCounts = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, additionalShortcutLaunches.filter(app => app.category === category).length]));
-const expectedFilterCounts = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, expectedPublishedCounts[category] + expectedShortcutCounts[category]]));
+const expectedPublishedCounts: Record<string, number> = hub.expectedCategoryCounts;
+const expectedShortcutCounts: Record<string, number> = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, additionalShortcutLaunches.filter(app => app.category === category).length]));
+const expectedFilterCounts = Object.fromEntries(Object.keys(expectedPublishedCounts).map(category => [category, (expectedPublishedCounts[category] ?? 0) + (expectedShortcutCounts[category] ?? 0)]));
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -57,7 +57,7 @@ test('each category filter reveals exactly its locked app count', async ({ page 
     const button = page.locator(`button[data-hub-category="${category}"]`);
     await button.click();
     await expect(visibleCards).toHaveCount(count);
-    await expect(page.locator('[data-hub-current-app]:visible')).toHaveCount(expectedShortcutCounts[category]);
+    await expect(page.locator('[data-hub-current-app]:visible')).toHaveCount(expectedShortcutCounts[category] ?? 0);
     await expect(button).toHaveAttribute('aria-pressed', 'true');
   }
 });
