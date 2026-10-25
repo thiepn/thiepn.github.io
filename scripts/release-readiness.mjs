@@ -50,7 +50,7 @@ async function discoverCloudflare() {
   const deployments=[];
   let truncated=false;
   for (let page=1;page<=5;page++) {
-    const result=await cf(`/pages/projects/${app.hosting.project}/deployments?page=${page}`);
+    const result=await cf(`/pages/projects/${app.hosting.project}/deployments?env=production&page=${page}`);
     if(!Array.isArray(result.result)) throw Error('Cloudflare deployments response lacks an array');
     deployments.push(...result.result);
     const info=result.result_info;

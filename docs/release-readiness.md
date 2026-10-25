@@ -35,3 +35,13 @@ Cloudflare Pages metadata must identify the expected repository, canonical hostn
 - Does not modify the Hub catalog, the 27-entry legacy release constraints, DNS, deployments, account settings or release approvals.
 
 The existing Hub quality, deployment authorization, profile checks and production-smoke scripts remain authoritative for the Hub itself. App qualification is additional information; promotion is a separate owner-controlled operation.
+
+## Reproducing the provider adapter path without credentials
+
+`npm run test:release-check` exercises the actual CLI as child processes using a scoped, read-only HTTP fixture. The two snapshots encode the production SHAs, deployment IDs and the presence or absence of exact-SHA GitHub Actions runs observed through the connected providers on 2026-10-25. The HTTP fixture requires `THIEPN_RELEASE_TEST_FIXTURE` and is loaded only by the test process; it is not a live provider check. The mock rejects requests that omit the Cloudflare `env=production` filter or query GitHub without the exact deployed SHA. Tests also exercise unavailable API, wrong linked repository, HTTP 500 and JSON output.
+
+The full Hub browser suite includes shortcut-only current apps that are intentionally separate from frozen published apps. Its category test now validates both the published-card counts and shortcut counts while preserving every card and legacy launch identity. It does not certify those shortcut-only entries for release.
+
+**Pilot source evidence:** TMS60 production SHA `12343b974417c3ba23b64f592961c151e52f7ede` has five completed successful exact-SHA workflows, but not the specifically required GitHub Pages release workflow in this v1 candidate contract. ROOMTONE production SHA `0503e5c500d9e69f72cb75d3ed1e04d49ed8fd35` had no matching Actions runs. Both continue to return HOLD pending core-journey evidence and owner review, irrespective of other gates.
+
+Credentialed live CLI execution remains `NOT_TESTED` unless actually run with read-only API credentials and, for real browser checks, `--browser`. Test fixtures are never a substitute for provider authentication or physical hardware tests.
