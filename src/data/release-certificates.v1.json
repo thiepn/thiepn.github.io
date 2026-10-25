@@ -10,8 +10,8 @@
       "productionUrl": "https://tms60.thiepn.dev/",
       "releaseSha": "12343b974417c3ba23b64f592961c151e52f7ede",
       "deployedSha": "12343b974417c3ba23b64f592961c151e52f7ede",
-      "authModel": "unknown",
-      "storageModel": "unknown",
+      "authModel": "optional-account",
+      "storageModel": "local device state with optional Supabase sync and per-translation backups",
       "checks": {
         "G1": "NOT_TESTED",
         "G2": "NOT_TESTED",
@@ -64,12 +64,12 @@
       "productionUrl": "https://thiepn.dev/clean30/",
       "releaseSha": "052731bd44f7e2113fd789be55dfb199d4f82fae",
       "deployedSha": null,
-      "authModel": "unknown",
-      "storageModel": "unknown",
+      "authModel": "local-only",
+      "storageModel": "browser localStorage with warned nonpersistent fallback when storage is unavailable",
       "checks": {
         "G1": "NOT_TESTED",
         "G2": "NOT_TESTED",
-        "G3": "NOT_TESTED",
+        "G3": "NOT_APPLICABLE",
         "G4": "NOT_TESTED",
         "G5": "NOT_TESTED",
         "G6": "NOT_TESTED",
@@ -77,7 +77,9 @@
         "G8": "NOT_TESTED",
         "G9": "NOT_TESTED"
       },
-      "notApplicableReasons": {},
+      "notApplicableReasons": {
+        "G3": "Local-only cleaning planner has no remote account or multiuser authorization requirement in the audited source."
+      },
       "review": {
         "decision": "pending",
         "reviewer": null,
@@ -207,7 +209,8 @@
       ],
       "blockers": [
         "Matching SHA deployment aborted at dependency audit",
-        "Matching SHA R18 independent certification aborted at dependency audit"
+        "Matching SHA R18 independent certification aborted at dependency audit",
+        "The exact source dependency audit reported 7 vulnerabilities, including 3 high-severity advisories, and blocked release before Chromium tests"
       ],
       "recertifyTriggers": [
         "scope change",
@@ -226,8 +229,8 @@
       "productionUrl": "https://recipe.thiepn.dev/",
       "releaseSha": "b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b",
       "deployedSha": "b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b",
-      "authModel": "unknown",
-      "storageModel": "unknown",
+      "authModel": "optional-account",
+      "storageModel": "device IndexedDB workspace, guarded backup restore, optional authenticated Supabase sync",
       "checks": {
         "G1": "NOT_TESTED",
         "G2": "NOT_TESTED",
