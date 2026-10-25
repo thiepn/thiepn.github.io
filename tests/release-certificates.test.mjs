@@ -114,3 +114,28 @@ test('signed owner promotion cannot be fabricated, replayed, retargeted or silen
   const after=clone(r);after.certificates[0].review.reviewedAt='2026-10-26T00:00:00Z';
   assert.throws(()=>certifiedLaunchEntries(manifest(),after,p),/stale or substituted/);
 });
+
+test('certificate digest canonicalizes independent JSON key ordering but protects arrays and evidence data',()=>{
+  const source=registry().certificates[0];
+  const reordered=Object.fromEntries(Object.entries(source).reverse());
+  reordered.checks=Object.fromEntries(Object.entries(source.checks).reverse());
+  reordered.evidence=source.evidence.map(e=>Object.fromEntries(Object.entries(e).reverse()));
+  assert.equal(certificateDigest(source),certificateDigest(reordered));
+  const corrupted=clone(source);
+  corrupted.evidence[0].description+=' tampered';
+  assert.notEqual(certificateDigest(source),certificateDigest(corrupted));
+  const switched=clone(source);
+  switched.releaseSha='f'.repeat(40);
+  assert.notEqual(certificateDigest(source),certificateDigest(switched));
+});
+test('all release-critical gates prohibit N/A, while actual local-only G3 can be reasoned N/A',()=>{
+  const src=registry(),clean=src.certificates.find(x=>x.appId==='clean30');
+  assert.equal(clean.authModel,'local-only');
+  assert.equal(clean.checks.G3,'NOT_APPLICABLE');
+  assert.doesNotThrow(()=>validateReleaseRegistry(src));
+  for(const g of RELEASE_GATES.filter(g=>g!=='G3')){
+    const testRecord=clone(src), c=testRecord.certificates.find(x=>x.appId==='clean30');
+    c.checks[g]='NOT_APPLICABLE';c.notApplicableReasons[g]='This waiver must be rejected for release-critical '+g+' under THIEPN policy';
+    assert.throws(()=>validateReleaseRegistry(testRecord),/only truly local-only authentication G3/);
+  }
+});
