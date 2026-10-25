@@ -53,6 +53,18 @@
           "result": "PASS",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184803947",
           "description": "Exact deployed revision passed local offline cache, original account sync regression, and same-origin PWA update/rollback qualification without production writes."
+        },
+        {
+          "gate": "G2",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
+          "description": "Production TMS60 service worker, account-sync.js and manifest SHA-256 equal the exact frozen Cloudflare source build."
+        },
+        {
+          "gate": "G5",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
+          "description": "Exact production source successfully reproduced desktop/mobile browser PWA install, offline, forward-upgrade and same-origin rollback continuity with disposable local state."
         }
       ],
       "blockers": [
@@ -67,7 +79,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T10:27:00Z"
+      "checkedAt": "2026-10-25T10:30:15Z"
     },
     {
       "appId": "clean30",
@@ -128,6 +140,18 @@
           "result": "FAIL",
           "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184803947",
           "description": "Clean30 pinned-source dependency audit failed with two high severity advisories while remaining source and Chromium workflows passed."
+        },
+        {
+          "gate": "G2",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
+          "description": "Production Clean30 service worker and manifest bytewise SHA-256 equal to the exact frozen release-source build; this alone does not certify every asset."
+        },
+        {
+          "gate": "G5",
+          "result": "PASS",
+          "url": "https://github.com/thiepn/thiepn.github.io/actions/runs/40184972059",
+          "description": "Exact frozen Clean30 original RC1 test passed focus, full clean completion, progress, history, backup restore and offline recovery, in addition to disposable production smoke."
         }
       ],
       "blockers": [
@@ -142,7 +166,7 @@
         "offline or security change",
         "critical incident"
       ],
-      "checkedAt": "2026-10-25T10:27:00Z"
+      "checkedAt": "2026-10-25T10:30:15Z"
     },
     {
       "appId": "pdf-studio",
