@@ -123,7 +123,7 @@ export function certificateDigest(certificate) {
 export function promotionSigningPayload(certificate) {
   return Buffer.from('THIEPN_RELEASE_PROMOTION_V1\\0'+certificate.appId+'\\0'+certificate.releaseSha+'\\0'+certificateDigest(certificate),'utf8');
 }
-export function certifiedLaunchEntries(manifest,registry,promotions={schemaVersion:1,policyId:RELEASE_POLICY,publicKeyPem:null,receipts:[]}) {
+export function certifiedLaunchEntries(manifest,registry,promotions={schemaVersion:1,policyId:RELEASE_POLICY,publicKeyPem:null,receipts:[]},trustedKeyFingerprint=null) {
   validateReleaseRegistry(registry);
   checkKeys(promotions,['schemaVersion','policyId','publicKeyPem','receipts'],'promotion authority');
   assert(promotions.schemaVersion===1 && promotions.policyId===RELEASE_POLICY,'unknown promotion authority');
@@ -141,10 +141,20 @@ export function certifiedLaunchEntries(manifest,registry,promotions={schemaVersi
   }
   const approvedCertificates=registry.certificates.filter(c=>c.review.decision==='approved');
   assert(promotions.receipts.length===approvedCertificates.length,'approved certificate missing signed independent promotion');
-  if(promotions.receipts.length) assert(promotions.publicKeyPem,'promotion signing authority not established');
+  if(promotions.receipts.length) {
+    assert(promotions.publicKeyPem,'promotion signing authority not established');
+    assert(typeof trustedKeyFingerprint==='string' && /^[0-9a-f]{64}$/.test(trustedKeyFingerprint),'independent trusted signing key fingerprint not configured');
+  }
   let key=null;
   if(promotions.publicKeyPem) {
-    try { key=createPublicKey(promotions.publicKeyPem); assert(key.asymmetricKeyType==='ed25519','promotion key must be Ed25519'); }
+    try {
+      key=createPublicKey(promotions.publicKeyPem);
+      assert(key.asymmetricKeyType==='ed25519','promotion key must be Ed25519');
+      if(promotions.receipts.length){
+        const actual=createHash('sha256').update(key.export({format:'der',type:'spki'})).digest('hex');
+        assert(actual===trustedKeyFingerprint,'promotion key differs from independently trusted authority');
+      }
+    }
     catch { throw new Error('Release registry: invalid promotion public key'); }
   }
   const seen=new Set();
