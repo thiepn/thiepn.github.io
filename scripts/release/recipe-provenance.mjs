@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync,readdirSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 
 export const RECIPE_RELEASE_SHA='b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b';
@@ -31,7 +32,7 @@ export function verifyPinnedRecipeMigrations(repoRoot,{requireExactCommit=true}=
     assert.equal(bytes.length,size,'Recipe original SQL size drift: '+name);
     assert.equal(blobHash(bytes),expectedSha,'Recipe original Git object bytes drift: '+name);
     if(name===P3_TERMINATOR_FILE){
-      assert.ok(bytes.subarray(-4).equals(Buffer.from([36,59,92,110])),'Expected original P3 terminator bytes $$;\\n not present');
+      assert.ok(bytes.subarray(-5).equals(Buffer.from([36,36,59,92,110])),'Expected original P3 terminator bytes $$;\\n not present');
       // Only the two final literal ASCII bytes 0x5c,0x6e can be replaced in a *disposable* copy.
       const changed=Buffer.concat([bytes.subarray(0,-2),Buffer.from('\n')]);
       assert.ok(changed.subarray(0,-1).equals(bytes.subarray(0,-2)),'Correction touched nonterminal SQL');
@@ -43,7 +44,7 @@ export function verifyPinnedRecipeMigrations(repoRoot,{requireExactCommit=true}=
   }
   return rows;
 }
-if(process.argv[1] && import.meta.url===new URL('file://'+process.argv[1]).href){
+if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   const dir=process.argv[2];
   assert.ok(dir,'Pass frozen Recipe checkout root');
   console.log(JSON.stringify({recipeSha:RECIPE_RELEASE_SHA,verified:verifyPinnedRecipeMigrations(dir)},null,2));
