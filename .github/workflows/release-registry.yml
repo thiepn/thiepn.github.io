@@ -89,10 +89,23 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npm run verify:release-candidate
+      - name: Record original dependency audit without hiding its failure
+        id: dependency_audit
+        continue-on-error: true
+        run: npm run audit:release
+      - name: Run every non-audit original RC1 source gate
+        run: |
+          npm test
+          npm run build
+          npm run verify:release
+          npm run verify:runtime
+          node --check public/sw.js
       - run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: npm run certify:rc1
+      - name: Enforce dependency security gate after browser evidence
+        if: always()
+        run: test "\${{ steps.dependency_audit.outcome }}" = success
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -103,7 +116,7 @@ jobs:
 
   tms60-pinned-recovery:
     name: TMS60 frozen production SHA local integrity, account isolation and PWA recovery
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
