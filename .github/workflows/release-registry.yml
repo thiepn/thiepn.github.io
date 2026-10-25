@@ -8,6 +8,7 @@ on:
       - "src/generated/launch-manifest.json"
       - "contracts/release-certificates.v1.schema.json"
       - "tests/release-certificates.test.mjs"
+      - "scripts/release/**"
       - "tests/release-live-readonly.mjs"
       - "tests/release-production-workflows.mjs"
       - "tests/studio/release-catalogue.spec.ts"
@@ -229,3 +230,103 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Exercise disposable local-only workflows; remote non-GET requests blocked
         run: node tests/release-production-workflows.mjs
+
+  recipe-pg17-jwt:
+    name: Recipe original migrations, PostgreSQL 17 RLS and disposable signed JWT
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: release_audit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d release_audit"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable-test-only
+      PGDATABASE: release_audit
+      RECIPE_TEST_JWT_SECRET: disposable-jwt-only-000000000000000000000000000000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hub
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: thiepn/recipe
+          ref: b9cf98453a017145d36c7d0ebb6c8b3054a8fd5b
+          path: recipe
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Assert actual PostgreSQL major version and bootstrap disposable roles
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num' | grep -E '^17[0-9]{4}$'
+          psql -v ON_ERROR_STOP=1 -f hub/scripts/release/recipe-pg17-bootstrap.sql
+      - name: Apply all seven original immutable Recipe migrations, no fabricated replacement schema
+        run: |
+          set -euo pipefail
+          mapfile -t migrations < <(find recipe/supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          test "${#migrations[@]}" -eq 7
+          for migration in "${migrations[@]}"; do
+            echo "Applying original $(basename "$migration")"
+            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+          psql -v ON_ERROR_STOP=1 -f hub/scripts/release/recipe-pg17-assert.sql
+      - name: Run disposable PostgREST with real signed JWT verification
+        run: |
+          docker run -d --name recipe-audit-postgrest --network host \
+            -e PGRST_DB_URI=postgresql://authenticator:disposable-audit-only-password@127.0.0.1:5432/release_audit \
+            -e PGRST_DB_SCHEMAS=audit,recipe,gateway \
+            -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_JWT_SECRET="$RECIPE_TEST_JWT_SECRET" \
+            -e PGRST_SERVER_PORT=3039 \
+            postgrest/postgrest:v12.2.12
+          node hub/scripts/release/recipe-jwt-postgrest.mjs
+      - name: Capture disposable server diagnostic only on failure
+        if: failure()
+        run: docker logs recipe-audit-postgrest 2>&1 | tail -60 || true
+
+  clean30-dependency-remediation-rehearsal:
+    name: Clean30 dependency fix rehearsal (ephemeral checkout, no owner write)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: thiepn/clean30
+          ref: 052731bd44f7e2113fd789be55dfb199d4f82fae
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Retain vulnerable baseline evidence without promotion
+        run: |
+          npm audit --json > /tmp/clean30-baseline-audit.json || true
+          node -e "const a=require('/tmp/clean30-baseline-audit.json'); console.log('Baseline advisories:',JSON.stringify(a.metadata?.vulnerabilities))"
+      - name: Attempt only compatible dependency lockfile remediation on disposable copy
+        run: |
+          npm audit fix --package-lock-only --ignore-scripts
+          npm ci --no-audit --no-fund
+          npm audit --audit-level=low
+          git diff --exit-code -- package.json || { echo 'Package manifest changed unexpectedly'; exit 1; }
+          git diff --numstat -- package-lock.json
+      - name: Qualify altered disposable dependencies without editing owner repository
+        run: |
+          npm test
+          npm run build
+          npm run verify:release
+          npm run verify:runtime
+          node --check public/sw.js
