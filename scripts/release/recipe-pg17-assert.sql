@@ -31,7 +31,7 @@ INSERT INTO recipe.recipes(id,user_id,state) VALUES
  ('33333333-3333-4333-8333-333333333331','11111111-1111-4111-8111-111111111111','draft'),
  ('33333333-3333-4333-8333-333333333332','22222222-2222-4222-8222-222222222222','draft');
 SET ROLE service_role;
-DO $
+DO $$
 DECLARE a jsonb; b jsonb;
 BEGIN
  -- Only the original service-role gateway is invoked; no real user credentials.
