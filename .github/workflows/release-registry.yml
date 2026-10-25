@@ -10,6 +10,7 @@ on:
       - "tests/release-certificates.test.mjs"
       - "scripts/release/**"
       - "tests/release-recipe-provenance.test.mjs"
+      - "tests/studio/release-signed-fixture.spec.ts"
       - "tests/release-live-readonly.mjs"
       - "tests/release-production-workflows.mjs"
       - "tests/studio/release-catalogue.spec.ts"
@@ -449,3 +450,28 @@ jobs:
         run: |
           cd tms60
           TMS60_SW_RACE_CYCLES=10 node ../hub/scripts/release/tms60-sw-race-probe.mjs
+
+  signed-release-preview-fixture:
+    name: Synthetic signed Ed25519 promotion renders exactly one app in disposable build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build test-only signed certificate and independently anchored trust fingerprint
+        run: node scripts/release/seed-synthetic-signed-preview.mjs
+      - name: Build temporary preview using synthetic fixture (no deploy)
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Qualify signed-only roster and untouched legacy entry identities
+        run: npx playwright test -c playwright.studio.config.ts --project=chromium tests/studio/release-signed-fixture.spec.ts
+      - name: Verify only disposable workspace files were changed
+        run: |
+          git diff --name-only | sort
+          test "$(git diff --name-only | sort | tr '\n' ',')" = "src/data/release-certificates.v1.json,src/data/release-promotions.v1.json,"
