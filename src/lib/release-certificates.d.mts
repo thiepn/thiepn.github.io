@@ -7,5 +7,5 @@ export function validateReleaseRegistry(registry: ReleaseRegistry): ReleaseRegis
 export interface ReleasePromotionAuthority { schemaVersion: number; policyId: string; publicKeyPem: string | null; receipts: Array<{appId: string; releaseSha: string; certificateDigest: string; signature: string}> }
 export function certificateDigest(certificate: unknown): string;
 export function promotionSigningPayload(certificate: unknown): Uint8Array;
-export function certifiedLaunchEntries<T extends ReleaseLaunch>(manifest: { entries: T[] }, registry: ReleaseRegistry, promotions?: ReleasePromotionAuthority): T[];
+export function certifiedLaunchEntries<T extends ReleaseLaunch>(manifest: { entries: T[] }, registry: ReleaseRegistry, promotions?: ReleasePromotionAuthority, trustedKeyFingerprint?: string | null): T[];
 export function validateDevelopmentInventory(inventory: unknown, manifest: { entries: ReleaseLaunch[] }): unknown;
