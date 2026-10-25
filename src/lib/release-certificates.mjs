@@ -112,8 +112,13 @@ export function validateDevelopmentInventory(inventory,manifest) {
 }
 // The owner's Ed25519 private signing key must NEVER be held in this repository.
 // A structural PASS, an evidence URL and a reviewer string are insufficient.
+function canonicalize(value) {
+  if(Array.isArray(value)) return value.map(canonicalize);
+  if(object(value)) return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonicalize(value[key])]));
+  return value;
+}
 export function certificateDigest(certificate) {
-  return createHash('sha256').update('THIEPN_RELEASE_CERTIFICATE_V1\\0').update(JSON.stringify(certificate)).digest('hex');
+  return createHash('sha256').update('THIEPN_RELEASE_CERTIFICATE_V1\\0').update(JSON.stringify(canonicalize(certificate))).digest('hex');
 }
 export function promotionSigningPayload(certificate) {
   return Buffer.from('THIEPN_RELEASE_PROMOTION_V1\\0'+certificate.appId+'\\0'+certificate.releaseSha+'\\0'+certificateDigest(certificate),'utf8');
