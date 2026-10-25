@@ -1,3 +1,4 @@
+import {createHash,createPublicKey,verify} from 'node:crypto';
 // Release evidence is independent of the legacy launch manifest.
 // Neither an HTTPS URL nor a successful deployment is an approval.
 export const RELEASE_POLICY = 'thiepn-release-gate-v1.0';
@@ -51,7 +52,10 @@ function validateCertificate(c) {
     assert(RELEASE_GATES.includes(gate) && c.checks[gate]==='NOT_APPLICABLE',id+' unexpected N/A exception');
     assert(typeof reason==='string' && reason.trim().length>=16,id+' N/A requires an explicit reason');
   }
-  for(const gate of RELEASE_GATES) if(c.checks[gate]==='NOT_APPLICABLE') assert(own(c.notApplicableReasons,gate),id+' '+gate+' missing N/A reason');
+  for(const gate of RELEASE_GATES) if(c.checks[gate]==='NOT_APPLICABLE') {
+    assert(own(c.notApplicableReasons,gate),id+' '+gate+' missing N/A reason');
+    assert(gate==='G3' && c.authModel==='local-only',id+' only truly local-only authentication G3 can be N/A');
+  }
   checkKeys(c.review,['decision','reviewer','reviewedAt'],id+' review');
   assert(['pending','approved','rejected'].includes(c.review.decision),id+' invalid review decision');
   assert(c.review.reviewer===null || (typeof c.review.reviewer==='string' && c.review.reviewer.trim().length>=2),id+' invalid reviewer');
@@ -106,17 +110,48 @@ export function validateDevelopmentInventory(inventory,manifest) {
   assert(seen.size===ids.size,'inventory must preserve all legacy launch identities');
   return inventory;
 }
-export function certifiedLaunchEntries(manifest,registry) {
+// The owner's Ed25519 private signing key must NEVER be held in this repository.
+// A structural PASS, an evidence URL and a reviewer string are insufficient.
+export function certificateDigest(certificate) {
+  return createHash('sha256').update('THIEPN_RELEASE_CERTIFICATE_V1\\0').update(JSON.stringify(certificate)).digest('hex');
+}
+export function promotionSigningPayload(certificate) {
+  return Buffer.from('THIEPN_RELEASE_PROMOTION_V1\\0'+certificate.appId+'\\0'+certificate.releaseSha+'\\0'+certificateDigest(certificate),'utf8');
+}
+export function certifiedLaunchEntries(manifest,registry,promotions={schemaVersion:1,policyId:RELEASE_POLICY,publicKeyPem:null,receipts:[]}) {
   validateReleaseRegistry(registry);
+  checkKeys(promotions,['schemaVersion','policyId','publicKeyPem','receipts'],'promotion authority');
+  assert(promotions.schemaVersion===1 && promotions.policyId===RELEASE_POLICY,'unknown promotion authority');
+  assert(Array.isArray(promotions.receipts),'promotion receipts must be an array');
+  assert(promotions.publicKeyPem===null || (typeof promotions.publicKeyPem==='string' && promotions.publicKeyPem.length>60),'invalid promotion public key');
   assert(object(manifest) && Array.isArray(manifest.entries),'launch manifest missing');
   const byId=new Map(manifest.entries.map(e=>[e.id,e]));
   assert(byId.size===manifest.entries.length,'duplicate launch manifest IDs');
+  const byCertificate=new Map(registry.certificates.map(c=>[c.appId,c]));
   for(const c of registry.certificates) {
     const entry=byId.get(c.appId);
     assert(entry,c.appId+' certificate references unknown launcher');
     assert(entry.ownerRepo===c.repository,c.appId+' owner repository does not match launch manifest');
     assert(entry.url===c.productionUrl,c.appId+' production URL does not match launch manifest');
   }
-  const approved=new Set(registry.certificates.filter(c=>c.review.decision==='approved').map(c=>c.appId));
-  return manifest.entries.filter(e=>approved.has(e.id));
+  const approvedCertificates=registry.certificates.filter(c=>c.review.decision==='approved');
+  assert(promotions.receipts.length===approvedCertificates.length,'approved certificate missing signed independent promotion');
+  if(promotions.receipts.length) assert(promotions.publicKeyPem,'promotion signing authority not established');
+  let key=null;
+  if(promotions.publicKeyPem) {
+    try { key=createPublicKey(promotions.publicKeyPem); assert(key.asymmetricKeyType==='ed25519','promotion key must be Ed25519'); }
+    catch { throw new Error('Release registry: invalid promotion public key'); }
+  }
+  const seen=new Set();
+  for(const receipt of promotions.receipts) {
+    checkKeys(receipt,['appId','releaseSha','certificateDigest','signature'],'promotion receipt');
+    assert(!seen.has(receipt.appId),'duplicate promotion receipt');
+    seen.add(receipt.appId);
+    const c=byCertificate.get(receipt.appId);
+    assert(c?.review.decision==='approved','promotion receipt not associated with approved certificate');
+    assert(receipt.releaseSha===c.releaseSha && receipt.certificateDigest===certificateDigest(c),'stale or substituted certificate digest');
+    assert(typeof receipt.signature==='string' && /^[a-zA-Z0-9+/]+={0,2}$/.test(receipt.signature),'malformed promotion signature');
+    assert(verify(null,promotionSigningPayload(c),key,Buffer.from(receipt.signature,'base64')),'forged or invalid promotion receipt');
+  }
+  return manifest.entries.filter(e=>seen.has(e.id));
 }
