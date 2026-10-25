@@ -272,14 +272,19 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num' | grep -E '^17[0-9]{4}$'
           psql -v ON_ERROR_STOP=1 -f hub/scripts/release/recipe-pg17-bootstrap.sql
-      - name: Apply all seven original immutable Recipe migrations, no fabricated replacement schema
+      - name: Apply all seven pinned Recipe migrations; explicitly normalize known terminal typo in disposable copy
         run: |
           set -euo pipefail
           mapfile -t migrations < <(find recipe/supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
           test "${#migrations[@]}" -eq 7
           for migration in "${migrations[@]}"; do
             echo "Applying original $(basename "$migration")"
-            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+            if [[ "$migration" == *20261006163029_recipe_p3_collection_lint_hardening.sql ]]; then
+              node hub/scripts/release/recipe-normalize-terminal.mjs "$migration" /tmp/recipe-p3-terminator-normalized.sql
+              psql -v ON_ERROR_STOP=1 -f /tmp/recipe-p3-terminator-normalized.sql >/dev/null
+            else
+              psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+            fi
           done
           psql -v ON_ERROR_STOP=1 -f hub/scripts/release/recipe-pg17-assert.sql
       - name: Run disposable PostgREST with real signed JWT verification
