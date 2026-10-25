@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import {generateKeyPairSync,sign} from 'node:crypto';
+import {generateKeyPairSync,sign,createPublicKey,createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { certifiedLaunchEntries, validateDevelopmentInventory, validateReleaseRegistry, RELEASE_GATES, certificateDigest, promotionSigningPayload } from '../src/lib/release-certificates.mjs';
@@ -10,6 +10,7 @@ const inventory = () => load('../src/data/development-inventory.v1.json');
 const manifest = () => load('../src/generated/launch-manifest.json');
 const clone = x => structuredClone(x);
 
+const trustedFingerprint = authority => createHash('sha256').update(createPublicKey(authority.publicKeyPem).export({format:'der',type:'spki'})).digest('hex');
 function signFixture(c) {
   const {publicKey,privateKey}=generateKeyPairSync('ed25519'); // disposable test-only private key
   return {schemaVersion:1,policyId:'thiepn-release-gate-v1.0',
@@ -50,7 +51,9 @@ test('incomplete or forged approval fails closed',()=>{
   c.deployedSha=c.releaseSha;
   assert.doesNotThrow(()=>validateReleaseRegistry(r));
   assert.throws(()=>certifiedLaunchEntries(manifest(),r),/missing signed independent promotion/);
-  assert.deepEqual(certifiedLaunchEntries(manifest(),r,signFixture(c)).map(x=>x.id),['tms60']);
+  const signed=signFixture(c);
+  assert.throws(()=>certifiedLaunchEntries(manifest(),r,signed),/independent trusted signing key/);
+  assert.deepEqual(certifiedLaunchEntries(manifest(),r,signed,trustedFingerprint(signed)).map(x=>x.id),['tms60']);
 });
 test('approved fixture matching manifest can be selected without padding',()=>{
   const r=registry();const c=r.certificates[0];
@@ -58,7 +61,8 @@ test('approved fixture matching manifest can be selected without padding',()=>{
   c.version='1.0.0';c.scopeContract='Synthetic full-scope fixture for validator tests only';c.authModel='local-only';c.storageModel='local browser';
   c.checks=Object.fromEntries(RELEASE_GATES.map(g=>[g,'PASS']));c.blockers=[];
   c.evidence=RELEASE_GATES.map(g=>({gate:g,result:'PASS',url:'https://example.org/test-evidence/'+g,description:'Synthetic fixture, not release evidence'}));
-  const result=certifiedLaunchEntries(manifest(),r,signFixture(c));
+  const signed=signFixture(c);
+  const result=certifiedLaunchEntries(manifest(),r,signed,trustedFingerprint(signed));
   assert.deepEqual(result.map(x=>x.id),['tms60']);
 });
 test('gate verdicts, N/A exceptions, evidence URLs and SHA formats cannot be bypassed',()=>{
@@ -101,18 +105,23 @@ test('signed owner promotion cannot be fabricated, replayed, retargeted or silen
   c.checks=Object.fromEntries(RELEASE_GATES.map(g=>[g,'PASS']));
   c.evidence=RELEASE_GATES.map(g=>({gate:g,result:'PASS',url:'https://example.org/only-fixture/'+g,description:'Synthetic strictly local test fixture'}));
   const p=signFixture(c);
-  assert.deepEqual(certifiedLaunchEntries(manifest(),r,p).map(x=>x.id),['tms60']);
-  const testModified=fn=>{const obj=clone(p);fn(obj);assert.throws(()=>certifiedLaunchEntries(manifest(),r,obj));};
+  const pinned=trustedFingerprint(p);
+  assert.deepEqual(certifiedLaunchEntries(manifest(),r,p,pinned).map(x=>x.id),['tms60']);
+  const testModified=fn=>{const obj=clone(p);fn(obj);assert.throws(()=>certifiedLaunchEntries(manifest(),r,obj,pinned));};
   testModified(p=>p.receipts[0].signature='a'.repeat(88));
   testModified(p=>p.receipts[0].releaseSha='b'.repeat(40));
   testModified(p=>p.receipts[0].certificateDigest='f'.repeat(64));
   testModified(p=>p.receipts[0].appId='recipe');
   testModified(p=>p.receipts.push(clone(p.receipts[0])));
   testModified(p=>p.publicKeyPem=null);
+  const substitute=signFixture(c);
+  assert.notEqual(trustedFingerprint(substitute),pinned);
+  assert.throws(()=>certifiedLaunchEntries(manifest(),r,substitute,pinned),/promotion key differs from independently trusted authority/);
+  assert.throws(()=>certifiedLaunchEntries(manifest(),r,p,'f'.repeat(64)),/promotion key differs from independently trusted authority/);
   const cloned=clone(r);cloned.certificates[0].evidence[0].description='Post-release evidence substitution';
-  assert.throws(()=>certifiedLaunchEntries(manifest(),cloned,p),/stale or substituted/);
+  assert.throws(()=>certifiedLaunchEntries(manifest(),cloned,p,pinned),/stale or substituted/);
   const after=clone(r);after.certificates[0].review.reviewedAt='2026-10-26T00:00:00Z';
-  assert.throws(()=>certifiedLaunchEntries(manifest(),after,p),/stale or substituted/);
+  assert.throws(()=>certifiedLaunchEntries(manifest(),after,p,pinned),/stale or substituted/);
 });
 
 test('certificate digest canonicalizes independent JSON key ordering but protects arrays and evidence data',()=>{
