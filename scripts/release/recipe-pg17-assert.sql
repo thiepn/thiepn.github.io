@@ -30,11 +30,11 @@ END $$;
 INSERT INTO recipe.recipes(id,user_id,state) VALUES
  ('33333333-3333-4333-8333-333333333331','11111111-1111-4111-8111-111111111111','draft'),
  ('33333333-3333-4333-8333-333333333332','22222222-2222-4222-8222-222222222222','draft');
-DO $$
+SET ROLE service_role;
+DO $
 DECLARE a jsonb; b jsonb;
 BEGIN
  -- Only the original service-role gateway is invoked; no real user credentials.
- EXECUTE 'SET LOCAL ROLE service_role';
  SELECT gateway.recipe_manifest('11111111-1111-4111-8111-111111111111') INTO a;
  SELECT gateway.recipe_manifest('22222222-2222-4222-8222-222222222222') INTO b;
  IF jsonb_array_length(a->'recipes') <> 1 OR
@@ -47,3 +47,5 @@ BEGIN
  END IF;
  RAISE NOTICE 'PASS original Recipe gateway manifests are owner-specific in disposable database';
 END $$;
+
+RESET ROLE;
