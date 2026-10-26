@@ -399,3 +399,9 @@
  .ws-mode-bar>div{width:100%;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
  .ws-mode-bar button{min-width:0;min-height:44px;padding:8px 6px;white-space:normal}
 }
+
+.ws-owner-case-list{display:grid;gap:.7rem;padding-left:1.25rem;margin:.7rem 0;min-width:0}
+.ws-owner-case-list li{min-width:0;overflow-wrap:anywhere}
+.ws-owner-case-list label{display:grid;gap:.4rem;min-width:0}
+.ws-owner-case-list code{overflow-wrap:anywhere;word-break:break-word}
+.ws-owner-case-list select{min-width:0;width:min(100%,28rem);min-height:44px}
