@@ -12,6 +12,9 @@ on:
       - 'tests/studio/hub-keep-*.spec.ts'
       - 'tests/unit/hub-keep-native-manifest.test.ts'
       - 'tsconfig.json'
+      - 'src/lib/workspace/legacy-full-export-preflight.ts'
+      - 'tests/unit/hub-legacy-full-export-preflight.test.ts'
+      - 'tests/studio/hub-legacy-export-phase13.spec.ts'
   workflow_dispatch:
 permissions:
   contents: read
@@ -72,7 +75,7 @@ jobs:
       - name: Hub TypeScript and source unit checks
         run: |
           npm run typecheck
-          ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-legacy-reconciliation.test.ts tests/unit/hub-consolidation-retirement.test.ts
+          ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-legacy-reconciliation.test.ts tests/unit/hub-legacy-full-export-preflight.test.ts tests/unit/hub-consolidation-retirement.test.ts
       - name: Build Hub with local KEEP bundle (no deployment)
         run: npm run build
       - name: Install Chromium on disposable runner
@@ -80,7 +83,7 @@ jobs:
       - name: Genuine native original KEEP desktop/mobile browser acceptance
         env:
           KEEP_NATIVE_BUILT: '1'
-        run: ./node_modules/.bin/playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-keep-runtime-phase12.spec.ts
+        run: ./node_modules/.bin/playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-keep-runtime-phase12.spec.ts tests/studio/hub-legacy-export-phase13.spec.ts
       - name: Qualification summary
         if: always()
         run: |
