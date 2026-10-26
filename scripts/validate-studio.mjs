@@ -42,7 +42,18 @@ assert.notEqual([...hub.projects].sort((a, b) => a.order - b.order)[0]?.slug, 's
 const hubCatalogue = fs.readFileSync('src/components/hub/HubCatalogue.astro', 'utf8');
 const hubCard = fs.readFileSync('src/components/hub/HubCard.astro', 'utf8');
 const hubFilters = fs.readFileSync('src/components/hub/HubFilters.astro', 'utf8');
-assert(hubCatalogue.includes('entries.map'), 'Hub catalogue must render all entries at build time');
+assert(hubCatalogue.includes("entries.filter(({project}) => project.data.slug !== 'notes')"),
+  'Only the retired Notes launcher may be excluded from the active catalogue');
+assert(hubCatalogue.includes('activeEntries.map'),
+  'Active catalogue must render every nonretired reviewed entry');
+assert(hubCatalogue.includes('getHubCategoryCounts(activeEntries)'),
+  'Catalogue badges must count the same active roster');
+const canonicalLaunches = JSON.parse(fs.readFileSync('src/generated/launch-manifest.json', 'utf8'));
+assert.equal(canonicalLaunches.entries.length, 31, 'Historical launch IDs must remain intact');
+const originalNotes = canonicalLaunches.entries.filter(entry => entry.id === 'notes');
+assert.equal(originalNotes.length, 1, 'Original Notes source ID must be preserved');
+assert.equal(originalNotes[0].url, 'https://thiepn.dev/notes/', 'Original Notes deep link changed');
+assert.equal(originalNotes[0].moduleRef, 'folio/notes', 'Original Notes module owner changed');
 assert(hubCatalogue.includes('HubFilters'), 'Hub catalogue must expose category controls');
 assert(hubCard.includes('Open app'), 'Hub cards must make launching the app a primary action');
 assert(hubCard.includes('Details'), 'Hub cards must retain project details as a secondary action');
