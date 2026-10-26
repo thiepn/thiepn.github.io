@@ -115,3 +115,30 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       (languages.status==='signed-out'?languageRows:'<ul>'+languageRows+'</ul>')+
       '</section></div></section>';
 }
+
+/** Active Hub Today shows real language progress without promoting legacy Folio/Notes
+ * source snapshots into a second planner or displaying duplicate app sections.
+ * The original renderSourceToday remains available for explicit historical recovery.
+ */
+export function renderHubLanguageToday({languages,apps}:SourceTodayInputs):string {
+  const rows=languages.status==='signed-out'?'':
+    HUB_LANGUAGE_IDS.map(id=>{
+      const card=languages.cards.find(item=>item.appId===id);
+      const app=apps.find(item=>item.id===id);
+      const title=card?.name??id[0]!.toUpperCase()+id.slice(1);
+      const url=app?.url??HUB_LANGUAGE_OWNER_ROUTES[id];
+      const href=url?ownerLanguageLink(url,card?.action.route):null;
+      const status=card
+        ?card.due+' due · '+card.todayEvents+' study events · '+
+          (card.stale||languages.status==='unavailable'?'Outdated source snapshot':card.streakDays+'-day streak')
+        :languages.status==='loading'?'Checking progress':'No authorized published summary';
+      return '<li><div><strong>'+esc(title)+'</strong><small>'+esc(status)+'</small></div>'+
+        (href?'<a href="'+esc(href)+'" rel="noreferrer">Open app</a>':'')+'</li>';
+    }).join('');
+  const status=languages.status==='signed-out'?'Sign in to view published language progress.':
+    languages.status==='unavailable'?'Language progress could not be refreshed.':
+    languages.status==='loading'?'Checking published language progress.':'';
+  return '<section class="ws-source-today" data-source-today aria-labelledby="source-today-heading">'+
+    '<header><h2 id="source-today-heading">Language learning</h2></header>'+
+    (status?info(status):'')+(rows?'<ul>'+rows+'</ul>':'')+'</section>';
+}
