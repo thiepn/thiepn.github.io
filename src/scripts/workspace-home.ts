@@ -16,7 +16,7 @@ import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/langua
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
-import { renderSourceToday } from '../lib/workspace/source-today';
+import { renderHubLanguageToday } from '../lib/workspace/source-today';
 import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
 import {renderNotesCalendarContinuity,freshNotesReminderShare,NOTES_REMINDER_MAX_AGE_MS} from '../lib/workspace/notes-reminder-continuity';
 import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
@@ -297,7 +297,7 @@ async function setup(root: HTMLElement) {
                 selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
-            todayPanel.outerHTML = renderSourceToday({
+            todayPanel.outerHTML = renderHubLanguageToday({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
                 languages: {status: languageStatus, cards: languageCards}, apps,
@@ -825,7 +825,7 @@ async function setup(root: HTMLElement) {
             </section>`;
         }
         if (view === 'calendar')
-            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}${renderNotesCalendarContinuity(selected,agendaMode,today(),state!.preferences.timezone,authorizedNotesPlanningSnapshot())}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
+            return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
             return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}${hubPinAction('tracker',t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
@@ -837,7 +837,7 @@ async function setup(root: HTMLElement) {
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
                 (hubPinnedKeys(hubPinboard(state!)).length?renderHubPinboard(state!,true):'')+
-                renderSourceToday({
+                renderHubLanguageToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
                     languages: {status: languageStatus, cards: languageCards}, apps,
