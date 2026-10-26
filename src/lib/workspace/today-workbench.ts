@@ -95,9 +95,10 @@ const btn=(action:string,name:string,id:string)=>'<button type="button" data-act
 export function renderTodayWorkbench(
   state:WorkspaceState,day:string,shared:FolioDeviceSnapshot|null=null,now=Date.now(),
   notesShare:NotesDeviceSummary|null=null,
+  nativeOnly=false,
 ):string {
   const data=projectTodayWorkbench(state,day);
-  const approved=freshFolioPlanningShare(shared,now);
+  const approved=freshFolioPlanningShare(nativeOnly?null:shared,now);
   const folioDays=projectFolioWorkbench(state,day,approved,now);
   const sharedByDate=new Map(folioDays.map(row=>[row.date,row]));
   const conflicts=folioConflictActions(state,data.days.map(row=>row.date),approved,now);
@@ -153,14 +154,14 @@ export function renderTodayWorkbench(
     '<header><div>'+
     '<h3 id="ws-workbench-heading">Next seven days</h3></div>'+
     '<a href="/home/calendar/?mode=week">Open full week planner</a></header>'+
-    '<div class="ws-workbench-source-actions" data-workbench-source-actions><p>'+
+    (nativeOnly?'':'<div class="ws-workbench-source-actions" data-workbench-source-actions><p>'+
     (approved?'Folio shared once · '+esc(approved.date)+' · up to 12 tasks and 12 blocks. Dates may have omitted items.':
       shared?'Folio share expired; refresh explicitly to include its owner work.':
       'Hub-only view. Folio time and tasks are absent until you approve a one-time share.')+
     '</p><div><button type="button" data-action="connect-folio" class="ws-unified-action">'+
     (approved?'Refresh Folio':'Share Folio')+'</button>'+
     (shared?'<button type="button" data-action="disconnect-folio" class="ws-unified-action">Clear share</button>':'')+
-    '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>'+
+    '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>')+
     '<ol class="ws-workbench-week" aria-label="Next seven calendar days">'+days+'</ol>'+
     conflictPanel+'<div class="ws-workbench-panels">'+
     '<section aria-labelledby="ws-next-tasks"><header><h4 id="ws-next-tasks">Coming up</h4><a href="/home/tasks/?filter=upcoming">All upcoming ('+
@@ -180,7 +181,7 @@ export function renderTodayWorkbench(
       '<p class="ws-unified-empty">No local Hub notes yet.</p>')+
     (data.noteCount>data.recentNotes.length?'<small>Showing '+data.recentNotes.length+
       ' of '+data.noteCount+' notes.</small>':'')+'</section></div>'+
-    '<p class="ws-workbench-disclosure">Folio data requires a one-time share; source records remain in Folio. A task clock is not a calendar block. No external records are modified.</p>'+
-    renderNotesTodayHorizon(day,state.preferences.timezone,notesShare,now)+
+    (nativeOnly?'':'<p class="ws-workbench-disclosure">Folio data requires a one-time share; source records remain in Folio. A task clock is not a calendar block. No external records are modified.</p>')+
+    (nativeOnly?'':renderNotesTodayHorizon(day,state.preferences.timezone,notesShare,now))+
     '</section>';
 }
