@@ -20,6 +20,12 @@ for(const width of [390,1440]){
   await expect(preview).toContainText('tasks: 1');
   await expect(preview).not.toContainText('PRIVATE FOLIO TASK');
   await expect(preview).toContainText('Source authenticity not verified');
+  const cases=page.locator('[data-original-owner-choice]');
+  await expect(cases).toHaveCount(1);
+  await cases.first().selectOption('KEEP_SEPARATE');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('Migration blocked');
+  await expect(preview).not.toContainText('PRIVATE FOLIO TASK');
   expect(await page.evaluate(()=>[...Object.keys(localStorage)].filter(x=>x.includes('legacy-backup-file')))).toEqual([]);
   await page.reload();
   await expect(page.locator('[data-owner-export-result]')).toHaveCount(0);
