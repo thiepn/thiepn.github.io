@@ -54,3 +54,33 @@ export function reviewOriginalOwnerCases(
   sourceRightsApproved:false,ownerBackupVerified:false,destinationBackupVerified:false,
   readyToMigrate:false,writes:0,blocked:true};
 }
+
+const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
+/** Ephemeral review UI. Never stores source records or review choices in Hub. */
+export function renderOriginalOwnerCaseworkForm(plan:OwnerDryRun):string {
+ const limit=80,visible=plan.rows.slice(0,limit);
+ const rows=visible.map((row,index)=>
+  '<li><label><span>Case '+(index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
+   ' · ID <code>'+esc(row.originalId)+'</code> · '+esc(row.status.replace(/_/gu,' '))+
+   ' · '+row.originalAttachmentIds.length+' original attachments</span>'+
+   '<select data-original-owner-choice data-case-kind="'+esc(row.kind)+
+   '" data-case-id="'+esc(row.originalId)+'" data-case-status="'+esc(row.status)+'">'+
+   '<option value="">Not reviewed</option>'+
+   '<option value="KEEP_SEPARATE">Keep in original owner</option>'+
+   '<option value="REVIEW_SOURCE">Review original source</option>'+
+   '<option value="REVIEW_HUB">Review Hub record</option>'+
+   '<option value="DEFER">Hold for evidence</option>'+
+   '</select></label></li>'
+ ).join('');
+ return '<section data-owner-casework aria-label="Original-owner conflict review">'+
+  '<h4>Review individual source records</h4>'+
+  '<ol class="ws-owner-case-list">'+rows+'</ol>'+
+  (plan.rows.length>limit?'<p>'+(plan.rows.length-limit)+' additional cases remain held for manual review.</p>':'')+
+  '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
+  '<p>Choices are temporary and cannot authorize imports, overwrite IDs or change source data.</p>'+
+  '</section>';
+}
+export function renderOriginalOwnerCaseworkReceipt(receipt:OwnerCaseworkReceipt):string {
+ return receipt.reviewed+' reviewed · '+receipt.held+' still held · '+
+  receipt.attachmentReferences+' preserved original attachment references. Migration blocked.';
+}
