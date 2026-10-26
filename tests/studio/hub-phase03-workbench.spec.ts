@@ -8,7 +8,7 @@ test('Phase 03 Today renders seven original Hub days, tracker and note handoffs'
  await expect(page.locator('.ws-workbench-day')).toHaveCount(7);
  await expect(page.locator('[data-today-workbench]')).toContainText('Tracker check-in');
  await expect(page.locator('[data-today-workbench]')).toContainText('Pick up a note');
- await expect(page.locator('[data-workbench-source-actions]')).toContainText('Hub-only view');
+ await expect(page.locator('[data-workbench-source-actions]')).toHaveCount(0);
  await expect(page.locator('[data-today-workbench] a[href^="/home/calendar/?date="]')).toHaveCount(7);
  await expect(page.locator('[data-today-workbench]')).not.toContainText('Folio shared once');
 });
@@ -16,7 +16,7 @@ test('Phase 03 mobile source view stays bounded and original Workspace remains e
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await expect(page.locator('[data-today-workbench]')).toBeVisible();
- await expect(page.locator('[data-source-queue]')).toBeVisible();
+ await expect(page.locator('[data-source-queue], [data-source-today-folio], [data-source-today-notes]')).toHaveCount(0);
  await expect(page.locator('.ws-workbench-day')).toHaveCount(7);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
  await page.locator('[data-action=unified-mode][data-id=workspace]').click();
