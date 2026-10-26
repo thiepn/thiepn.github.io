@@ -154,14 +154,14 @@ export function renderTodayWorkbench(
     '<header><div>'+
     '<h3 id="ws-workbench-heading">Next seven days</h3></div>'+
     '<a href="/home/calendar/?mode=week">Open full week planner</a></header>'+
-    (nativeOnly?'':'<div class="ws-workbench-source-actions" data-workbench-source-actions><p>'+
+    (nativeOnly?'':('<div class="ws-workbench-source-actions" data-workbench-source-actions><p>'+
     (approved?'Folio shared once · '+esc(approved.date)+' · up to 12 tasks and 12 blocks. Dates may have omitted items.':
       shared?'Folio share expired; refresh explicitly to include its owner work.':
       'Hub-only view. Folio time and tasks are absent until you approve a one-time share.')+
     '</p><div><button type="button" data-action="connect-folio" class="ws-unified-action">'+
     (approved?'Refresh Folio':'Share Folio')+'</button>'+
     (shared?'<button type="button" data-action="disconnect-folio" class="ws-unified-action">Clear share</button>':'')+
-    '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>')+
+    '<a href="/home/calendar/?mode=week">Compare in Week</a></div></div>'))+
     '<ol class="ws-workbench-week" aria-label="Next seven calendar days">'+days+'</ol>'+
     conflictPanel+'<div class="ws-workbench-panels">'+
     '<section aria-labelledby="ws-next-tasks"><header><h4 id="ws-next-tasks">Coming up</h4><a href="/home/tasks/?filter=upcoming">All upcoming ('+
