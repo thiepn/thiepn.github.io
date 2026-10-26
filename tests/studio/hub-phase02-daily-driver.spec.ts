@@ -4,12 +4,15 @@ test('Phase 02 Today defaults to genuine daily view and existing Focus/Workspace
  await page.goto('/');
  await expect(page.locator('[data-workspace][data-home-mode="today"]')).toBeVisible();
  await expect(page.locator('#ws-title')).toHaveText('Today');
- await expect(page.locator('[data-source-queue]')).toBeVisible();
+ await expect(page.locator('[data-source-queue], [data-source-today-folio], [data-source-today-notes]')).toHaveCount(0);
  await expect(page.locator('.ws-nav a[href="/"]')).toContainText('Today');
  await page.locator('[data-action="unified-mode"][data-id="focus"]').click();
  await expect(page.locator('[data-workspace][data-home-mode="focus"]')).toBeVisible();
  await page.locator('[data-action="unified-mode"][data-id="workspace"]').click();
  await expect(page.locator('[data-workspace][data-home-mode="workspace"]')).toBeVisible();
+ await page.goto('/home/legacy/');
+ await expect(page.locator('[data-hub-legacy-recovery]')).toBeVisible();
+ await expect(page.locator('[data-source-today-folio]')).toBeVisible();
 });
 test('Phase 02 mobile keeps Today, Apps, Tasks and original Plan/Documents routes',async({page})=>{
  await page.setViewportSize({width:390,height:844});
