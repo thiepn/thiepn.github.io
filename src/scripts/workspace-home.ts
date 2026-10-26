@@ -50,7 +50,8 @@ import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backli
 import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
-import {inspectOriginalOwnerExport,renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
+import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
+import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -3037,9 +3038,9 @@ async function setup(root: HTMLElement) {
             void (async()=>{
                 try{
                     const bytes=new Uint8Array(await source.arrayBuffer());
-                    const result=await inspectOriginalOwnerExport(bytes,original);
+                    const {preflight:result,plan}=await makeOriginalOwnerDryRun(bytes,original);
                     if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
-                    if(output)output.innerHTML=renderOriginalExportPreflight(result);
+                    if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan);
                     if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
                 }catch(error){
                     if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
