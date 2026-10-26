@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 test.use({serviceWorkers:'block'});
+test.skip(process.env.KEEP_NATIVE_BUILT !== '1','Original KEEP assets are absent in the regular Hub profile. Run dedicated Bun/crypto source qualification.');
 for(const width of [390,1440]){
  test('authentic KEEP B3 compiled React mounts and securely releases original owner '+width,async({page})=>{
   await page.setViewportSize({width,height:width===390?844:900});
