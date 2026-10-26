@@ -58,7 +58,7 @@ export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
 export const primaryShortcutIds: readonly string[] = [
   'languages', 'french-3000', 'chinese', 'japanese', 'korea', 'studyos',
   'mdd', 'selah', 'tms60', 'thiepn-library',
-  'ion', 'chess', 'ligoquiz', 'karaoke', 'gomoku', 'control', 'notes', 'tiny-tools',
+  'ion', 'chess', 'ligoquiz', 'karaoke', 'gomoku', 'control', 'tiny-tools',
 ];
 
 /** Keep any already pinned apps at the top, then current options, then the rest. */
