@@ -6,6 +6,7 @@ on:
       - '.github/workflows/hub-keep-native-phase12.yml'
       - 'vendor/keep-b3/**'
       - 'scripts/build-original-keep.mjs'
+      - 'scripts/prepare-keep-phase15-fixture.mjs'
       - 'src/scripts/keep-native-*.ts'
       - 'src/scripts/workspace-home.ts'
       - 'src/components/workspace/WorkspaceShell.astro'
@@ -68,6 +69,8 @@ jobs:
       - name: Original Argon2id and AES-256-GCM real crypto
         working-directory: vendor/keep-b3
         run: bun scripts/check-keep-real-crypto.ts
+      - name: Generate synthetic original KEEP KDF and encrypted-note fixture for Chromium
+        run: bun scripts/prepare-keep-phase15-fixture.mjs
       - name: Typecheck original KEEP independently
         working-directory: vendor/keep-b3
         run: bun run lint
