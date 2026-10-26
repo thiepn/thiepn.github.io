@@ -34,6 +34,8 @@ for(const width of [390,1440]){
   });
   expect(header).toMatchObject({format:'keepnotes-vault-enc',kdf:'argon2id',cipher:'AES-256-GCM',plaintext:false});
   expect(header.wrapped).toBeTruthy();
+  await modal.locator('button').first().click();
+  await expect(modal).toHaveCount(0);
   await page.locator('[data-keep-native-exit]').click();
   await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
   await page.reload();
