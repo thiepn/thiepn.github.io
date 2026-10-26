@@ -1,0 +1,467 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    color-scheme: light;
+    color: #0c0a09;
+    background-color: #f0eee8;
+    --accent-primary: #f59e0b;
+    --accent-glow: rgba(245, 158, 11, 0.4);
+    --border-accent: #fcd34d;
+  }
+  .dark, [data-theme="dark"] {
+    color-scheme: dark;
+    color: #fafaf9;
+    background-color: #0d0d10;
+    --accent-primary: #fbbf24;
+    --accent-glow: rgba(251, 191, 36, 0.35);
+    --border-accent: #78350f;
+  }
+  
+  /* Cyberpunk Theme */
+  [data-theme="cyberpunk"] {
+    color-scheme: dark;
+    color: #00f0ff;
+    background-color: #090814;
+    --accent-primary: #fcee0a;
+    --accent-glow: rgba(252, 238, 10, 0.5);
+    --border-accent: #ff007f;
+  }
+  [data-theme="cyberpunk"] body {
+    background-color: #090814;
+    color: #00f0ff;
+  }
+
+  /* Synthwave Theme */
+  [data-theme="synthwave"] {
+    color-scheme: dark;
+    color: #05d9e8;
+    background-color: #18122B;
+    --accent-primary: #ff2a85;
+    --accent-glow: rgba(255, 42, 133, 0.5);
+    --border-accent: #7b2cbf;
+  }
+  [data-theme="synthwave"] body {
+    background-color: #18122B;
+    color: #05d9e8;
+  }
+
+  /* Nordic Frost Theme */
+  [data-theme="nordic"] {
+    color-scheme: dark;
+    color: #eceff4;
+    background-color: #151922;
+    --accent-primary: #88c0d0;
+    --accent-glow: rgba(136, 192, 208, 0.4);
+    --border-accent: #5e81ac;
+  }
+  [data-theme="nordic"] body {
+    background-color: #151922;
+    color: #eceff4;
+  }
+
+  /* Forest Moss & Spruce Theme */
+  [data-theme="forest"] {
+    color-scheme: dark;
+    color: #ecfdf5;
+    background-color: #0e1813;
+    --accent-primary: #10b981;
+    --accent-glow: rgba(16, 185, 129, 0.45);
+    --border-accent: #064e3b;
+  }
+  [data-theme="forest"] body {
+    background-color: #0e1813;
+    color: #ecfdf5;
+  }
+
+  /* Golden Sunset Theme */
+  [data-theme="sunset"] {
+    color-scheme: light;
+    color: #431407;
+    background-color: #fff6ed;
+    --accent-primary: #ea580c;
+    --accent-glow: rgba(234, 88, 12, 0.4);
+    --border-accent: #fdba74;
+  }
+  [data-theme="sunset"] body {
+    background-color: #fff6ed;
+    color: #431407;
+  }
+
+  /* Sakura Blossom Theme */
+  [data-theme="sakura"] {
+    color-scheme: light;
+    color: #4c0519;
+    background-color: #fdf2f4;
+    --accent-primary: #e11d48;
+    --accent-glow: rgba(225, 29, 72, 0.4);
+    --border-accent: #fbcfe8;
+  }
+  [data-theme="sakura"] body {
+    background-color: #fdf2f4;
+    color: #4c0519;
+  }
+
+  /* Matrix Phosphor Terminal Theme */
+  [data-theme="matrix"] {
+    color-scheme: dark;
+    color: #55ff99;
+    background-color: #020d06;
+    --accent-primary: #00ff66;
+    --accent-glow: rgba(0, 255, 102, 0.6);
+    --border-accent: #008833;
+  }
+  [data-theme="matrix"] body {
+    background-color: #020d06;
+    color: #55ff99;
+  }
+
+  /* Gothic Dracula Theme */
+  [data-theme="dracula"] {
+    color-scheme: dark;
+    color: #f8f8f2;
+    background-color: #1e1f29;
+    --accent-primary: #ff79c6;
+    --accent-glow: rgba(255, 121, 198, 0.45);
+    --border-accent: #bd93f9;
+  }
+  [data-theme="dracula"] body {
+    background-color: #1e1f29;
+    color: #f8f8f2;
+  }
+
+  /* Vintage Sepia Theme */
+  [data-theme="sepia"] {
+    color-scheme: light;
+    color: #3b2210;
+    background-color: #f5eee6;
+    --accent-primary: #b45309;
+    --accent-glow: rgba(180, 83, 9, 0.35);
+    --border-accent: #d7c3b0;
+  }
+  [data-theme="sepia"] body {
+    background-color: #f5eee6;
+    color: #3b2210;
+  }
+
+  /* Deep Oceanic Abyss Theme */
+  [data-theme="ocean"] {
+    color-scheme: dark;
+    color: #cffafe;
+    background-color: #061320;
+    --accent-primary: #06b6d4;
+    --accent-glow: rgba(6, 182, 212, 0.5);
+    --border-accent: #0e7490;
+  }
+  [data-theme="ocean"] body {
+    background-color: #061320;
+    color: #cffafe;
+  }
+
+  /* Monokai Pro Theme */
+  [data-theme="monokai"] {
+    color-scheme: dark;
+    color: #fcfcfa;
+    background-color: #1a191f;
+    --accent-primary: #ffd866;
+    --accent-glow: rgba(255, 216, 102, 0.45);
+    --border-accent: #ff6188;
+  }
+  [data-theme="monokai"] body {
+    background-color: #1a191f;
+    color: #fcfcfa;
+  }
+
+  /* Dynamic Accent Colors */
+  [data-accent="emerald"] { --accent-primary: #10b981; --accent-glow: rgba(16, 185, 129, 0.45); }
+  [data-accent="blue"] { --accent-primary: #3b82f6; --accent-glow: rgba(59, 130, 246, 0.45); }
+  [data-accent="indigo"] { --accent-primary: #6366f1; --accent-glow: rgba(99, 102, 241, 0.45); }
+  [data-accent="violet"] { --accent-primary: #8b5cf6; --accent-glow: rgba(139, 92, 246, 0.45); }
+  [data-accent="rose"] { --accent-primary: #f43f5e; --accent-glow: rgba(244, 63, 94, 0.45); }
+  [data-accent="pink"] { --accent-primary: #ec4899; --accent-glow: rgba(236, 72, 153, 0.45); }
+  [data-accent="cyan"] { --accent-primary: #06b6d4; --accent-glow: rgba(6, 182, 212, 0.45); }
+  [data-accent="orange"] { --accent-primary: #f97316; --accent-glow: rgba(249, 115, 22, 0.45); }
+  [data-accent="lime"] { --accent-primary: #84cc16; --accent-glow: rgba(132, 204, 22, 0.45); }
+
+  /* Custom Themes Dynamic Injection */
+  [data-custom-theme="true"] {
+    background-color: var(--custom-theme-bg, #0d0d10);
+    color: var(--custom-theme-text, inherit);
+  }
+  [data-custom-theme="true"] body {
+    background-color: var(--custom-theme-bg, #0d0d10);
+    color: var(--custom-theme-text, inherit);
+  }
+
+  html, body {
+    color: #0c0a09;
+    background-color: #f0eee8;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html.dark, html.dark body, html[data-theme="dark"], html[data-theme="dark"] body {
+    color: #fafaf9;
+    background-color: #0d0d10;
+  }
+}
+
+@layer utilities {
+  /* Canvas Background Textures */
+  .bg-canvas-clean {
+    background-color: #f0eee8;
+  }
+  .dark .bg-canvas-clean, [data-custom-theme="true"] .bg-canvas-clean, [data-theme="dark"] .bg-canvas-clean, [data-theme="cyberpunk"] .bg-canvas-clean, [data-theme="synthwave"] .bg-canvas-clean, [data-theme="nordic"] .bg-canvas-clean, [data-theme="forest"] .bg-canvas-clean, [data-theme="matrix"] .bg-canvas-clean, [data-theme="dracula"] .bg-canvas-clean, [data-theme="ocean"] .bg-canvas-clean, [data-theme="monokai"] .bg-canvas-clean {
+    background-color: inherit;
+  }
+  [data-theme="sunset"] .bg-canvas-clean { background-color: #fff6ed; }
+  [data-theme="sakura"] .bg-canvas-clean { background-color: #fdf2f4; }
+  [data-theme="sepia"] .bg-canvas-clean { background-color: #f5eee6; }
+
+  .bg-canvas-warm-paper {
+    background-color: #f5f1e7;
+    background-image: radial-gradient(#d3c7b2 0.75px, transparent 0.75px);
+    background-size: 16px 16px;
+  }
+  .dark .bg-canvas-warm-paper, [data-theme="dark"] .bg-canvas-warm-paper {
+    background-color: #141210;
+    background-image: radial-gradient(#3c332b 0.75px, transparent 0.75px);
+    background-size: 16px 16px;
+  }
+
+  .bg-canvas-subtle-dots {
+    background-color: #edeff3;
+    background-image: radial-gradient(#bcc7d7 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .dark .bg-canvas-subtle-dots, [data-theme="dark"] .bg-canvas-subtle-dots {
+    background-color: #0d0f17;
+    background-image: radial-gradient(#262f44 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-canvas-subtle-grid {
+    background-color: #eceff4;
+    background-image: linear-gradient(to right, #dbe0e9 1px, transparent 1px),
+      linear-gradient(to bottom, #dbe0e9 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .bg-canvas-subtle-grid, [data-theme="dark"] .bg-canvas-subtle-grid {
+    background-color: #0d0f17;
+    background-image: linear-gradient(to right, #202738 1px, transparent 1px),
+      linear-gradient(to bottom, #202738 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .bg-canvas-vintage-notepad {
+    background-color: #f8f5eb;
+    background-image: linear-gradient(#dfdbce 1px, transparent 1px);
+    background-size: 100% 28px;
+    background-position: 0 4px;
+  }
+  .dark .bg-canvas-vintage-notepad, [data-theme="dark"] .bg-canvas-vintage-notepad {
+    background-color: #131210;
+    background-image: linear-gradient(#2b2823 1px, transparent 1px);
+    background-size: 100% 28px;
+    background-position: 0 4px;
+  }
+
+  .bg-canvas-dark-obsidian {
+    background-color: #e5e7eb;
+  }
+  .dark .bg-canvas-dark-obsidian, [data-theme="dark"] .bg-canvas-dark-obsidian {
+    background-color: #060608;
+  }
+
+  /* New Vibrant Canvas Textures */
+  .bg-canvas-isometric-grid {
+    background-color: #f1f5f9;
+    background-image: 
+      linear-gradient(30deg, #cbd5e1 12%, transparent 12.5%, transparent 87%, #cbd5e1 87.5%, #cbd5e1),
+      linear-gradient(150deg, #cbd5e1 12%, transparent 12.5%, transparent 87%, #cbd5e1 87.5%, #cbd5e1),
+      linear-gradient(30deg, #cbd5e1 12%, transparent 12.5%, transparent 87%, #cbd5e1 87.5%, #cbd5e1),
+      linear-gradient(150deg, #cbd5e1 12%, transparent 12.5%, transparent 87%, #cbd5e1 87.5%, #cbd5e1),
+      linear-gradient(60deg, #e2e8f0 25%, transparent 25.5%, transparent 75%, #e2e8f0 75%, #e2e8f0),
+      linear-gradient(60deg, #e2e8f0 25%, transparent 25.5%, transparent 75%, #e2e8f0 75%, #e2e8f0);
+    background-size: 40px 70px;
+  }
+  .dark .bg-canvas-isometric-grid, [data-theme="dark"] .bg-canvas-isometric-grid {
+    background-color: #0b0f19;
+    background-image: 
+      linear-gradient(30deg, #1e293b 12%, transparent 12.5%, transparent 87%, #1e293b 87.5%, #1e293b),
+      linear-gradient(150deg, #1e293b 12%, transparent 12.5%, transparent 87%, #1e293b 87.5%, #1e293b),
+      linear-gradient(30deg, #1e293b 12%, transparent 12.5%, transparent 87%, #1e293b 87.5%, #1e293b),
+      linear-gradient(150deg, #1e293b 12%, transparent 12.5%, transparent 87%, #1e293b 87.5%, #1e293b),
+      linear-gradient(60deg, #141b2d 25%, transparent 25.5%, transparent 75%, #141b2d 75%, #141b2d),
+      linear-gradient(60deg, #141b2d 25%, transparent 25.5%, transparent 75%, #141b2d 75%, #141b2d);
+    background-size: 40px 70px;
+  }
+
+  .bg-canvas-neon-circuit {
+    background-color: #070913;
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.12) 0%, transparent 60%),
+      linear-gradient(to right, rgba(236, 72, 153, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+  }
+
+  .bg-canvas-galaxy-dust {
+    background-color: #0a0a14;
+    background-image: 
+      radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+      radial-gradient(1.5px 1.5px at 40px 70px, rgba(244, 114, 182, 0.8), rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 90px 40px, rgba(56, 189, 248, 0.9), rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 160px 120px, rgba(168, 85, 247, 0.7), rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+  }
+
+  .bg-canvas-japanese-washi {
+    background-color: #faf7f2;
+    background-image: 
+      radial-gradient(ellipse at 20% 40%, rgba(203, 186, 160, 0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(214, 197, 171, 0.2) 0%, transparent 60%);
+    background-size: 100% 100%;
+  }
+  .dark .bg-canvas-japanese-washi, [data-theme="dark"] .bg-canvas-japanese-washi {
+    background-color: #171513;
+    background-image: 
+      radial-gradient(ellipse at 20% 40%, rgba(60, 50, 40, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(45, 38, 30, 0.35) 0%, transparent 60%);
+  }
+
+  .bg-canvas-blueprint {
+    background-color: #0c2340;
+    background-image: 
+      linear-gradient(rgba(56, 189, 248, 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.18) 1px, transparent 1px),
+      linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  }
+
+  .bg-canvas-honeycomb {
+    background-color: #f8fafc;
+    background-image: 
+      radial-gradient(circle at 100% 150%, #f8fafc 24%, #e2e8f0 25%, #e2e8f0 28%, #f8fafc 29%, #f8fafc 36%, #e2e8f0 36%, #e2e8f0 40%, transparent 40%, transparent),
+      radial-gradient(circle at 0 150%, #f8fafc 24%, #e2e8f0 25%, #e2e8f0 28%, #f8fafc 29%, #f8fafc 36%, #e2e8f0 36%, #e2e8f0 40%, transparent 40%, transparent),
+      radial-gradient(circle at 50% 100%, #e2e8f0 10%, #f8fafc 11%, #f8fafc 23%, #e2e8f0 24%, #e2e8f0 30%, #f8fafc 31%, #f8fafc 43%, #e2e8f0 44%, #e2e8f0 50%, transparent 50%, transparent);
+    background-size: 30px 20px;
+  }
+  .dark .bg-canvas-honeycomb, [data-theme="dark"] .bg-canvas-honeycomb {
+    background-color: #090d16;
+    background-image: 
+      radial-gradient(circle at 100% 150%, #090d16 24%, #1e293b 25%, #1e293b 28%, #090d16 29%, #090d16 36%, #1e293b 36%, #1e293b 40%, transparent 40%, transparent),
+      radial-gradient(circle at 0 150%, #090d16 24%, #1e293b 25%, #1e293b 28%, #090d16 29%, #090d16 36%, #1e293b 36%, #1e293b 40%, transparent 40%, transparent),
+      radial-gradient(circle at 50% 100%, #1e293b 10%, #090d16 11%, #090d16 23%, #1e293b 24%, #1e293b 30%, #090d16 31%, #090d16 43%, #1e293b 44%, #1e293b 50%, transparent 50%, transparent);
+    background-size: 30px 20px;
+  }
+
+  /* Typography Font Families */
+  .font-app-sans {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .font-app-serif {
+    font-family: 'Lora', Georgia, Cambria, 'Times New Roman', serif;
+  }
+  .font-app-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  .font-app-handwriting {
+    font-family: 'Caveat', 'Comic Sans MS', cursive, sans-serif;
+  }
+}
+
+/* Card Hover Lift & Border-Glow Animation */
+.card-lift-glow {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease;
+  will-change: transform, box-shadow;
+}
+
+.card-lift-glow:hover {
+  transform: translateY(-3px);
+  z-index: 10;
+  box-shadow: 
+    0 10px 24px -4px rgba(0, 0, 0, 0.08),
+    0 4px 10px -2px rgba(0, 0, 0, 0.04),
+    0 0 0 1px var(--card-glow-color, rgba(245, 158, 11, 0.35)),
+    0 0 18px -2px var(--card-glow-color, rgba(245, 158, 11, 0.3));
+}
+
+.dark .card-lift-glow:hover,
+[data-theme="dark"] .card-lift-glow:hover,
+[data-theme="cyberpunk"] .card-lift-glow:hover,
+[data-theme="synthwave"] .card-lift-glow:hover,
+[data-theme="nordic"] .card-lift-glow:hover,
+[data-theme="forest"] .card-lift-glow:hover {
+  box-shadow: 
+    0 14px 28px -4px rgba(0, 0, 0, 0.45),
+    0 6px 12px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px var(--card-glow-color, rgba(251, 191, 36, 0.45)),
+    0 0 22px 0px var(--card-glow-color, rgba(251, 191, 36, 0.35));
+}
+
+.card-lift-glow.is-card-selected:hover {
+  transform: translateY(-2px);
+  z-index: 10;
+  box-shadow: 
+    0 0 0 2px #f59e0b,
+    0 10px 25px -4px rgba(0, 0, 0, 0.12),
+    0 0 18px -2px var(--card-glow-color, rgba(245, 158, 11, 0.4));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift-glow,
+  .card-lift-glow:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb, [data-theme="dark"] ::-webkit-scrollbar-thumb, [data-theme="cyberpunk"] ::-webkit-scrollbar-thumb, [data-theme="matrix"] ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Note Items Entrance Animations (Fade-in & Slide-up) */
+@keyframes noteEntranceFadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-note-fade-slide-up {
+  animation: noteEntranceFadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-note-fade-slide-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
