@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
-const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
+const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.filter((e:{id:string})=>e.id!=='notes').length,historicalCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string,id:string})=>e.id!=='notes'&&e.category===c.id).length]))};
 async function ready(page:Page){await page.goto('/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function save(page:Page){await page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function task(page:Page,title='Read chapter six'){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await save(page);}
@@ -71,7 +71,7 @@ test('root workspace, Apps catalogue and legacy Home share navigation and saved 
  await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
  await expect(page.locator('[data-library-pilot]')).toHaveCount(0);
  await page.locator('.ws-nav').getByRole('link',{name:'Apps',exact:true}).click();
- await expect(page).toHaveURL(origin + '/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+ await expect(page).toHaveURL(origin + '/apps/'); expect(hub.historicalCount).toBe(31); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://thiepn.dev/apps/');
  await page.locator('.ws-nav').getByRole('link',{name:'Today',exact:true}).click();
  await expect(page).toHaveURL(url=>url.pathname==='/');await page.locator('[data-action=unified-mode][data-id=workspace]').click();await expect(page.locator('.ws-task-title')).toHaveText('Keep existing Home data');
