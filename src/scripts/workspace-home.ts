@@ -49,6 +49,7 @@ import {renderHubPinboard,hubPinboard,hubPinnedKeys,hasHubPin,enableHubPinboard,
 import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
 import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import {attachNativeKeep} from './keep-native-controller';
+import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -297,6 +298,12 @@ async function setup(root: HTMLElement) {
         if(notesCalendarPanel && state && view==='calendar' && !privacyHeld && !state.preferences.hidden)
             notesCalendarPanel.outerHTML=renderNotesCalendarContinuity(
                 selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
+        const legacyReview=root.querySelector<HTMLElement>('[data-legacy-reconciliation]');
+        if(legacyReview && view==='legacy') {
+            legacyReview.innerHTML=state&&!locked&&!privacyHeld&&!state.preferences.hidden
+              ?renderLegacyReconciliation(previewLegacyReconciliation(state,folioSnapshot,notesSource))
+              :'<p>Private record review is unavailable while Hub content is hidden.</p>';
+        }
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
             todayPanel.outerHTML = (view==='legacy'?renderSourceToday:renderHubLanguageToday)({
