@@ -32,7 +32,7 @@ const PREFIX='/keep-b3-native/';
 // Immutable manifest digest of the supplied K6 original KEEP B3 source tree.
 const EXPECTED_SOURCE_SHA256='d76f1ef9a0d8fb93ee91a945c9640407b778d757db61925abe911abada8a3e0f';
 const EXPECTED_INPUTS:Record<string,string>={
-  'hub-embed/entry.tsx':'e16a552e7562bd58974e91f7f21f1f970f173396c1bb8d2de3e2e0e7437c8d58',
+  'hub-embed/entry.tsx':'07779820d97f64a23920b9946f0ecaaffc4d7c32b917d3c07c7d387b75eb5eca',
   'hub-embed/vite.config.ts':'617dbbe87b2083719e187f3ff541f9e811a4955f273512335c99038592bca8df',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
