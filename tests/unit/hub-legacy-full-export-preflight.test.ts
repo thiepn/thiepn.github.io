@@ -68,6 +68,29 @@ describe('source-pinned original-owner export preflight: always read-only',()=>{
   const valid=await inspectOriginalOwnerExport(bytes(n),state(),now);
   expect(valid.counts.attachments).toBe(1);
  });
+ it('enforces real Folio v24 original attachment owner and inline portable byte lengths',async()=>{
+  const f=folio();
+  f.data.tasks!.push({id:'source-task',title:'Original task'});
+  const attachment={id:'file-1',ownerType:'task',ownerId:'source-task',
+    kind:'file',name:'original.txt',mimeType:'text/plain',size:3,dataBase64:'YWJj'};
+  f.data.attachments!.push(attachment);
+  const valid=await inspectOriginalOwnerExport(bytes(f),state(),now);
+  expect(valid.counts.attachments).toBe(1);
+  attachment.size=2;
+  await expect(inspectOriginalOwnerExport(bytes(f),state(),now)).rejects.toThrow('portable bytes');
+  attachment.size=3;attachment.ownerId='missing-task';
+  await expect(inspectOriginalOwnerExport(bytes(f),state(),now)).rejects.toThrow('missing source owner');
+  attachment.ownerId='source-task';attachment.dataBase64='invalid!';
+  await expect(inspectOriginalOwnerExport(bytes(f),state(),now)).rejects.toThrow('bounded base64');
+ });
+ it('enforces Folio link-only attachment URLs without inventing checksum provenance',async()=>{
+  const f=folio();f.data.notes!.push({id:'source-note',title:'Original'});
+  const link={id:'link',ownerType:'note',ownerId:'source-note',kind:'link',size:0,url:'https://example.org/resource'};
+  f.data.attachments!.push(link);
+  expect((await inspectOriginalOwnerExport(bytes(f),state(),now)).counts.attachments).toBe(1);
+  link.url='javascript:alert(1)';
+  await expect(inspectOriginalOwnerExport(bytes(f),state(),now)).rejects.toThrow('URL is invalid');
+ });
  it('rejects invalid UTF8, future dated exports and oversize files before parsing',async()=>{
   await expect(inspectOriginalOwnerExport(new Uint8Array([0xff]),state(),now)).rejects.toThrow('UTF-8');
   const n=notes();n.exportedAt=now+600_000;
