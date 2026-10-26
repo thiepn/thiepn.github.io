@@ -9,6 +9,8 @@ import App from '../src/App';
 import { createEmptyOriginalKeepHubDatabase } from '../src/services/storage';
 import { vaultEncryptionService } from '../src/pkm/encryption/vaultEncryptionService';
 import '../src/index.css';
+import {rehearseOriginalKeepConversion} from './conversionRehearsal';
+export {rehearseOriginalKeepConversion};
 
 /** A Hub account's authorization and privacy cancellation, NOT a vault key. */
 export interface KeepHubMountAuthority {
