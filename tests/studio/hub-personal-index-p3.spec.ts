@@ -19,7 +19,8 @@ test('Knowledge route edits the same original note and preserves it across reloa
  await expect(page.getByLabel('Note',{exact:true})).toHaveValue(/Readable text/);
  await page.getByLabel('Note',{exact:true}).fill('Changed in original note editor');
  await page.locator('[data-dialog-submit]').click();
- await expect(page.locator('[data-knowledge-original]')).toHaveAttribute('data-knowledge-original',original!);
+ await page.locator('[data-knowledge-query]').fill('');
+  await expect(page.locator('[data-knowledge-original]')).toHaveAttribute('data-knowledge-original',original!);
  await page.reload();
  await expect(page.locator('[data-hub-knowledge]')).toContainText('Changed in original note editor');
 });
