@@ -78,8 +78,10 @@ test('each category filter reveals exactly its locked app count', async ({ page 
   }
 });
 
-test('current app destinations remain opt-in and separate from the 31 published IDs', async ({ page }) => {
-  expect(hub.expectedCount).toBe(31);
+test('current app destinations remain opt-in while historical IDs are retained', async ({ page }) => {
+  expect(hub.historicalCount).toBe(31);
+  expect(hub.expectedCount).toBe(30);
+  expect(hub.projects.some(p=>p.slug==='notes')).toBe(true);
   expect(currentApps).toHaveLength(12);
   const published = new Set(hub.projects.map(project => project.slug));
   expect(new Set(currentApps.map(app => app.id)).size).toBe(currentApps.length);
@@ -91,5 +93,6 @@ test('current app destinations remain opt-in and separate from the 31 published 
     await expect(item).toHaveAttribute('data-hub-current-category', app.category);
     await expect(item.locator('a.hub-current-link')).toHaveAttribute('href', app.url);
   }
-  await expect(page.locator('[data-hub-item]')).toHaveCount(31);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
+  await expect(page.locator('[data-hub-item]').filter({has:page.getByRole('heading',{name:'Notes',exact:true})})).toHaveCount(0);
 });
