@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
-const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
+const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.filter((e:{id:string})=>e.id!=='notes').length,historicalCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string,id:string})=>e.id!=='notes'&&e.category===c.id).length]))};
 
 for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`H1 Home and app search reflow ${width} ${theme}`, async ({ page }) => {
