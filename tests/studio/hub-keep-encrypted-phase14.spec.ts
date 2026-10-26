@@ -95,3 +95,40 @@ for(const width of [390,1440]){
   expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('keepnotes_vault_enc_header')??'null'))).toEqual(fixture.header);
  });
 }
+
+test('encrypted original owner refuses plaintext legacy mirror without touching its bytes',async({page})=>{
+ const fixture=getFixture();
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await sourceDatabase(page,fixture.record,fixture.header);
+ await page.evaluate(()=>localStorage.setItem('keepnotes_settings',JSON.stringify({theme:'dark',owner:'original-owner'})));
+ page.once('dialog',d=>d.accept());
+ await page.locator('[data-action=knowledge-native-start]').click();
+ await expect(page.locator('[data-workspace-toast]')).toContainText('unencrypted legacy data mirror');
+ await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
+ expect(await page.evaluate(()=>localStorage.getItem('keepnotes_settings'))).toContain('original-owner');
+});
+test('encrypted original owner refuses unconverted original settings store',async({page})=>{
+ const fixture=getFixture();
+ await page.goto('/home/knowledge/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ await sourceDatabase(page,fixture.record,fixture.header);
+ await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
+  const r=indexedDB.open('KeepNotesDB');r.onerror=()=>reject(r.error);
+  r.onsuccess=()=>{const db=r.result,tx=db.transaction('settings','readwrite');
+   tx.objectStore('settings').put({key:'app_settings',value:{theme:'dark',privateValue:'unchanged'}});
+   tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error);
+  };
+ }));
+ page.once('dialog',d=>d.accept());
+ await page.locator('[data-action=knowledge-native-start]').click();
+ await expect(page.locator('[data-workspace-toast]')).toContainText('vault header coexists with plaintext owner records');
+ await expect(page.locator('[data-keep-original-react-active=true]')).toHaveCount(0);
+ const old=await page.evaluate(async()=>new Promise<unknown>((resolve,reject)=>{
+  const r=indexedDB.open('KeepNotesDB');r.onerror=()=>reject(r.error);
+  r.onsuccess=()=>{const db=r.result,g=db.transaction('settings').objectStore('settings').get('app_settings');
+   g.onsuccess=()=>{db.close();resolve(g.result)};g.onerror=()=>reject(g.error);
+  };
+ }));
+ expect(old).toEqual({key:'app_settings',value:{theme:'dark',privateValue:'unchanged'}});
+});
