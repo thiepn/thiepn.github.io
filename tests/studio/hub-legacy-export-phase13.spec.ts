@@ -48,3 +48,20 @@ test('malformed original Notes backup fails closed; does not replace earlier Hub
  await expect(page.locator('[data-legacy-backup-status]')).toContainText('Unsupported owner backup');
  await expect(page.locator('[data-owner-export-result]')).toHaveCount(0);
 });
+
+test('private original-owner casework is removed from the DOM on Hub privacy lock',async({page})=>{
+ await page.goto('/home/legacy/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ const exportFile=folio();exportFile.data.notes=[{id:'source-private-id-16',title:'Hidden original title'}];
+ await page.locator('[data-legacy-backup-file]').setInputFiles({
+  name:'source-owner.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exportFile))
+ });
+ await expect(page.locator('[data-original-owner-choice]')).toHaveCount(1);
+ await expect(page.locator('[data-owner-casework]')).toContainText('source-private-id-16');
+ await page.locator('[data-original-owner-choice]').selectOption('REVIEW_SOURCE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+ await page.getByRole('button',{name:'Hide personal content',exact:true}).click();
+ await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ await expect(page.locator('[data-legacy-backup-result]')).not.toContainText('source-private-id-16');
+ await expect(page.locator('[data-legacy-backup-file]')).toHaveValue('');
+});
