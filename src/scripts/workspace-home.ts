@@ -48,6 +48,7 @@ import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_
 import {renderHubPinboard,hubPinboard,hubPinnedKeys,hasHubPin,enableHubPinboard,toggleHubRecordPin,moveHubRecordPin} from '../lib/workspace/record-pinboard';
 import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
 import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
+import {attachNativeKeep} from './keep-native-controller';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -120,6 +121,7 @@ async function setup(root: HTMLElement) {
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    const nativeKeep=attachNativeKeep(root,()=>view==='knowledge'&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden,()=>render(),message=>toast(message));
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
     let knowledgeNoteId:string|null=null,knowledgeQuery='';
@@ -803,7 +805,7 @@ async function setup(root: HTMLElement) {
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('No widgets', '', 'add-widget', 'Add widget') : ''}`; }
     function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a><a class="ws-text-button" href="/home/legacy/">Legacy Folio and Notes data</a></section>`; }
     function fullContent() {
-        if (view === 'knowledge') return renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery);
+        if (view === 'knowledge') return nativeKeep.active()?'<section class="ws-surface" data-keep-native-state>Original KEEP is open below. Close and lock to return to Hub Knowledge.</section>':renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery);
         if (view === 'settings')
             return settingsHTML();
         if (view === 'tasks') {
@@ -891,6 +893,7 @@ async function setup(root: HTMLElement) {
     }
     function render() {
         observer?.disconnect();
+        nativeKeep.recheck();
         if (!state)
             return;
         const focusedElement = document.activeElement as HTMLElement | null;
@@ -2157,6 +2160,8 @@ async function setup(root: HTMLElement) {
         if (!target)
             return;
         const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
+        if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
+        if(action==='knowledge-native-stop'){nativeKeep.revoke();render();return;}
         if (action === 'close-dialog') {
             dialog.close();
             return;
