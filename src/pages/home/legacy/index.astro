@@ -15,6 +15,14 @@ import WorkspaceShell from '../../../components/workspace/WorkspaceShell.astro';
     </nav>
     <div data-source-today></div>
     <div data-legacy-reconciliation aria-live="polite"></div>
+    <section class="ws-surface" aria-labelledby="legacy-export-heading" data-legacy-export-preflight>
+      <h3 id="legacy-export-heading">Inspect an original backup</h3>
+      <label for="legacy-owner-backup">Folio v24 or Notes v2 JSON backup</label>
+      <input id="legacy-owner-backup" type="file" accept=".json,application/json" data-legacy-backup-file />
+      <p>This is a local, read-only preview. Files above 64 MiB require direct original-owner verification. No records are imported.</p>
+      <p data-legacy-backup-status role="status" aria-live="polite"></p>
+      <div data-legacy-backup-result></div>
+    </section>
     <p>Native encrypted KEEP editing remains under review. Hub Knowledge currently operates on Hub-local notes, not an imported KEEP vault.</p>
     <a href="/home/knowledge/">Open Hub Knowledge</a>
   </section>
