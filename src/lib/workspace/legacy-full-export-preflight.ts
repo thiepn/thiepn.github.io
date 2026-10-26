@@ -33,6 +33,11 @@ const noteTables=['notes','checklistItems','labels','noteLabels','attachments','
 const folioTables=['tasks','projects','habits','habitEntries','timeBlocks','dailyPlans','dailyPlanItems','focusSessions','recurringSeries','settings','importBatches','reviewRecords','reminders','reminderOccurrences','folders','lists','sections','tags','notes','attachments','habitGroups','habitTemplates'] as const;
 const titleKey=(kind:string,v:string)=>kind+'\u0000'+v.normalize('NFKC').trim().toLocaleLowerCase('en-US').replace(/\s+/gu,' ');
 const hex=(data:ArrayBuffer)=>[...new Uint8Array(data)].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function ownedSha256(bytes:Uint8Array):Promise<string>{
+ const copy=new ArrayBuffer(bytes.byteLength);
+ new Uint8Array(copy).set(bytes);
+ return hex(await crypto.subtle.digest('SHA-256',copy));
+}
 function requireIds(rows:readonly unknown[],owner:string,table:string){
   const ids=new Set<string>();
   for(const row of rows){
@@ -84,7 +89,7 @@ export async function inspectOriginalOwnerExport(
    let decoded:Uint8Array;
    try{decoded=Uint8Array.from(atob(item.dataBase64),c=>c.charCodeAt(0));}
    catch{throw new Error('Notes backup attachment base64 is invalid');}
-   if(decoded.length!==item.size||hex(await crypto.subtle.digest('SHA-256',decoded.buffer))!==item.dataSha256)
+   if(decoded.length!==item.size||await ownedSha256(decoded)!==item.dataSha256)
     throw new Error('Notes backup attachment failed original SHA-256/size validation');
   }
  }
@@ -103,7 +108,7 @@ export async function inspectOriginalOwnerExport(
  }));
  const currentIds=new Set(current.map(x=>x.id));
  const currentTitles=new Set(current.map(x=>titleKey(x.kind,x.title)));
- const sha=hex(await crypto.subtle.digest('SHA-256',Uint8Array.from(bytes).buffer));
+ const sha=await ownedSha256(bytes);
  const holds=[
   'Local file SHA-256 proves byte identity, not original-owner authenticity or consent.',
   'Original owner validators, complete backup custody and an independent Hub backup must be verified.',
