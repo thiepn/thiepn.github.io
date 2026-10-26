@@ -941,6 +941,7 @@ async function setup(root: HTMLElement) {
                 $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', '', 'privacy', 'Show content');
             else
                 $('[data-workspace-content]').innerHTML = fullContent();
+            if(view==='knowledge'&&!nativeKeep.active())$('[data-workspace-content]').hidden=false;
         }
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
         renderAttention();
