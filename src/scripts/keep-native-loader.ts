@@ -87,6 +87,12 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
        (header as {format?:unknown}).format!=='keepnotes-vault-enc')
        throw new Error('Original KEEP vault header format is unrecognized. No records were changed.');
     encrypted=true;
+    // Original KEEP's legacy mirrors/settings writer is not wholly encrypted.
+    // A real header cannot establish at-rest protection for these plaintext
+    // copies, so refuse the native mount rather than falsely displaying unlock.
+    if(['keepnotes_notes','keepnotes_folders','keepnotes_searches','keepnotes_settings']
+       .some(key=>localStorage.getItem(key)!==null))
+      throw new Error('Original KEEP has an unencrypted legacy data mirror alongside its vault header. Preserve its backup; native access is blocked.');
   }
   await new Promise<void>((resolve,reject)=>{
     const req=indexedDB.open('KeepNotesDB');
@@ -98,7 +104,7 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
     req.onblocked=()=>reject(new Error('Original KEEP database is busy in another tab.'));
     req.onsuccess=()=>{
       const db=req.result;
-      const stores=['notes','folders','saved_searches'];
+      const stores=['notes','folders','saved_searches','settings'];
       const ok=db.version===1&&stores.every(name=>db.objectStoreNames.contains(name))&&!signal.aborted;
       if(!ok){db.close();reject(new Error('Original KEEP B3 store schema or owner session is unavailable.'));return;}
       let mismatch=false;
@@ -119,7 +125,8 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
         cursor.onsuccess=()=>{
           const value=cursor.result?.value;
           if(!cursor.result)return;
-          if(!value||typeof value!=='object'||(value.isEncrypted===true)!==encrypted)
+          if(!value||typeof value!=='object'||
+             (name==='settings'?encrypted:(value.isEncrypted===true)!==encrypted))
             mismatch=true;
           cursor.result.continue();
         };
