@@ -8,6 +8,7 @@ export interface OwnerDryRunRow {
  readonly proposedOriginalId:string;
  readonly status:'ID_COLLISION'|'TITLE_AMBIGUITY'|'SOURCE_ONLY'|'MISSING_RELATION';
  readonly sourceRelations:readonly string[];
+ readonly originalAttachmentIds:readonly string[];
  readonly destinationWrites:0;
 }
 export interface OwnerDryRun {
@@ -80,10 +81,15 @@ export async function makeOriginalOwnerDryRun(
    const originalId=String(record.id);
    const title=typeof record.title==='string'?record.title:'';
    const sourceRelations=references(record,kind);
+   const originalAttachmentIds=table(data,'attachments').filter(attachment=>
+     preflight.owner==='folio'
+       ?(kind==='task'||kind==='note')&&attachment.ownerType===kind&&attachment.ownerId===originalId
+       :kind==='note'&&attachment.noteId===originalId
+   ).map(attachment=>String(attachment.id)).sort();
    const status:OwnerDryRunRow['status']=hubIds.has(originalId)?'ID_COLLISION'
       :sourceRelations.length?'MISSING_RELATION'
       :hubTitles.has(key(kind,title))?'TITLE_AMBIGUITY':'SOURCE_ONLY';
-   return {kind,originalId,proposedOriginalId:originalId,status,sourceRelations,destinationWrites:0 as const};
+   return {kind,originalId,proposedOriginalId:originalId,status,sourceRelations,originalAttachmentIds,destinationWrites:0 as const};
   }));
  const counts={ID_COLLISION:0,TITLE_AMBIGUITY:0,SOURCE_ONLY:0,MISSING_RELATION:0};
  rows.forEach(row=>{counts[row.status]++});
