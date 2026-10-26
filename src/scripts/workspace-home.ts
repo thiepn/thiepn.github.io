@@ -50,6 +50,7 @@ import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backli
 import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
 import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
+import {inspectOriginalOwnerExport,renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -3016,6 +3017,37 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('change', event => {
         const el = event.target as HTMLInputElement;
+        if(view==='legacy'&&el.matches('[data-legacy-backup-file]')){
+            const input=el,source=input.files?.[0],status=root.querySelector<HTMLElement>('[data-legacy-backup-status]'),
+                  output=root.querySelector<HTMLElement>('[data-legacy-backup-result]');
+            if(output)output.replaceChildren();
+            if(status)status.textContent='';
+            input.value='';
+            if(!source)return;
+            if(!state||locked||privacyHeld||state.preferences.hidden){
+                if(status)status.textContent='Reopen a verified, visible Hub workspace before inspecting a private backup.';
+                return;
+            }
+            if(source.size>64*1024*1024||source.size===0){
+                if(status)status.textContent='Backup is outside the bounded 64 MiB preview; keep the original file unchanged.';
+                return;
+            }
+            const own=epoch,original=state;
+            if(status)status.textContent='Checking original export bytes and record references…';
+            void (async()=>{
+                try{
+                    const bytes=new Uint8Array(await source.arrayBuffer());
+                    const result=await inspectOriginalOwnerExport(bytes,original);
+                    if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    if(output)output.innerHTML=renderOriginalExportPreflight(result);
+                    if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
+                }catch(error){
+                    if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    if(status)status.textContent=error instanceof Error?error.message:'Original export could not be inspected.';
+                }
+            })();
+            return;
+        }
         if (!state || locked)
             return;
         if (el.closest('[data-task-calendar-review]')) {
@@ -3344,6 +3376,9 @@ async function setup(root: HTMLElement) {
         }
     }
     async function loadIdentity(identity: HubIdentity) {
+        root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+        const backupStatus=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
+        if(backupStatus)backupStatus.textContent='';
         clearFocusIdentity();
         const currentOwner=identity.status==='signed-in'?'user:'+identity.id:
             identity.status==='signed-out'?'guest':null;
