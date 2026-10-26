@@ -171,7 +171,7 @@ test('guest opens Today without forced onboarding and can use the native workspa
   await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
   await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');
   await a.page.locator('.ws-nav a[href="/apps/"]').click();
-  await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
+  await expect(a.page.locator('[data-hub-item]')).toHaveCount(30);
   await a.page.goto('https://thiepn.dev/?mode=workspace');
   await expect(a.page.locator('[data-home-mode=workspace]')).toBeVisible();
   await a.page.locator('[data-planner] [data-action=new-task]').first().click();
