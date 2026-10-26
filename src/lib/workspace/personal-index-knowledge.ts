@@ -37,7 +37,7 @@ export function renderHubKnowledge(state:WorkspaceState,selectedId:string|null,q
  '<div class="ws-knowledge-blank"><h3>No Hub notes yet</h3><p>New notes are saved in Hub. Existing Notes and KEEP records are not imported.</p>'+btn('edit-note','Create Hub note')+'</div>';
  return '<section class="ws-knowledge-native" data-hub-knowledge aria-labelledby="ws-knowledge-title">'+
  '<header class="ws-knowledge-header"><div><h2 id="ws-knowledge-title">Knowledge</h2>'+
- '</div>'+btn('edit-note','New Hub note')+'</header>'+
+ '</div><div class="ws-knowledge-actions">'+btn('edit-note','New Hub note')+btn('knowledge-native-start','Open original KEEP')+'</div></header>'+
  '<div class="ws-knowledge-layout"><aside class="ws-knowledge-browser" aria-label="Hub note browser">'+
  '<label for="ws-knowledge-query">Find in Hub notes</label><input id="ws-knowledge-query" data-knowledge-query type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="Search titles and text" value="'+esc(query)+'"/>'+
  '<div data-knowledge-results>'+renderHubKnowledgeList(state,query,data.selected?.id??null)+'</div></aside>'+
