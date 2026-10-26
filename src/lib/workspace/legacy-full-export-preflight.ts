@@ -93,6 +93,42 @@ export async function inspectOriginalOwnerExport(
     throw new Error('Notes backup attachment failed original SHA-256/size validation');
   }
  }
+ // Folio v24 uses original ownerType/ownerId and inline portable base64;
+ // unlike Notes, its source attachment format carries no per-file SHA-256.
+ // Require intact owner relations and bytes, never invent checksum provenance.
+ if(owner==='folio'){
+  const tasks=ids.tasks!,notes=ids.notes!;
+  for(const row of records.attachments!){
+   const item=row as Record<string,unknown>;
+   if(item.ownerType!=='task'&&item.ownerType!=='note')
+    throw new Error('Folio attachment has an invalid owner type');
+   const ownerIds=item.ownerType==='task'?tasks:notes;
+   if(!ownerIds.has(item.ownerId as string))
+    throw new Error('Folio attachment refers to a missing source owner');
+   if(!Number.isSafeInteger(item.size)||Number(item.size)<0)
+    throw new Error('Folio attachment size is invalid');
+   if(item.kind==='link'){
+    if(item.size!==0||typeof item.url!=='string')
+     throw new Error('Folio link attachment metadata is invalid');
+    try{
+     const uri=new URL(item.url);
+     if(uri.protocol!=='https:'&&uri.protocol!=='http:')throw new Error('bad protocol');
+    }catch{throw new Error('Folio link attachment URL is invalid');}
+    if(item.dataBase64!==undefined)
+     throw new Error('Folio link attachment unexpectedly contains binary data');
+   }else{
+    if(!['image','audio','file'].includes(String(item.kind))||typeof item.dataBase64!=='string'||
+       item.dataBase64.length>48*1024*1024||
+       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(item.dataBase64))
+      throw new Error('Folio attachment payload is not valid bounded base64');
+    let decoded:Uint8Array;
+    try{decoded=Uint8Array.from(atob(item.dataBase64),c=>c.charCodeAt(0));}
+    catch{throw new Error('Folio attachment base64 is corrupt');}
+    if(decoded.byteLength!==item.size)
+     throw new Error('Folio attachment size does not match the original portable bytes');
+   }
+  }
+ }
  const current=[
   ...workspace.tasks.map(r=>({kind:'task',id:r.id,title:r.title})),
   ...workspace.events.map(r=>({kind:'event',id:r.id,title:r.title})),
