@@ -51,7 +51,8 @@ import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubK
 import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
-import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
+import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
+import {reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -124,6 +125,7 @@ async function setup(root: HTMLElement) {
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    let activeLegacyPlan:OwnerDryRun|null=null;
     const nativeKeep=attachNativeKeep(root,()=>view==='knowledge'&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden,()=>render(),message=>toast(message));
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
@@ -903,6 +905,13 @@ async function setup(root: HTMLElement) {
     function render() {
         observer?.disconnect();
         nativeKeep.recheck();
+        if(view==='legacy' && (locked||privacyHeld||state?.preferences.hidden||
+            (activeLegacyPlan&&state?.revision!==activeLegacyPlan.hubRevision))){
+            activeLegacyPlan=null;
+            root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+            const receipt=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
+            if(receipt)receipt.textContent='Private original-source inspection cleared.';
+        }
         if (!state)
             return;
         const focusedElement = document.activeElement as HTMLElement | null;
@@ -3021,6 +3030,7 @@ async function setup(root: HTMLElement) {
         if(view==='legacy'&&el.matches('[data-legacy-backup-file]')){
             const input=el,source=input.files?.[0],status=root.querySelector<HTMLElement>('[data-legacy-backup-status]'),
                   output=root.querySelector<HTMLElement>('[data-legacy-backup-result]');
+            activeLegacyPlan=null;
             if(output)output.replaceChildren();
             if(status)status.textContent='';
             input.value='';
@@ -3040,13 +3050,34 @@ async function setup(root: HTMLElement) {
                     const bytes=new Uint8Array(await source.arrayBuffer());
                     const {preflight:result,plan}=await makeOriginalOwnerDryRun(bytes,original);
                     if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
-                    if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan);
+                    activeLegacyPlan=plan;
+                    if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan)+renderOriginalOwnerCaseworkForm(plan);
                     if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
                 }catch(error){
                     if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
                     if(status)status.textContent=error instanceof Error?error.message:'Original export could not be inspected.';
                 }
             })();
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-choice]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const controls=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')];
+            const decisions:OwnerCaseChoiceInput[]=controls.filter(node=>!!node.value).map(node=>({
+                kind:node.dataset.caseKind as OwnerCaseChoiceInput['kind'],
+                originalId:node.dataset.caseId??'',
+                observedStatus:node.dataset.caseStatus as OwnerCaseChoiceInput['observedStatus'],
+                choice:node.value as OwnerCaseChoiceInput['choice'],
+            }));
+            const receipt=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
+            try{
+                const review=reviewOriginalOwnerCases(activeLegacyPlan,decisions,
+                    activeLegacyPlan.originalFileSha256,state.revision);
+                if(receipt)receipt.textContent=renderOriginalOwnerCaseworkReceipt(review);
+            }catch(error){
+                el.value='';
+                if(receipt)receipt.textContent=error instanceof Error?error.message:'Casework review was invalidated.';
+            }
             return;
         }
         if (!state || locked)
@@ -3377,6 +3408,7 @@ async function setup(root: HTMLElement) {
         }
     }
     async function loadIdentity(identity: HubIdentity) {
+        activeLegacyPlan=null;
         root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
         const backupStatus=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
         if(backupStatus)backupStatus.textContent='';
