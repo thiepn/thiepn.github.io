@@ -16,7 +16,7 @@ import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/langua
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
-import { renderHubLanguageToday } from '../lib/workspace/source-today';
+import { renderHubLanguageToday, renderSourceToday } from '../lib/workspace/source-today';
 import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
 import {renderNotesCalendarContinuity,freshNotesReminderShare,NOTES_REMINDER_MAX_AGE_MS} from '../lib/workspace/notes-reminder-continuity';
 import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
@@ -290,14 +290,14 @@ async function setup(root: HTMLElement) {
         }
         const workbench = root.querySelector<HTMLElement>('[data-today-workbench]');
         if(workbench && state && view==='home' && !privacyHeld && !state.preferences.hidden)
-            workbench.outerHTML = renderTodayWorkbench(state,today(),activeFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot());
+            workbench.outerHTML = renderTodayWorkbench(state,today(),null,Date.now(),null,true);
         const notesCalendarPanel=root.querySelector<HTMLElement>('[data-notes-reminder-continuity]');
         if(notesCalendarPanel && state && view==='calendar' && !privacyHeld && !state.preferences.hidden)
             notesCalendarPanel.outerHTML=renderNotesCalendarContinuity(
                 selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
-            todayPanel.outerHTML = renderHubLanguageToday({
+            todayPanel.outerHTML = (view==='legacy'?renderSourceToday:renderHubLanguageToday)({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
                 languages: {status: languageStatus, cards: languageCards}, apps,
@@ -832,7 +832,7 @@ async function setup(root: HTMLElement) {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                renderTodayWorkbench(state!,today(),activeFolioPlanningSnapshot(),Date.now(),authorizedNotesPlanningSnapshot())+
+                renderTodayWorkbench(state!,today(),null,Date.now(),null,true)+
                 renderUpcomingEventPreparation(state!,today())+
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
@@ -935,6 +935,7 @@ async function setup(root: HTMLElement) {
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
         renderAttention();
         renderPlanner();
+        if(view==='legacy')repaintOverview();
         // C2 read-only handoff from the ORIGINAL Hub calendar owner. Ephemeral and
         // never an invitation to write back; source IDs and edit controls stay here.
         // Clear on privacy transitions, account changes and unavailable storage.
