@@ -38,7 +38,8 @@ for(const [name,checksum] of Object.entries(originals)){
     digest(check(name))!==checksum)throw new Error('Original KEEP file integrity failed: '+name);
 }
 const pinnedInputs={
-  'hub-embed/entry.tsx':'07779820d97f64a23920b9946f0ecaaffc4d7c32b917d3c07c7d387b75eb5eca',
+  'hub-embed/entry.tsx':'4164a1871db0005b7a4965c8a4caed63455fe84740e785d8dabcb4b44ae310ae',
+  'hub-embed/conversionRehearsal.ts':'2c744644b99ef8b432522c76858091aa2089156519eede0f0a2e4d9f824c2c0a',
   'hub-embed/vite.config.ts':'617dbbe87b2083719e187f3ff541f9e811a4955f273512335c99038592bca8df',
   'package.json':'653e357793d1361de10003e1ac819f74b791b780ea3e7a3b821c54082356a7e5',
   'bun.lock':'b62a4df384d47672d03dfe00527bce8e6415b05db129f97967d6e82044d043ba'
