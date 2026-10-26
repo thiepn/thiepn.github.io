@@ -73,6 +73,20 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
   if(signal.aborted)throw new Error('KEEP owner session was revoked.');
   if(!databases.some(db=>db.name==='KeepNotesDB'&&db.version===1))
     throw new Error('No original KEEP B3 v1 database exists on this Hub origin. Nothing was created or migrated.');
+  // A header from an older header-only setup may coexist with plaintext
+  // records. Refuse that false-encryption state before running original React,
+  // and also refuse orphan ciphertext with no usable vault header.
+  const rawHeader=localStorage.getItem('keepnotes_vault_enc_header');
+  let encrypted=false;
+  if(rawHeader){
+    let header:unknown;
+    try{header=JSON.parse(rawHeader);}
+    catch{throw new Error('Original KEEP vault header is malformed. No records were changed.');}
+    if(!header||typeof header!=='object'||
+       (header as {format?:unknown}).format!=='keepnotes-vault-enc')
+       throw new Error('Original KEEP vault header format is unrecognized. No records were changed.');
+    encrypted=true;
+  }
   await new Promise<void>((resolve,reject)=>{
     const req=indexedDB.open('KeepNotesDB');
     req.onupgradeneeded=()=>{
@@ -83,9 +97,32 @@ async function requireExistingOriginalKeepDatabase(signal:AbortSignal):Promise<v
     req.onblocked=()=>reject(new Error('Original KEEP database is busy in another tab.'));
     req.onsuccess=()=>{
       const db=req.result;
-      const ok=db.version===1&&db.objectStoreNames.contains('notes')&&!signal.aborted;
-      db.close();
-      ok?resolve():reject(new Error('Original KEEP B3 notes store or owner session is unavailable.'));
+      const stores=['notes','folders','saved_searches'];
+      const ok=db.version===1&&stores.every(name=>db.objectStoreNames.contains(name))&&!signal.aborted;
+      if(!ok){db.close();reject(new Error('Original KEEP B3 store schema or owner session is unavailable.'));return;}
+      let mismatch=false;
+      const tx=db.transaction(stores,'readonly');
+      tx.onabort=()=>{db.close();reject(tx.error??new Error('Original KEEP record check was interrupted.'));};
+      tx.onerror=()=>{db.close();reject(tx.error??new Error('Original KEEP record check failed.'));};
+      tx.oncomplete=()=>{
+        db.close();
+        if(signal.aborted){reject(new Error('KEEP owner session was revoked.'));return;}
+        if(mismatch)reject(new Error(encrypted
+          ?'Original KEEP vault header coexists with plaintext owner records. Refusing unsafe native access; preserve the original backup.'
+          :'Encrypted original KEEP records have no vault header. Refusing unsafe native access; preserve the original backup.'));
+        else resolve();
+      };
+      for(const name of stores){
+        const cursor=tx.objectStore(name).openCursor();
+        cursor.onerror=()=>{mismatch=true;tx.abort();};
+        cursor.onsuccess=()=>{
+          const value=cursor.result?.value;
+          if(!cursor.result)return;
+          if(!value||typeof value!=='object'||(value.isEncrypted===true)!==encrypted)
+            mismatch=true;
+          cursor.result.continue();
+        };
+      }
     };
   });
 }
