@@ -54,6 +54,28 @@ export function mountOriginalKeep(container: HTMLElement, authority: KeepHubMoun
   let root: Root;
   try { root = createRoot(container); }
   catch (error) { container.removeAttribute(ACTIVE_FLAG); throw error; }
+  // Source-safe Hub overlay. The 1,269 original KEEP source modules remain
+  // byte-identical; their original setup does NOT atomically convert existing
+  // plaintext IndexedDB records, so it must never advertise full encryption here.
+  // No KDF operation, header, key or record is written on refusal.
+  const originalSetup = vaultEncryptionService.setupVaultEncryption;
+  const originalDisable = vaultEncryptionService.disableVaultEncryption;
+  const refuseUnsafeSetup: typeof originalSetup = async () => ({
+    success:false,
+    error:'Hub cannot enable full-vault encryption until the original owner implements atomic existing-record conversion with verified rollback. No data was changed.'
+  });
+  const refuseUnsafeDisable: typeof originalDisable = async () => ({
+    success:false,
+    error:'Hub cannot disable the original encrypted vault or strand encrypted records. No data was changed.'
+  });
+  vaultEncryptionService.setupVaultEncryption = refuseUnsafeSetup;
+  vaultEncryptionService.disableVaultEncryption = refuseUnsafeDisable;
+  const restoreSafetyGuards = () => {
+    if (vaultEncryptionService.setupVaultEncryption === refuseUnsafeSetup)
+      vaultEncryptionService.setupVaultEncryption = originalSetup;
+    if (vaultEncryptionService.disableVaultEncryption === refuseUnsafeDisable)
+      vaultEncryptionService.disableVaultEncryption = originalDisable;
+  };
   let live = true;
   const lock = () => {
     // Release the ORIGINAL vault's key, async unlock generation, timers and global
@@ -73,6 +95,7 @@ export function mountOriginalKeep(container: HTMLElement, authority: KeepHubMoun
       finally {
         try { root.unmount(); }
         finally {
+          restoreSafetyGuards();
           activeHandle = null;
           container.removeAttribute(ACTIVE_FLAG);
           document.dispatchEvent(new Event('keep-original-react-unmounted'));
