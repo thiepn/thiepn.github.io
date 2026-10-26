@@ -19,7 +19,8 @@ test('opt-in Folio summary accepts only its popup and clears on command', async 
  await expect(page.locator('[data-source-today-folio]')).not.toContainText('Source-owned task');
  await popup.getByRole('button',{name:'Approve Folio share'}).click();
  await expect(page.locator('[data-source-today-folio]')).toContainText('Source-owned task');
- await expect(page.locator('[data-source-today-folio]')).toContainText('Private Folio note title');
+ await expect(page.locator('[data-source-today-folio]')).not.toContainText('Private Folio note title');
+ await expect(page.locator('[data-source-today-folio]')).toContainText('Source-owned meeting');
  await expect(page.locator('[data-source-today-folio]')).toContainText('Reading habit');
  await expect(page.locator('[data-source-today-folio]')).toContainText('snapshot');
  await page.locator('[data-source-today-folio] [data-action=disconnect-folio]').click();
