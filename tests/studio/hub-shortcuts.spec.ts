@@ -13,7 +13,7 @@ test('newer apps can be pinned, reordered with existing IDs preserved, and unpin
   await page.goto('/?mode=workspace');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   const published = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
-  expect(published.map(a => a.id)).toEqual(manifest.entries.map(e => e.id));
+  expect(published.map(a => a.id)).toEqual(manifest.entries.filter(e => e.id !== 'notes').map(e => e.id));
 
   let dialog = await openEditor(page);
   await expect(dialog.getByRole('checkbox', { name: 'Chinese', exact: true })).toBeVisible();
@@ -34,7 +34,7 @@ test('newer apps can be pinned, reordered with existing IDs preserved, and unpin
   await expect(shortcuts).toContainText('Chinese');
   await expect(shortcuts).toContainText('Japanese');
   await expect(shortcuts).toContainText('My Daily Devotion');
-  await expect(shortcuts).toContainText('Notes');
+  await expect(shortcuts).not.toContainText('Notes');
 
   await page.reload();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
@@ -45,7 +45,7 @@ test('newer apps can be pinned, reordered with existing IDs preserved, and unpin
   await expect(dialog).not.toBeVisible();
   await expect(shortcuts).not.toContainText('Chinese');
   await expect(shortcuts).toContainText('Japanese');
-  await expect(shortcuts).toContainText('Notes');
+  await expect(shortcuts).not.toContainText('Notes');
 });
 
 test('mobile shortcut editor keeps current and older apps searchable without overflow', async ({ page }) => {
@@ -65,15 +65,16 @@ test('mobile shortcut editor keeps current and older apps searchable without ove
 });
 
 
-test('Apps tab displays current independent apps while the published catalogue stays frozen', async ({ page }) => {
+test('Apps tab shows independent apps while the canonical 31-item source manifest stays frozen', async ({ page }) => {
   await page.goto('/apps/');
   await expect(page.locator('[data-hub-current-app]')).toHaveCount(12);
-  await expect(page.locator('[data-hub-item]')).toHaveCount(manifest.entries.length);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(manifest.entries.length - 1);
   for (const app of ['languages', 'chinese', 'japanese', 'korea', 'studyos', 'mdd', 'ion', 'chess', 'karaoke', 'ligoquiz', 'control']) {
     await expect(page.locator(`[data-hub-current-app="${app}"] a`)).toHaveAttribute('href', /https:\/\//);
   }
   const publiclyRegistered = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
-  expect(publiclyRegistered.map(app => app.id)).toEqual(manifest.entries.map(entry => entry.id));
+  expect(publiclyRegistered.map(app => app.id)).toEqual(manifest.entries.filter(entry => entry.id !== 'notes').map(entry => entry.id));
+  expect(manifest.entries.find(entry => entry.id === 'notes')?.url).toBe('https://thiepn.dev/notes/');
 });
 
 test('Apps tab filters both current and published apps, with pin persistence on mobile', async ({ page }) => {
