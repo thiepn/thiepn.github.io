@@ -17,7 +17,7 @@ const folio=()=>({
  'folders','lists','sections','tags','notes','attachments','habitGroups','habitTemplates'].map(k=>[k,[]])) as Record<string,Record<string,unknown>[]>
 });
 const notes=()=>({format:'thiepn.notes.backup',formatVersion:2,databaseVersion:3,exportedAt:now,
- data:{notes:[] as Record<string,unknown>[],checklistItems:[],labels:[],noteLabels:[],attachments:[],reminders:[],revisions:[],settings:[]}});
+ data:{notes:[] as Record<string,unknown>[],checklistItems:[],labels:[],noteLabels:[],attachments:[],reminders:[] as Record<string,unknown>[],revisions:[],settings:[]}});
 describe('source-owner migration dry-run, never a write authority',()=>{
  it('retains original IDs and identifies collisions and orphaned Folio references without rewriting Hub',async()=>{
   const f=folio();
