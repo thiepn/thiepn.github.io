@@ -33,15 +33,15 @@ import '../../styles/workspace-phase08-review.css';
 import '../../styles/workspace-phase09-pins.css';
 import '../../styles/workspace-phase10-knowledge.css';
 import '@fontsource-variable/instrument-sans';
-interface Props { view?: 'home'|'tasks'|'calendar'|'knowledge'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows'|'documents' }
+interface Props { view?: 'home'|'tasks'|'calendar'|'knowledge'|'trackers'|'settings'|'apps'|'connections'|'search'|'inbox'|'flows'|'documents'|'legacy' }
 const {view='home'}=Astro.props;
-const staticView=['apps','connections','search','inbox','flows','documents'].includes(view);
+const staticView=['apps','connections','search','inbox','flows','documents','legacy'].includes(view);
 // The pinned reading owner trusts /home/; keep its bridge on that host route.
 const readingHost = Astro.url.pathname === '/home/' || Astro.url.pathname === '/home';
 const entries=await getHubProjects();
-const apps=entries.map(({project,hub})=>{
+const apps=entries.filter(({project})=>project.data.slug!=='notes').map(({project,hub})=>{
  const id=project.data.slug;
- const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
+ const action=id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
 });
 const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Plan','/home/calendar/','calendar-blank'],['knowledge','Knowledge','/home/knowledge/','book-open'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
@@ -58,7 +58,7 @@ const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
-          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':view==='knowledge'?'Knowledge':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
+          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':view==='knowledge'?'Knowledge':view==='legacy'?'Legacy data':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
@@ -110,7 +110,7 @@ const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-
       <div data-search-results id="ws-palette-results" class="ws-palette-results" role="group" aria-label="Search matches and commands"></div>
       <footer class="ws-palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>Enter</kbd> Open</span><span><kbd>Esc</kbd> Close</span><span>Only Hub records are searched · no external provider query</span></footer>
     </dialog>
-    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div>{readingHost ? <><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/><ContinuationDesk/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p data-cloud-status role="status" hidden></p><button class="ws-button" type="button" data-action="cloud-retry" hidden>Sync now</button><button class="ws-button" type="button" data-action="cloud-review" hidden>Review sync changes</button><button class="ws-button" type="button" data-action="guest-import" hidden>Add this device’s guest workspace</button><a href="https://account.thiepn.dev/hub/connections" class="ws-button" rel="noreferrer">Manage Notes sharing</a><a href="https://account.thiepn.dev/hub/tms60" class="ws-button" rel="noreferrer">Manage TMS60 sharing</a><a href="/home/connections/" class="ws-button">Existing app connections</a></dialog>
+    <dialog class="ws-dialog" data-account-dialog aria-label="Account and connections"><h2>Account and connections</h2><button class="ws-button" type="button" data-action="close-account">Close</button><PortalAccount/><div class="ws-account-tools"><button type="button" class="ws-button" data-action="privacy" data-connection-privacy>Hide personal content</button></div>{readingHost ? <><div data-reading-shell data-library-host-route="/home/"><PrivateLibrary/><ReadingPilot/><ContinuationDesk/></div></> : <a class="ws-button" href="/home/#reading">Open reading connection</a>}<p data-cloud-status role="status" hidden></p><button class="ws-button" type="button" data-action="cloud-retry" hidden>Sync now</button><button class="ws-button" type="button" data-action="cloud-review" hidden>Review sync changes</button><button class="ws-button" type="button" data-action="guest-import" hidden>Add this device’s guest workspace</button><a href="https://account.thiepn.dev/hub/connections" class="ws-button" rel="noreferrer">Manage Notes sharing</a><a href="https://account.thiepn.dev/hub/tms60" class="ws-button" rel="noreferrer">Manage TMS60 sharing</a><a href="/home/connections/" class="ws-button">Existing app connections</a><a href="/home/legacy/" class="ws-button">Legacy Folio and Notes data</a></dialog>
     <script is:inline type="application/json" data-workspace-apps set:html={JSON.stringify(apps).replace(/</g,'\u003c')}/>
   </div>
 </BaseLayout>
