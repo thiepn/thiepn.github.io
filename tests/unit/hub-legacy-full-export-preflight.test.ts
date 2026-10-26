@@ -23,8 +23,8 @@ const notes=()=>({
 });
 describe('source-pinned original-owner export preflight: always read-only',()=>{
  it('accepts a bounded original Folio v24 candidate but keeps every migration hold',async()=>{
-  const data=folio();data.data.tasks.push({id:'same-id',title:'My task'});
-  data.data.notes.push({id:'somewhere-else',title:'STUDY note'});
+  const data=folio();data.data.tasks!.push({id:'same-id',title:'My task'});
+  data.data.notes!.push({id:'somewhere-else',title:'STUDY note'});
   const src=bytes(data),before=Uint8Array.from(src),hub=state(),snapshot=JSON.stringify(hub);
   const result=await inspectOriginalOwnerExport(src,hub,now);
   expect(result.owner).toBe('folio');expect(result.sameTitleCount).toBe(2);
