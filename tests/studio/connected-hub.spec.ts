@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 test('new app pinning and simple editor preserve the layout and survive reload',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/apps/');await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
- await expect(page.locator('[data-hub-item]')).toHaveCount(31);
+ await expect(page.locator('[data-hub-item]')).toHaveCount(30);
  const pin=page.locator('[data-hub-slug=bikes] [data-action=pin-app]');await pin.click();await expect(pin).toHaveAttribute('aria-pressed','true');
  await page.locator('.ws-nav a[href="/"]').click();await page.locator('[data-action=unified-mode][data-id=workspace]').click();const widget=page.locator('[data-widget-type=app-shortcuts]');await expect(widget).toContainText('Bike Atlas');
  const geometry=await widget.getAttribute('style');await widget.locator('[data-action=configure-widget]').click();
