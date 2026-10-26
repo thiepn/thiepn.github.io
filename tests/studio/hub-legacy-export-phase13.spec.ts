@@ -1,0 +1,44 @@
+import {test,expect} from '@playwright/test';
+test.use({serviceWorkers:'block'});
+const folio=()=>({format:'folio-backup',version:24,exportedAt:'2026-10-26T10:00:00Z',
+ data:Object.fromEntries(['tasks','projects','habits','habitEntries','timeBlocks','dailyPlans','dailyPlanItems',
+ 'focusSessions','recurringSeries','settings','importBatches','reviewRecords','reminders','reminderOccurrences',
+ 'folders','lists','sections','tags','notes','attachments','habitGroups','habitTemplates'].map(k=>[k,[]])) as Record<string,unknown[]>});
+const notes=()=>({format:'thiepn.notes.backup',formatVersion:2,databaseVersion:3,
+ exportedAt:Date.parse('2026-10-26T10:00:00Z'),data:{notes:[],checklistItems:[],labels:[],noteLabels:[],
+ attachments:[],reminders:[],revisions:[],settings:[]}});
+for(const width of [390,1440]){
+ test('legacy export preflight is local-only, nonwriting and private-title-free '+width,async({page})=>{
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  const original=folio();original.data.tasks=[{id:'historical-folio-task',title:'PRIVATE FOLIO TASK'}];
+  const bytes=Buffer.from(JSON.stringify(original));
+  await page.locator('[data-legacy-backup-file]').setInputFiles({name:'original-folio.json',mimeType:'application/json',buffer:bytes});
+  const preview=page.locator('[data-owner-export-result]');
+  await expect(preview).toContainText('Folio export');
+  await expect(preview).toContainText('tasks: 1');
+  await expect(preview).not.toContainText('PRIVATE FOLIO TASK');
+  await expect(preview).toContainText('Source authenticity not verified');
+  expect(await page.evaluate(()=>[...Object.keys(localStorage)].filter(x=>x.includes('legacy-backup-file')))).toEqual([]);
+  await page.reload();
+  await expect(page.locator('[data-owner-export-result]')).toHaveCount(0);
+ });
+}
+test('malformed original Notes backup fails closed; does not replace earlier Hub notes',async({page})=>{
+ await page.goto('/home/legacy/');
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ const candidate=notes();candidate.data.notes=[{id:'note-a',title:'Private title'}] as never[];
+ candidate.data.reminders=[{id:'rem-a',noteId:'deleted-source',title:'Private reminder'}] as never[];
+ await page.locator('[data-legacy-backup-file]').setInputFiles({
+  name:'invalid-notes.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(candidate))
+ });
+ await expect(page.locator('[data-legacy-backup-status]')).toContainText('missing original note');
+ await expect(page.locator('[data-owner-export-result]')).toHaveCount(0);
+ await expect(page.locator('[data-legacy-backup-status]')).not.toContainText('Private reminder');
+ await page.locator('[data-legacy-backup-file]').setInputFiles({
+  name:'wrong-notes.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'not-notes',data:{}}))
+ });
+ await expect(page.locator('[data-legacy-backup-status]')).toContainText('Unsupported owner backup');
+ await expect(page.locator('[data-owner-export-result]')).toHaveCount(0);
+});
