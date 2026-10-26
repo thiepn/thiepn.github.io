@@ -9,7 +9,9 @@
     ".cache",
     "test-results",
     "playwright-report",
-    "vendor/keep-b3"
+    "vendor/keep-b3",
+    "public/keep-b3-native",
+    "vendor/keep-b3/hub-embed/dist"
   ],
   "compilerOptions": {
     "noUncheckedIndexedAccess": true,
