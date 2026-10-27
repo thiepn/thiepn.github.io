@@ -149,6 +149,35 @@ test('durable Account token cannot be downgraded by stale localStorage mirror',a
   expect(api.refreshes()).toBe(0);
   await a.context.close();
 });
+test('durable rotating Account token cannot be replaced by a later-expiring stale legacy mirror',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ expect(api.exchanges()).toBe(1);
+ await a.page.evaluate(()=>{
+  const key='thiepn:hub-sso:v1:tokens';
+  const stale=JSON.parse(localStorage.getItem(key)!);
+  localStorage.setItem(key,JSON.stringify({...stale,refreshToken:'fixture-consumed-old-refresh',expiresAt:Date.now()+86400000}));
+ });
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await Promise.all(pages.map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+ }));
+ expect(api.refreshes()).toBe(0);
+ const durable=await pages[0]!.evaluate(()=>new Promise<{refreshToken:string}|null>((resolve,reject)=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   open.onerror=()=>reject(open.error);
+   open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('session','readonly');
+     const read=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     read.onsuccess=()=>{db.close();resolve(read.result?.value?JSON.parse(read.result.value):null)};
+     read.onerror=()=>reject(read.error);
+   };
+ }));
+ expect(durable?.refreshToken).toBe('fixture-refreshed');
+ await a.context.close();
+});
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
  const preserved=()=>a.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('fixture:app-data:')).reduce((size,key)=>size+localStorage.getItem(key)!.length,0));
