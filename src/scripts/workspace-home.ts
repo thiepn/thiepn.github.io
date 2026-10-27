@@ -2194,6 +2194,26 @@ async function setup(root: HTMLElement) {
             return;
         const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
         if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
+        if(action==='original-owner-next-unreviewed'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            const start=originalCasePage*OWNER_CASE_PAGE_SIZE;
+            const indices=activeLegacyPlan.rows.map((_,i)=>i);
+            const pending=indices.filter(i=>{
+                const row=activeLegacyPlan!.rows[i]!;
+                return !originalCaseChoices.has(sourceCaseKey(row.kind,row.originalId));
+            });
+            const index=pending.find(i=>i>=start)??pending[0];
+            if(index===undefined)return;
+            originalCasePage=Math.floor(index/OWNER_CASE_PAGE_SIZE);
+            try{
+                showLegacyCasePage();
+                const row=activeLegacyPlan.rows[index]!;
+                const control=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')]
+                    .find(el=>el.dataset.caseKind===row.kind&&el.dataset.caseId===row.originalId);
+                control?.focus();
+            }catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
         if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
             const next=originalCasePage+(action==='original-owner-page-next'?1:-1);
