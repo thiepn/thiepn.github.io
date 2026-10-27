@@ -52,7 +52,7 @@ import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -126,6 +126,19 @@ async function setup(root: HTMLElement) {
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
     let activeLegacyPlan:OwnerDryRun|null=null;
+    let originalCasePage=0;
+    const originalCaseChoices=new Map<string,OwnerCaseChoiceInput>();
+    const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
+    function clearLegacyCasework(){activeLegacyPlan=null;originalCasePage=0;originalCaseChoices.clear();}
+    function showLegacyCasePage(){
+        if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
+        const host=root.querySelector<HTMLElement>('[data-owner-casework]');
+        if(!host)return;
+        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()]);
+        const status=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
+        if(status)status.textContent=renderOriginalOwnerCaseworkReceipt(review);
+    }
     const nativeKeep=attachNativeKeep(root,()=>view==='knowledge'&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden,()=>render(),message=>toast(message));
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
@@ -907,7 +920,7 @@ async function setup(root: HTMLElement) {
         nativeKeep.recheck();
         if(view==='legacy' && (locked||privacyHeld||state?.preferences.hidden||
             (activeLegacyPlan&&state?.revision!==activeLegacyPlan.hubRevision))){
-            activeLegacyPlan=null;
+            clearLegacyCasework();
             root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
             const receipt=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
             if(receipt)receipt.textContent='Private original-source inspection cleared.';
@@ -2180,6 +2193,15 @@ async function setup(root: HTMLElement) {
             return;
         const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
         if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
+        if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            const next=originalCasePage+(action==='original-owner-page-next'?1:-1);
+            if(next<0||next*OWNER_CASE_PAGE_SIZE>=activeLegacyPlan.rows.length)return;
+            originalCasePage=next;
+            try{showLegacyCasePage();}catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            root.querySelector<HTMLSelectElement>('[data-original-owner-choice]')?.focus();
+            return;
+        }
         if(action==='knowledge-native-stop'){nativeKeep.revoke();render();return;}
         if (action === 'close-dialog') {
             dialog.close();
@@ -3030,7 +3052,7 @@ async function setup(root: HTMLElement) {
         if(view==='legacy'&&el.matches('[data-legacy-backup-file]')){
             const input=el,source=input.files?.[0],status=root.querySelector<HTMLElement>('[data-legacy-backup-status]'),
                   output=root.querySelector<HTMLElement>('[data-legacy-backup-result]');
-            activeLegacyPlan=null;
+            clearLegacyCasework();
             if(output)output.replaceChildren();
             if(status)status.textContent='';
             input.value='';
@@ -3051,6 +3073,7 @@ async function setup(root: HTMLElement) {
                     const {preflight:result,plan}=await makeOriginalOwnerDryRun(bytes,original);
                     if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
                     activeLegacyPlan=plan;
+                    originalCasePage=0;originalCaseChoices.clear();
                     if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan)+renderOriginalOwnerCaseworkForm(plan);
                     if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
                 }catch(error){
@@ -3062,20 +3085,25 @@ async function setup(root: HTMLElement) {
         }
         if(view==='legacy'&&el.matches('[data-original-owner-choice]')){
             if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
-            const controls=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')];
-            const decisions:OwnerCaseChoiceInput[]=controls.filter(node=>!!node.value).map(node=>({
-                kind:node.dataset.caseKind as OwnerCaseChoiceInput['kind'],
-                originalId:node.dataset.caseId??'',
-                observedStatus:node.dataset.caseStatus as OwnerCaseChoiceInput['observedStatus'],
-                choice:node.value as OwnerCaseChoiceInput['choice'],
-            }));
+            const candidate=new Map(originalCaseChoices);
+            const selection:OwnerCaseChoiceInput={
+                kind:el.dataset.caseKind as OwnerCaseChoiceInput['kind'],
+                originalId:el.dataset.caseId??'',
+                observedStatus:el.dataset.caseStatus as OwnerCaseChoiceInput['observedStatus'],
+                choice:el.value as OwnerCaseChoiceInput['choice'],
+            };
+            const caseKey=sourceCaseKey(selection.kind,selection.originalId);
+            if(el.value)candidate.set(caseKey,selection);
+            else candidate.delete(caseKey);
             const receipt=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
             try{
-                const review=reviewOriginalOwnerCases(activeLegacyPlan,decisions,
+                const review=reviewOriginalOwnerCases(activeLegacyPlan,[...candidate.values()],
                     activeLegacyPlan.originalFileSha256,state.revision);
+                originalCaseChoices.clear();
+                for(const [key,value] of candidate)originalCaseChoices.set(key,value);
                 if(receipt)receipt.textContent=renderOriginalOwnerCaseworkReceipt(review);
             }catch(error){
-                el.value='';
+                el.value=originalCaseChoices.get(caseKey)?.choice??'';
                 if(receipt)receipt.textContent=error instanceof Error?error.message:'Casework review was invalidated.';
             }
             return;
@@ -3408,7 +3436,7 @@ async function setup(root: HTMLElement) {
         }
     }
     async function loadIdentity(identity: HubIdentity) {
-        activeLegacyPlan=null;
+        clearLegacyCasework();
         root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
         const backupStatus=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
         if(backupStatus)backupStatus.textContent='';
