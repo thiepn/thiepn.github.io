@@ -474,3 +474,9 @@
 .ws[data-theme=dark] button[data-action="new-outcome"]{
  background:#88b7ff;color:#11233d;border:1px solid #88b7ff;font-weight:650;
 }
+
+/* Phase 30: separate independently preflighted selective history recovery. */
+.ws-owner-cross-visit{margin-block:1rem}
+.ws-owner-cross-visit button{min-height:44px;white-space:normal;text-wrap:pretty}
+.ws-owner-cross-visit [data-owner-cross-status]{grid-column:1/-1;color:var(--ws-muted);overflow-wrap:anywhere}
+@media(max-width:390px){.ws-owner-cross-visit{grid-template-columns:repeat(2,minmax(0,1fr))}}

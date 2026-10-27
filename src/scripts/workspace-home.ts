@@ -52,7 +52,7 @@ import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,applyOriginalOwnerPageChoice,applyOriginalOwnerMarkedChoice,updateOriginalOwnerPageMarks,validateOriginalOwnerMarks,originalOwnerFilteredRows,OWNER_CASE_FILTERS,OWNER_REVIEW_FILTERS,OWNER_MARK_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OriginalOwnerSelectiveRecovery,type OriginalOwnerCaseTimeline,type OwnerMarkedCase,type OwnerCaseFilter,type OwnerReviewFilter,type OwnerMarkFilter} from '../lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,previewOriginalOwnerCrossVisitRecovery,applyOriginalOwnerCrossVisitRecovery,applyOriginalOwnerPageChoice,applyOriginalOwnerMarkedChoice,updateOriginalOwnerPageMarks,validateOriginalOwnerMarks,originalOwnerFilteredRows,OWNER_CASE_FILTERS,OWNER_REVIEW_FILTERS,OWNER_MARK_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OriginalOwnerSelectiveRecovery,type OriginalOwnerCrossVisitPreview,type OriginalOwnerCaseTimeline,type OwnerMarkedCase,type OwnerCaseFilter,type OwnerReviewFilter,type OwnerMarkFilter} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -135,10 +135,11 @@ async function setup(root: HTMLElement) {
     const originalCaseMarks=new Map<string,OwnerMarkedCase>();
     let originalCaseTimeline:OriginalOwnerCaseTimeline|null=null;
     let originalRecoveryPreview:OriginalOwnerSelectiveRecovery|null=null;
+    let originalCrossVisitPreview:OriginalOwnerCrossVisitPreview|null=null;
     let originalRecoverySteps=1;
     const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
     const sourceMarkKey=(kind:string,id:string)=>JSON.stringify([kind,id]);
-    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';originalCaseChoices.clear();originalCaseMarks.clear();originalCaseTimeline=null;originalRecoveryPreview=null;originalRecoverySteps=1;}
+    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';originalCaseChoices.clear();originalCaseMarks.clear();originalCaseTimeline=null;originalRecoveryPreview=null;originalCrossVisitPreview=null;originalRecoverySteps=1;}
     function syncOriginalOwnerHistoryButtons(){
         const host=root.querySelector<HTMLElement>('[data-owner-casework]');
         if(!host)return;
@@ -173,6 +174,18 @@ async function setup(root: HTMLElement) {
             ' protected current · '+originalRecoveryPreview.unchanged+' unchanged · '+
             originalRecoveryPreview.unavailable+' absent from selected history · no writes'
           :'No recovery preview · current reviewed decisions remain protected.';
+        const scan=host.querySelector<HTMLButtonElement>('[data-action="original-owner-cross-preview"]');
+        const restore=host.querySelector<HTMLButtonElement>('[data-action="original-owner-cross-apply"]');
+        if(scan)scan.disabled=!canPreview;
+        if(restore)restore.disabled=!originalCrossVisitPreview||originalCrossVisitPreview.recoverable.length===0;
+        const crossStatus=host.querySelector<HTMLElement>('[data-owner-cross-status]');
+        if(crossStatus)crossStatus.textContent=originalCrossVisitPreview
+          ?originalCrossVisitPreview.recoverable.length+' missing decisions recoverable from '+
+           originalCrossVisitPreview.visitsUsed+' independent historical visits · '+
+           originalCrossVisitPreview.protectedCurrent+' protected current · '+
+           originalCrossVisitPreview.unchangedCurrent+' unchanged · '+
+           originalCrossVisitPreview.withoutHistory+' without historical evidence · zero writes'
+          :'No cross-visit preview · independent current decisions stay protected.';
     }
     function recordOriginalOwnerHistory(){
         if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
@@ -180,7 +193,10 @@ async function setup(root: HTMLElement) {
             [...originalCaseMarks.values()],originalCasePage,originalCaseFilter,
             originalReviewFilter,originalMarkFilter,activeLegacyPlan.originalFileSha256,state.revision);
         const next=advanceOriginalOwnerCaseTimeline(activeLegacyPlan,originalCaseTimeline,frame);
-        if(next!==originalCaseTimeline)originalRecoveryPreview=null;
+        if(next!==originalCaseTimeline){
+            originalRecoveryPreview=null;
+            originalCrossVisitPreview=null;
+        }
         originalCaseTimeline=next;
         syncOriginalOwnerHistoryButtons();
     }
@@ -2290,6 +2306,30 @@ async function setup(root: HTMLElement) {
             return;
         const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
         if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
+        if(action==='original-owner-cross-preview'||action==='original-owner-cross-apply'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden||!originalCaseTimeline)return;
+            try{
+                if(action==='original-owner-cross-preview'){
+                    originalCrossVisitPreview=previewOriginalOwnerCrossVisitRecovery(activeLegacyPlan,originalCaseTimeline);
+                    syncOriginalOwnerHistoryButtons();
+                }else{
+                    if(!originalCrossVisitPreview)throw new Error('A fresh cross-visit preview is required.');
+                    const changed=applyOriginalOwnerCrossVisitRecovery(
+                        activeLegacyPlan,originalCaseTimeline,originalCrossVisitPreview);
+                    // Entire immutable source and history preflight completed.
+                    originalCaseChoices.clear();
+                    for(const row of changed)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
+                    originalCrossVisitPreview=null;
+                    showLegacyCasePage();
+                    focusLegacyCasework();
+                }
+            }catch(error){
+                originalCrossVisitPreview=null;
+                syncOriginalOwnerHistoryButtons();
+                toast(error instanceof Error?error.message:'Cross-visit source recovery failed closed.');
+            }
+            return;
+        }
         if(action==='original-owner-recovery-preview'||action==='original-owner-recovery-apply'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden||!originalCaseTimeline)return;
             try{
@@ -2322,6 +2362,7 @@ async function setup(root: HTMLElement) {
                 const frame=restored.current;
                 // Validate the entire source-owned history before replacing any current choices.
                 originalRecoveryPreview=null;
+                originalCrossVisitPreview=null;
                 originalCaseTimeline=restored;
                 originalCaseChoices.clear();
                 for(const row of frame.choices)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
@@ -3291,7 +3332,7 @@ async function setup(root: HTMLElement) {
                     activeLegacyPlan=plan;originalCasePage=0;
                     originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';
                     originalCaseChoices.clear();originalCaseMarks.clear();originalCaseTimeline=null;
-                    originalRecoveryPreview=null;originalRecoverySteps=1;
+                    originalRecoveryPreview=null;originalCrossVisitPreview=null;originalRecoverySteps=1;
                     if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan)+renderOriginalOwnerCaseworkForm(plan);
                     showLegacyCasePage();
                     if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';

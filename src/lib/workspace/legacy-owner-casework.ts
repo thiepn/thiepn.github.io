@@ -317,6 +317,81 @@ export function applyOriginalOwnerSelectiveRecovery(
  return restored;
 }
 
+
+/** Cross-visit recovery is independent per immutable original-source record.
+ * A selected record may have a useful earlier reviewed generation even when
+ * another record's latest reviewed generation comes from a different visit.
+ * Newer current decisions always win; no auto-merge or owner writes exist.
+ */
+export interface OriginalOwnerCrossVisitCandidate extends OwnerCaseChoiceInput {
+ readonly visitsBack:number;
+}
+export interface OriginalOwnerCrossVisitPreview {
+ readonly owner:OwnerDryRun['owner'];
+ readonly originalFileSha256:string;
+ readonly hubRevision:number;
+ readonly timelineWitness:string;
+ readonly recoverable:readonly OriginalOwnerCrossVisitCandidate[];
+ readonly protectedCurrent:number;
+ readonly unchangedCurrent:number;
+ readonly withoutHistory:number;
+ readonly visitsUsed:number;
+ readonly blocked:true;
+ readonly writes:0;
+ readonly readyToMigrate:false;
+}
+export function previewOriginalOwnerCrossVisitRecovery(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,
+):OriginalOwnerCrossVisitPreview {
+ verifyOriginalCaseTimeline(plan,timeline);
+ const current=timeline.current;
+ const present=new Map(current.choices.map(c=>[immutableOwnerId(c.kind,c.originalId),c]));
+ const past=timeline.past;
+ const latest=new Map<string,OriginalOwnerCrossVisitCandidate>();
+ for(let index=past.length-1;index>=0;index--){
+  const visit=past[index]!;
+  const visitsBack=past.length-index;
+  for(const choice of visit.choices){
+   const key=immutableOwnerId(choice.kind,choice.originalId);
+   if(!latest.has(key))latest.set(key,{...choice,visitsBack});
+  }
+ }
+ const recoverable:OriginalOwnerCrossVisitCandidate[]=[];
+ let protectedCurrent=0,unchangedCurrent=0,withoutHistory=0;
+ for(const mark of current.marks){
+  const key=immutableOwnerId(mark.kind,mark.originalId);
+  const original=latest.get(key),active=present.get(key);
+  if(!original){withoutHistory++;continue;}
+  if(!active)recoverable.push({...original});
+  else if(active.choice===original.choice)unchangedCurrent++;
+  else protectedCurrent++;
+ }
+ const visitsUsed=new Set(recoverable.map(row=>row.visitsBack)).size;
+ return {owner:plan.owner,originalFileSha256:plan.originalFileSha256,hubRevision:plan.hubRevision,
+  timelineWitness:JSON.stringify({current:timeline.current,past:timeline.past,future:timeline.future}),
+  recoverable,protectedCurrent,unchangedCurrent,withoutHistory,visitsUsed,
+  blocked:true,writes:0,readyToMigrate:false};
+}
+/** The checked review receipt and every historical frame are revalidated at
+ * apply time. Never overwrite an independently reviewed current record.
+ */
+export function applyOriginalOwnerCrossVisitRecovery(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,review:OriginalOwnerCrossVisitPreview,
+):OwnerCaseChoiceInput[] {
+ const fresh=previewOriginalOwnerCrossVisitRecovery(plan,timeline);
+ if(JSON.stringify(fresh)!==JSON.stringify(review))
+  throw new Error('Original owner cross-visit recovery is stale; make a fresh preview.');
+ const chosen=new Map(timeline.current.choices.map(row=>[immutableOwnerId(row.kind,row.originalId),{...row}]));
+ for(const {kind,originalId,observedStatus,choice} of fresh.recoverable){
+  const key=immutableOwnerId(kind,originalId);
+  if(chosen.has(key))throw new Error('An independently reviewed original record cannot be overwritten.');
+  chosen.set(key,{kind,originalId,observedStatus,choice});
+ }
+ const result=[...chosen.values()];
+ reviewOriginalOwnerCases(plan,result,plan.originalFileSha256,plan.hubRevision);
+ return result;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -413,6 +488,11 @@ export function renderOriginalOwnerCaseworkForm(
    '<button type="button" data-action="original-owner-recovery-preview" disabled>Preview safe marked recovery</button>'+
    '<button type="button" data-action="original-owner-recovery-apply" disabled>Restore missing choices</button>'+
    '<p data-owner-recovery-status role="status">No recovery preview · current reviewed decisions remain protected.</p>'+
+  '</div>'+
+  '<div class="ws-owner-case-recovery ws-owner-cross-visit" role="group" aria-label="Recover missing original records across historical visits">'+
+   '<button type="button" data-action="original-owner-cross-preview" disabled>Scan marked cases across all retained visits</button>'+
+   '<button type="button" data-action="original-owner-cross-apply" disabled>Restore safe missing selections</button>'+
+   '<p data-owner-cross-status role="status">No cross-visit preview · independent current decisions stay protected.</p>'+
   '</div>'+
   '<p data-owner-history-provenance>Unverified '+esc(plan.owner)+' source fingerprint '+esc(plan.originalFileSha256.slice(0,12))+
    '… · Hub revision '+plan.hubRevision+'. Fingerprint is not rights approval.</p>'+

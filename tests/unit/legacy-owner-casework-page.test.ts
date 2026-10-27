@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,OWNER_CASE_HISTORY_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
+import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,previewOriginalOwnerCrossVisitRecovery,applyOriginalOwnerCrossVisitRecovery,OWNER_CASE_HISTORY_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
 import type {OwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
 import type {OwnerCaseChoiceInput,OwnerMarkedCase,OwnerCaseFilter,OwnerReviewFilter,OwnerMarkFilter} from '../../src/lib/workspace/legacy-owner-casework';
 
@@ -365,5 +365,78 @@ describe('Phase 29 multi-generation selective recovery preserves authored curren
   expect(()=>previewOriginalOwnerSelectiveRecovery(plan,corrupted,1)).toThrow();
   expect(()=>previewOriginalOwnerSelectiveRecovery(plan,{...h,current:{...h.current,marks:[marks[0]!,marks[0]!]}},1)).toThrow();
   expect(()=>previewOriginalOwnerSelectiveRecovery(plan,{...h,current:{...h.current,hubRevision:9}},1)).toThrow();
+ });
+});
+
+describe('Phase 30 original-source cross-visit selective safe subset',()=>{
+ const frame=(choices:readonly OwnerCaseChoiceInput[],marks:readonly OwnerMarkedCase[])=>
+  makeOriginalOwnerCaseFrame(plan,choices,marks,0,'ALL','ALL','ALL',sha,7);
+ it('recovers different marked records from distinct historical visits with original IDs',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,3);
+  const first=[{...marks[0]!,choice:'KEEP_SEPARATE' as const}];
+  const second=[{...marks[1]!,choice:'DEFER' as const}];
+  let history=advanceOriginalOwnerCaseTimeline(plan,null,frame(first,marks));
+  history=advanceOriginalOwnerCaseTimeline(plan,history,frame(second,marks));
+  history=advanceOriginalOwnerCaseTimeline(plan,history,frame([],marks));
+  const preview=previewOriginalOwnerCrossVisitRecovery(plan,history);
+  expect(preview).toMatchObject({owner:'notes',originalFileSha256:sha,hubRevision:7,
+   visitsUsed:2,protectedCurrent:0,withoutHistory:1,blocked:true,writes:0,readyToMigrate:false});
+  expect(preview.recoverable).toHaveLength(2);
+  expect(preview.recoverable.map(x=>[x.originalId,x.choice,x.visitsBack])).toEqual([
+   ['source-0','KEEP_SEPARATE',2],['source-1','DEFER',1]]);
+  const restored=applyOriginalOwnerCrossVisitRecovery(plan,history,preview);
+  expect(restored.map(x=>[x.originalId,x.choice])).toEqual([
+   ['source-0','KEEP_SEPARATE'],['source-1','DEFER']]);
+  expect(history.current.choices).toHaveLength(0);
+  expect(reviewOriginalOwnerCases(plan,restored,sha,7)).toMatchObject({writes:0,blocked:true,readyToMigrate:false});
+ });
+ it('never overwrites independently authored current decisions, including same ID changed later',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,2);
+  const old=[{...marks[0]!,choice:'KEEP_SEPARATE' as const},{...marks[1]!,choice:'DEFER' as const}];
+  let history=advanceOriginalOwnerCaseTimeline(plan,null,frame(old,marks));
+  history=advanceOriginalOwnerCaseTimeline(plan,history,frame([
+   {...marks[0]!,choice:'REVIEW_HUB' as const}],marks));
+  const preview=previewOriginalOwnerCrossVisitRecovery(plan,history);
+  expect(preview).toMatchObject({protectedCurrent:1,unchangedCurrent:0,visitsUsed:1});
+  expect(preview.recoverable).toHaveLength(1);
+  const result=applyOriginalOwnerCrossVisitRecovery(plan,history,preview);
+  expect(result.find(x=>x.originalId==='source-0')?.choice).toBe('REVIEW_HUB');
+  expect(result.find(x=>x.originalId==='source-1')?.choice).toBe('DEFER');
+ });
+ it('fails closed on altered preview, historical deletion or newer current return',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,2);
+  const old=[{...marks[0]!,choice:'KEEP_SEPARATE' as const}];
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame(old,marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([],marks));
+  const receipt=previewOriginalOwnerCrossVisitRecovery(plan,current);
+  expect(()=>applyOriginalOwnerCrossVisitRecovery(plan,current,{...receipt,visitsUsed:0})).toThrow();
+  expect(()=>applyOriginalOwnerCrossVisitRecovery(plan,current,{...receipt,originalFileSha256:'b'.repeat(64)})).toThrow();
+  expect(()=>applyOriginalOwnerCrossVisitRecovery(plan,current,{...receipt,
+   recoverable:[{...receipt.recoverable[0]!,choice:'REVIEW_HUB'}]})).toThrow();
+  const concurrent=advanceOriginalOwnerCaseTimeline(plan,current,frame([{...marks[0]!,choice:'REVIEW_SOURCE'}],marks));
+  expect(()=>applyOriginalOwnerCrossVisitRecovery(plan,concurrent,receipt)).toThrow();
+  expect(current.current.choices).toHaveLength(0);
+ });
+ it('rejects foreign owner, stale revision and malformed source evidence before constructing any recovery',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,1);
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame([{...marks[0]!,choice:'DEFER'}],marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([],marks));
+  for(const corrupt of [
+   {...current,current:{...current.current,owner:'folio' as const}},
+   {...current,current:{...current.current,hubRevision:8}},
+   {...current,current:{...current.current,marks:[marks[0]!,marks[0]!]}},
+   {...current,past:[{...current.past[0]!,sourceSha256:'c'.repeat(64)}]},
+  ])expect(()=>previewOriginalOwnerCrossVisitRecovery(plan,corrupt)).toThrow();
+  expect(first.current.choices).toHaveLength(1);
+ });
+ it('uses only 12 protected in-memory frames and honors exact marked subset',()=>{
+  const marked=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,1);
+  let history=advanceOriginalOwnerCaseTimeline(plan,null,frame([{...marked[0]!,choice:'DEFER'}],marked));
+  for(let i=0;i<31;i++)history=advanceOriginalOwnerCaseTimeline(plan,history,frame(
+   i%2?[{...marked[0]!,choice:'KEEP_SEPARATE'}]:[],marked));
+  expect(history.past).toHaveLength(OWNER_CASE_HISTORY_LIMIT);
+  const proof=previewOriginalOwnerCrossVisitRecovery(plan,history);
+  expect(proof.recoverable.length).toBeLessThanOrEqual(1);
+  expect(proof.writes).toBe(0);
  });
 });

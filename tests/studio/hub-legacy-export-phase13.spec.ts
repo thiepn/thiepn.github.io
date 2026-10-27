@@ -437,3 +437,47 @@ for(const width of [320,390,1440]){
   await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 30 recover individual marked Folio source choices from several history visits '+width,async({page})=>{
+  test.setTimeout(90_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();source.data.tasks=Array.from({length:163},(_,i)=>({id:'phase30-original-'+i,title:'PRIVATE PHASE30 TITLE '+i}));
+  const input=page.locator('[data-legacy-backup-file]');
+  await input.setInputFiles({name:'original-phase30.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
+  const choice=page.locator('[data-original-owner-choice]'),mark=page.locator('[data-original-owner-mark]');
+  await mark.nth(0).check();await mark.nth(1).check();await mark.nth(2).check();
+  await choice.nth(0).selectOption('KEEP_SEPARATE');
+  await choice.nth(0).selectOption('');
+  await choice.nth(1).selectOption('DEFER');
+  await choice.nth(1).selectOption('');
+  await expect(page.locator('[data-action=original-owner-cross-preview]')).toBeEnabled();
+  await page.locator('[data-action=original-owner-cross-preview]').click();
+  await expect(page.locator('[data-owner-cross-status]')).toContainText('2 missing decisions recoverable from 2 independent historical visits');
+  await expect(page.locator('[data-owner-cross-status]')).toContainText('1 without historical evidence');
+  await page.locator('[data-action=original-owner-cross-apply]').click();
+  await expect(choice.nth(0)).toHaveValue('KEEP_SEPARATE');
+  await expect(choice.nth(1)).toHaveValue('DEFER');
+  await expect(choice.nth(2)).toHaveValue('');
+  await page.locator('[data-action=original-owner-undo]').click();
+  await expect(choice.nth(0)).toHaveValue('');
+  await page.locator('[data-action=original-owner-redo]').click();
+  await expect(choice.nth(0)).toHaveValue('KEEP_SEPARATE');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE PHASE30 TITLE');
+  const dims=await page.evaluate(()=>({w:document.documentElement.clientWidth,s:document.documentElement.scrollWidth}));
+  expect(dims.s).toBeLessThanOrEqual(dims.w);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('phase30-original-')))).toBe(false);
+  const replacement=folio();replacement.data.tasks=[{id:'different-phase30',title:'SECRET REPLACED ORIGINAL'}];
+  await input.setInputFiles({name:'different-original30.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(replacement))});
+  await expect(page.locator('[data-action=original-owner-cross-preview]')).toBeDisabled();
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await page.locator('[data-original-owner-mark]').first().check();
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}
