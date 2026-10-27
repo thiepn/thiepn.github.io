@@ -60,7 +60,9 @@ test('private original-owner casework is removed from the DOM on Hub privacy loc
  await expect(page.locator('[data-owner-casework]')).toContainText('source-private-id-16');
  await page.locator('[data-original-owner-choice]').selectOption('REVIEW_SOURCE');
  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
- await page.getByRole('button',{name:'Hide personal content',exact:true}).click();
+ await page.locator('.ws-topbar [data-action=account]').click();
+ await expect(page.locator('[data-account-dialog]')).toBeVisible();
+ await page.locator('[data-account-dialog] [data-connection-privacy]').click();
  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  await expect(page.locator('[data-legacy-backup-result]')).not.toContainText('source-private-id-16');
  await expect(page.locator('[data-legacy-backup-file]')).toHaveValue('');
