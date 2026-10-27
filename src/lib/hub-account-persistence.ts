@@ -157,9 +157,17 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       assertSafeFallback();
       try { return await operation(); } finally { await flush(); }
     };
-    const work = tail.then(() => navigator.locks
-      ? navigator.locks.request('thiepn:hub-account-storage', perform)
-      : withIdbLease(perform));
+    // All tabs sharing the durable IndexedDB credential MUST use the same
+    // cross-tab mutex. Mixing Web Locks with the fallback IDB lease leaves
+    // two independent locks and permits duplicate rotating OAuth refreshes
+    // if capabilities differ across tabs, browser windows, or test harnesses.
+    // Native Web Locks is only a fallback when durable IndexedDB is denied.
+    // Unlocked/expired credentials with neither mechanism fail closed above.
+    const work = tail.then(() => db
+      ? withIdbLease(perform)
+      : navigator.locks
+        ? navigator.locks.request('thiepn:hub-account-storage', perform)
+        : perform());
     tail = work.then(() => {}, () => {});
     return work;
   }
