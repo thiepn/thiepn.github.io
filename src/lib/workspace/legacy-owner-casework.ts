@@ -67,7 +67,7 @@ export function renderOriginalOwnerCaseworkForm(
  const visible=plan.rows.slice(offset,offset+limit);
  const selected=new Map(decisions.map(d=>[d.kind+'\\u0000'+d.originalId,d.choice]));
  const rows=visible.map((row,index)=>
-  '<li><label><span>Case '+(index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
+  '<li><label><span>Case '+(offset+index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
    ' · ID <code>'+esc(row.originalId)+'</code> · '+esc(row.status.replace(/_/gu,' '))+
    ' · '+row.originalAttachmentIds.length+' original attachments</span>'+
    '<select data-original-owner-choice data-case-kind="'+esc(row.kind)+
