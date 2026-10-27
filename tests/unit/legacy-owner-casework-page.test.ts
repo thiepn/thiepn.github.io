@@ -153,7 +153,7 @@ describe('Phase 26 marked original-source choices across pages',()=>{
   const cleared=applyOriginalOwnerMarkedChoice(plan,choices,later,null,sha,7);
   expect(cleared).toHaveLength(0);
   const render=renderOriginalOwnerCaseworkForm(plan,160,choices,'ALL','ALL',later);
-  expect(render).toContain('83 marked across pages');
+  expect(render).toContain('<span data-owner-mark-count>83</span> marked across pages');
   expect(render).toContain('Keep 83 marked in source');
   expect(render).toContain('data-original-owner-mark');
  });
