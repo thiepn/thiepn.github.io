@@ -118,6 +118,8 @@ for (const width of [320,390,1440]) {
   });
   await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
   await page.locator('[data-original-owner-choice]').first().selectOption('KEEP_SEPARATE');
+  await page.locator('[data-action=original-owner-next-unreviewed]').click();
+  await expect(page.locator('[data-original-owner-choice]').nth(1)).toBeFocused();
   await page.locator('[data-action=original-owner-page-next]').click();
   await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
   await page.locator('[data-original-owner-choice]').first().selectOption('REVIEW_HUB');
