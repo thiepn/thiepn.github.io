@@ -31,6 +31,7 @@ on:
       - 'src/lib/workspace/legacy-owner-casework.ts'
       - 'src/lib/workspace/legacy-migration-dry-run.ts'
       - 'tests/unit/hub-legacy-owner-casework.test.ts'
+      - 'tests/unit/legacy-owner-casework-page.test.ts'
       - 'tests/studio/hub-legacy-export-phase13.spec.ts'
   workflow_dispatch:
 permissions:
@@ -94,7 +95,7 @@ jobs:
       - name: Hub TypeScript and source unit checks
         run: |
           npm run typecheck
-          ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-legacy-reconciliation.test.ts tests/unit/hub-legacy-full-export-preflight.test.ts tests/unit/hub-legacy-migration-dry-run.test.ts tests/unit/hub-legacy-owner-casework.test.ts tests/unit/hub-consolidation-retirement.test.ts
+          ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-legacy-reconciliation.test.ts tests/unit/hub-legacy-full-export-preflight.test.ts tests/unit/hub-legacy-migration-dry-run.test.ts tests/unit/hub-legacy-owner-casework.test.ts tests/unit/legacy-owner-casework-page.test.ts tests/unit/hub-consolidation-retirement.test.ts
       - name: Build Hub with local KEEP bundle (no deployment)
         run: npm run build
       - name: Install Chromium on disposable runner
