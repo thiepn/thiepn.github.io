@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {makeOriginalOwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases} from '../../src/lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,OWNER_CASE_PAGE_SIZE} from '../../src/lib/workspace/legacy-owner-casework';
 const now=Date.parse('2026-10-26T10:00:00Z');
 const encode=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
 const hub=()=>({
@@ -51,6 +51,39 @@ describe('original-owner conflict review without writer or rights authority',()=
   expect(receipt.selected.REVIEW_SOURCE).toBe(1);
   expect(receipt.readyToMigrate).toBe(false);
   expect(receipt.held).toBe(1);
+ });
+ it('paginates 163 source records, restores cross-page ephemeral decisions and escapes untrusted IDs',async()=>{
+  const f=folio();
+  f.data.tasks=Array.from({length:163},(_,i)=>({
+   id:i===162?'<img src=x onerror=alert(1)>':'source-'+i,
+   title:'Original private '+i,
+  }));
+  const {plan}=await makeOriginalOwnerDryRun(encode(f),hub(),now);
+  expect(OWNER_CASE_PAGE_SIZE).toBe(80);
+  expect(plan.rows).toHaveLength(163);
+  const choices=[
+   {kind:'task',originalId:'source-0',observedStatus:'SOURCE_ONLY',choice:'KEEP_SEPARATE'},
+   {kind:'task',originalId:'source-162',observedStatus:'SOURCE_ONLY',choice:'REVIEW_SOURCE'},
+  ] as const;
+  const first=renderOriginalOwnerCaseworkForm(plan,0,choices);
+  expect(first).toContain('Records 1–80 of 163');
+  expect(first).toContain('source-0');
+  expect(first).not.toContain('source-80');
+  expect(first).toContain('value="KEEP_SEPARATE" selected');
+  const middle=renderOriginalOwnerCaseworkForm(plan,80,choices);
+  expect(middle).toContain('Records 81–160 of 163');
+  expect(middle).toContain('Case 81');
+  expect(middle).not.toContain('source-162');
+  const last=renderOriginalOwnerCaseworkForm(plan,160,choices);
+  expect(last).toContain('Records 161–163 of 163');
+  expect(last).toContain('Case 163');
+  expect(last).toContain('value="REVIEW_SOURCE" selected');
+  expect(last).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  expect(last).not.toContain('<img');
+  expect(()=>renderOriginalOwnerCaseworkForm(plan,164,choices)).toThrow('page');
+  expect(()=>renderOriginalOwnerCaseworkForm(plan,1,choices)).toThrow('page');
+  const receipt=reviewOriginalOwnerCases(plan,choices,plan.originalFileSha256,4);
+  expect(receipt).toMatchObject({reviewed:2,held:162,writes:0,readyToMigrate:false});
  });
  it('rejects stale source hash and competing decisions without altering original data',async()=>{
   const f=folio();f.data.tasks!.push({id:'hub-shared',title:'Existing task'});
