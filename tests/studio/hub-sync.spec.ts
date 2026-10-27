@@ -303,6 +303,17 @@ test('consented Notes, Library and TMS60 insights appear together and clear with
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);await workspace(a.page);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
 });
 
+test('Notes summaries require explicit grant and never create a public Notes catalogue tile',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:false}),a=await api.device(browser);
+ await workspace(a.page);
+ const widget=a.page.locator('[data-widget-type=continue]');
+ await expect(widget).not.toContainText('Connected Notes title');
+ await a.page.goto('https://thiepn.dev/apps/');
+ await expect(a.page.locator('[data-hub-item]')).not.toContainText('Connected Notes title');
+ await expect(a.page.locator('[data-hub-item] a[href*="note="]')).toHaveCount(0);
+ await a.context.close();
+});
+
 test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
  const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
  await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));

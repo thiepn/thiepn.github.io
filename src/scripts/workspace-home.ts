@@ -444,7 +444,15 @@ async function setup(root: HTMLElement) {
     const inputFocused = () => document.activeElement instanceof Element && !!document.activeElement.closest('input,textarea,select,[contenteditable=true]');
     function connectedHTML() {
         return insights.filter(item => item.expiresAt > Date.now()).slice(0,8).map(item => {
-            const app=apps.find(app=>app.id===item.appId);
+            // Notes is source-owned and absent from the public Apps catalogue.
+            // A summary returned by the already consent-gated Notes reader may
+            // still offer its original, allowlisted source handoff. Never add
+            // private Notes records to the public launch registry.
+            const notesHandoff=item.appId==='notes'&&
+                typeof item.resumeUrl==='string'&&
+                /^https:\/\/thiepn\.dev\/notes\/\?note=[0-9a-f-]{36}$/u.test(item.resumeUrl);
+            const app=apps.find(app=>app.id===item.appId) ??
+                (notesHandoff?{id:'notes',title:'Notes',url:'https://thiepn.dev/notes/',icon:appIcon('notes'),category:'tools' as const}:undefined);
             return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(item.resumeUrl??app.url)}" rel="noreferrer">${item.resumeUrl?'Resume':'Open'} ${esc(app.title)}</a></div>` : '';
         }).join('');
     }
