@@ -8,7 +8,6 @@ test('consented Notes titles become searchable without storing private source da
   await page.goto('/home/legacy/');
  await expect(page.locator('[data-source-today-notes]')).toBeVisible();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await page.locator('[data-action=unified-mode][data-id=today]').click();
   await page.locator('[data-action=search]').click();
   await page.locator('#workspace-search').fill('~lecture');
   await expect(page.locator('[data-search-results]')).not.toContainText('Notes approved title');
