@@ -37,7 +37,9 @@ test('Knowledge route masking removes original note text from Knowledge DOM',asy
  await page.getByLabel('Title',{exact:true}).fill('Private original');
  await page.getByLabel('Note',{exact:true}).fill('Private note text');
  await page.locator('[data-dialog-submit]').click();
- await page.getByRole('button',{name:'Hide personal content',exact:true}).click();
+ await page.locator('.ws-topbar [data-action=account]').click();
+ await expect(page.locator('[data-account-dialog]')).toBeVisible();
+ await page.locator('[data-account-dialog] [data-connection-privacy]').click();
  await expect(page.locator('[data-hub-knowledge]')).toHaveCount(0);
  await expect(page.locator('[data-workspace-content]')).not.toContainText('Private note text');
 });
