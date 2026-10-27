@@ -173,7 +173,7 @@ async function setup(root: HTMLElement) {
         if(filter){
             for(const option of filter.options){
                 if(option.value==='MARKED')option.textContent='Marked for review ('+count+')';
-                else if(option.value==='UNMARKED')option.textContent='Not marked ('+(activeLegacyPlan?.rows.length??0)-count+')';
+                else if(option.value==='UNMARKED')option.textContent='Not marked ('+((activeLegacyPlan?.rows.length??0)-count)+')';
             }
         }
     }
