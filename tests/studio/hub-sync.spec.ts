@@ -133,6 +133,35 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
  for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
   expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
 });
+test('mixed Web Locks capability still shares exactly one rotating Account refresh',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
+   const request=indexedDB.open('thiepn-hub-account');
+   request.onerror=()=>reject(request.error);
+   request.onsuccess=()=>{
+     const db=request.result,tx=db.transaction('session','readwrite');
+     const store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
+     read.onsuccess=()=>{
+       const record=read.result,tokens=JSON.parse(record.value);
+       tokens.expiresAt=0;record.value=JSON.stringify(tokens);
+       store.put(record,'thiepn:hub-sso:v1:tokens');
+     };
+     tx.oncomplete=()=>{db.close();resolve();};
+     tx.onabort=()=>reject(tx.error);
+   };
+ }));
+ await a.page.close();
+ const [native,fallback]=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ await Promise.all([native,fallback].map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+ }));
+ expect(await fallback.evaluate(()=>Boolean(navigator.locks))).toBe(false);
+ expect(api.exchanges()).toBe(1);
+ expect(api.refreshes()).toBe(1);
+ await a.context.close();
+});
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
