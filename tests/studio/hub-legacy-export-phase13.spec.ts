@@ -67,3 +67,35 @@ test('private original-owner casework is removed from the DOM on Hub privacy loc
  await expect(page.locator('[data-legacy-backup-result]')).not.toContainText('source-private-id-16');
  await expect(page.locator('[data-legacy-backup-file]')).toHaveValue('');
 });
+
+test('85 original Folio records remain reviewable across page changes without persistent choices',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/home/legacy/');
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ const source=folio();
+ source.data.tasks=Array.from({length:85},(_,i)=>({id:'folio-original-'+String(i).padStart(3,'0'),title:'PRIVATE CASE TITLE '+i}));
+ await page.locator('[data-legacy-backup-file]').setInputFiles({
+  name:'many-original-folio.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))
+ });
+ await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
+ await expect(page.locator('[data-owner-casework]')).toContainText('Records 1–80 of 85');
+ await page.locator('[data-original-owner-choice]').first().selectOption('KEEP_SEPARATE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+ await page.locator('[data-action=original-owner-page-next]').click();
+ await expect(page.locator('[data-original-owner-choice]')).toHaveCount(5);
+ await expect(page.locator('[data-owner-casework]')).toContainText('folio-original-084');
+ await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE CASE TITLE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+ await page.locator('[data-original-owner-choice]').last().selectOption('REVIEW_SOURCE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+ await page.locator('[data-action=original-owner-page-prev]').click();
+ await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('KEEP_SEPARATE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+ expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('folio-original-084')))).toBe(false);
+ await page.locator('.ws-topbar [data-action=account]').click();
+ await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+ await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ await expect(page.locator('[data-legacy-backup-result]')).not.toContainText('folio-original-084');
+ await page.reload();
+ await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+});
