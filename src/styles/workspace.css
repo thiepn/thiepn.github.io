@@ -434,3 +434,10 @@
  .ws-owner-case-toolbar select{width:100%;min-width:0}
  .ws-owner-case-toolbar [data-owner-case-summary]{font-size:.875rem}
 }
+
+/* Phase 26: selectable source-only review marks, touch-safe without sideways scrolling. */
+.ws-owner-case-mark{display:flex!important;flex-direction:row;align-items:center;gap:.65rem;font-weight:600}
+.ws-owner-case-mark input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent,#3d7df5)}
+.ws-owner-case-marks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:.5rem;min-width:0;margin:.75rem 0}
+.ws-owner-case-marks button{min-height:44px;min-width:0;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:390px){.ws-owner-case-marks{grid-template-columns:repeat(2,minmax(0,1fr))}}

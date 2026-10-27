@@ -106,6 +106,72 @@ export function applyOriginalOwnerPageChoice(
  return next;
 }
 
+
+/** A temporary mark is not an approval and does not contain original source bytes. */
+export interface OwnerMarkedCase {
+ readonly kind:OwnerDryRunRow['kind'];
+ readonly originalId:string;
+ readonly observedStatus:OwnerDryRunRow['status'];
+}
+export const OWNER_MARK_LIMIT=256;
+const immutableOwnerId=(kind:string,id:string)=>JSON.stringify([kind,id]);
+/** Verify all marks atomically against the exact source snapshot. */
+export function validateOriginalOwnerMarks(
+ plan:OwnerDryRun,marks:readonly OwnerMarkedCase[],sha:string,revision:number,
+):void {
+ reviewOriginalOwnerCases(plan,[],sha,revision);
+ if(marks.length>OWNER_MARK_LIMIT)throw new Error('Original owner marked selection exceeds its memory limit.');
+ const source=new Map(plan.rows.map(row=>[immutableOwnerId(row.kind,row.originalId),row]));
+ const seen=new Set<string>();
+ for(const mark of marks){
+  const id=immutableOwnerId(mark.kind,mark.originalId);
+  if(seen.has(id))throw new Error('Original owner case is marked twice.');
+  seen.add(id);
+  const row=source.get(id);
+  if(!row||row.status!==mark.observedStatus)throw new Error('Original owner mark has changed source identity.');
+ }
+}
+/** Mark or unmark only the visible filtered 80-row page; off-page marks are untouched. */
+export function updateOriginalOwnerPageMarks(
+ plan:OwnerDryRun,choices:readonly OwnerCaseChoiceInput[],marks:readonly OwnerMarkedCase[],
+ offset:number,add:boolean,sha:string,revision:number,
+ filter:OwnerCaseFilter='ALL',reviewFilter:OwnerReviewFilter='ALL',
+):OwnerMarkedCase[] {
+ reviewOriginalOwnerCases(plan,choices,sha,revision);
+ validateOriginalOwnerMarks(plan,marks,sha,revision);
+ const matched=originalOwnerFilteredRows(plan,filter,choices,reviewFilter);
+ if(!Number.isSafeInteger(offset)||offset<0||offset>=matched.length||offset%OWNER_CASE_PAGE_SIZE!==0)
+  throw new Error('Original owner marked page is invalid.');
+ const candidate=new Map(marks.map(mark=>[immutableOwnerId(mark.kind,mark.originalId),mark]));
+ for(const {row} of matched.slice(offset,offset+OWNER_CASE_PAGE_SIZE)){
+  const id=immutableOwnerId(row.kind,row.originalId);
+  if(add)candidate.set(id,{kind:row.kind,originalId:row.originalId,observedStatus:row.status});
+  else candidate.delete(id);
+ }
+ const next=[...candidate.values()];
+ validateOriginalOwnerMarks(plan,next,sha,revision);
+ return next;
+}
+/** Apply a decision only to explicitly marked original cases, even across pages. */
+export function applyOriginalOwnerMarkedChoice(
+ plan:OwnerDryRun,choices:readonly OwnerCaseChoiceInput[],marks:readonly OwnerMarkedCase[],
+ choice:OwnerCaseChoice|null,sha:string,revision:number,
+):OwnerCaseChoiceInput[] {
+ reviewOriginalOwnerCases(plan,choices,sha,revision);
+ validateOriginalOwnerMarks(plan,marks,sha,revision);
+ if(choice!==null&&!(['KEEP_SEPARATE','REVIEW_SOURCE','REVIEW_HUB','DEFER'] as const).includes(choice))
+  throw new Error('Original owner marked choice is unsupported.');
+ const next=new Map(choices.map(row=>[immutableOwnerId(row.kind,row.originalId),row]));
+ for(const mark of marks){
+  const id=immutableOwnerId(mark.kind,mark.originalId);
+  if(choice===null)next.delete(id);
+  else next.set(id,{...mark,choice});
+ }
+ const result=[...next.values()];
+ reviewOriginalOwnerCases(plan,result,sha,revision);
+ return result;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -119,8 +185,10 @@ const OWNER_CASE_FILTER_LABELS:Readonly<Record<OwnerCaseFilter,string>>={
 };
 export function renderOriginalOwnerCaseworkForm(
  plan:OwnerDryRun,offset=0,decisions:readonly OwnerCaseChoiceInput[]=[],filter:OwnerCaseFilter='ALL',
- reviewFilter:OwnerReviewFilter='ALL',
+ reviewFilter:OwnerReviewFilter='ALL',marks:readonly OwnerMarkedCase[]=[],
 ):string {
+ validateOriginalOwnerMarks(plan,marks,plan.originalFileSha256,plan.hubRevision);
+ const markedKeys=new Set(marks.map(mark=>immutableOwnerId(mark.kind,mark.originalId)));
  const limit=OWNER_CASE_PAGE_SIZE,matched=originalOwnerFilteredRows(plan,filter,decisions,reviewFilter);
  const review=reviewOriginalOwnerCases(plan,decisions,plan.originalFileSha256,plan.hubRevision);
  const reviewCounts:Readonly<Record<OwnerReviewFilter,number>>={
@@ -132,7 +200,10 @@ export function renderOriginalOwnerCaseworkForm(
  const caseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
  const selected=new Map(decisions.map(d=>[caseKey(d.kind,d.originalId),d.choice]));
  const rows=visible.map(({row,index})=>
-  '<li><label><span>Case '+(index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
+  '<li><label class="ws-owner-case-mark"><input type="checkbox" data-original-owner-mark data-case-kind="'+esc(row.kind)+
+   '" data-case-id="'+esc(row.originalId)+'" data-case-status="'+esc(row.status)+'"'+
+   (markedKeys.has(immutableOwnerId(row.kind,row.originalId))?' checked':'')+
+   '>Mark case for selective review</label><label><span>Case '+(index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
    ' · ID <code>'+esc(row.originalId)+'</code> · '+esc(row.status.replace(/_/gu,' '))+
    ' · '+row.originalAttachmentIds.length+' original attachments</span>'+
    '<select data-original-owner-choice data-case-kind="'+esc(row.kind)+
@@ -157,7 +228,8 @@ export function renderOriginalOwnerCaseworkForm(
     OWNER_REVIEW_LABELS[item]+' ('+reviewCounts[item]+')</option>').join('')+
    '</select></label>'+
    '<span data-owner-case-summary>'+matched.length+' matching original records of '+plan.rows.length+
-   ' · '+review.reviewed+' reviewed · '+(plan.rows.length-review.reviewed)+' awaiting review</span>'+
+   ' · '+review.reviewed+' reviewed · '+(plan.rows.length-review.reviewed)+' awaiting review'+
+   ' · '+marks.length+' marked across pages (limit '+OWNER_MARK_LIMIT+')</span>'+
   '</div>'+
   (matched.length>limit?
     '<nav class="ws-owner-case-pages" aria-label="Original source cases">'+
@@ -170,10 +242,17 @@ export function renderOriginalOwnerCaseworkForm(
    '<button type="button" data-action="original-owner-page-keep"'+(!visible.length?' disabled':'')+'>Keep visible '+visible.length+' in original owner</button>'+
    '<button type="button" data-action="original-owner-page-clear"'+(!visible.length?' disabled':'')+'>Clear visible '+visible.length+' choices</button>'+
   '</div>'+
+  '<div class="ws-owner-case-marks" role="group" aria-label="Selective original-source review">'+
+    '<button type="button" data-action="original-owner-mark-visible"'+(!visible.length?' disabled':'')+'>Mark visible '+visible.length+'</button>'+
+    '<button type="button" data-action="original-owner-unmark-visible"'+(!visible.length?' disabled':'')+'>Unmark visible '+visible.length+'</button>'+
+    '<button type="button" data-action="original-owner-marked-keep"'+(!marks.length?' disabled':'')+'>Keep '+marks.length+' marked in source</button>'+
+    '<button type="button" data-action="original-owner-marked-clear"'+(!marks.length?' disabled':'')+'>Clear '+marks.length+' marked choices</button>'+
+    '<button type="button" data-action="original-owner-marked-reset"'+(!marks.length?' disabled':'')+'>Unmark all</button>'+
+   '</div>'+
   '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
   (visible.length?'<ol class="ws-owner-case-list">'+rows+'</ol>':
    '<p data-owner-case-empty>No original cases match this conflict type.</p>')+
-  '<p>Choices are temporary and cannot authorize imports, overwrite IDs or change source data.</p>'+
+  '<p>Marks and choices are session-only. Selective review cannot authorize imports, overwrite IDs or change source data.</p>'+
   '</section>';
 }
 

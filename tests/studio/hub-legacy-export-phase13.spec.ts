@@ -253,3 +253,54 @@ for(const width of [320,390,1440]){
   await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 26 selective 163-source marks survive pagination but not privacy or reimport '+width,async({page})=>{
+  test.setTimeout(80_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();
+  source.data.tasks=Array.from({length:163},(_,i)=>({id:'phase26-source-'+String(i).padStart(3,'0'),title:'SECRET SOURCE TITLE '+i}));
+  const input=page.locator('[data-legacy-backup-file]');
+  await input.setInputFiles({name:'original-folio-163.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(80);
+  await page.locator('[data-original-owner-choice]').first().selectOption('DEFER');
+  await page.locator('[data-action=original-owner-mark-visible]').click();
+  await expect(page.locator('[data-owner-casework]')).toContainText('80 marked across pages');
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(80);
+  await page.locator('[data-original-owner-mark]').first().check();
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(3);
+  await page.locator('[data-action=original-owner-mark-visible]').click();
+  await expect(page.locator('[data-owner-casework]')).toContainText('84 marked across pages');
+  await page.locator('[data-action=original-owner-marked-keep]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('84 reviewed');
+  await page.locator('[data-action=original-owner-page-prev]').click();
+  await page.locator('[data-action=original-owner-page-prev]').click();
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('KEEP_SEPARATE');
+  await page.locator('[data-action=original-owner-unmark-visible]').click();
+  await expect(page.locator('[data-owner-casework]')).toContainText('4 marked across pages');
+  await page.locator('[data-action=original-owner-marked-clear]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('80 reviewed');
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('KEEP_SEPARATE');
+  await page.locator('[data-action=original-owner-marked-reset]').click();
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('SECRET SOURCE TITLE');
+  const dims=await page.evaluate(()=>({w:document.documentElement.clientWidth,s:document.documentElement.scrollWidth}));
+  expect(dims.s).toBeLessThanOrEqual(dims.w);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('phase26-source-')))).toBe(false);
+  await page.locator('[data-original-owner-mark]').nth(1).check();
+  await expect(page.locator('[data-owner-casework]')).toContainText('1 marked across pages');
+  const next=folio();next.data.tasks=[{id:'replacement-only',title:'SECRET REPLACED SOURCE'}];
+  await input.setInputFiles({name:'different-owner.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(next))});
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('phase26-source-000');
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}
