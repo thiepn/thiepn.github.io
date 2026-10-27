@@ -127,9 +127,10 @@ async function setup(root: HTMLElement) {
     let privacyHeld = false;
     let activeLegacyPlan:OwnerDryRun|null=null;
     let originalCasePage=0;
+    let originalExportGeneration=0;
     const originalCaseChoices=new Map<string,OwnerCaseChoiceInput>();
     const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
-    function clearLegacyCasework(){activeLegacyPlan=null;originalCasePage=0;originalCaseChoices.clear();}
+    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseChoices.clear();}
     function showLegacyCasePage(){
         if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
         const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
@@ -3065,19 +3066,19 @@ async function setup(root: HTMLElement) {
                 if(status)status.textContent='Backup is outside the bounded 64 MiB preview; keep the original file unchanged.';
                 return;
             }
-            const own=epoch,original=state;
+            const own=epoch,original=state,sourceGeneration=originalExportGeneration;
             if(status)status.textContent='Checking original export bytes and record references…';
             void (async()=>{
                 try{
                     const bytes=new Uint8Array(await source.arrayBuffer());
                     const {preflight:result,plan}=await makeOriginalOwnerDryRun(bytes,original);
-                    if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    if(sourceGeneration!==originalExportGeneration||own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
                     activeLegacyPlan=plan;
                     originalCasePage=0;originalCaseChoices.clear();
                     if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan)+renderOriginalOwnerCaseworkForm(plan);
                     if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
                 }catch(error){
-                    if(own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    if(sourceGeneration!==originalExportGeneration||own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
                     if(status)status.textContent=error instanceof Error?error.message:'Original export could not be inspected.';
                 }
             })();
