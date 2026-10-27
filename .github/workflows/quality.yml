@@ -47,7 +47,7 @@ jobs:
           npm run build
           npx playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-calendar-c1.spec.ts tests/studio/hub-calendar-composition-c2.spec.ts -g 'calendar selected day remains circular|C2 original local event flows through ephemeral native calendar projection'
       - name: Account cross-tab refresh and durable-token smoke
-        run: npx playwright test -c playwright.studio.config.ts --project=chromium --project=webkit tests/studio/hub-sync.spec.ts -g 'concurrent new tabs share one rotating refresh even without Web Locks|durable Account token cannot be downgraded'
+        run: npx playwright test -c playwright.studio.config.ts --project=chromium --project=webkit tests/studio/hub-sync.spec.ts -g 'concurrent new tabs share one rotating refresh even without Web Locks|mixed Web Locks capability still shares exactly one rotating Account refresh|durable Account token cannot be downgraded|durable rotating Account token cannot be replaced by a later-expiring stale legacy mirror|restricted IDB plus no Web Locks never sends an unsafe duplicate rotating refresh'
       - run: npm run audit:studio
       - name: Hub public release profile gate
         run: npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke
