@@ -29,11 +29,15 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
   await page.goto('/home/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
-  await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await expect(page.locator('[data-launch]')).toHaveCount(1);
+  await expect(page.locator('[data-launch="canvas"]')).toHaveCount(1);
+  await expect(page.locator('[data-launch="notes"]')).toHaveCount(0);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
   await page.getByLabel('Widget title').fill('My tools');await page.locator('input[name=appIds][value=tiny-tools]').check();
   await page.locator('[data-dialog-submit]').click();
-  await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(3);
+  await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(2);
+  await expect(page.locator('[data-launch="tiny-tools"]')).toHaveCount(1);
   expect(await page.evaluate(()=>localStorage.getItem('notes:sentinel'))).toBe('keep');
   expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
   await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);

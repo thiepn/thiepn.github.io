@@ -19,7 +19,7 @@ for(const width of [390,1440]){
   await expect(page.locator('[data-hub-knowledge]')).toContainText('Hub local surviving note');
  });
 }
-test('existing KEEP database never migrates or initializes from an unqualified build',async({page})=>{
+test('existing KEEP database never migrates or initializes with incompatible original B3 schema',async({page})=>{
  await page.goto('/home/knowledge/');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.evaluate(async()=>await new Promise<void>((resolve,reject)=>{
@@ -34,7 +34,7 @@ test('existing KEEP database never migrates or initializes from an unqualified b
  }));
  page.once('dialog',d=>d.accept());
  await page.locator('[data-action="knowledge-native-start"]').click();
- await expect(page.locator('[data-workspace-toast]')).toContainText('Original KEEP React source has not been built');
+ await expect(page.locator('[data-workspace-toast]')).toContainText('Original KEEP B3 store schema or owner session is unavailable.');
  const record=await page.evaluate(async()=>await new Promise<unknown>((resolve,reject)=>{
   const req=indexedDB.open('KeepNotesDB');
   req.onsuccess=()=>{const db=req.result,read=db.transaction('notes').objectStore('notes').get('keep-original-unchanged');read.onsuccess=()=>{db.close();resolve(read.result);};read.onerror=()=>reject(read.error);};

@@ -43,17 +43,15 @@ test('Hub renders the locked app membership, order, direct launch and details li
   await expect(cards).toHaveCount(hub.expectedCount);
 
   const titles = await cards.locator('h2').allTextContents();
-  expect(titles.length).toBe(hub.expectedCount);
-  expect(titles[0]).toBe('Notes');
-  expect(titles[1]).toBe('Canvas');
-  expect(titles[2]).toBe('Tiny Tools');
-  expect(titles[7]).toBe('Scan');
-  expect(titles[8]).toBe('Signal Earth');
-  expect(titles[26]).toBe('Skyspire');
-  expect(titles.at(-1)).toBe(hub.projects.at(-1)!.title);
+  // Notes is intentionally Hub-owned, not a second public Apps catalogue card.
+  // Check every exact canonical entry and index, rather than a stale hardcoded subset.
+  const visibleEntries = orderedHub.filter(entry => entry.slug !== 'notes');
+  expect(visibleEntries).toHaveLength(hub.expectedCount);
+  expect(titles).toEqual(visibleEntries.map(entry => entry.title));
+  await expect(cards.locator('a[href="/project/notes/"]')).toHaveCount(0);
 
-  for (const entry of orderedHub) {
-    const card = cards.nth(entry.order - 1);
+  for (const [index,entry] of visibleEntries.entries()) {
+    const card = cards.nth(index);
     await expect(card).toHaveAttribute('data-hub-item-category', entry.category);
     await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
     if(entry.hasDetails)await expect(card.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('href', `/project/${entry.slug}/`);
