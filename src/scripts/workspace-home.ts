@@ -135,7 +135,7 @@ async function setup(root: HTMLElement) {
     function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalCaseChoices.clear();}
     function showLegacyCasePage(){
         if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
-        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter,originalReviewFilter);
+        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
         const host=root.querySelector<HTMLElement>('[data-owner-casework]');
         if(!host)return;
         const matching=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter);
@@ -2222,7 +2222,7 @@ async function setup(root: HTMLElement) {
                     activeLegacyPlan,[...originalCaseChoices.values()],
                     originalCasePage*OWNER_CASE_PAGE_SIZE,
                     action==='original-owner-page-keep'?'KEEP_SEPARATE':null,
-                    activeLegacyPlan.originalFileSha256,state.revision);
+                    activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter,originalReviewFilter);
                 originalCaseChoices.clear();
                 for(const decision of decisions)originalCaseChoices.set(sourceCaseKey(decision.kind,decision.originalId),decision);
                 showLegacyCasePage();
