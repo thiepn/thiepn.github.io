@@ -57,25 +57,37 @@ export function reviewOriginalOwnerCases(
 
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
-export function renderOriginalOwnerCaseworkForm(plan:OwnerDryRun):string {
- const limit=80,visible=plan.rows.slice(0,limit);
+export const OWNER_CASE_PAGE_SIZE=80;
+export function renderOriginalOwnerCaseworkForm(
+ plan:OwnerDryRun,offset=0,decisions:readonly OwnerCaseChoiceInput[]=[],
+):string {
+ const limit=OWNER_CASE_PAGE_SIZE;
+ if(!Number.isSafeInteger(offset)||offset<0||offset>=Math.max(plan.rows.length,1)||offset%limit!==0)
+  throw new Error('Original owner casework page is invalid.');
+ const visible=plan.rows.slice(offset,offset+limit);
+ const selected=new Map(decisions.map(d=>[d.kind+'\\u0000'+d.originalId,d.choice]));
  const rows=visible.map((row,index)=>
   '<li><label><span>Case '+(index+1)+' · '+esc(plan.owner)+' '+esc(row.kind)+
    ' · ID <code>'+esc(row.originalId)+'</code> · '+esc(row.status.replace(/_/gu,' '))+
    ' · '+row.originalAttachmentIds.length+' original attachments</span>'+
    '<select data-original-owner-choice data-case-kind="'+esc(row.kind)+
    '" data-case-id="'+esc(row.originalId)+'" data-case-status="'+esc(row.status)+'">'+
-   '<option value="">Not reviewed</option>'+
-   '<option value="KEEP_SEPARATE">Keep in original owner</option>'+
-   '<option value="REVIEW_SOURCE">Review original source</option>'+
-   '<option value="REVIEW_HUB">Review Hub record</option>'+
-   '<option value="DEFER">Hold for evidence</option>'+
+   '<option value=""'+(!selected.has(row.kind+'\\u0000'+row.originalId)?' selected':'')+'>Not reviewed</option>'+
+   '<option value="KEEP_SEPARATE"'+(selected.get(row.kind+'\\u0000'+row.originalId)==='KEEP_SEPARATE'?' selected':'')+'>Keep in original owner</option>'+
+   '<option value="REVIEW_SOURCE"'+(selected.get(row.kind+'\\u0000'+row.originalId)==='REVIEW_SOURCE'?' selected':'')+'>Review original source</option>'+
+   '<option value="REVIEW_HUB"'+(selected.get(row.kind+'\\u0000'+row.originalId)==='REVIEW_HUB'?' selected':'')+'>Review Hub record</option>'+
+   '<option value="DEFER"'+(selected.get(row.kind+'\\u0000'+row.originalId)==='DEFER'?' selected':'')+'>Hold for evidence</option>'+
    '</select></label></li>'
  ).join('');
  return '<section data-owner-casework aria-label="Original-owner conflict review">'+
   '<h4>Review individual source records</h4>'+
   '<ol class="ws-owner-case-list">'+rows+'</ol>'+
-  (plan.rows.length>limit?'<p>'+(plan.rows.length-limit)+' additional cases remain held for manual review.</p>':'')+
+  (plan.rows.length>limit?
+    '<nav class="ws-owner-case-pages" aria-label="Original source cases">'+
+    '<button type="button" data-action="original-owner-page-prev"'+(offset===0?' disabled':'')+'>Previous 80</button>'+
+    '<span>Records '+(offset+1)+'–'+Math.min(offset+limit,plan.rows.length)+' of '+plan.rows.length+'</span>'+
+    '<button type="button" data-action="original-owner-page-next"'+(offset+limit>=plan.rows.length?' disabled':'')+'>Next 80</button>'+
+    '</nav>':'')+
   '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
   '<p>Choices are temporary and cannot authorize imports, overwrite IDs or change source data.</p>'+
   '</section>';
