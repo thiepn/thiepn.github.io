@@ -94,3 +94,47 @@ describe('filtered original owner review preserves source identity and cross-pag
   expect(empty).not.toContain('source-0</code>');
  });
 });
+
+describe('decision-state-filtered source owner review',()=>{
+ it('retains exact original indexes while switching conflict and decision filters',()=>{
+  const old=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  const choices=[...old.slice(0,79),{...old[79]!,choice:'REVIEW_SOURCE' as const}];
+  const remaining=originalOwnerFilteredRows(plan,'ALL',choices,'UNREVIEWED');
+  expect(remaining).toHaveLength(83);
+  expect(remaining[0]?.index).toBe(80);
+  expect(originalOwnerFilteredRows(plan,'ALL',choices,'REVIEW_SOURCE').map(x=>x.index)).toEqual([79]);
+  const html=renderOriginalOwnerCaseworkForm(plan,80,choices,'ALL','UNREVIEWED');
+  expect(html).toContain('Records 81–83 of 83');
+  expect(html).toContain('80 reviewed · 83 awaiting review');
+  expect(html).not.toContain('source-79</code>');
+ });
+ it('bulk edits exactly the still-unreviewed rows; different decisions remain preserved',()=>{
+  const old=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  const choices=[...old.slice(0,79),{...old[79]!,choice:'DEFER' as const}];
+  const updated=applyOriginalOwnerPageChoice(plan,choices,0,'KEEP_SEPARATE',sha,7,'ALL','UNREVIEWED');
+  expect(updated).toHaveLength(160);
+  expect(updated.find(x=>x.originalId==='source-79')?.choice).toBe('DEFER');
+  expect(updated.find(x=>x.originalId==='source-80')?.choice).toBe('KEEP_SEPARATE');
+  expect(reviewOriginalOwnerCases(plan,updated,sha,7)).toMatchObject({writes:0,blocked:true,readyToMigrate:false});
+  const queue=originalOwnerFilteredRows(plan,'ALL',updated,'UNREVIEWED');
+  expect(queue.map(x=>x.index)).toEqual([160,161,162]);
+ });
+ it('rejects unsupported state filters, forged decisions and stale source receipts',()=>{
+  const c=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  expect(()=>originalOwnerFilteredRows(plan,'ALL',c,'INVALID' as never)).toThrow();
+  expect(()=>originalOwnerFilteredRows(plan,'ALL',[{...c[0]!,originalId:'forged'}],'UNREVIEWED')).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(plan,c,0,null,sha,8,'ALL','KEEP_SEPARATE')).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(plan,c,80,null,sha,7,'ALL','KEEP_SEPARATE')).toThrow();
+  expect(c).toHaveLength(80);
+ });
+ it('empty queue is bounded, nonwriting and excludes private IDs',()=>{
+  const a=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  const b=applyOriginalOwnerPageChoice(plan,a,80,'KEEP_SEPARATE',sha,7);
+  const c=applyOriginalOwnerPageChoice(plan,b,160,'KEEP_SEPARATE',sha,7);
+  const html=renderOriginalOwnerCaseworkForm(plan,0,c,'ALL','UNREVIEWED');
+  expect(html).toContain('No original cases match');
+  expect(html).toContain('data-action="original-owner-page-keep" disabled');
+  expect(html).not.toContain('source-0</code>');
+  expect(html).toContain('163 reviewed · 0 awaiting review');
+ });
+});

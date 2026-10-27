@@ -426,3 +426,11 @@
  .ws-owner-case-pages{margin:.6rem 0}
  .ws-owner-case-pages button{min-width:0;overflow-wrap:anywhere}
 }
+
+/* Review-status controls stay before original rows and reachable at phone width. */
+.ws-owner-case-toolbar label{flex:1 1 12rem}
+@media(max-width:390px){
+ .ws-owner-case-toolbar{gap:.6rem}
+ .ws-owner-case-toolbar select{width:100%;min-width:0}
+ .ws-owner-case-toolbar [data-owner-case-summary]{font-size:.875rem}
+}

@@ -2,11 +2,24 @@ import type {OwnerDryRun,OwnerDryRunRow} from './legacy-migration-dry-run';
 export type OwnerCaseChoice='KEEP_SEPARATE'|'REVIEW_SOURCE'|'REVIEW_HUB'|'DEFER';
 export const OWNER_CASE_FILTERS=['ALL','ID_COLLISION','TITLE_AMBIGUITY','MISSING_RELATION','SOURCE_ONLY'] as const;
 export type OwnerCaseFilter=typeof OWNER_CASE_FILTERS[number];
-/** Ephemeral status filter: original record indices and owner IDs remain authoritative. */
-export function originalOwnerFilteredRows(plan:OwnerDryRun,filter:OwnerCaseFilter='ALL'){
- if(!(OWNER_CASE_FILTERS as readonly string[]).includes(filter))
+export const OWNER_REVIEW_FILTERS=['ALL','UNREVIEWED','KEEP_SEPARATE','REVIEW_SOURCE','REVIEW_HUB','DEFER'] as const;
+export type OwnerReviewFilter=typeof OWNER_REVIEW_FILTERS[number];
+const selectionKey=(kind:string,id:string)=>kind+'\\u0000'+id;
+/** Original-source row queue; never reallocate IDs or persist decisions. */
+export function originalOwnerFilteredRows(
+ plan:OwnerDryRun,filter:OwnerCaseFilter='ALL',decisions:readonly OwnerCaseChoiceInput[]=[],
+ reviewFilter:OwnerReviewFilter='ALL',
+){
+ if(!(OWNER_CASE_FILTERS as readonly string[]).includes(filter)||
+    !(OWNER_REVIEW_FILTERS as readonly string[]).includes(reviewFilter))
   throw new Error('Original owner casework filter is unsupported.');
- return plan.rows.flatMap((row,index)=>filter==='ALL'||row.status===filter?[{row,index}]:[]);
+ reviewOriginalOwnerCases(plan,decisions,plan.originalFileSha256,plan.hubRevision);
+ const chosen=new Map(decisions.map(x=>[selectionKey(x.kind,x.originalId),x.choice]));
+ return plan.rows.flatMap((row,index)=>{
+  const decision=chosen.get(selectionKey(row.kind,row.originalId));
+  const showReview=reviewFilter==='ALL'||(reviewFilter==='UNREVIEWED'?decision===undefined:decision===reviewFilter);
+  return (filter==='ALL'||row.status===filter)&&showReview?[{row,index}]:[];
+ });
 }
 export interface OwnerCaseChoiceInput {
  readonly kind:OwnerDryRunRow['kind'];
@@ -72,11 +85,12 @@ export function applyOriginalOwnerPageChoice(
  observedSourceSha256:string,
  observedHubRevision:number,
  filter:OwnerCaseFilter='ALL',
+ reviewFilter:OwnerReviewFilter='ALL',
 ):OwnerCaseChoiceInput[] {
  // Authenticate the old selection and its immutable source receipt *before*
  // changing anything; forged or stale case rows fail without partial updates.
  reviewOriginalOwnerCases(plan,decisions,observedSourceSha256,observedHubRevision);
- const matched=originalOwnerFilteredRows(plan,filter);
+ const matched=originalOwnerFilteredRows(plan,filter,decisions,reviewFilter);
  if(!Number.isSafeInteger(offset)||offset<0||offset>=matched.length||offset%OWNER_CASE_PAGE_SIZE!==0)
    throw new Error('Original owner casework page is invalid.');
  const visible=matched.slice(offset,offset+OWNER_CASE_PAGE_SIZE);
@@ -95,14 +109,23 @@ export function applyOriginalOwnerPageChoice(
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
+const OWNER_REVIEW_LABELS:Readonly<Record<OwnerReviewFilter,string>>={
+ ALL:'All review states',UNREVIEWED:'Not reviewed',KEEP_SEPARATE:'Keep in original owner',
+ REVIEW_SOURCE:'Review original source',REVIEW_HUB:'Review Hub record',DEFER:'Hold for evidence',
+};
 const OWNER_CASE_FILTER_LABELS:Readonly<Record<OwnerCaseFilter,string>>={
  ALL:'All source cases',ID_COLLISION:'ID collisions',TITLE_AMBIGUITY:'Ambiguous titles',
  MISSING_RELATION:'Missing relations',SOURCE_ONLY:'Source-only',
 };
 export function renderOriginalOwnerCaseworkForm(
  plan:OwnerDryRun,offset=0,decisions:readonly OwnerCaseChoiceInput[]=[],filter:OwnerCaseFilter='ALL',
+ reviewFilter:OwnerReviewFilter='ALL',
 ):string {
- const limit=OWNER_CASE_PAGE_SIZE,matched=originalOwnerFilteredRows(plan,filter);
+ const limit=OWNER_CASE_PAGE_SIZE,matched=originalOwnerFilteredRows(plan,filter,decisions,reviewFilter);
+ const review=reviewOriginalOwnerCases(plan,decisions,plan.originalFileSha256,plan.hubRevision);
+ const reviewCounts:Readonly<Record<OwnerReviewFilter,number>>={
+  ALL:plan.rows.length,UNREVIEWED:plan.rows.length-review.reviewed,...review.selected,
+ };
  if(!Number.isSafeInteger(offset)||offset<0||offset>=Math.max(matched.length,1)||offset%limit!==0)
   throw new Error('Original owner casework page is invalid.');
  const visible=matched.slice(offset,offset+limit);
@@ -129,7 +152,12 @@ export function renderOriginalOwnerCaseworkForm(
    OWNER_CASE_FILTERS.map(status=>'<option value="'+status+'"'+(status===filter?' selected':'')+'>'+
     OWNER_CASE_FILTER_LABELS[status]+' ('+(status==='ALL'?plan.rows.length:plan.counts[status])+')</option>').join('')+
    '</select></label>'+
-   '<span data-owner-case-summary>'+matched.length+' matching original records of '+plan.rows.length+'</span>'+
+   '<label>Filter by review state<select aria-label="Filter original owner review state" data-original-owner-review-filter>'+
+   OWNER_REVIEW_FILTERS.map(item=>'<option value="'+item+'"'+(item===reviewFilter?' selected':'')+'>'+
+    OWNER_REVIEW_LABELS[item]+' ('+reviewCounts[item]+')</option>').join('')+
+   '</select></label>'+
+   '<span data-owner-case-summary>'+matched.length+' matching original records of '+plan.rows.length+
+   ' · '+review.reviewed+' reviewed · '+(plan.rows.length-review.reviewed)+' awaiting review</span>'+
   '</div>'+
   (matched.length>limit?
     '<nav class="ws-owner-case-pages" aria-label="Original source cases">'+
