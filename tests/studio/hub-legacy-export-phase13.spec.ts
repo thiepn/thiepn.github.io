@@ -99,3 +99,67 @@ test('85 original Folio records remain reviewable across page changes without pe
  await page.reload();
  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
 });
+
+
+for (const width of [320,390,1440]) {
+ test('163 original Folio cases preserve cross-page choices and private IDs on '+width,async({page})=>{
+  test.setTimeout(60_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();
+  source.data.tasks=Array.from({length:163},(_,i)=>({
+    id:'original-owner-'+String(i).padStart(3,'0'),
+    title:'PRIVATE SOURCE '+i
+  }));
+  await page.locator('[data-legacy-backup-file]').setInputFiles({
+   name:'163-source-records.json',mimeType:'application/json',
+   buffer:Buffer.from(JSON.stringify(source))
+  });
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
+  await page.locator('[data-original-owner-choice]').first().selectOption('KEEP_SEPARATE');
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
+  await page.locator('[data-original-owner-choice]').first().selectOption('REVIEW_HUB');
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(3);
+  await page.locator('[data-original-owner-choice]').last().selectOption('DEFER');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('3 reviewed');
+  await page.locator('[data-action=original-owner-page-prev]').click();
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('REVIEW_HUB');
+  await page.locator('[data-action=original-owner-page-prev]').click();
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('KEEP_SEPARATE');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('3 reviewed');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE SOURCE');
+  const layout=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  expect(layout.scroll).toBeLessThanOrEqual(layout.width);
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await expect(page.locator('[data-legacy-backup-result]')).not.toContainText('original-owner-000');
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}
+test('older asynchronous Folio preview cannot overwrite newer source-owner decisions',async({page})=>{
+ await page.addInitScript(()=>{
+  const original=File.prototype.arrayBuffer;
+  File.prototype.arrayBuffer=async function(){
+    if(this.name==='slow-original.json')await new Promise(resolve=>setTimeout(resolve,700));
+    return original.call(this);
+  };
+ });
+ await page.goto('/home/legacy/');
+ await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+ const slow=folio();slow.data.tasks=[{id:'OLD-OWNER-PROVENANCE',title:'Private old'}];
+ const current=folio();current.data.tasks=[{id:'NEW-OWNER-PROVENANCE',title:'Private current'}];
+ const input=page.locator('[data-legacy-backup-file]');
+ await input.setInputFiles({name:'slow-original.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(slow))});
+ await input.setInputFiles({name:'current-original.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(current))});
+ await expect(page.locator('[data-owner-casework]')).toContainText('NEW-OWNER-PROVENANCE');
+ await page.waitForTimeout(800); // allows the deliberately delayed prior byte read to settle
+ await expect(page.locator('[data-owner-casework]')).not.toContainText('OLD-OWNER-PROVENANCE');
+ await page.locator('[data-original-owner-choice]').selectOption('KEEP_SEPARATE');
+ await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+ await expect(page.locator('[data-legacy-backup-status]')).toContainText('no migration was performed');
+});
