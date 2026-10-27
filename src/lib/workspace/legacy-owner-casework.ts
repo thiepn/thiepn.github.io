@@ -71,7 +71,7 @@ export function applyOriginalOwnerPageChoice(
    throw new Error('Original owner casework page is invalid.');
  const visible=plan.rows.slice(offset,offset+OWNER_CASE_PAGE_SIZE);
  const key=(kind:string,id:string)=>kind+'\u0000'+id;
- const candidate=new Map(decisions.map(row=>[key(row.kind,row.originalId),row]));
+ const candidate=new Map<string,OwnerCaseChoiceInput>(decisions.map(row=>[key(row.kind,row.originalId),row] as const));
  for(const row of visible){
    const id=key(row.kind,row.originalId);
    if(choice===null)candidate.delete(id);
