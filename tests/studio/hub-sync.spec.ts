@@ -190,6 +190,12 @@ test('mixed Web Locks capability still shares exactly one rotating Account refre
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
+  // Verify the initial bootstrap fully completed before modifying the legacy mirror.
+  // Closing an active RPC mid-lease is a different crash-recovery test and must
+  // never be mixed with a stale-localStorage ownership assertion.
+  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+  await a.page.waitForLoadState('networkidle');
+  expect(api.refreshes()).toBe(0);
   await a.page.evaluate(()=>{
     const key='thiepn:hub-sso:v1:tokens';
     const original=JSON.parse(localStorage.getItem(key)!);
@@ -206,6 +212,12 @@ test('durable Account token cannot be downgraded by stale localStorage mirror',a
 test('durable rotating Account token cannot be replaced by a later-expiring stale legacy mirror',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
  expect(api.exchanges()).toBe(1);
+  // Verify the initial bootstrap fully completed before modifying the legacy mirror.
+  // Closing an active RPC mid-lease is a different crash-recovery test and must
+  // never be mixed with a stale-localStorage ownership assertion.
+  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+  await a.page.waitForLoadState('networkidle');
+  expect(api.refreshes()).toBe(0);
  await a.page.evaluate(()=>{
   const key='thiepn:hub-sso:v1:tokens';
   const stale=JSON.parse(localStorage.getItem(key)!);
