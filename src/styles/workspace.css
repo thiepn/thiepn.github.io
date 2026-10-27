@@ -405,3 +405,12 @@
 .ws-owner-case-list label{display:grid;gap:.4rem;min-width:0}
 .ws-owner-case-list code{overflow-wrap:anywhere;word-break:break-word}
 .ws-owner-case-list select{min-width:0;width:min(100%,28rem);min-height:44px}
+
+.ws-owner-case-pages{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.55rem;min-width:0}
+.ws-owner-case-pages button{min-height:44px}
+.ws-owner-case-pages span{font-variant-numeric:tabular-nums}
+@media(max-width:380px){
+ .ws-owner-case-pages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ws-owner-case-pages span{grid-column:1/-1;grid-row:1}
+ .ws-owner-case-pages button{min-width:0}
+}
