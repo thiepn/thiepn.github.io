@@ -460,3 +460,17 @@
 .ws-owner-case-history [data-owner-history-status]{flex:1 1 100%;font-variant-numeric:tabular-nums;color:var(--ws-muted)}
 [data-owner-history-provenance]{font-size:.85rem;color:var(--ws-muted);overflow-wrap:anywhere}
 @media(max-width:390px){.ws-owner-case-history button{flex:1 1 calc(50% - .5rem);font-size:.9rem}}
+
+/* Phase 29: evidence-only selective history recovery; no source writes or approvals. */
+.ws-owner-case-recovery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:.65rem;align-items:end;margin:.75rem 0}
+.ws-owner-case-recovery label{display:grid;gap:.35rem;min-width:0}
+.ws-owner-case-recovery select,.ws-owner-case-recovery button{min-height:44px;min-width:0;width:100%;overflow-wrap:anywhere}
+.ws-owner-case-recovery [data-owner-recovery-status]{grid-column:1/-1;color:var(--ws-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media(max-width:390px){.ws-owner-case-recovery{grid-template-columns:repeat(2,minmax(0,1fr))}.ws-owner-case-recovery label{grid-column:1/-1}}
+/* The two dark-mode planning actions were below WCAG AA contrast in WebKit. */
+[data-theme=dark] .ws button[data-action="new-decision"],
+[data-theme=dark] .ws button[data-action="new-outcome"],
+.ws[data-theme=dark] button[data-action="new-decision"],
+.ws[data-theme=dark] button[data-action="new-outcome"]{
+ background:#88b7ff;color:#11233d;border:1px solid #88b7ff;font-weight:650;
+}

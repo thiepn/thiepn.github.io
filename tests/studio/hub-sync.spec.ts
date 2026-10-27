@@ -7,8 +7,8 @@ const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,clien
 function backend(options={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
- let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
- return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
+ let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false,oauthOwner=OWNER;const writes:{owner:string;state:any}[]=[];
+ return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,switchOAuthOwner:(owner:string)=>{if(![OWNER,OTHER].includes(owner))throw Error('Unknown OAuth fixture owner');oauthOwner=owner;},exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(storageMode!=='normal')await context.addInitScript(mode=>{
    if(location.origin!=='https://thiepn.dev')return;
@@ -21,7 +21,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    sessionStorage.setItem('fixture:quota-filled','1');
    let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
   },storageMode);
-  if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
+  if(owner)await context.addInitScript(({owner,token})=>{if(!localStorage.getItem('thiepn:hub-sso:v1:tokens'))localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));},{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{
    try {const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search,{maxRetries:2});expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});}
    catch(error){
@@ -40,7 +40,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/auth/v1/oauth/authorize'){expect(url.searchParams.get('client_id')).toBe(configuration.clientId);expect(url.searchParams.get('code_challenge_method')).toBe('S256');challenge=url.searchParams.get('code_challenge')!;const callback=new URL(configuration.callback);callback.searchParams.set('code','fictional-one-use-code');callback.searchParams.set('state',url.searchParams.get('state')!);await route.fulfill({contentType:'text/html',body:'<script>location.replace('+JSON.stringify(callback.href)+')</script>'});return;}
-   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
+   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(oauthOwner),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
    const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
@@ -309,19 +309,71 @@ test('Notes summaries require explicit grant and never create a public Notes cat
  const widget=a.page.locator('[data-widget-type=continue]');
  await expect(widget).not.toContainText('Connected Notes title');
  await a.page.goto('https://thiepn.dev/apps/');
- await expect(a.page.locator('[data-hub-item]')).not.toContainText('Connected Notes title');
+ await expect(a.page.locator('[data-hub-item]').filter({hasText:'Connected Notes title'})).toHaveCount(0);
+ await expect(a.page.locator('[data-hub-item][data-hub-slug=notes]')).toHaveCount(0);
  await expect(a.page.locator('[data-hub-item] a[href*="note="]')).toHaveCount(0);
  await a.context.close();
 });
 
-test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
- const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
- await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
- await expect(a.page.locator('[data-home-mode=today]')).toBeVisible();
- await workspace(a.page);
- await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
- const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
- expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
+/** Read the authoritative durable Account principal, not the stale localStorage mirror. */
+async function durableAccountOwner(page:Page):Promise<string|null>{
+ return page.evaluate(()=>new Promise<string|null>((resolve,reject)=>{
+  const open=indexedDB.open('thiepn-hub-account');
+  open.onerror=()=>reject(open.error);
+  open.onsuccess=()=>{
+   const db=open.result,tx=db.transaction('session','readonly');
+   const req=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+   req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    try{
+     const value=req.result?.value;
+     if(!value){resolve(null);return;}
+     const token=JSON.parse(value).accessToken as string;
+     const part=token.split('.')[1]??'';
+     const claims=JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
+     resolve(claims.sub??null);
+    }catch(error){reject(error);}
+   };
+   tx.oncomplete=()=>db.close();
+   tx.onabort=()=>{db.close();reject(tx.error);};
+  };
+ }));
+}
+test('real second-tab Account OAuth switch keeps old capture with old owner and never uploads it to new owner',async({browser})=>{
+ test.setTimeout(60_000);
+ const api=backend(),a=await api.device(browser);
+ await sync(a.page);
+ await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
+ await expect.poll(()=>durableAccountOwner(a.page)).toBe(OWNER);
+ // Same-browser-context tab executes the real PKCE owner switch using the
+ // existing Account UI. A synthetic StorageEvent is not an owner transition.
+ const otherTab=await a.context.newPage();
+ await otherTab.goto('https://thiepn.dev/home/');
+ await expect(otherTab.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+ await expect(otherTab.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ api.switchOAuthOwner(OTHER);
+ await otherTab.locator('.ws-topbar [data-action=account]').click();
+ await expect(otherTab.locator('[data-auth-switch]')).toBeVisible();
+ await otherTab.locator('[data-auth-switch]').click();
+ await expect.poll(()=>api.exchanges(),{timeout:20_000}).toBe(1);
+ await expect.poll(()=>durableAccountOwner(otherTab),{timeout:20_000}).toBe(OTHER);
+ await expect.poll(()=>durableAccountOwner(a.page),{timeout:20_000}).toBe(OTHER);
+ await expect(a.page.locator('[data-capture-draft]')).toHaveValue('',{timeout:20_000});
+ await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await sync(a.page);
+ const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{
+  const request=indexedDB.open('thiepn-adaptive-workspace',1);
+  request.onsuccess=()=>{
+   const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);
+   read.onsuccess=()=>{resolve(read.result);db.close();};
+   read.onerror=()=>reject(read.error);
+  };
+  request.onerror=()=>reject(request.error);
+ }),OWNER);
+ expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');
+ expect(api.writes.some(write=>write.owner===OTHER)).toBe(true);
+ expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);
+ await a.context.close();
 });
 
 // Exercises the real shared shell and summary readers, not a standalone status fixture.

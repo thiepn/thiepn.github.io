@@ -396,3 +396,44 @@ for(const width of [320,390,1440]){
   await page.reload();await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 29 reviewed marked decisions selectively recover without overwriting newer choices '+width,async({page})=>{
+  test.setTimeout(90_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const owner=folio();owner.data.tasks=Array.from({length:163},(_,i)=>({id:'phase29-original-'+i,title:'PRIVATE SOURCE '+i}));
+  await page.locator('[data-legacy-backup-file]').setInputFiles({name:'original29.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(owner))});
+  const marks=page.locator('[data-original-owner-mark]'),choices=page.locator('[data-original-owner-choice]');
+  await marks.nth(0).check();await marks.nth(1).check();
+  await choices.nth(0).selectOption('KEEP_SEPARATE');
+  await choices.nth(1).selectOption('DEFER');
+  await choices.nth(0).selectOption('');
+  await choices.nth(1).selectOption('REVIEW_HUB');
+  await page.locator('[data-original-owner-recovery-step]').selectOption('2');
+  await page.locator('[data-action=original-owner-recovery-preview]').click();
+  await expect(page.locator('[data-owner-recovery-status]')).toContainText('1 restorable · 1 protected current');
+  await page.locator('[data-action=original-owner-recovery-apply]').click();
+  await expect(choices.nth(0)).toHaveValue('KEEP_SEPARATE');
+  await expect(choices.nth(1)).toHaveValue('REVIEW_HUB');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+  await page.locator('[data-action=original-owner-undo]').click();
+  await expect(choices.nth(0)).toHaveValue('');
+  await expect(choices.nth(1)).toHaveValue('REVIEW_HUB');
+  await page.locator('[data-action=original-owner-redo]').click();
+  await expect(choices.nth(0)).toHaveValue('KEEP_SEPARATE');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE SOURCE ');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('phase29-original-')))).toBe(false);
+  const replacement=folio();replacement.data.tasks=[{id:'new-source-phase29',title:'PRIVATE DIFFERENT'}];
+  await page.locator('[data-legacy-backup-file]').setInputFiles({name:'original-changed29.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(replacement))});
+  await expect(page.locator('[data-action=original-owner-recovery-preview]')).toBeDisabled();
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}

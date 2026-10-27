@@ -253,6 +253,70 @@ export function traverseOriginalOwnerCaseTimeline(
  throw new Error('Unsupported original casework recovery direction.');
 }
 
+
+/** Selection-specific historical recovery only fills missing reviewed choices.
+ * A divergent, independently authored current choice is always protected.
+ * Source bytes, attachments and approval rights remain outside this engine.
+ */
+export interface OriginalOwnerSelectiveRecovery {
+ readonly owner:OwnerDryRun['owner'];
+ readonly sourceSha256:string;
+ readonly hubRevision:number;
+ readonly stepsBack:number;
+ readonly currentWitness:string;
+ readonly historicalWitness:string;
+ readonly recoverable:number;
+ readonly protectedCurrent:number;
+ readonly unchanged:number;
+ readonly unavailable:number;
+ readonly blocked:true;
+ readonly writes:0;
+}
+export function previewOriginalOwnerSelectiveRecovery(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,stepsBack:number,
+):OriginalOwnerSelectiveRecovery {
+ verifyOriginalCaseTimeline(plan,timeline);
+ if(!Number.isSafeInteger(stepsBack)||stepsBack<1||stepsBack>timeline.past.length)
+  throw new Error('Original owner historical generation is unavailable.');
+ const current=timeline.current,history=timeline.past[timeline.past.length-stepsBack]!;
+ const before=new Map(history.choices.map(c=>[immutableOwnerId(c.kind,c.originalId),c.choice]));
+ const now=new Map(current.choices.map(c=>[immutableOwnerId(c.kind,c.originalId),c.choice]));
+ let recoverable=0,protectedCurrent=0,unchanged=0,unavailable=0;
+ for(const mark of current.marks){
+  const key=immutableOwnerId(mark.kind,mark.originalId);
+  const old=before.get(key),present=now.get(key);
+  if(old===undefined)unavailable++;
+  else if(present===undefined)recoverable++;
+  else if(present===old)unchanged++;
+  else protectedCurrent++;
+ }
+ return {owner:plan.owner,sourceSha256:plan.originalFileSha256,
+  hubRevision:plan.hubRevision,stepsBack,
+  currentWitness:JSON.stringify(current),historicalWitness:JSON.stringify(history),
+  recoverable,protectedCurrent,unchanged,unavailable,blocked:true,writes:0};
+}
+/** Re-preflight every original frame and exact current/historical witness.
+ * Conflict cases NEVER silently overwrite a current choice.
+ */
+export function applyOriginalOwnerSelectiveRecovery(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,preview:OriginalOwnerSelectiveRecovery,
+):OwnerCaseChoiceInput[] {
+ const fresh=previewOriginalOwnerSelectiveRecovery(plan,timeline,preview.stepsBack);
+ if(JSON.stringify(preview)!==JSON.stringify(fresh))
+  throw new Error('Original owner recovery preview expired after a source or review change.');
+ const historical=timeline.past[timeline.past.length-preview.stepsBack]!;
+ const previous=new Map(historical.choices.map(c=>[immutableOwnerId(c.kind,c.originalId),c]));
+ const choices=new Map(timeline.current.choices.map(c=>[immutableOwnerId(c.kind,c.originalId),c]));
+ for(const mark of timeline.current.marks){
+  const key=immutableOwnerId(mark.kind,mark.originalId);
+  const old=previous.get(key);
+  if(old&&!choices.has(key))choices.set(key,{...old});
+ }
+ const restored=[...choices.values()];
+ reviewOriginalOwnerCases(plan,restored,plan.originalFileSha256,plan.hubRevision);
+ return restored;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -342,6 +406,13 @@ export function renderOriginalOwnerCaseworkForm(
    '<button type="button" data-action="original-owner-undo" disabled>Undo last review change</button>'+
    '<button type="button" data-action="original-owner-redo" disabled>Redo last review change</button>'+
    '<span data-owner-history-status role="status">0 undo steps · 0 redo steps; session-only</span>'+
+  '</div>'+
+  '<div class="ws-owner-case-recovery" role="group" aria-label="Recover missing original-source decisions">'+
+   '<label>Historical review visit<select aria-label="Historical source review generation" data-original-owner-recovery-step disabled>'+
+    '<option value="1">1 visit back</option></select></label>'+
+   '<button type="button" data-action="original-owner-recovery-preview" disabled>Preview safe marked recovery</button>'+
+   '<button type="button" data-action="original-owner-recovery-apply" disabled>Restore missing choices</button>'+
+   '<p data-owner-recovery-status role="status">No recovery preview · current reviewed decisions remain protected.</p>'+
   '</div>'+
   '<p data-owner-history-provenance>Unverified '+esc(plan.owner)+' source fingerprint '+esc(plan.originalFileSha256.slice(0,12))+
    '… · Hub revision '+plan.hubRevision+'. Fingerprint is not rights approval.</p>'+

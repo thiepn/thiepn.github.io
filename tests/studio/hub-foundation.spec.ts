@@ -138,3 +138,25 @@ for (const count of [100, 250]) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 }
+
+for(const width of [390,1440]){
+ test('dark-mode planning action contrast remains at least WCAG AA '+width,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
+  await page.goto('/home/');
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  const ratios=await page.evaluate(()=>{
+   const linear=(x:number)=>{const c=x/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4;};
+   const luminosity=(rgb:string)=>{const channels=(rgb.match(/[0-9.]+/gu)||[]).slice(0,3).map(Number);
+    return .2126*linear(channels[0]??0)+.7152*linear(channels[1]??0)+.0722*linear(channels[2]??0);};
+   return ['new-decision','new-outcome'].map(name=>{
+    const button=document.querySelector<HTMLButtonElement>('button[data-action="'+name+'"]');
+    if(!button)return {name,ratio:0,missing:true};
+    const styles=getComputedStyle(button);
+    const ink=luminosity(styles.color),paper=luminosity(styles.backgroundColor);
+    return {name,ratio:(Math.max(ink,paper)+.05)/(Math.min(ink,paper)+.05),missing:false};
+   });
+  });
+  expect(ratios.every(x=>!x.missing&&x.ratio>=4.5)).toBe(true);
+ });
+}
