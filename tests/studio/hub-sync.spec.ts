@@ -115,6 +115,13 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ // The previous tab must finish its initial Account/workspace RPCs before
+ // this test deliberately expires the durable token. Otherwise closing a
+ // still-bootstrapping fixture page aborts an unrelated refresh and leaves an
+ // orphaned lease, which is a distinct crash-recovery scenario.
+ await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+ await a.page.waitForLoadState('networkidle');
+ expect(api.refreshes()).toBe(0);
  await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
    const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
@@ -123,6 +130,7 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
   };request.onerror=()=>reject(request.error);
  }));
  await a.page.close();
+ expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
   await a.context.addInitScript(()=>{
@@ -135,6 +143,13 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
 });
 test('mixed Web Locks capability still shares exactly one rotating Account refresh',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ // The previous tab must finish its initial Account/workspace RPCs before
+ // this test deliberately expires the durable token. Otherwise closing a
+ // still-bootstrapping fixture page aborts an unrelated refresh and leaves an
+ // orphaned lease, which is a distinct crash-recovery scenario.
+ await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+ await a.page.waitForLoadState('networkidle');
+ expect(api.refreshes()).toBe(0);
  await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
    const request=indexedDB.open('thiepn-hub-account');
    request.onerror=()=>reject(request.error);
@@ -151,6 +166,7 @@ test('mixed Web Locks capability still shares exactly one rotating Account refre
    };
  }));
  await a.page.close();
+ expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
  const [native,fallback]=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
  await Promise.all([native,fallback].map(async page=>{
