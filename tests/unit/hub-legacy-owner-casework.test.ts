@@ -63,7 +63,7 @@ describe('original-owner conflict review without writer or rights authority',()=
   expect(plan.rows).toHaveLength(163);
   const choices=[
    {kind:'task',originalId:'source-0',observedStatus:'SOURCE_ONLY',choice:'KEEP_SEPARATE'},
-   {kind:'task',originalId:'source-162',observedStatus:'SOURCE_ONLY',choice:'REVIEW_SOURCE'},
+   {kind:'task',originalId:'<img src=x onerror=alert(1)>',observedStatus:'SOURCE_ONLY',choice:'REVIEW_SOURCE'},
   ] as const;
   const first=renderOriginalOwnerCaseworkForm(plan,0,choices);
   expect(first).toContain('Records 1–80 of 163');
