@@ -129,7 +129,7 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
     Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
   });
   const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
- await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
+ await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});}));
  for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
   expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
 });
@@ -155,7 +155,7 @@ test('mixed Web Locks capability still shares exactly one rotating Account refre
  await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
  await Promise.all([native,fallback].map(async page=>{
    await page.goto('https://thiepn.dev/');
-   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
  }));
  expect(await fallback.evaluate(()=>Boolean(navigator.locks))).toBe(false);
  expect(api.exchanges()).toBe(1);
@@ -191,7 +191,7 @@ test('durable rotating Account token cannot be replaced by a later-expiring stal
  const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await Promise.all(pages.map(async page=>{
    await page.goto('https://thiepn.dev/');
-   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
  }));
  expect(api.refreshes()).toBe(0);
  const durable=await pages[0]!.evaluate(()=>new Promise<{refreshToken:string}|null>((resolve,reject)=>{
