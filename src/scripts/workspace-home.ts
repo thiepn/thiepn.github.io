@@ -52,7 +52,7 @@ import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases,applyOriginalOwnerPageChoice,applyOriginalOwnerMarkedChoice,updateOriginalOwnerPageMarks,validateOriginalOwnerMarks,originalOwnerFilteredRows,OWNER_CASE_FILTERS,OWNER_REVIEW_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OwnerMarkedCase,type OwnerCaseFilter,type OwnerReviewFilter} from '../lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,applyOriginalOwnerPageChoice,applyOriginalOwnerMarkedChoice,updateOriginalOwnerPageMarks,validateOriginalOwnerMarks,originalOwnerFilteredRows,OWNER_CASE_FILTERS,OWNER_REVIEW_FILTERS,OWNER_MARK_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OwnerMarkedCase,type OwnerCaseFilter,type OwnerReviewFilter,type OwnerMarkFilter} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -129,23 +129,53 @@ async function setup(root: HTMLElement) {
     let originalCasePage=0;
     let originalCaseFilter:OwnerCaseFilter='ALL';
     let originalReviewFilter:OwnerReviewFilter='ALL';
+    let originalMarkFilter:OwnerMarkFilter='ALL';
     let originalExportGeneration=0;
     const originalCaseChoices=new Map<string,OwnerCaseChoiceInput>();
     const originalCaseMarks=new Map<string,OwnerMarkedCase>();
     const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
     const sourceMarkKey=(kind:string,id:string)=>JSON.stringify([kind,id]);
-    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalCaseChoices.clear();originalCaseMarks.clear();}
+    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';originalCaseChoices.clear();originalCaseMarks.clear();}
     function showLegacyCasePage(){
         if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
         const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
         validateOriginalOwnerMarks(activeLegacyPlan,[...originalCaseMarks.values()],activeLegacyPlan.originalFileSha256,state.revision);
         const host=root.querySelector<HTMLElement>('[data-owner-casework]');
         if(!host)return;
-        const matching=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter);
+        const matching=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
         originalCasePage=Math.min(originalCasePage,Math.floor(Math.max(matching.length-1,0)/OWNER_CASE_PAGE_SIZE));
-        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()],originalCaseFilter,originalReviewFilter,[...originalCaseMarks.values()]);
+        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()],originalCaseFilter,originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
         const status=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
         if(status)status.textContent=renderOriginalOwnerCaseworkReceipt(review);
+    }
+    function focusLegacyCasework(){
+        const heading=root.querySelector<HTMLElement>('[data-owner-casework] h4');
+        heading?.scrollIntoView({block:'start',behavior:'auto'});
+        heading?.focus({preventScroll:true});
+    }
+    /** A checkbox never remounts itself; native touch/keyboard click remains stable. */
+    function syncOriginalMarkControls(){
+        const host=root.querySelector<HTMLElement>('[data-owner-casework]');
+        if(!host)return;
+        const count=originalCaseMarks.size;
+        const label=host.querySelector<HTMLElement>('[data-owner-mark-count]');
+        if(label)label.textContent=String(count);
+        const actions:Readonly<Record<string,string>>={
+            'original-owner-marked-keep':'Keep '+count+' marked in source',
+            'original-owner-marked-clear':'Clear '+count+' marked choices',
+            'original-owner-marked-reset':'Unmark all',
+        };
+        for(const [action,title] of Object.entries(actions)){
+            const button=host.querySelector<HTMLButtonElement>('[data-action="'+action+'"]');
+            if(button){button.textContent=title;button.disabled=count===0;}
+        }
+        const filter=host.querySelector<HTMLSelectElement>('[data-original-owner-mark-filter]');
+        if(filter){
+            for(const option of filter.options){
+                if(option.value==='MARKED')option.textContent='Marked for review ('+count+')';
+                else if(option.value==='UNMARKED')option.textContent='Not marked ('+(activeLegacyPlan?.rows.length??0)-count+')';
+            }
+        }
     }
     const nativeKeep=attachNativeKeep(root,()=>view==='knowledge'&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden,()=>render(),message=>toast(message));
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
@@ -2203,7 +2233,7 @@ async function setup(root: HTMLElement) {
         if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
         if(action==='original-owner-next-unreviewed'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
-            const matched=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter);
+            const matched=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
             const start=originalCasePage*OWNER_CASE_PAGE_SIZE;
             const pending=matched.map(({row},index)=>({row,index}))
                 .filter(({row})=>!originalCaseChoices.has(sourceCaseKey(row.kind,row.originalId)));
@@ -2214,7 +2244,8 @@ async function setup(root: HTMLElement) {
                 showLegacyCasePage();
                 const control=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')]
                     .find(el=>el.dataset.caseKind===selected.row.kind&&el.dataset.caseId===selected.row.originalId);
-                control?.focus();
+                control?.focus({preventScroll:true});
+                control?.scrollIntoView({block:'nearest',behavior:'auto'});
             }catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
             return;
         }
@@ -2226,7 +2257,7 @@ async function setup(root: HTMLElement) {
                     const marked=updateOriginalOwnerPageMarks(activeLegacyPlan,[...originalCaseChoices.values()],
                         [...originalCaseMarks.values()],originalCasePage*OWNER_CASE_PAGE_SIZE,
                         action==='original-owner-mark-visible',activeLegacyPlan.originalFileSha256,state.revision,
-                        originalCaseFilter,originalReviewFilter);
+                        originalCaseFilter,originalReviewFilter,originalMarkFilter);
                     originalCaseMarks.clear();
                     for(const row of marked)originalCaseMarks.set(sourceMarkKey(row.kind,row.originalId),row);
                 }else if(action==='original-owner-marked-reset'){
@@ -2240,9 +2271,13 @@ async function setup(root: HTMLElement) {
                     for(const row of next)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
                 }
                 showLegacyCasePage();
-                root.querySelector<HTMLButtonElement>('[data-action="'+action+'"]')?.focus();
+                root.querySelector<HTMLButtonElement>('[data-action="'+action+'"]')?.focus({preventScroll:true});
             }catch(error){
-                // No source writes or partial selections survive a stale/forged batch.
+                // Capacity errors must not erase valid, still memory-only selections.
+                if(error instanceof Error&&error.message.includes('memory limit')){
+                    toast(error.message);return;
+                }
+                // Only a stale/forged source receipt invalidates the private draft.
                 clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
                 toast(error instanceof Error?error.message:'Original source review was invalidated.');
             }
@@ -2255,7 +2290,7 @@ async function setup(root: HTMLElement) {
                     activeLegacyPlan,[...originalCaseChoices.values()],
                     originalCasePage*OWNER_CASE_PAGE_SIZE,
                     action==='original-owner-page-keep'?'KEEP_SEPARATE':null,
-                    activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter,originalReviewFilter);
+                    activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter,originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
                 originalCaseChoices.clear();
                 for(const decision of decisions)originalCaseChoices.set(sourceCaseKey(decision.kind,decision.originalId),decision);
                 showLegacyCasePage();
@@ -2270,10 +2305,10 @@ async function setup(root: HTMLElement) {
         if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
             const next=originalCasePage+(action==='original-owner-page-next'?1:-1);
-            if(next<0||next*OWNER_CASE_PAGE_SIZE>=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter).length)return;
+            if(next<0||next*OWNER_CASE_PAGE_SIZE>=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter).length)return;
             originalCasePage=next;
             try{showLegacyCasePage();}catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
-            root.querySelector<HTMLSelectElement>('[data-original-owner-choice]')?.focus();
+            focusLegacyCasework();
             return;
         }
         if(action==='knowledge-native-stop'){nativeKeep.revoke();render();return;}
@@ -3181,6 +3216,15 @@ async function setup(root: HTMLElement) {
             catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
             return;
         }
+        if(view==='legacy'&&el.matches('[data-original-owner-mark-filter]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const selected=el.value as OwnerMarkFilter;
+            if(!(OWNER_MARK_FILTERS as readonly string[]).includes(selected)){el.value=originalMarkFilter;return;}
+            originalMarkFilter=selected;originalCasePage=0;
+            try{showLegacyCasePage();root.querySelector<HTMLSelectElement>('[data-original-owner-mark-filter]')?.focus({preventScroll:true});}
+            catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
         if(view==='legacy'&&el.matches('[data-original-owner-mark]')){
             if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
             const mark:OwnerMarkedCase={kind:el.dataset.caseKind as OwnerMarkedCase['kind'],
@@ -3194,10 +3238,12 @@ async function setup(root: HTMLElement) {
                     activeLegacyPlan.originalFileSha256,state.revision);
                 originalCaseMarks.clear();
                 for(const [id,row] of candidate)originalCaseMarks.set(id,row);
-                showLegacyCasePage();
-                const control=[...root.querySelectorAll<HTMLInputElement>('[data-original-owner-mark]')]
-                    .find(x=>x.dataset.caseKind===mark.kind&&x.dataset.caseId===mark.originalId);
-                control?.focus();
+                if(originalMarkFilter==='ALL')syncOriginalMarkControls();
+                else{
+                    // Filter membership changed; this one row may leave the queue.
+                    showLegacyCasePage();
+                    focusLegacyCasework();
+                }
             }catch(error){
                 el.checked=originalCaseMarks.has(key);
                 toast(error instanceof Error?error.message:'Mark could not be changed.');

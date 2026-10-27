@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
+import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS} from '../../src/lib/workspace/legacy-owner-casework';
 import type {OwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
 
 const sha='a'.repeat(64);
@@ -195,5 +195,50 @@ describe('Phase 26 marked original-source choices across pages',()=>{
   expect(html).toContain('data-action="original-owner-marked-clear" disabled');
   expect(html).toContain('&lt;private&amp;source&gt;');
   expect(html).not.toContain('<private&source>');
+ });
+});
+
+describe('Phase 27 original marked-only queue preserves source IDs and custody',()=>{
+ it('combines marked-only, kind conflict and review-state filters with exact original indexes',()=>{
+  const a=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7);
+  const b=updateOriginalOwnerPageMarks(plan,[],a,160,true,sha,7);
+  expect(originalOwnerFilteredRows(plan,'ALL',[], 'ALL',b,'MARKED')).toHaveLength(83);
+  expect(originalOwnerFilteredRows(plan,'ALL',[], 'ALL',b,'UNMARKED')).toHaveLength(80);
+  expect(originalOwnerFilteredRows(plan,'ALL',[], 'UNREVIEWED',b,'MARKED').map(x=>x.index).at(-1)).toBe(162);
+  const html=renderOriginalOwnerCaseworkForm(plan,80,[],'ALL','ALL',b,'MARKED');
+  expect(html).toContain('Records 81–83 of 83');
+  expect(html).toContain('data-original-owner-mark-filter');
+  expect(html).toContain('Marked for review (83)');
+  expect(html).toContain('Keep visible 3');
+  expect(html).not.toContain('<private&source>');
+ });
+ it('keeps unmarked decisions untouched when changing only the marked queue',()=>{
+  const chosen=[{kind:'note' as const,originalId:'source-80',observedStatus:'SOURCE_ONLY' as const,choice:'DEFER' as const}];
+  const marks=updateOriginalOwnerPageMarks(plan,chosen,[],0,true,sha,7,'ALL','ALL');
+  const changed=applyOriginalOwnerPageChoice(plan,chosen,0,'KEEP_SEPARATE',sha,7,'ALL','ALL',marks,'MARKED');
+  expect(changed).toHaveLength(81);
+  expect(changed.find(x=>x.originalId==='source-80')?.choice).toBe('DEFER');
+  const remaining=originalOwnerFilteredRows(plan,'ALL',changed,'ALL',marks,'MARKED');
+  expect(remaining).toHaveLength(80);
+  const cleared=applyOriginalOwnerPageChoice(plan,changed,0,null,sha,7,'ALL','ALL',marks,'MARKED');
+  expect(cleared).toEqual(chosen);
+  expect(reviewOriginalOwnerCases(plan,cleared,sha,7)).toMatchObject({writes:0,blocked:true,readyToMigrate:false});
+ });
+ it('validates stale source, unknown filter, forged mark and invalid offscreen page before any edits',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7);
+  expect(()=>originalOwnerFilteredRows(plan,'ALL',[],'ALL',marks,'WRONG' as never)).toThrow();
+  expect(()=>originalOwnerFilteredRows(plan,'ALL',[],'ALL',[{...marks[0]!,originalId:'not-found'}],'MARKED')).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,8,'ALL','ALL',marks,'MARKED')).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(plan,[],80,'KEEP_SEPARATE',sha,7,'ALL','ALL',marks,'MARKED')).toThrow();
+  expect(()=>updateOriginalOwnerPageMarks(plan,[],marks,80,false,sha,7,'ALL','ALL','MARKED')).toThrow();
+  expect(marks).toHaveLength(80);
+  expect(OWNER_MARK_FILTERS).toEqual(['ALL','MARKED','UNMARKED']);
+ });
+ it('empty marked-only mode blocks page and bulk actions, shows only safe count data',()=>{
+  const html=renderOriginalOwnerCaseworkForm(plan,0,[],'ALL','ALL',[],'MARKED');
+  expect(html).toContain('No original cases match');
+  expect(html).toContain('data-action="original-owner-page-keep" disabled');
+  expect(html).toContain('data-action="original-owner-mark-visible" disabled');
+  expect(html).not.toContain('source-0</code>');
  });
 });

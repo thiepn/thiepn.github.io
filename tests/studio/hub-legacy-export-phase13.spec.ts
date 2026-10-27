@@ -304,3 +304,50 @@ for(const width of [320,390,1440]){
   await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 27 stable physical taps and marked-only source review '+width,async({page})=>{
+  test.setTimeout(90_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();
+  source.data.tasks=Array.from({length:163},(_,i)=>({id:'phase27-source-'+String(i).padStart(3,'0'),title:'PRIVATE PHASE27 TITLE '+i}));
+  const file=page.locator('[data-legacy-backup-file]');
+  await file.setInputFiles({name:'phase27-original.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(80);
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(80);
+  const first=page.locator('[data-original-owner-mark]').first();
+  await first.check(); // actual physical pointer: no JS force or synthetic change
+  await expect(first).toBeChecked();
+  await expect(page.locator('[data-owner-casework]')).toContainText('1 marked across pages');
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(3);
+  await page.locator('[data-original-owner-mark]').last().check();
+  await expect(page.locator('[data-owner-casework]')).toContainText('2 marked across pages');
+  const markFilter=page.locator('[data-original-owner-mark-filter]');
+  await markFilter.selectOption('MARKED');
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(2);
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('');
+  await page.locator('[data-original-owner-choice]').first().selectOption('REVIEW_SOURCE');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+  await page.locator('[data-action=original-owner-page-keep]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+  await markFilter.selectOption('UNMARKED');
+  await expect(page.locator('[data-owner-casework]')).toContainText('161 matching original records');
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('');
+  await markFilter.selectOption('ALL');
+  await page.locator('[data-action=original-owner-marked-reset]').click();
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE PHASE27 TITLE');
+  const rect=await page.evaluate(()=>({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  expect(rect.scroll).toBeLessThanOrEqual(rect.client);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('phase27-source-')))).toBe(false);
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}

@@ -441,3 +441,15 @@
 .ws-owner-case-marks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:.5rem;min-width:0;margin:.75rem 0}
 .ws-owner-case-marks button{min-height:44px;min-width:0;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:390px){.ws-owner-case-marks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Phase 27: native checkbox taps must not be intercepted by list markers or sticky chrome. */
+[data-owner-casework]{scroll-margin-block-start:84px;scroll-margin-block-end:calc(110px + env(safe-area-inset-bottom))}
+.ws-owner-case-list>li{position:relative;isolation:isolate;scroll-margin-block:84px 125px}
+.ws-owner-case-mark{position:relative;z-index:1;min-height:44px;cursor:pointer;align-items:center}
+.ws-owner-case-mark input{position:relative;z-index:2;min-height:22px;min-width:22px;cursor:pointer;scroll-margin-block:100px 150px}
+.ws-owner-case-list select{scroll-margin-block:100px 150px}
+.ws-owner-case-list li:focus-within{outline-offset:3px}
+@media(max-width:767px){
+ [data-owner-casework]{scroll-margin-block-start:78px;scroll-margin-block-end:calc(120px + env(safe-area-inset-bottom))}
+ .ws-owner-case-mark{padding-block:6px}
+}
