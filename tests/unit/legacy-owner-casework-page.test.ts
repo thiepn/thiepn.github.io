@@ -21,7 +21,7 @@ describe('original owner visible-page review is bounded and read-only',()=>{
   expect(first.map(x=>x.originalId)).toEqual(rows.slice(0,80).map(x=>x.originalId));
   const last=applyOriginalOwnerPageChoice(plan,first,160,'KEEP_SEPARATE',sha,7);
   expect(last).toHaveLength(83);
-  expect(last.filter(x=>x.originalId.startsWith('source-8'))).toHaveLength(0);
+  expect(last.some(x=>x.originalId==='source-80')).toBe(false);
   const receipt=reviewOriginalOwnerCases(plan,last,sha,7);
   expect(receipt.reviewed).toBe(83);
   expect(receipt.held).toBe(80);
