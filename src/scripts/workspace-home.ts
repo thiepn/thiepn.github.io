@@ -52,7 +52,7 @@ import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,applyOriginalOwnerPageChoice,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -2212,6 +2212,25 @@ async function setup(root: HTMLElement) {
                     .find(el=>el.dataset.caseKind===row.kind&&el.dataset.caseId===row.originalId);
                 control?.focus();
             }catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
+        if(action==='original-owner-page-keep'||action==='original-owner-page-clear'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            try{
+                const decisions=applyOriginalOwnerPageChoice(
+                    activeLegacyPlan,[...originalCaseChoices.values()],
+                    originalCasePage*OWNER_CASE_PAGE_SIZE,
+                    action==='original-owner-page-keep'?'KEEP_SEPARATE':null,
+                    activeLegacyPlan.originalFileSha256,state.revision);
+                originalCaseChoices.clear();
+                for(const decision of decisions)originalCaseChoices.set(sourceCaseKey(decision.kind,decision.originalId),decision);
+                showLegacyCasePage();
+                root.querySelector<HTMLButtonElement>('[data-action="'+action+'"]')?.focus();
+            }catch{
+                clearLegacyCasework();
+                root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+                toast('Original source changed. Inspect a new export before reviewing cases.');
+            }
             return;
         }
         if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
