@@ -180,6 +180,79 @@ export function applyOriginalOwnerMarkedChoice(
  return result;
 }
 
+
+/** Source- and revision-pinned, strictly memory-only reversible casework. */
+export const OWNER_CASE_HISTORY_LIMIT=12;
+export interface OriginalOwnerCaseFrame {
+ readonly owner:OwnerDryRun['owner'];
+ readonly sourceSha256:string;
+ readonly hubRevision:number;
+ readonly choices:readonly OwnerCaseChoiceInput[];
+ readonly marks:readonly OwnerMarkedCase[];
+ readonly filter:OwnerCaseFilter;
+ readonly reviewFilter:OwnerReviewFilter;
+ readonly markFilter:OwnerMarkFilter;
+ readonly page:number;
+}
+export interface OriginalOwnerCaseTimeline {
+ readonly past:readonly OriginalOwnerCaseFrame[];
+ readonly current:OriginalOwnerCaseFrame;
+ readonly future:readonly OriginalOwnerCaseFrame[];
+}
+export function makeOriginalOwnerCaseFrame(
+ plan:OwnerDryRun,choices:readonly OwnerCaseChoiceInput[],marks:readonly OwnerMarkedCase[],
+ page:number,filter:OwnerCaseFilter='ALL',reviewFilter:OwnerReviewFilter='ALL',
+ markFilter:OwnerMarkFilter='ALL',sha=plan.originalFileSha256,revision=plan.hubRevision,
+):OriginalOwnerCaseFrame {
+ reviewOriginalOwnerCases(plan,choices,sha,revision);
+ validateOriginalOwnerMarks(plan,marks,sha,revision);
+ const matched=originalOwnerFilteredRows(plan,filter,choices,reviewFilter,marks,markFilter);
+ const maxPage=Math.floor(Math.max(0,matched.length-1)/OWNER_CASE_PAGE_SIZE);
+ if(!Number.isSafeInteger(page)||page<0||page>maxPage)
+   throw new Error('Original owner recovery page is invalid.');
+ return {owner:plan.owner,sourceSha256:sha,hubRevision:revision,
+  choices:choices.map(row=>({...row})),marks:marks.map(row=>({...row})),
+  filter,reviewFilter,markFilter,page};
+}
+function verifyOriginalCaseFrame(plan:OwnerDryRun,frame:OriginalOwnerCaseFrame):OriginalOwnerCaseFrame {
+ if(frame.owner!==plan.owner||frame.sourceSha256!==plan.originalFileSha256||frame.hubRevision!==plan.hubRevision)
+  throw new Error('Original owner recovery source provenance changed.');
+ return makeOriginalOwnerCaseFrame(plan,frame.choices,frame.marks,frame.page,
+  frame.filter,frame.reviewFilter,frame.markFilter,frame.sourceSha256,frame.hubRevision);
+}
+function verifyOriginalCaseTimeline(plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline):void {
+ if(timeline.past.length>OWNER_CASE_HISTORY_LIMIT||timeline.future.length>OWNER_CASE_HISTORY_LIMIT)
+  throw new Error('Original owner recovery exceeded the history memory limit.');
+ for(const frame of [...timeline.past,timeline.current,...timeline.future])verifyOriginalCaseFrame(plan,frame);
+}
+export function advanceOriginalOwnerCaseTimeline(
+ plan:OwnerDryRun,history:OriginalOwnerCaseTimeline|null,frame:OriginalOwnerCaseFrame,
+):OriginalOwnerCaseTimeline {
+ const checked=verifyOriginalCaseFrame(plan,frame);
+ if(!history)return {past:[],current:checked,future:[]};
+ verifyOriginalCaseTimeline(plan,history);
+ if(JSON.stringify(history.current)===JSON.stringify(checked))return history;
+ return {past:[...history.past,history.current].slice(-OWNER_CASE_HISTORY_LIMIT),current:checked,future:[]};
+}
+export function traverseOriginalOwnerCaseTimeline(
+ plan:OwnerDryRun,history:OriginalOwnerCaseTimeline,direction:'undo'|'redo',
+):OriginalOwnerCaseTimeline {
+ verifyOriginalCaseTimeline(plan,history);
+ if(direction==='undo'){
+  if(!history.past.length)return history;
+  return {past:history.past.slice(0,-1),
+   current:verifyOriginalCaseFrame(plan,history.past[history.past.length-1]!),
+   future:[history.current,...history.future]};
+ }
+ if(direction==='redo'){
+  if(!history.future.length)return history;
+  return {past:[...history.past,history.current].slice(-OWNER_CASE_HISTORY_LIMIT),
+   current:verifyOriginalCaseFrame(plan,history.future[0]!),
+   future:history.future.slice(1)};
+ }
+ throw new Error('Unsupported original casework recovery direction.');
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -265,6 +338,13 @@ export function renderOriginalOwnerCaseworkForm(
     '<button type="button" data-action="original-owner-marked-clear"'+(!marks.length?' disabled':'')+'>Clear '+marks.length+' marked choices</button>'+
     '<button type="button" data-action="original-owner-marked-reset"'+(!marks.length?' disabled':'')+'>Unmark all</button>'+
    '</div>'+
+  '<div class="ws-owner-case-history" role="group" aria-label="Original casework local undo and recovery">'+
+   '<button type="button" data-action="original-owner-undo" disabled>Undo last review change</button>'+
+   '<button type="button" data-action="original-owner-redo" disabled>Redo last review change</button>'+
+   '<span data-owner-history-status role="status">0 undo steps · 0 redo steps; session-only</span>'+
+  '</div>'+
+  '<p data-owner-history-provenance>Unverified '+esc(plan.owner)+' source fingerprint '+esc(plan.originalFileSha256.slice(0,12))+
+   '… · Hub revision '+plan.hubRevision+'. Fingerprint is not rights approval.</p>'+
   '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
   (visible.length?'<ol class="ws-owner-case-list">'+rows+'</ol>':
    '<p data-owner-case-empty>No original cases match this conflict type.</p>')+

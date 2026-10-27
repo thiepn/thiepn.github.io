@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
-import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS} from '../../src/lib/workspace/legacy-owner-casework';
+import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,OWNER_CASE_HISTORY_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
 import type {OwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
+import type {OwnerCaseChoiceInput,OwnerMarkedCase,OwnerCaseFilter,OwnerReviewFilter,OwnerMarkFilter} from '../../src/lib/workspace/legacy-owner-casework';
 
 const sha='a'.repeat(64);
 const rows=Array.from({length:163},(_,i)=>({
@@ -240,5 +241,69 @@ describe('Phase 27 original marked-only queue preserves source IDs and custody',
   expect(html).toContain('data-action="original-owner-page-keep" disabled');
   expect(html).toContain('data-action="original-owner-mark-visible" disabled');
   expect(html).not.toContain('source-0</code>');
+ });
+});
+
+describe('Phase 28 verified original source history and protected undo/redo',()=>{
+ const frame=(decisions:readonly OwnerCaseChoiceInput[]=[],marks:readonly OwnerMarkedCase[]=[],page=0,
+   filter:OwnerCaseFilter='ALL',reviewFilter:OwnerReviewFilter='ALL',markFilter:OwnerMarkFilter='ALL')=>
+  makeOriginalOwnerCaseFrame(plan,decisions,marks,page,filter,reviewFilter,markFilter,sha,7);
+ it('restores marked cross-page decisions without writing originals',()=>{
+  const base=advanceOriginalOwnerCaseTimeline(plan,null,frame());
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7);
+  const afterMarks=advanceOriginalOwnerCaseTimeline(plan,base,frame([],marks));
+  const choices=applyOriginalOwnerMarkedChoice(plan,[],marks,'KEEP_SEPARATE',sha,7);
+  const afterChoice=advanceOriginalOwnerCaseTimeline(plan,afterMarks,frame(choices,marks));
+  expect(afterChoice.past).toHaveLength(2);
+  const undo=traverseOriginalOwnerCaseTimeline(plan,afterChoice,'undo');
+  expect(undo.current.choices).toHaveLength(0);expect(undo.current.marks).toHaveLength(80);
+  const redo=traverseOriginalOwnerCaseTimeline(plan,undo,'redo');
+  expect(redo.current.choices).toEqual(choices);
+  expect(reviewOriginalOwnerCases(plan,redo.current.choices,sha,7)).toMatchObject({
+   writes:0,blocked:true,readyToMigrate:false,sourceRightsApproved:false,
+  });
+ });
+ it('restores filtered page and clears redo after an independent correction',()=>{
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame());
+  const choice=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  const second=advanceOriginalOwnerCaseTimeline(plan,first,frame(choice,[],1));
+  const undone=traverseOriginalOwnerCaseTimeline(plan,second,'undo');
+  expect(undone.current.page).toBe(0);
+  const edited=advanceOriginalOwnerCaseTimeline(plan,undone,frame([],[],0,'ALL','ALL','MARKED'));
+  expect(edited.future).toHaveLength(0);
+  expect(traverseOriginalOwnerCaseTimeline(plan,edited,'redo')).toBe(edited);
+ });
+ it('keeps only 12 states and rejects no-op changes',()=>{
+  let timeline=advanceOriginalOwnerCaseTimeline(plan,null,frame());
+  expect(advanceOriginalOwnerCaseTimeline(plan,timeline,frame())).toBe(timeline);
+  for(let i=0;i<30;i++){
+   const marks=i%2?updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7):[];
+   timeline=advanceOriginalOwnerCaseTimeline(plan,timeline,frame([],marks));
+  }
+  expect(timeline.past).toHaveLength(OWNER_CASE_HISTORY_LIMIT);
+  expect(timeline.future).toHaveLength(0);
+ });
+ it('rejects different source, wrong owner, Hub revision, forged mark and invalid page before recovery',()=>{
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame());
+  const mark=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7)[0]!;
+  const broken=[
+   {...first,current:{...first.current,sourceSha256:'b'.repeat(64)}},
+   {...first,current:{...first.current,hubRevision:8}},
+   {...first,current:{...first.current,owner:'folio' as const}},
+   {...first,current:{...first.current,page:50}},
+   {...first,current:{...first.current,marks:[mark,{...mark}]}},
+  ];
+  for(const draft of broken)expect(()=>traverseOriginalOwnerCaseTimeline(plan,draft,'undo')).toThrow();
+  expect(()=>makeOriginalOwnerCaseFrame(plan,[],[],0,'ALL','ALL','ALL',sha,8)).toThrow();
+  expect(first.current.choices).toHaveLength(0);
+ });
+ it('copies source decisions and marks rather than retaining mutable aliases',()=>{
+  const choices=applyOriginalOwnerPageChoice(plan,[],0,'KEEP_SEPARATE',sha,7);
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7);
+  const timeline=advanceOriginalOwnerCaseTimeline(plan,null,frame(choices,marks));
+  choices[0]={...choices[0]!,choice:'DEFER'};
+  marks[0]={...marks[0]!,originalId:'invalid'};
+  expect(timeline.current.choices[0]?.choice).toBe('KEEP_SEPARATE');
+  expect(timeline.current.marks[0]?.originalId).toBe('source-0');
  });
 });

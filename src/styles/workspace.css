@@ -453,3 +453,10 @@
  [data-owner-casework]{scroll-margin-block-start:78px;scroll-margin-block-end:calc(120px + env(safe-area-inset-bottom))}
  .ws-owner-case-mark{padding-block:6px}
 }
+
+/* Phase 28 source-bound, memory-only casework undo/redo. */
+.ws-owner-case-history{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;min-width:0;margin:.75rem 0}
+.ws-owner-case-history button{min-height:44px;flex:1 1 165px;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.ws-owner-case-history [data-owner-history-status]{flex:1 1 100%;font-variant-numeric:tabular-nums;color:var(--ws-muted)}
+[data-owner-history-provenance]{font-size:.85rem;color:var(--ws-muted);overflow-wrap:anywhere}
+@media(max-width:390px){.ws-owner-case-history button{flex:1 1 calc(50% - .5rem);font-size:.9rem}}

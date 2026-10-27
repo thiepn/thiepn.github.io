@@ -351,3 +351,48 @@ for(const width of [320,390,1440]){
   await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 28 original provenance history and mobile physical review '+width,async({page})=>{
+  test.setTimeout(90_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();
+  source.data.tasks=Array.from({length:163},(_,i)=>({id:'phase28-'+String(i).padStart(3,'0'),title:'PRIVATE ORIGINAL TITLE '+i}));
+  const file=page.locator('[data-legacy-backup-file]');
+  await file.setInputFiles({name:'original-phase28.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
+  const undo=page.locator('[data-action=original-owner-undo]'),redo=page.locator('[data-action=original-owner-redo]');
+  await expect(undo).toBeDisabled();await expect(redo).toBeDisabled();
+  await expect(page.locator('[data-owner-history-provenance]')).toContainText('Fingerprint is not rights approval.');
+  await page.locator('[data-original-owner-mark]').first().check();
+  await expect(undo).toBeEnabled();
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await page.locator('[data-original-owner-mark]').first().check();
+  await expect(page.locator('[data-owner-casework]')).toContainText('2 marked across pages');
+  await page.locator('[data-action=original-owner-marked-keep]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+  await undo.click();await expect(page.locator('[data-owner-casework-receipt]')).toContainText('0 reviewed');
+  await redo.click();await expect(page.locator('[data-owner-casework-receipt]')).toContainText('2 reviewed');
+  await undo.click();
+  await page.locator('[data-original-owner-choice]').first().selectOption('DEFER');
+  await expect(redo).toBeDisabled();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
+  await undo.click();await expect(page.locator('[data-owner-casework-receipt]')).toContainText('0 reviewed');
+  await page.locator('[data-original-owner-mark-filter]').selectOption('MARKED');
+  await expect(page.locator('[data-original-owner-mark]')).toHaveCount(2);
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE ORIGINAL TITLE');
+  const dims=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  expect(dims.scroll).toBeLessThanOrEqual(dims.width);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.includes('phase28-')))).toBe(false);
+  const next=folio();next.data.tasks=[{id:'replacement-only',title:'PRIVATE REPLACED SOURCE'}];
+  await file.setInputFiles({name:'replaced-original.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(next))});
+  await expect(undo).toBeDisabled();await expect(redo).toBeDisabled();
+  await expect(page.locator('[data-owner-casework]')).toContainText('0 marked across pages');
+  await page.locator('[data-original-owner-mark]').first().check();
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}
