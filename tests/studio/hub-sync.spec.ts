@@ -1,4 +1,4 @@
-import { test,expect,type Browser,type Page } from '@playwright/test';
+import { test,expect,type Browser,type Page,type BrowserContext } from '@playwright/test';
 import fs from 'node:fs';
 const configuration=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8'));
 const OWNER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
@@ -65,6 +65,35 @@ function backend(options={sharing:false,probeEligible:false}) {
   }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
+/** Test-only same-origin storage page. No Hub script may race token expiry. */
+async function expireDurableFixtureToken(context:BrowserContext):Promise<void>{
+ const page=await context.newPage();
+ try{
+  await page.route('https://thiepn.dev/__fixture_account_storage__',route=>route.fulfill({
+   status:200,contentType:'text/html',body:'<!doctype html><title>Fixture storage only</title>'
+  }));
+  await page.goto('https://thiepn.dev/__fixture_account_storage__');
+  await page.evaluate(()=>new Promise<void>((resolve,reject)=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   open.onerror=()=>reject(open.error);
+   open.onsuccess=()=>{
+    const db=open.result,tx=db.transaction('session','readwrite');
+    const read=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+    read.onerror=()=>reject(read.error);
+    read.onsuccess=()=>{
+     if(!read.result?.value){reject(new Error('Durable Account token absent'));return;}
+     const record=read.result,token=JSON.parse(record.value);
+     if(token.refreshToken!=='fixture-refreshed'){reject(new Error('Unexpected rotating fixture token'));return;}
+     token.expiresAt=0;record.value=JSON.stringify(token);
+     tx.objectStore('session').put(record,'thiepn:hub-sso:v1:tokens');
+    };
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onabort=()=>{db.close();reject(tx.error);};
+   };
+  }));
+ }finally{await page.close();}
+}
+
 async function workspace(page:Page){
  if(new URL(page.url()).pathname==='/' && await page.locator('[data-action=unified-mode][data-id=workspace]').count())
   await page.locator('[data-action=unified-mode][data-id=workspace]').click();
@@ -122,14 +151,8 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
  await a.page.waitForLoadState('networkidle');
  expect(api.refreshes()).toBe(0);
- await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
-  const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
-   const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
-   read.onsuccess=()=>{const record=read.result,token=JSON.parse(record.value);token.expiresAt=0;record.value=JSON.stringify(token);store.put(record,'thiepn:hub-sso:v1:tokens');};
-   tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
-  };request.onerror=()=>reject(request.error);
- }));
  await a.page.close();
+ await expireDurableFixtureToken(a.context);
  expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
@@ -150,22 +173,8 @@ test('mixed Web Locks capability still shares exactly one rotating Account refre
  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
  await a.page.waitForLoadState('networkidle');
  expect(api.refreshes()).toBe(0);
- await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
-   const request=indexedDB.open('thiepn-hub-account');
-   request.onerror=()=>reject(request.error);
-   request.onsuccess=()=>{
-     const db=request.result,tx=db.transaction('session','readwrite');
-     const store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
-     read.onsuccess=()=>{
-       const record=read.result,tokens=JSON.parse(record.value);
-       tokens.expiresAt=0;record.value=JSON.stringify(tokens);
-       store.put(record,'thiepn:hub-sso:v1:tokens');
-     };
-     tx.oncomplete=()=>{db.close();resolve();};
-     tx.onabort=()=>reject(tx.error);
-   };
- }));
  await a.page.close();
+ await expireDurableFixtureToken(a.context);
  expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
  const [native,fallback]=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
