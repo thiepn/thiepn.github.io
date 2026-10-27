@@ -55,6 +55,33 @@ export function reviewOriginalOwnerCases(
   readyToMigrate:false,writes:0,blocked:true};
 }
 
+/** Apply a reversible decision to exactly one visible page. Never authorizes a migration. */
+export function applyOriginalOwnerPageChoice(
+ plan:OwnerDryRun,
+ decisions:readonly OwnerCaseChoiceInput[],
+ offset:number,
+ choice:'KEEP_SEPARATE'|null,
+ observedSourceSha256:string,
+ observedHubRevision:number,
+):OwnerCaseChoiceInput[] {
+ // Authenticate the old selection and its immutable source receipt *before*
+ // changing anything; forged or stale case rows fail without partial updates.
+ reviewOriginalOwnerCases(plan,decisions,observedSourceSha256,observedHubRevision);
+ if(!Number.isSafeInteger(offset)||offset<0||offset>=plan.rows.length||offset%OWNER_CASE_PAGE_SIZE!==0)
+   throw new Error('Original owner casework page is invalid.');
+ const visible=plan.rows.slice(offset,offset+OWNER_CASE_PAGE_SIZE);
+ const key=(kind:string,id:string)=>kind+'\u0000'+id;
+ const candidate=new Map(decisions.map(row=>[key(row.kind,row.originalId),row]));
+ for(const row of visible){
+   const id=key(row.kind,row.originalId);
+   if(choice===null)candidate.delete(id);
+   else candidate.set(id,{kind:row.kind,originalId:row.originalId,observedStatus:row.status,choice});
+ }
+ const next=[...candidate.values()];
+ reviewOriginalOwnerCases(plan,next,observedSourceSha256,observedHubRevision);
+ return next;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -91,6 +118,10 @@ export function renderOriginalOwnerCaseworkForm(
   '<button type="button" data-action="original-owner-next-unreviewed"'+
     (plan.rows.some(row=>!selected.has(row.kind+'\\u0000'+row.originalId))?'':' disabled')+
     '>Next unreviewed</button>'+
+  '<div class="ws-owner-case-pages" aria-label="Visible-page review actions">'+
+  '<button type="button" data-action="original-owner-page-keep">Keep visible '+visible.length+' in original owner</button>'+
+  '<button type="button" data-action="original-owner-page-clear">Clear visible '+visible.length+' choices</button>'+
+  '</div>'+
   '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
   '<p>Choices are temporary and cannot authorize imports, overwrite IDs or change source data.</p>'+
   '</section>';
