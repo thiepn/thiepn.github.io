@@ -44,7 +44,7 @@ describe('original owner visible-page review is bounded and read-only',()=>{
   }
   expect(()=>applyOriginalOwnerPageChoice(plan,a,0,null,'b'.repeat(64),7)).toThrow();
   expect(()=>applyOriginalOwnerPageChoice(plan,a,0,null,sha,8)).toThrow();
-  expect(()=>applyOriginalOwnerPageChoice(plan,[{...a[0],originalId:'forged'}],0,'KEEP_SEPARATE',sha,7)).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(plan,[{...a[0]!,originalId:'forged'}],0,'KEEP_SEPARATE',sha,7)).toThrow();
   expect(a).toHaveLength(80);
  });
  it('escapes hostile IDs and limits the last page to three rows',()=>{
