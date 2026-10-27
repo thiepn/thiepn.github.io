@@ -88,6 +88,9 @@ export function renderOriginalOwnerCaseworkForm(
     '<span>Records '+(offset+1)+'–'+Math.min(offset+limit,plan.rows.length)+' of '+plan.rows.length+'</span>'+
     '<button type="button" data-action="original-owner-page-next"'+(offset+limit>=plan.rows.length?' disabled':'')+'>Next 80</button>'+
     '</nav>':'')+
+  '<button type="button" data-action="original-owner-next-unreviewed"'+
+    (plan.rows.some(row=>!selected.has(row.kind+'\\u0000'+row.originalId))?'':' disabled')+
+    '>Next unreviewed</button>'+
   '<p data-owner-casework-receipt role="status">No cases reviewed. Migration remains blocked.</p>'+
   '<p>Choices are temporary and cannot authorize imports, overwrite IDs or change source data.</p>'+
   '</section>';
