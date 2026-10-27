@@ -178,6 +178,18 @@ test('durable rotating Account token cannot be replaced by a later-expiring stal
  expect(durable?.refreshToken).toBe('fixture-refreshed');
  await a.context.close();
 });
+test('restricted IDB plus no Web Locks never sends an unsafe duplicate rotating refresh',async({browser})=>{
+ const api=backend(),a=await api.device(browser,OWNER,undefined,false,'idb-blocked');
+ await a.page.evaluate(()=>{
+   Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+   const key='thiepn:hub-sso:v1:tokens',tokens=JSON.parse(localStorage.getItem(key)!);
+   localStorage.setItem(key,JSON.stringify({...tokens,expiresAt:0}));
+   window.dispatchEvent(new Event('focus'));
+ });
+ await expect(a.page.locator('[data-auth-status]')).toContainText('Cloud sync unavailable');
+ expect(api.refreshes()).toBe(0);
+ await a.context.close();
+});
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
  const preserved=()=>a.page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('fixture:app-data:')).reduce((size,key)=>size+localStorage.getItem(key)!.length,0));
