@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm} from '../../src/lib/workspace/legacy-owner-casework';
+import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows} from '../../src/lib/workspace/legacy-owner-casework';
 import type {OwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
 
 const sha='a'.repeat(64);
@@ -55,5 +55,42 @@ describe('original owner visible-page review is bounded and read-only',()=>{
   expect(html).toContain('Clear visible 3');
   expect(html).toContain('Records 161–163 of 163');
   expect(html).toContain('Migration remains blocked');
+ });
+});
+
+describe('filtered original owner review preserves source identity and cross-page decisions',()=>{
+ const mixedRows=rows.map((row,i)=>({...row,status:(i%2===0?'ID_COLLISION':'SOURCE_ONLY') as typeof row.status|'ID_COLLISION'}));
+ const mixed:OwnerDryRun={...plan,rows:mixedRows,counts:{ID_COLLISION:82,SOURCE_ONLY:81,TITLE_AMBIGUITY:0,MISSING_RELATION:0}};
+ it('filters by original conflict status and keeps original global case indexes',()=>{
+  expect(originalOwnerFilteredRows(mixed,'ID_COLLISION')).toHaveLength(82);
+  const html=renderOriginalOwnerCaseworkForm(mixed,0,[],'ID_COLLISION');
+  expect(html).toContain('Case 1');
+  expect(html).toContain('Case 3');
+  expect(html).not.toContain('source-1</code>');
+  expect(html).toContain('ID collisions (82)');
+  expect(html).toContain('Records 1–80 of 82');
+  expect(()=>originalOwnerFilteredRows(mixed,'INVALID' as never)).toThrow();
+ });
+ it('bulk keeps only matching rows, retaining independently selected other conflict types',()=>{
+  const collision=applyOriginalOwnerPageChoice(mixed,[],0,'KEEP_SEPARATE',sha,7,'ID_COLLISION');
+  expect(collision).toHaveLength(80);
+  expect(collision.every(x=>x.observedStatus==='ID_COLLISION')).toBe(true);
+  const source=applyOriginalOwnerPageChoice(mixed,collision,0,'KEEP_SEPARATE',sha,7,'SOURCE_ONLY');
+  expect(source).toHaveLength(160);
+  const cleared=applyOriginalOwnerPageChoice(mixed,source,0,null,sha,7,'ID_COLLISION');
+  expect(cleared).toHaveLength(80);
+  expect(cleared.every(x=>x.observedStatus==='SOURCE_ONLY')).toBe(true);
+  const tail=applyOriginalOwnerPageChoice(mixed,cleared,80,'KEEP_SEPARATE',sha,7,'ID_COLLISION');
+  expect(tail).toHaveLength(82);
+  expect(tail.some(x=>x.originalId==='<private&source>')).toBe(true);
+  expect(reviewOriginalOwnerCases(mixed,tail,sha,7)).toMatchObject({writes:0,blocked:true,readyToMigrate:false});
+  expect(()=>applyOriginalOwnerPageChoice(mixed,[],80,'KEEP_SEPARATE',sha,8,'ID_COLLISION')).toThrow();
+  expect(()=>applyOriginalOwnerPageChoice(mixed,[],80,'KEEP_SEPARATE',sha,7,'TITLE_AMBIGUITY')).toThrow();
+ });
+ it('empty filters remain nonwriting and prevent blind bulk actions',()=>{
+  const empty=renderOriginalOwnerCaseworkForm(mixed,0,[],'MISSING_RELATION');
+  expect(empty).toContain('No original cases match');
+  expect(empty).toContain('data-action="original-owner-page-keep" disabled');
+  expect(empty).not.toContain('source-0</code>');
  });
 });

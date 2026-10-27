@@ -165,3 +165,46 @@ test('older asynchronous Folio preview cannot overwrite newer source-owner decis
  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('1 reviewed');
  await expect(page.locator('[data-legacy-backup-status]')).toContainText('no migration was performed');
 });
+
+for(const width of [320,390]){
+ test('filtered 163-case mobile source review retains unfiltered selections and privacy '+width,async({page})=>{
+  test.setTimeout(60_000);
+  await page.setViewportSize({width,height:width===320?720:844});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const source=folio();
+  source.data.tasks=Array.from({length:163},(_,i)=>({id:'filtered-folio-'+String(i).padStart(3,'0'),title:'PRIVATE FILTERED TITLE '+i}));
+  await page.locator('[data-legacy-backup-file]').setInputFiles({
+   name:'filtered-original.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))
+  });
+  const filter=page.locator('[data-original-owner-filter]');
+  await expect(filter).toHaveValue('ALL');
+  await page.locator('[data-original-owner-choice]').first().selectOption('REVIEW_SOURCE');
+  await filter.selectOption('ID_COLLISION');
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(0);
+  await expect(page.locator('[data-action=original-owner-page-keep]')).toBeDisabled();
+  await expect(page.locator('[data-owner-casework]')).toContainText('No original cases match');
+  await filter.selectOption('SOURCE_ONLY');
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
+  await expect(page.locator('[data-original-owner-choice]').first()).toHaveValue('REVIEW_SOURCE');
+  await page.locator('[data-action=original-owner-page-keep]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('80 reviewed');
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(80);
+  await page.locator('[data-action=original-owner-page-next]').click();
+  await expect(page.locator('[data-original-owner-choice]')).toHaveCount(3);
+  await page.locator('[data-action=original-owner-page-keep]').click();
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('83 reviewed');
+  await filter.selectOption('ALL');
+  await expect(page.locator('[data-owner-casework-receipt]')).toContainText('83 reviewed');
+  await expect(page.locator('[data-owner-casework]')).not.toContainText('PRIVATE FILTERED TITLE');
+  const dimensions=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(key=>key.includes('filtered-folio-')))).toBe(false);
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}

@@ -52,7 +52,7 @@ import {attachNativeKeep} from './keep-native-controller';
 import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
 import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
 import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
-import {reviewOriginalOwnerCases,applyOriginalOwnerPageChoice,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput} from '../lib/workspace/legacy-owner-casework';
+import {reviewOriginalOwnerCases,applyOriginalOwnerPageChoice,originalOwnerFilteredRows,OWNER_CASE_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OwnerCaseFilter} from '../lib/workspace/legacy-owner-casework';
 import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
 import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
 import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
@@ -127,16 +127,17 @@ async function setup(root: HTMLElement) {
     let privacyHeld = false;
     let activeLegacyPlan:OwnerDryRun|null=null;
     let originalCasePage=0;
+    let originalCaseFilter:OwnerCaseFilter='ALL';
     let originalExportGeneration=0;
     const originalCaseChoices=new Map<string,OwnerCaseChoiceInput>();
     const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
-    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseChoices.clear();}
+    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalCaseChoices.clear();}
     function showLegacyCasePage(){
         if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
-        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
+        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter);
         const host=root.querySelector<HTMLElement>('[data-owner-casework]');
         if(!host)return;
-        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()]);
+        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()],originalCaseFilter);
         const status=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
         if(status)status.textContent=renderOriginalOwnerCaseworkReceipt(review);
     }
@@ -2196,20 +2197,17 @@ async function setup(root: HTMLElement) {
         if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
         if(action==='original-owner-next-unreviewed'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            const matched=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter);
             const start=originalCasePage*OWNER_CASE_PAGE_SIZE;
-            const indices=activeLegacyPlan.rows.map((_,i)=>i);
-            const pending=indices.filter(i=>{
-                const row=activeLegacyPlan!.rows[i]!;
-                return !originalCaseChoices.has(sourceCaseKey(row.kind,row.originalId));
-            });
-            const index=pending.find(i=>i>=start)??pending[0];
-            if(index===undefined)return;
-            originalCasePage=Math.floor(index/OWNER_CASE_PAGE_SIZE);
+            const pending=matched.map(({row},index)=>({row,index}))
+                .filter(({row})=>!originalCaseChoices.has(sourceCaseKey(row.kind,row.originalId)));
+            const selected=pending.find(({index})=>index>=start)??pending[0];
+            if(!selected)return;
+            originalCasePage=Math.floor(selected.index/OWNER_CASE_PAGE_SIZE);
             try{
                 showLegacyCasePage();
-                const row=activeLegacyPlan.rows[index]!;
                 const control=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')]
-                    .find(el=>el.dataset.caseKind===row.kind&&el.dataset.caseId===row.originalId);
+                    .find(el=>el.dataset.caseKind===selected.row.kind&&el.dataset.caseId===selected.row.originalId);
                 control?.focus();
             }catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
             return;
@@ -2236,7 +2234,7 @@ async function setup(root: HTMLElement) {
         if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
             if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
             const next=originalCasePage+(action==='original-owner-page-next'?1:-1);
-            if(next<0||next*OWNER_CASE_PAGE_SIZE>=activeLegacyPlan.rows.length)return;
+            if(next<0||next*OWNER_CASE_PAGE_SIZE>=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter).length)return;
             originalCasePage=next;
             try{showLegacyCasePage();}catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
             root.querySelector<HTMLSelectElement>('[data-original-owner-choice]')?.focus();
@@ -3121,6 +3119,21 @@ async function setup(root: HTMLElement) {
                     if(status)status.textContent=error instanceof Error?error.message:'Original export could not be inspected.';
                 }
             })();
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-filter]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const selected=el.value as OwnerCaseFilter;
+            if(!(OWNER_CASE_FILTERS as readonly string[]).includes(selected)){el.value=originalCaseFilter;return;}
+            originalCaseFilter=selected;
+            originalCasePage=0;
+            try{
+                showLegacyCasePage();
+                root.querySelector<HTMLSelectElement>('[data-original-owner-filter]')?.focus();
+            }catch{
+                clearLegacyCasework();
+                root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+            }
             return;
         }
         if(view==='legacy'&&el.matches('[data-original-owner-choice]')){
