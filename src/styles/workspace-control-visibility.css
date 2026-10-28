@@ -193,3 +193,11 @@
   color:#88b7ff;
   border-color:#88b7ff;
 }
+
+/* Theme switches must never animate the button fill independently from its
+   boundary. Reproduced transient 1.2–2.4:1 contrast in all browser engines. */
+.ws :is(
+  .ws-button,.ws-primary,.ws-icon-button,.ws-search-trigger,.ws-mode-bar button,
+  .ws-unified-action,.ws-unified-mode,.ws-plan-button,.ws-focus-button,
+  .ws-focus-chip,.ws-widget-action,.ws-palette-chip,.ws-palette-quick-action
+){transition:none;}

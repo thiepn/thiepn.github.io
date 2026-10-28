@@ -29,7 +29,7 @@ async function visual(page:Page,selector:string){
    const c=getComputedStyle(el);
    const shell=getComputedStyle(document.documentElement);
    return {border:c.borderTopColor,background:c.backgroundColor,color:c.color,
-     opacity:c.opacity,borderWidth:c.borderTopWidth,
+     opacity:c.opacity,borderWidth:c.borderTopWidth,transitionDuration:c.transitionDuration,
      surface:shell.getPropertyValue('--ws-surface').trim()};
  });
 }
@@ -47,6 +47,7 @@ test('real Hub search and capture controls have visible borders, legible primary
      const secondary=await visual(page,'.ws-search-trigger');
      const main=await visual(page,'.ws-topbar-actions>.ws-primary');
      expect(secondary.borderWidth,'search border at '+width).toBe('1px');
+     expect(secondary.transitionDuration,'search border and fill change in lockstep').toBe('0s');
      expect(contrast(secondary.border,secondary.background),'search border/fill '+width+' dark='+dark).toBeGreaterThanOrEqual(3);
      expect(contrast(secondary.border,secondary.surface),'search border/panel '+width+' dark='+dark).toBeGreaterThanOrEqual(3);
      expect(contrast(main.color,main.background),'primary label '+width+' dark='+dark).toBeGreaterThanOrEqual(4.5);
@@ -74,6 +75,7 @@ test('native secondary and disabled actions remain distinguishable in both theme
  for(const dark of [false,true]){
    await scheme(page,dark);
    const secondary=await visual(page,'.ws-toolbar .ws-button');
+   expect(secondary.transitionDuration,'toolbar theme switch remains instantaneous').toBe('0s');
    expect(contrast(secondary.border,secondary.background),'toolbar control dark='+dark).toBeGreaterThanOrEqual(3);
    const disabled=await page.locator('.ws-toolbar .ws-button').first().evaluate(el=>{
      const clone=el.cloneNode(true) as HTMLButtonElement;
@@ -102,6 +104,7 @@ test('actual Today mode switch has distinct visible controls while panel divider
  for(const dark of [false,true]){
    await scheme(page,dark);
    const mode=await visual(page,'.ws-mode-bar button');
+   expect(mode.transitionDuration,'mode boundary never waits for its fill').toBe('0s');
    expect(contrast(mode.border,mode.background)).toBeGreaterThanOrEqual(3);
    const divider=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--ws-line').trim());
    expect(divider).toBe(dark?'#334052':'#e6ebf2');
