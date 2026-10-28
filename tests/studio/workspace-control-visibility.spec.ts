@@ -41,6 +41,7 @@ test('real Hub search and capture controls have visible borders, legible primary
      expect(contrast(secondary.border,secondary.background),'search border/fill '+width+' dark='+dark).toBeGreaterThanOrEqual(3);
      expect(contrast(secondary.border,secondary.surface),'search border/panel '+width+' dark='+dark).toBeGreaterThanOrEqual(3);
      expect(contrast(main.color,main.background),'primary label '+width+' dark='+dark).toBeGreaterThanOrEqual(4.5);
+     await page.keyboard.press('Tab');
      await search.focus();
      const outline=await search.evaluate(el=>{const s=getComputedStyle(el);return {style:s.outlineStyle,width:parseFloat(s.outlineWidth)};});
      expect(outline.style).toBe('solid');
@@ -84,17 +85,17 @@ test('native secondary and disabled actions remain distinguishable in both theme
  await expect(page.locator('.ws-toolbar [data-action=customize]')).toBeVisible();
 });
 
-test('real Today mode controls are visible without styling noninteractive panel dividers',async({page})=>{
+test('actual Today mode switch has distinct visible controls while panel divider tokens remain quiet',async({page})=>{
  await page.setViewportSize({width:320,height:720});
  await page.goto('/');
- const modes=page.locator('.ws-unified-mode');
+ const modes=page.locator('.ws-mode-bar button');
  await expect(modes.first()).toBeVisible();
  for(const dark of [false,true]){
    await scheme(page,dark);
-   const mode=await visual(page,'.ws-unified-mode');
+   const mode=await visual(page,'.ws-mode-bar button');
    expect(contrast(mode.border,mode.background)).toBeGreaterThanOrEqual(3);
-   const panel=await visual(page,'.ws-unified-nav');
-   expect(panel.border).not.toBe(mode.border);
+   const divider=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--ws-line').trim());
+   expect(divider).toBe(dark?'#334052':'#e6ebf2');
  }
- await expect(page.locator('.ws-unified-mode[aria-pressed=true]')).toHaveCount(1);
+ await expect(page.locator('.ws-mode-bar button[aria-pressed=true]')).toHaveCount(1);
 });

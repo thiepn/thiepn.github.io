@@ -122,3 +122,29 @@
   }
   .ws :is(.ws-button,.ws-primary,.ws-unified-action,.ws-plan-button):focus-visible{outline:3px solid Highlight;}
 }
+
+/* Actual Home presentation switch (renderUnifiedJourneyNav): four separately
+   actionable buttons, including the compact 2x2 layout at 320px. */
+.ws .ws-mode-bar>div{border:1px solid var(--ws-control-line);background:var(--ws-soft);}
+.ws .ws-mode-bar button{
+  min-height:40px;
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+  color:var(--ws-ink);
+}
+.ws .ws-mode-bar button:not([aria-pressed=true]):is(:hover,:focus-visible){
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws .ws-mode-bar button[aria-pressed=true]{
+  border-color:var(--ws-accent);
+  background:var(--ws-accent-soft);
+  color:var(--ws-accent);
+  box-shadow:none;
+  font-weight:650;
+}
+/* Reading embeds its own more-specific portal button selectors. */
+.ws [data-reading-shell] .portal-button{
+  border-color:var(--ws-control-line);
+  background:var(--ws-control-fill);
+}
