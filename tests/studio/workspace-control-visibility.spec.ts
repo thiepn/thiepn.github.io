@@ -3,8 +3,17 @@ import {test,expect,type Page} from '@playwright/test';
 // WCAG 1.4.11: UI component boundaries need a 3:1 difference from their
 // adjacent surfaces; primary-button labels need the 4.5:1 text threshold.
 const luminance=(color:string)=>{
- const v=color.match(/[\d.]+/g)?.slice(0,3).map(Number);
- if(!v||v.length!==3)throw new Error('Expected rgb control colour: '+color);
+ const raw=color.trim();
+ const hex=raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+ let v:number[];
+ if(hex){
+   const full=hex[1]!.length===3?[...hex[1]!].map(c=>c+c).join(''):hex[1]!;
+   v=[0,2,4].map(i=>parseInt(full.slice(i,i+2),16));
+ }else{
+   const rgb=raw.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+   if(!rgb)throw new Error('Expected hex or rgb control colour: '+color);
+   v=rgb.slice(1,4).map(Number);
+ }
  const c=v.map(x=>{const n=x/255;return n<=0.04045?n/12.92:((n+0.055)/1.055)**2.4;});
  return c[0]!*0.2126+c[1]!*0.7152+c[2]!*0.0722;
 };

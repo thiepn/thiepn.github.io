@@ -1027,7 +1027,7 @@ async function setup(root: HTMLElement) {
                 hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
                 }) : '';
                 return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                    '<section class="ws-today-more"><button type="button" class="ws-today-more-toggle" data-action="toggle-today-more" aria-expanded="'+String(todayMoreExpanded)+'" aria-controls="ws-today-more-content">'+
+                    '<section class="ws-today-more"><button type="button" class="ws-today-more-toggle" data-action="toggle-today-more" aria-label="'+(todayMoreExpanded?'Hide additional sections':'More sections')+'" aria-expanded="'+String(todayMoreExpanded)+'" aria-controls="ws-today-more-content">'+
                     (todayMoreExpanded?'Hide additional sections':'More sections')+'</button>'+
                     '<div id="ws-today-more-content" class="ws-today-more-content" data-today-more-content'+(todayMoreExpanded?'':' hidden')+'>'+extraPanels+'</div></section>';
             }

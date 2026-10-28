@@ -180,3 +180,16 @@
  .ws .ws-nav-more-links a{justify-content:center;padding:11px 9px;}
  .ws .ws-nav-more-links a span:not(.ws-icon){display:none;}
 }
+
+/* Selected mode contrast: do not mix dark accent with a light inherited
+   accent-soft background (reproduced at 1.79:1 in all three engines). */
+.ws .ws-mode-bar button[aria-pressed=true]{
+  background:#e8f0ff;
+  color:#2162ed;
+  border-color:#2162ed;
+}
+[data-theme=dark] .ws .ws-mode-bar button[aria-pressed=true]{
+  background:#223c60;
+  color:#88b7ff;
+  border-color:#88b7ff;
+}
