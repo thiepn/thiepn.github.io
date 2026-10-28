@@ -52,9 +52,21 @@ const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
-      <nav class="ws-nav">{navigation.map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}</nav>
-      <div class="ws-workspace-list"><p class="ws-label">Workspaces</p><div data-workspace-list></div><button type="button" class="ws-text-button" data-action="new-workspace"><Fragment set:html={icon('plus')}/><span>New workspace</span></button></div>
-      <div class="ws-nav-bottom"><a href="/inbox/" title="Attention Inbox" class="ws-nav-link"><Fragment set:html={icon('tray')}/><span>Inbox</span></a><a href="/home/connections/" title="App connections" class="ws-nav-link"><Fragment set:html={icon('plugs-connected')}/><span>Connections</span></a><a href="/flows/" title="Workflow guides" class="ws-nav-link"><Fragment set:html={icon('book-open')}/><span>Workflow guides</span></a><a href="/home/settings/" title="Settings" class="ws-nav-link"><Fragment set:html={icon('gear-six')}/><span>Settings</span></a><button type="button" class="ws-nav-link" data-action="account" title="Account"><Fragment set:html={icon('user-circle')}/><span data-profile-label>This device</span></button></div>
+      <nav class="ws-nav">
+        {navigation.slice(0,4).map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}
+        <details class="ws-nav-more" data-nav-more open={['knowledge','trackers','documents','inbox','connections','flows','settings'].includes(view)}>
+          <summary><Fragment set:html={icon('dots-three')}/><span>More</span></summary>
+          <div class="ws-nav-more-links">
+            {navigation.slice(4).map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}
+            <a href="/inbox/" title="Attention Inbox"><Fragment set:html={icon('tray')}/><span>Inbox</span></a>
+            <a href="/home/connections/" title="App connections"><Fragment set:html={icon('plugs-connected')}/><span>Connections</span></a>
+            <a href="/flows/" title="Workflow guides"><Fragment set:html={icon('book-open')}/><span>Workflow guides</span></a>
+            <a href="/home/settings/" title="Settings"><Fragment set:html={icon('gear-six')}/><span>Settings</span></a>
+          </div>
+        </details>
+      </nav>
+      <div class="ws-workspace-list"><details class="ws-workspaces-disclosure"><summary>Workspaces</summary><div data-workspace-list></div><button type="button" class="ws-text-button" data-action="new-workspace"><Fragment set:html={icon('plus')}/><span>New workspace</span></button></details></div>
+      <div class="ws-nav-bottom"><button type="button" class="ws-nav-link" data-action="account" title="Account"><Fragment set:html={icon('user-circle')}/><span data-profile-label>This device</span></button></div>
     </aside>
     <div class="ws-body">
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
