@@ -358,6 +358,13 @@ test('real second-tab Account OAuth switch keeps old capture with old owner and 
  await expect.poll(()=>api.exchanges(),{timeout:20_000}).toBe(1);
  await expect.poll(()=>durableAccountOwner(otherTab),{timeout:20_000}).toBe(OTHER);
  await expect.poll(()=>durableAccountOwner(a.page),{timeout:20_000}).toBe(OTHER);
+ // The real owner switch deliberately resets the former tab to Today.
+ // Bring that tab forward to run the native visibility-based identity check,
+ // then open the actual Workspace before looking for its capture form.
+ await a.page.bringToFront();
+ await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+ await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally',{timeout:20_000});
+ await workspace(a.page);
  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('',{timeout:20_000});
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await sync(a.page);
@@ -381,6 +388,10 @@ test('Connections preserves last success, distinguishes revoked access and expor
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
  try {
   await a.page.goto('https://thiepn.dev/home/connections/');
+  // This route begins in 'checking identity': do not treat the interim
+  // private-content hold as a revoked grant or a successful data read.
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally',{timeout:20_000});
   const notes=a.page.locator('[data-source-status=notes]'),detail=a.page.locator('[data-source-detail=notes]');
   await expect(notes).toHaveText('Connected · fresh summary');await expect(detail).toContainText('Last successful read');
   api.failures.set('read_thiepn_hub_notes',403);
