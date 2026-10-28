@@ -55,7 +55,7 @@ const navigation=[['home','Today','/','house'],['apps','Apps','/apps/','squares-
       <nav class="ws-nav">
         {navigation.slice(0,4).map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}
         <details class="ws-nav-more" data-nav-more open={['knowledge','trackers','documents','inbox','connections','flows','settings'].includes(view)}>
-          <summary><Fragment set:html={icon('dots-three')}/><span>More</span></summary>
+          <summary aria-label="More destinations"><Fragment set:html={icon('dots-three')}/><span>More</span></summary>
           <div class="ws-nav-more-links">
             {navigation.slice(4).map(([key,label,url,ic])=><a href={url} class:list={{active:key===view}} title={label} aria-current={key===view?'page':undefined}><Fragment set:html={icon(ic!)}/><span>{label}</span></a>)}
             <a href="/inbox/" title="Attention Inbox"><Fragment set:html={icon('tray')}/><span>Inbox</span></a>

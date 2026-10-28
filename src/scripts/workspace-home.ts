@@ -1205,7 +1205,7 @@ async function setup(root: HTMLElement) {
     let committedUrl = location.pathname + location.search;
     function updateNavigation() {
         const navMore=root.querySelector<HTMLDetailsElement>('[data-nav-more]');
-        if(navMore && ['knowledge','trackers','documents','inbox','connections','flows','settings'].includes(view))navMore.open=true;
+        if(navMore)navMore.open=['knowledge','trackers','documents','inbox','connections','flows','settings'].includes(view);
         root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link').forEach(link => {
             const active = (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
             link.classList.toggle('active', active);

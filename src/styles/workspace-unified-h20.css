@@ -144,3 +144,7 @@
 .ws[data-view=home][data-home-mode=today][data-today-more-expanded=false] [data-hub-calendar-c1],
 .ws[data-view=home][data-home-mode=focus] [data-hub-calendar-c1],
 .ws[data-view=home][data-home-mode=review] [data-hub-calendar-c1]{display:none!important;}
+
+/* Use one physical card layer on Today, not a card containing other cards. */
+.ws .ws-today-compact{background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;}
+.ws .ws-today-compact .ws-unified-group{border-radius:12px;background:var(--ws-surface);}

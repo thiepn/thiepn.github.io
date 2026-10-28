@@ -14,6 +14,8 @@ test('desktop navigation exposes primary routes and keeps all secondary routes i
  await expect(page.locator('[data-workspace][data-view=settings]')).toBeVisible();
  await expect(page.locator('[data-nav-more]')).toHaveAttribute('open','');
  await expect(page.locator('.ws-nav-more-links a[href="/home/settings/"]')).toHaveAttribute('aria-current','page');
+ await page.locator('.ws-nav > a[href="/"]').click();
+ await expect(page.locator('[data-nav-more]')).not.toHaveAttribute('open','');
 });
 
 test('workspace switcher is collapsed without hiding the original workspace actions',async({page})=>{
