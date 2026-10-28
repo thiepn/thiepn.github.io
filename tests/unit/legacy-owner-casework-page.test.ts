@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,previewOriginalOwnerCrossVisitRecovery,applyOriginalOwnerCrossVisitRecovery,previewOriginalOwnerCrossVisitSubset,applyOriginalOwnerCrossVisitSubset,OWNER_CASE_HISTORY_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
+import {applyOriginalOwnerPageChoice,reviewOriginalOwnerCases,renderOriginalOwnerCaseworkForm,originalOwnerFilteredRows,updateOriginalOwnerPageMarks,applyOriginalOwnerMarkedChoice,validateOriginalOwnerMarks,OWNER_MARK_LIMIT,OWNER_MARK_FILTERS,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,previewOriginalOwnerCrossVisitRecovery,applyOriginalOwnerCrossVisitRecovery,previewOriginalOwnerCrossVisitSubset,applyOriginalOwnerCrossVisitSubset,previewOriginalOwnerGenerationSelection,applyOriginalOwnerGenerationSelection,OWNER_CASE_HISTORY_LIMIT} from '../../src/lib/workspace/legacy-owner-casework';
 import type {OwnerDryRun} from '../../src/lib/workspace/legacy-migration-dry-run';
 import type {OwnerCaseChoiceInput,OwnerMarkedCase,OwnerCaseFilter,OwnerReviewFilter,OwnerMarkFilter} from '../../src/lib/workspace/legacy-owner-casework';
 
@@ -497,5 +497,64 @@ describe('Phase 31 original-ID selective cross-visit receipts and independent re
   const zero=previewOriginalOwnerCrossVisitSubset(plan,current,full,[]);
   expect(zero).toMatchObject({selected:[],excluded:1,readyToMigrate:false,writes:0,blocked:true});
   expect(applyOriginalOwnerCrossVisitSubset(plan,current,zero)).toEqual([]);
+ });
+});
+
+describe('Phase 32 independently chosen exact historical decision generations',()=>{
+ const frame=(choices:readonly OwnerCaseChoiceInput[],marks:readonly OwnerMarkedCase[])=>
+  makeOriginalOwnerCaseFrame(plan,choices,marks,0,'ALL','ALL','ALL',sha,7);
+ it('selects older DEFER instead of more recent REVIEW_SOURCE, protecting a current independent choice',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,2);
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame([
+   {...marks[0]!,choice:'DEFER'},{...marks[1]!,choice:'KEEP_SEPARATE'}],marks));
+  const second=advanceOriginalOwnerCaseTimeline(plan,first,frame([
+   {...marks[0]!,choice:'REVIEW_SOURCE'},{...marks[1]!,choice:'REVIEW_HUB'}],marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,second,frame([{...marks[1]!,choice:'REVIEW_HUB'}],marks));
+  const catalog=previewOriginalOwnerCrossVisitRecovery(plan,current);
+  expect(catalog.recoverable).toMatchObject([{originalId:'source-0',choice:'REVIEW_SOURCE'}]);
+  const receipt=previewOriginalOwnerGenerationSelection(plan,current,catalog,[{
+   kind:marks[0]!.kind,originalId:marks[0]!.originalId,visitsBack:2}]);
+  expect(receipt).toMatchObject({selected:[{originalId:'source-0',choice:'DEFER',visitsBack:2}],
+   blocked:true,writes:0,readyToMigrate:false});
+  const restored=applyOriginalOwnerGenerationSelection(plan,current,receipt);
+  expect(restored.find(x=>x.originalId==='source-0')?.choice).toBe('DEFER');
+  expect(restored.find(x=>x.originalId==='source-1')?.choice).toBe('REVIEW_HUB');
+  expect(current.current.choices).toHaveLength(1);
+ });
+ it('rejects duplicate, forged, removed or already-reviewed historical generations',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,2);
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame([{...marks[0]!,choice:'DEFER'}],marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([],marks));
+  const catalog=previewOriginalOwnerCrossVisitRecovery(plan,current);
+  const row={kind:marks[0]!.kind,originalId:marks[0]!.originalId,visitsBack:1};
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,catalog,[row,row])).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,catalog,[{...row,visitsBack:0}])).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,catalog,[{...row,visitsBack:2}])).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,catalog,[{...row,originalId:'unknown'}])).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,catalog,[{...row,originalId:marks[1]!.originalId}])).toThrow();
+  const newer=advanceOriginalOwnerCaseTimeline(plan,current,frame([{...marks[0]!,choice:'REVIEW_HUB'}],marks));
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,newer,previewOriginalOwnerCrossVisitRecovery(plan,newer),[row])).toThrow();
+ });
+ it('rejects concurrent changes and forged receipts, preserving original data',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,1);
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame([{...marks[0]!,choice:'DEFER'}],marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([],marks));
+  const scan=previewOriginalOwnerCrossVisitRecovery(plan,current);
+  const receipt=previewOriginalOwnerGenerationSelection(plan,current,scan,[{
+   kind:marks[0]!.kind,originalId:marks[0]!.originalId,visitsBack:1}]);
+  expect(()=>applyOriginalOwnerGenerationSelection(plan,current,{...receipt,selected:[{...receipt.selected[0]!,choice:'REVIEW_HUB'}]})).toThrow();
+  expect(()=>applyOriginalOwnerGenerationSelection(plan,{...current,past:[]},receipt)).toThrow();
+  const competing=advanceOriginalOwnerCaseTimeline(plan,current,frame([{...marks[0]!,choice:'REVIEW_SOURCE'}],marks));
+  expect(()=>applyOriginalOwnerGenerationSelection(plan,competing,receipt)).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,{...scan,sourceSha256:'b'.repeat(64)},[])).toThrow();
+  expect(current.current.choices).toHaveLength(0);
+ });
+ it('empty explicit selection remains no-op and migration impossible',()=>{
+  const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,1);
+  const first=advanceOriginalOwnerCaseTimeline(plan,null,frame([{...marks[0]!,choice:'DEFER'}],marks));
+  const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([],marks));
+  const receipt=previewOriginalOwnerGenerationSelection(plan,current,previewOriginalOwnerCrossVisitRecovery(plan,current),[]);
+  expect(receipt).toMatchObject({selected:[],blocked:true,writes:0,readyToMigrate:false});
+  expect(applyOriginalOwnerGenerationSelection(plan,current,receipt)).toEqual([]);
  });
 });

@@ -451,6 +451,68 @@ export function applyOriginalOwnerCrossVisitSubset(
  return result;
 }
 
+
+/** Phase 32: reviewer-selected exact generation of a historical decision.
+ * Source IDs and current independent choices are immutable. This code has
+ * no storage or migration writer.
+ */
+export interface OriginalOwnerGenerationRequest {
+ readonly kind:OwnerDryRunRow['kind'];
+ readonly originalId:string;
+ readonly visitsBack:number;
+}
+export interface OriginalOwnerGenerationReceipt {
+ readonly fullPreviewWitness:string;
+ readonly selected:readonly OriginalOwnerCrossVisitCandidate[];
+ readonly protectedCurrent:number;
+ readonly writes:0;
+ readonly blocked:true;
+ readonly readyToMigrate:false;
+}
+export function previewOriginalOwnerGenerationSelection(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,
+ preview:OriginalOwnerCrossVisitPreview,requests:readonly OriginalOwnerGenerationRequest[],
+):OriginalOwnerGenerationReceipt {
+ const fresh=previewOriginalOwnerCrossVisitRecovery(plan,timeline);
+ if(JSON.stringify(preview)!==JSON.stringify(fresh))
+  throw new Error('Original owner historical generation changed. Preview again.');
+ if(requests.length>OWNER_MARK_LIMIT)throw new Error('Original owner selected too many source generations.');
+ const eligible=new Set(fresh.recoverable.map(row=>immutableOwnerId(row.kind,row.originalId)));
+ const seen=new Set<string>(),selected:OriginalOwnerCrossVisitCandidate[]=[];
+ for(const request of requests){
+  const id=immutableOwnerId(request.kind,request.originalId);
+  if(seen.has(id))throw new Error('Multiple generations selected for one original-source record.');
+  seen.add(id);
+  if(!eligible.has(id)||!Number.isSafeInteger(request.visitsBack)||
+      request.visitsBack<1||request.visitsBack>timeline.past.length)
+   throw new Error('Historical generation is not available for this marked source record.');
+  const frame=timeline.past[timeline.past.length-request.visitsBack]!;
+  const historical=frame.choices.find(row=>row.kind===request.kind&&row.originalId===request.originalId);
+  if(!historical)throw new Error('Historical generation lacks independently reviewed source evidence.');
+  selected.push({...historical,visitsBack:request.visitsBack});
+ }
+ return {fullPreviewWitness:JSON.stringify(fresh),selected,
+  protectedCurrent:fresh.protectedCurrent,writes:0,blocked:true,readyToMigrate:false};
+}
+export function applyOriginalOwnerGenerationSelection(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,receipt:OriginalOwnerGenerationReceipt,
+):OwnerCaseChoiceInput[] {
+ const fresh=previewOriginalOwnerCrossVisitRecovery(plan,timeline);
+ const checked=previewOriginalOwnerGenerationSelection(plan,timeline,fresh,
+  receipt.selected.map(row=>({kind:row.kind,originalId:row.originalId,visitsBack:row.visitsBack})));
+ if(JSON.stringify(checked)!==JSON.stringify(receipt))
+  throw new Error('Historical original-source receipt became stale or was modified.');
+ const choices=new Map(timeline.current.choices.map(row=>[immutableOwnerId(row.kind,row.originalId),{...row}]));
+ for(const row of checked.selected){
+  const key=immutableOwnerId(row.kind,row.originalId);
+  if(choices.has(key))throw new Error('A newer independent original-source review is protected.');
+  choices.set(key,{kind:row.kind,originalId:row.originalId,observedStatus:row.observedStatus,choice:row.choice});
+ }
+ const result=[...choices.values()];
+ reviewOriginalOwnerCases(plan,result,plan.originalFileSha256,plan.hubRevision);
+ return result;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
