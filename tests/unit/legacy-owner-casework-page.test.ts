@@ -447,7 +447,8 @@ describe('Phase 31 original-ID selective cross-visit receipts and independent re
  const originalId=(kind:string,id:string)=>JSON.stringify([kind,id]);
  it('restores exactly one original, leaves another missing and preserves a newer independent decision',()=>{
   const marks=updateOriginalOwnerPageMarks(plan,[],[],0,true,sha,7).slice(0,3);
-  const older=[{...marks[0]!,choice:'KEEP_SEPARATE' as const},{...marks[1]!,choice:'DEFER' as const}];
+  const older=[{...marks[0]!,choice:'KEEP_SEPARATE' as const},{...marks[1]!,choice:'DEFER' as const},
+   {...marks[2]!,choice:'DEFER' as const}];
   const first=advanceOriginalOwnerCaseTimeline(plan,null,frame(older,marks));
   const current=advanceOriginalOwnerCaseTimeline(plan,first,frame([{...marks[2]!,choice:'REVIEW_HUB'}],marks));
   const full=previewOriginalOwnerCrossVisitRecovery(plan,current);
