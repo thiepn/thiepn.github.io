@@ -60,4 +60,4 @@ jobs:
             tests/studio/workspace.spec.ts \
             tests/studio/workflow-handoffs.spec.ts \
             tests/studio/hub-sync.spec.ts \
-            --grep 'H1 accessibility /home/|dark-mode planning action contrast|duplicating a workspace copies presentation|H6 Home and Actions discover workflow guides|the rail, presets and named workspaces|fresh tabs reuse the connected session after previous tabs close \\(normal\\)'
+            --grep 'H1 accessibility /home/|dark-mode planning action contrast|duplicating a workspace copies presentation|H6 Home and Actions discover workflow guides|the rail, presets and named workspaces|fresh tabs reuse the connected session after previous tabs close'
