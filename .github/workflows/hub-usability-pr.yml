@@ -41,6 +41,8 @@ jobs:
         run: npm run build
       - name: Install browser engines
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install pinned axe for WCAG checks
+        run: npm install --prefix /tmp/audit-tools axe-core@4.13.0
       - name: Today, navigation and contrast at all sizes/themes
         run: >
           npx playwright test -c playwright.studio.config.ts
