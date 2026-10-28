@@ -487,3 +487,7 @@
 .ws-owner-cross-choice span{min-width:0;overflow-wrap:anywhere}
 .ws-owner-cross-choice input{flex:0 0 22px;width:22px;height:22px;accent-color:var(--ws-accent);cursor:pointer}
 @media(max-width:390px){.ws-owner-cross-candidates{grid-template-columns:minmax(0,1fr)}}
+
+/* Phase 32: reviewer chooses the exact previous original-source visit. */
+.ws-owner-cross-choice:has([data-original-owner-cross-generation]){display:grid;grid-template-columns:24px minmax(0,1fr)}
+.ws-owner-cross-choice [data-original-owner-cross-generation]{grid-column:1/-1;width:100%;min-height:44px;min-width:0;font:inherit}
