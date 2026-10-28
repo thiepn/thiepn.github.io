@@ -531,3 +531,49 @@ for(const width of [320,390,1440]){
   await page.reload();await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
  });
 }
+
+for(const width of [320,390,1440]){
+ test('Phase 32 real physical older-generation selection respects exact original source '+width,async({page})=>{
+  test.setTimeout(90_000);
+  await page.setViewportSize({width,height:width===320?720:width===390?844:900});
+  await page.goto('/home/legacy/');
+  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
+  const original=folio();
+  original.data.tasks=Array.from({length:163},(_,i)=>({id:'phase32-original-'+i,title:'PRIVATE PHASE32 TITLE '+i}));
+  const file=page.locator('[data-legacy-backup-file]');
+  await file.setInputFiles({name:'source32.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(original))});
+  const marks=page.locator('[data-original-owner-mark]'),choices=page.locator('[data-original-owner-choice]');
+  await marks.nth(0).check();await marks.nth(1).check();
+  await choices.nth(0).selectOption('DEFER');
+  await choices.nth(0).selectOption('KEEP_SEPARATE');
+  await choices.nth(0).selectOption('');
+  await choices.nth(1).selectOption('REVIEW_HUB');
+  await page.locator('[data-action=original-owner-cross-preview]').click();
+  const historical=page.locator('[data-original-owner-cross-generation]');
+  await expect(historical).toHaveCount(1);
+  const options=await historical.locator('option').evaluateAll(all=>all.map(el=>({value:(el as HTMLOptionElement).value,text:el.textContent??''})));
+  expect(options.some(v=>v.text.includes('DEFER'))).toBe(true);
+  expect(options.some(v=>v.text.includes('KEEP SEPARATE'))).toBe(true);
+  const older=options.find(v=>v.text.includes('DEFER'))!;
+  await historical.selectOption(older.value);
+  await expect(historical).toHaveValue(older.value);
+  await page.locator('[data-action=original-owner-cross-apply]').click();
+  await expect(choices.nth(0)).toHaveValue('DEFER');
+  await expect(choices.nth(1)).toHaveValue('REVIEW_HUB');
+  await page.locator('[data-action=original-owner-undo]').click();
+  await expect(choices.nth(0)).toHaveValue('');
+  await page.locator('[data-action=original-owner-redo]').click();
+  await expect(choices.nth(0)).toHaveValue('DEFER');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(()=>Object.keys(localStorage).some(key=>key.includes('phase32-original-')))).toBe(false);
+  const replacement=folio();replacement.data.tasks=[{id:'different-phase32',title:'PRIVATE DIFFERENT ORIGINAL'}];
+  await file.setInputFiles({name:'different-source32.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(replacement))});
+  await expect(page.locator('[data-action=original-owner-cross-preview]')).toBeDisabled();
+  await expect(page.locator('[data-original-owner-cross-generation]')).toHaveCount(0);
+  await page.locator('.ws-topbar [data-action=account]').click();
+  await page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('[data-owner-casework]')).toHaveCount(0);
+ });
+}
