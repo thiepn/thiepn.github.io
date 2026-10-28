@@ -44,6 +44,7 @@ test('mobile guided Weekly Review moves across original task, time, tracker, dec
  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
  await review.locator('[data-action=unified-mode][data-id=today]').click();
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-workbench]')).toContainText('Weekly review');
  await page.goto('/?mode=review');
  await expect(page.locator('[data-weekly-review]')).toHaveAttribute('data-review-stage','triage');

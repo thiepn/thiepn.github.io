@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 test('original decision record cannot be silently removed through Customize widget removal or starter layout',async({page})=>{
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-today-decisions] [data-action=new-decision]').click();
  await page.getByLabel('Decision title').fill('Keep source decision');
  await page.getByLabel('Options, one per line').fill('Continue\nChange');
@@ -21,11 +22,13 @@ test('original decision record cannot be silently removed through Customize widg
  await page.locator('[data-workspace-dialog] [data-action=close-dialog][aria-label="Close dialog"]').click();
  await page.reload();
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-decisions]')).toContainText('Keep source decision');
 });
 
 test('duplicating a workspace copies presentation but keeps original decision records in their source workspace',async({page})=>{
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-today-decisions] [data-action=new-decision]').click();
  await page.getByLabel('Decision title').fill('Original choice only');
  await page.getByLabel('Options, one per line').fill('Continue\\nChange'.replace('\\n','\n'));
@@ -37,9 +40,11 @@ test('duplicating a workspace copies presentation but keeps original decision re
  await page.getByLabel('Name',{exact:true}).fill('Secondary layout');
  await page.locator('[data-dialog-submit]').click();
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-decisions]')).not.toContainText('Original choice only');
  await page.goto('/?mode=workspace');
  await page.locator('[data-workspace-id]').first().click();
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-decisions]')).toContainText('Original choice only');
 });

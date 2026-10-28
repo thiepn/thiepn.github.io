@@ -62,6 +62,7 @@ test('mobile original task → session scratch → reviewed Hub note → next pl
   await expect(page.locator('[data-action=focus-work-note]')).toBeDisabled();
 
   await page.goto('/');
+  await page.locator('[data-action=toggle-today-more]').click();
   await expect(page.locator('[data-today-workbench]')).toContainText('Focus work · Differential Equations exam');
   await expect(page.locator('[data-unified-today]')).toContainText('Differential Equations exam');
   const width=await page.evaluate(()=>document.documentElement.scrollWidth);

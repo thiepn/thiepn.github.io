@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 test('mobile Today decision register saves options, decides and reopens without shadow tasks',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-today-decisions] [data-action=new-decision]').click();
  await page.getByLabel('Decision title').fill('Which research direction?');
  await page.getByLabel('Options, one per line').fill('Statistics\nAI');
@@ -8,6 +9,7 @@ test('mobile Today decision register saves options, decides and reopens without 
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-today-decisions]')).toContainText('Which research direction?');
  await page.reload();
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-today-decisions] [data-action=choose-decision]').click();
  await page.getByLabel('Selected option').selectOption('AI');
  await page.getByLabel('Why this option?').fill('More relevant for research');
@@ -30,6 +32,7 @@ test('desktop original task and note sources remain accessible after decision sa
  await page.getByLabel('Task',{exact:true}).fill('Original task for decision');
  await page.locator('[data-dialog-submit]').click();
  await page.locator('[data-action=unified-mode][data-id=today]').click();
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-today-decisions] [data-action=new-decision]').click();
  await page.getByLabel('Decision title').fill('Training choice');
  await page.getByLabel('Options, one per line').fill('Course A\nCourse B');

@@ -1,4 +1,4 @@
-import { reviewDay, reviewWeek } from './planning-review';
+import { reviewDay } from './planning-review';
 import { taskCounts } from './task-flow';
 import { focusTasks } from './daily-focus';
 import type { WorkspaceState, Task, CalendarEvent } from './types';
@@ -24,14 +24,10 @@ function taskRow(task:Task,today:string) {
     <div class="ws-unified-task-actions">${textButton('unified-focus-task','Focus',task.id)}</div>
   </li>`;
 }
-const humanDate=(day:string)=>new Date(day+'T12:00:00Z').toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
 function eventRow(e:CalendarEvent,zone:string) {
   const hour=e.allDay?'All day':new Date(e.start).toLocaleTimeString(undefined,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
   return `<li class="ws-unified-event"><div><strong>${esc(e.title)}</strong><small>${esc(hour)}</small></div>
     ${textButton('context-event','Next',e.id)}</li>`;
-}
-function nextTask(state:WorkspaceState,today:string) {
-  return focusTasks(state,today,'due')[0]??focusTasks(state,today,'inbox')[0]??focusTasks(state,today,'priority')[0];
 }
 export function renderUnifiedJourneyNav(mode:HomeJourneyMode,state:WorkspaceState,today:string,status:JourneyStatus) {
   const counts=taskCounts(state.tasks,today);

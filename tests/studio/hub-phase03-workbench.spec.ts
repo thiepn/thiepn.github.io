@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 test.use({serviceWorkers:'block'});
 test('Phase 03 Today renders seven original Hub days, tracker and note handoffs',async({page})=>{
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-workspace-status]')).toContainText('saved locally');
  await expect(page.locator('[data-workspace][data-home-mode=today]')).toBeVisible();
  await expect(page.locator('[data-today-workbench]')).toBeVisible();
@@ -15,6 +16,7 @@ test('Phase 03 Today renders seven original Hub days, tracker and note handoffs'
 test('Phase 03 mobile source view stays bounded and original Workspace remains editable',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-workbench]')).toBeVisible();
  await expect(page.locator('[data-source-queue], [data-source-today-folio], [data-source-today-notes]')).toHaveCount(0);
  await expect(page.locator('.ws-workbench-day')).toHaveCount(7);
@@ -25,6 +27,7 @@ test('Phase 03 mobile source view stays bounded and original Workspace remains e
 });
 test('Phase 03 privacy hides native Today records without spawning a new data owner',async({page})=>{
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-workbench]')).toBeVisible();
  await page.locator('.ws-topbar [data-action=account]').click();
  await expect(page.locator('[data-account-dialog]')).toBeVisible();

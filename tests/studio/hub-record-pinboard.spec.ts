@@ -24,6 +24,7 @@ test('mobile pin original task and note, continue from Today, unpin without touc
  await page.locator('[data-dialog-submit]').click();
  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
  await page.goto('/');
+ await page.locator('[data-action=toggle-today-more]').click();
  await page.locator('[data-action=unified-mode][data-id=today]').click();
  const pinboard=page.locator('[data-today-pinboard]');
  await expect(pinboard).toContainText('Pinned DGL course review');

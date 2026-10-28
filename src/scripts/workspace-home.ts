@@ -1029,7 +1029,7 @@ async function setup(root: HTMLElement) {
                 return menu+renderUnifiedToday(state!,today(),journeyStatus())+
                     '<section class="ws-today-more"><button type="button" class="ws-today-more-toggle" data-action="toggle-today-more" aria-expanded="'+String(todayMoreExpanded)+'" aria-controls="ws-today-more-content">'+
                     (todayMoreExpanded?'Hide additional sections':'More sections')+'</button>'+
-                    '<div id="ws-today-more-content" data-today-more-content'+(todayMoreExpanded?'':' hidden')+'>'+extraPanels+'</div></section>';
+                    '<div id="ws-today-more-content" class="ws-today-more-content" data-today-more-content'+(todayMoreExpanded?'':' hidden')+'>'+extraPanels+'</div></section>';
             }
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
             if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,activeFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
