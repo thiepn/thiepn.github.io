@@ -392,6 +392,65 @@ export function applyOriginalOwnerCrossVisitRecovery(
  return result;
 }
 
+
+/** A reviewer can opt out of any otherwise eligible historical decision.
+ * A full current/source/history witness and exact selected original IDs are
+ * checked again at apply. No source records, migration rights or ID changes.
+ */
+export interface OriginalOwnerCrossVisitSubsetReceipt {
+ readonly owner:OwnerDryRun['owner'];
+ readonly sourceSha256:string;
+ readonly hubRevision:number;
+ readonly fullPreviewWitness:string;
+ readonly selected:readonly OriginalOwnerCrossVisitCandidate[];
+ readonly excluded:number;
+ readonly protectedCurrent:number;
+ readonly writes:0;
+ readonly blocked:true;
+ readonly readyToMigrate:false;
+}
+export function previewOriginalOwnerCrossVisitSubset(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,review:OriginalOwnerCrossVisitPreview,
+ selectedIds:readonly string[],
+):OriginalOwnerCrossVisitSubsetReceipt {
+ const fresh=previewOriginalOwnerCrossVisitRecovery(plan,timeline);
+ if(JSON.stringify(fresh)!==JSON.stringify(review))
+  throw new Error('Original owner historical review or source changed. Preview again.');
+ if(selectedIds.length>OWNER_MARK_LIMIT)throw new Error('Original owner recovery exceeds the marked memory limit.');
+ const eligible=new Map(fresh.recoverable.map(x=>[immutableOwnerId(x.kind,x.originalId),x]));
+ const wanted=new Set<string>();
+ for(const id of selectedIds){
+  if(typeof id!=='string'||!eligible.has(id))throw new Error('Original owner selected an ineligible source record.');
+  if(wanted.has(id))throw new Error('Original owner selected the same historical record twice.');
+  wanted.add(id);
+ }
+ const selected=fresh.recoverable.filter(row=>wanted.has(immutableOwnerId(row.kind,row.originalId)))
+  .map(row=>({...row}));
+ return {owner:plan.owner,sourceSha256:plan.originalFileSha256,
+  hubRevision:plan.hubRevision,fullPreviewWitness:JSON.stringify(fresh),
+  selected,excluded:fresh.recoverable.length-selected.length,
+  protectedCurrent:fresh.protectedCurrent,writes:0,blocked:true,readyToMigrate:false};
+}
+export function applyOriginalOwnerCrossVisitSubset(
+ plan:OwnerDryRun,timeline:OriginalOwnerCaseTimeline,receipt:OriginalOwnerCrossVisitSubsetReceipt,
+):OwnerCaseChoiceInput[] {
+ const current=previewOriginalOwnerCrossVisitRecovery(plan,timeline);
+ const verified=previewOriginalOwnerCrossVisitSubset(plan,timeline,current,
+  receipt.selected.map(row=>immutableOwnerId(row.kind,row.originalId)));
+ if(JSON.stringify(receipt)!==JSON.stringify(verified))
+  throw new Error('Original owner selective source receipt expired or was modified.');
+ const next=new Map(timeline.current.choices.map(row=>[immutableOwnerId(row.kind,row.originalId),{...row}]));
+ for(const selected of verified.selected){
+  const key=immutableOwnerId(selected.kind,selected.originalId);
+  if(next.has(key))throw new Error('Independent current original-source decision is protected.');
+  next.set(key,{kind:selected.kind,originalId:selected.originalId,
+   observedStatus:selected.observedStatus,choice:selected.choice});
+ }
+ const result=[...next.values()];
+ reviewOriginalOwnerCases(plan,result,plan.originalFileSha256,plan.hubRevision);
+ return result;
+}
+
 const esc=(s:string):string=>s.replace(/[&<>"']/gu,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]!));
 /** Ephemeral review UI. Never stores source records or review choices in Hub. */
 export const OWNER_CASE_PAGE_SIZE=80;
@@ -492,6 +551,7 @@ export function renderOriginalOwnerCaseworkForm(
   '<div class="ws-owner-case-recovery ws-owner-cross-visit" role="group" aria-label="Recover missing original records across historical visits">'+
    '<button type="button" data-action="original-owner-cross-preview" disabled>Scan marked cases across all retained visits</button>'+
    '<button type="button" data-action="original-owner-cross-apply" disabled>Restore safe missing selections</button>'+
+   '<div data-owner-cross-candidates class="ws-owner-cross-candidates" role="group" aria-label="Choose each original-source historical decision"></div>'+
    '<p data-owner-cross-status role="status">No cross-visit preview · independent current decisions stay protected.</p>'+
   '</div>'+
   '<p data-owner-history-provenance>Unverified '+esc(plan.owner)+' source fingerprint '+esc(plan.originalFileSha256.slice(0,12))+
