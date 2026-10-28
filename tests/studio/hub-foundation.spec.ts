@@ -90,6 +90,8 @@ for (const route of ['/home/', '/search/']) for (const theme of ['light', 'dark'
     const audit = async () => page.evaluate(async () => (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
     expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     if (route === '/home/') {
+      await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+      await expect(page.locator('[data-home-mode=workspace]')).toBeVisible();
       await page.getByRole('button', { name: 'Customize', exact: true }).click();
       expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     }
@@ -145,6 +147,9 @@ for(const width of [390,1440]){
   await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
   await page.goto('/home/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.locator('[data-action=toggle-today-more]').click();
+  await expect(page.locator('[data-today-decisions] [data-action=new-decision]')).toBeVisible();
+  await expect(page.locator('[data-today-outcomes] [data-action=new-outcome]')).toBeVisible();
   const ratios=await page.evaluate(()=>{
    const linear=(x:number)=>{const c=x/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4;};
    const luminosity=(rgb:string)=>{const channels=(rgb.match(/[0-9.]+/gu)||[]).slice(0,3).map(Number);

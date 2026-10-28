@@ -23,7 +23,7 @@ test('H6 reviewed app links carry no file payload and Scan remains an Android pr
   await expect(page.locator('[data-portal-flows] input[type="file"]')).toHaveCount(0);
 });
 test('H6 Home and Actions discover workflow guides', async ({ page }) => {
-  await page.goto('/home/'); await expect(page.getByRole('link',{name:'Workflow guides',exact:true})).toHaveAttribute('href','/flows/');
+  await page.goto('/home/'); await page.locator('[data-nav-more] summary').click(); await expect(page.getByRole('link',{name:'Workflow guides',exact:true})).toHaveAttribute('href','/flows/');
   await page.goto('/search/?scope=actions&q=manuscript'); await expect(page.locator('[data-search-action]:visible')).toHaveCount(1);
   await expect(page.getByRole('link',{name:'Turn notes into a manuscript',exact:true})).toHaveAttribute('href','https://thiepn.dev/flows/?flow=notes-draft&step=1');
 });

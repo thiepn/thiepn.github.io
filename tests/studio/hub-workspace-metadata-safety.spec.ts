@@ -43,6 +43,8 @@ test('duplicating a workspace copies presentation but keeps original decision re
  await page.locator('[data-action=toggle-today-more]').click();
  await expect(page.locator('[data-today-decisions]')).not.toContainText('Original choice only');
  await page.goto('/?mode=workspace');
+ await page.locator('.ws-workspaces-disclosure summary').click();
+ await expect(page.locator('[data-workspace-id]').first()).toBeVisible();
  await page.locator('[data-workspace-id]').first().click();
  await page.goto('/');
  await page.locator('[data-action=toggle-today-more]').click();
