@@ -546,7 +546,7 @@ describe('Phase 32 independently chosen exact historical decision generations',(
   expect(()=>applyOriginalOwnerGenerationSelection(plan,{...current,past:[]},receipt)).toThrow();
   const competing=advanceOriginalOwnerCaseTimeline(plan,current,frame([{...marks[0]!,choice:'REVIEW_SOURCE'}],marks));
   expect(()=>applyOriginalOwnerGenerationSelection(plan,competing,receipt)).toThrow();
-  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,{...scan,sourceSha256:'b'.repeat(64)},[])).toThrow();
+  expect(()=>previewOriginalOwnerGenerationSelection(plan,current,{...scan,originalFileSha256:'b'.repeat(64)},[])).toThrow();
   expect(current.current.choices).toHaveLength(0);
  });
  it('empty explicit selection remains no-op and migration impossible',()=>{
