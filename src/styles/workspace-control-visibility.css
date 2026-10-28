@@ -1,0 +1,124 @@
+/* Hub controls: separate the 3:1 non-text control boundary from quiet content dividers.
+   The light/dark panel tokens in workspace.css remain unchanged. */
+[data-workspace-page] {
+  --ws-control-line:#79879e;
+  --ws-control-fill:#ffffff;
+  --ws-control-hover:#e8f0ff;
+  --ws-control-pressed:#dce9ff;
+}
+[data-workspace-page][data-theme=dark] {
+  --ws-control-line:#8da0bc;
+  --ws-control-fill:#243044;
+  --ws-control-hover:#2b425e;
+  --ws-control-pressed:#2a496c;
+}
+
+/* One visual hierarchy for native workspace, Today, planning, focus, widgets
+   and command palette. Exclude navigational and data-row buttons by design. */
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+){
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+  color:var(--ws-ink);
+}
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+):not(.ws-primary):not(:disabled):not([aria-disabled=true]):is(:hover,:focus-visible){
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+):not(.ws-primary):not(:disabled):active{
+  background:var(--ws-control-pressed);
+}
+
+/* Primary actions retain the established accessible accent fill and text. */
+.ws .ws-primary,
+.ws .portal-search-form button {
+  background:var(--ws-accent);
+  color:#ffffff;
+  border:1px solid var(--ws-accent);
+}
+[data-theme=dark] .ws .ws-primary,
+[data-theme=dark] .ws .portal-search-form button{color:#11233d;}
+.ws .ws-primary:not(:disabled):is(:hover,:focus-visible){filter:brightness(.96);}
+.ws :is(.ws-unified-mode,.ws-plan-button,.ws-focus-chip,.ws-palette-chip,.ws-review-stages button)[aria-pressed=true],
+.ws :is(.ws-unified-mode,.ws-plan-button,.ws-focus-chip,.ws-palette-chip,.ws-review-stages button)[aria-current=step]{
+  border-color:var(--ws-accent);
+  background:var(--ws-accent-soft);
+  color:var(--ws-accent);
+  font-weight:650;
+}
+/* Tertiary controls are visually links rather than indistinguishable labels. */
+.ws .ws-text-button{
+  border:0;
+  background:transparent;
+  color:var(--ws-accent);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  text-decoration-thickness:1px;
+}
+.ws .ws-text-button:hover{text-decoration-thickness:2px;}
+.ws .ws-topbar-actions>.ws-icon-button:last-child,
+.ws .ws-brand .ws-icon-button{
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+}
+.ws .ws-brand .ws-icon-button{width:36px;min-height:36px;}
+/* Small widget utility icons stay compact, but become visible on interaction. */
+.ws .ws-widget .ws-icon-button:is(:hover,:focus-visible){
+  border:1px solid var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+/* A selectable label is also a control, not merely a decorative card. */
+.ws .ws-owner-cross-choice,.ws .ws-unified-choice{
+  border-color:var(--ws-control-line);
+}
+.ws .ws-owner-cross-choice:focus-within,.ws .ws-unified-choice:focus-within{
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws .ws-brief-done{border-color:var(--ws-control-line)!important;}
+/* Disabled actions remain visually bounded without looking operational. */
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-primary,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.portal-button
+):is(:disabled,[aria-disabled=true]){
+  opacity:1;
+  cursor:not-allowed;
+  border-color:var(--ws-control-line);
+  background:var(--ws-soft);
+  color:var(--ws-muted);
+  box-shadow:none;
+  filter:none;
+}
+.ws .ws-search-trigger{min-width:0;}
+.ws .ws-search-trigger>span:not(.ws-icon){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media(max-width:767px){
+  .ws :is(.ws-button,.ws-primary,.ws-icon-button,.ws-unified-action,.ws-plan-button,.ws-focus-button,.ws-widget-action,.portal-button){min-height:44px;}
+  .ws .ws-icon-button{width:44px;}
+  .ws .ws-widget .ws-icon-button{width:32px;min-height:32px;}
+}
+@media(forced-colors:active){
+  .ws :is(.ws-button,.ws-icon-button,.ws-primary,.ws-unified-action,.ws-unified-mode,.ws-plan-button,.ws-focus-button,.ws-widget-action,.ws-search-trigger,.portal-button){
+    border-color:ButtonText;
+  }
+  .ws :is(.ws-button,.ws-primary,.ws-unified-action,.ws-plan-button):focus-visible{outline:3px solid Highlight;}
+}
