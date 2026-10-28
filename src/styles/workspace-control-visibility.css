@@ -201,3 +201,17 @@
   .ws-unified-action,.ws-unified-mode,.ws-plan-button,.ws-focus-button,
   .ws-focus-chip,.ws-widget-action,.ws-palette-chip,.ws-palette-quick-action
 ){transition:none;}
+
+/* The quick-capture primary icon is also an icon-button; force its primary
+   fill above generic icon backgrounds in both themes. The 1.19:1 dark-state
+   collision was reproduced consistently in Chromium, Firefox and WebKit. */
+[data-workspace-page] .ws .ws-topbar-actions>.ws-primary.ws-icon-button{
+  background:#2162ed;
+  color:#ffffff;
+  border-color:#2162ed;
+}
+[data-workspace-page][data-theme=dark] .ws .ws-topbar-actions>.ws-primary.ws-icon-button{
+  background:#88b7ff;
+  color:#11233d;
+  border-color:#88b7ff;
+}
