@@ -16,7 +16,12 @@ import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/langua
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
-import { renderSourceToday } from '../lib/workspace/source-today';
+import { renderHubLanguageToday, renderSourceToday } from '../lib/workspace/source-today';
+import { renderTodayWorkbench } from '../lib/workspace/today-workbench';
+import {renderNotesCalendarContinuity,freshNotesReminderShare,NOTES_REMINDER_MAX_AGE_MS} from '../lib/workspace/notes-reminder-continuity';
+import { renderTaskKnowledgeContext, renderNoteWorkContext } from '../lib/workspace/knowledge-work-context';
+import { renderEventPreparation, renderUpcomingEventPreparation, preparationTaskSeed, preparationNoteSeed } from '../lib/workspace/event-preparation';
+import { taskEventLinks, linkTaskEvent, unlinkTaskEvent, renderTaskEventBoard, renderTaskEventContext, type RelationDraft } from '../lib/workspace/task-event-links';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
@@ -34,8 +39,24 @@ import { renderReturnJourney, renderSavedComparison, renderRecoveryStrip, type R
 import { prepareTaskCalendarEvent, identicalLocalEvent, taskNoteSeed, noteTaskSeed, type WorkOrigin } from '../lib/workspace/context-handoffs';
 import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventRequest } from '../lib/workspace/planning-review';
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
+import { prepareDistributedWeek, applyDistributedWeek, planningHorizon, type PlanningHorizon } from '../lib/workspace/distributed-planning';
+import { freshFolioPlanningShare } from '../lib/workspace/folio-continuity';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
+import {focusWorkInput,focusWorkNoteSeed,hasFocusWork,EMPTY_FOCUS_WORK,type FocusWorkDraft} from '../lib/workspace/focus-work-handoff';
+import {renderWeeklyReview,weeklyReviewNoteSeed,weeklyReviewField,WEEKLY_REVIEW_STAGES,EMPTY_WEEKLY_REVIEW,type WeeklyReviewStage,type WeeklyReviewDraft} from '../lib/workspace/weekly-review-journey';
+import {renderHubPinboard,hubPinboard,hubPinnedKeys,hasHubPin,enableHubPinboard,toggleHubRecordPin,moveHubRecordPin} from '../lib/workspace/record-pinboard';
+import {renderConfirmedHubBacklinks} from '../lib/workspace/confirmed-hub-backlinks';
+import {projectHubKnowledge,renderHubKnowledge,renderHubKnowledgeList,renderHubKnowledgePreview} from '../lib/workspace/personal-index-knowledge';
+import {attachNativeKeep} from './keep-native-controller';
+import {previewLegacyReconciliation,renderLegacyReconciliation} from '../lib/workspace/legacy-reconciliation';
+import {renderOriginalExportPreflight} from '../lib/workspace/legacy-full-export-preflight';
+import {makeOriginalOwnerDryRun,renderOriginalOwnerDryRun,type OwnerDryRun} from '../lib/workspace/legacy-migration-dry-run';
+import {reviewOriginalOwnerCases,makeOriginalOwnerCaseFrame,advanceOriginalOwnerCaseTimeline,traverseOriginalOwnerCaseTimeline,previewOriginalOwnerSelectiveRecovery,applyOriginalOwnerSelectiveRecovery,previewOriginalOwnerCrossVisitRecovery,applyOriginalOwnerCrossVisitRecovery,previewOriginalOwnerCrossVisitSubset,applyOriginalOwnerCrossVisitSubset,previewOriginalOwnerGenerationSelection,applyOriginalOwnerGenerationSelection,applyOriginalOwnerPageChoice,applyOriginalOwnerMarkedChoice,updateOriginalOwnerPageMarks,validateOriginalOwnerMarks,originalOwnerFilteredRows,OWNER_CASE_FILTERS,OWNER_REVIEW_FILTERS,OWNER_MARK_FILTERS,renderOriginalOwnerCaseworkForm,renderOriginalOwnerCaseworkReceipt,OWNER_CASE_PAGE_SIZE,type OwnerCaseChoiceInput,type OriginalOwnerSelectiveRecovery,type OriginalOwnerCrossVisitPreview,type OriginalOwnerGenerationRequest,type OriginalOwnerCaseTimeline,type OwnerMarkedCase,type OwnerCaseFilter,type OwnerReviewFilter,type OwnerMarkFilter} from '../lib/workspace/legacy-owner-casework';
+import {hasWidgetOwnedRecords,assertWorkspaceMetadataRetained,duplicatePresentationLayout,workspaceOwnedSummary} from '../lib/workspace/widget-metadata-safety';
+import {rebaseAddedHubBackup} from '../lib/workspace/additive-import-references';
+import {outcomes,saveOutcome,changeOutcome,renderOutcomes,type OutcomeDraft} from '../lib/workspace/outcome-board';
+import {decisions,saveDecision,decide,transitionDecision,renderDecisions,type DecisionDraft} from '../lib/workspace/decision-register';
 import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
@@ -54,7 +75,7 @@ if (root)
     void setup(root);
 async function setup(root: HTMLElement) {
     let view = root.dataset.view ?? 'home';
-    const staticView=()=>['apps','connections','search','inbox','flows','documents'].includes(view);
+    const staticView=()=>['apps','connections','search','inbox','flows','documents','legacy'].includes(view);
     const welcomeKey='thiepn:hub:welcome-dismissed';
     let welcomeDismissed=false;
     try { welcomeDismissed=localStorage.getItem(welcomeKey)==='1'; } catch { /* A UI preference must not block local work. */ }
@@ -62,6 +83,8 @@ async function setup(root: HTMLElement) {
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
     let homeModeRestorePending=true;
+    let todayMoreExpanded=false; // View-only progressive disclosure; no stored preference or record changes.
+    let lastVerifiedHomeOwner:string|null=null;
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
     let initialCalendarDate = calendarParams && safeNavigationDay(calendarParams.get('date')) ? calendarParams.get('date') : null;
@@ -75,7 +98,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -99,15 +122,185 @@ async function setup(root: HTMLElement) {
     let weekFilter:WeekTaskFilter='carry';
     let weekSelection=new Set<string>();
     let activeWeekReview:{snapshots:TaskBeforeMove[];epoch:number}|null=null;
+    let activeSpreadReview:{snapshots:TaskBeforeMove[];epoch:number;folio:FolioDeviceSnapshot|null}|null=null;
     let weekReturnDate:string|null=initialReturnWeek; // Only current tab and safe calendar date/mode URL, never a private work item.
     let taskFilter: TaskFilter = taskFilterFromUrl && (TASK_FILTERS as readonly string[]).includes(taskFilterFromUrl) ? taskFilterFromUrl as TaskFilter : 'today', captureTimer: ReturnType<typeof setTimeout> | undefined, toastTimer: ReturnType<typeof setTimeout> | undefined;
     let privacyHeld = false;
+    let activeLegacyPlan:OwnerDryRun|null=null;
+    let originalCasePage=0;
+    let originalCaseFilter:OwnerCaseFilter='ALL';
+    let originalReviewFilter:OwnerReviewFilter='ALL';
+    let originalMarkFilter:OwnerMarkFilter='ALL';
+    let originalExportGeneration=0;
+    const originalCaseChoices=new Map<string,OwnerCaseChoiceInput>();
+    const originalCaseMarks=new Map<string,OwnerMarkedCase>();
+    let originalCaseTimeline:OriginalOwnerCaseTimeline|null=null;
+    let originalRecoveryPreview:OriginalOwnerSelectiveRecovery|null=null;
+    let originalCrossVisitPreview:OriginalOwnerCrossVisitPreview|null=null;
+    const originalCrossVisitSelected=new Set<string>();
+    const originalCrossVisitGenerations=new Map<string,number>();
+    let originalRecoverySteps=1;
+    const sourceCaseKey=(kind:string,id:string)=>kind+'\\u0000'+id;
+    const sourceMarkKey=(kind:string,id:string)=>JSON.stringify([kind,id]);
+    function clearLegacyCasework(){++originalExportGeneration;activeLegacyPlan=null;originalCasePage=0;originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';originalCaseChoices.clear();originalCaseMarks.clear();originalCaseTimeline=null;originalRecoveryPreview=null;originalCrossVisitPreview=null;originalCrossVisitSelected.clear();originalCrossVisitGenerations.clear();originalRecoverySteps=1;}
+    function syncOriginalOwnerHistoryButtons(renderCrossCandidates=true){
+        const host=root.querySelector<HTMLElement>('[data-owner-casework]');
+        if(!host)return;
+        const undo=originalCaseTimeline?.past.length??0,redo=originalCaseTimeline?.future.length??0;
+        const back=host.querySelector<HTMLButtonElement>('[data-action="original-owner-undo"]');
+        const forward=host.querySelector<HTMLButtonElement>('[data-action="original-owner-redo"]');
+        if(back)back.disabled=undo===0;
+        if(forward)forward.disabled=redo===0;
+        const status=host.querySelector<HTMLElement>('[data-owner-history-status]');
+        if(status)status.textContent=undo+' undo steps · '+redo+' redo steps; session-only';
+        const selector=host.querySelector<HTMLSelectElement>('[data-original-owner-recovery-step]');
+        if(selector){
+            const max=originalCaseTimeline?.past.length??0;
+            originalRecoverySteps=Math.min(originalRecoverySteps,Math.max(1,max));
+            selector.replaceChildren();
+            for(let n=1;n<=Math.max(1,max);n++){
+                const option=document.createElement('option');
+                option.value=String(n);option.textContent=n+' visit'+(n===1?'':'s')+' back';
+                selector.append(option);
+            }
+            selector.value=String(originalRecoverySteps);
+            selector.disabled=max===0;
+        }
+        const canPreview=undo>0&&(originalCaseTimeline?.current.marks.length??0)>0;
+        const preview=host.querySelector<HTMLButtonElement>('[data-action="original-owner-recovery-preview"]');
+        const apply=host.querySelector<HTMLButtonElement>('[data-action="original-owner-recovery-apply"]');
+        if(preview)preview.disabled=!canPreview;
+        if(apply)apply.disabled=!originalRecoveryPreview||originalRecoveryPreview.recoverable===0;
+        const message=host.querySelector<HTMLElement>('[data-owner-recovery-status]');
+        if(message)message.textContent=originalRecoveryPreview
+          ?originalRecoveryPreview.recoverable+' restorable · '+originalRecoveryPreview.protectedCurrent+
+            ' protected current · '+originalRecoveryPreview.unchanged+' unchanged · '+
+            originalRecoveryPreview.unavailable+' absent from selected history · no writes'
+          :'No recovery preview · current reviewed decisions remain protected.';
+        const scan=host.querySelector<HTMLButtonElement>('[data-action="original-owner-cross-preview"]');
+        const restore=host.querySelector<HTMLButtonElement>('[data-action="original-owner-cross-apply"]');
+        if(scan)scan.disabled=!canPreview;
+        const candidates=host.querySelector<HTMLElement>('[data-owner-cross-candidates]');
+        if(candidates&&renderCrossCandidates){
+            candidates.replaceChildren();
+            for(const row of originalCrossVisitPreview?.recoverable??[]){
+                const label=document.createElement('label');
+                label.className='ws-owner-cross-choice';
+                const checkbox=document.createElement('input');
+                checkbox.type='checkbox';
+                checkbox.setAttribute('data-original-owner-cross-select','');
+                checkbox.dataset.caseKind=row.kind;
+                checkbox.dataset.caseId=row.originalId;
+                checkbox.checked=originalCrossVisitSelected.has(sourceMarkKey(row.kind,row.originalId));
+                const evidence=document.createElement('span');
+                evidence.textContent=row.kind+' · '+row.originalId+' · original-source review';
+                const generation=document.createElement('select');
+                generation.setAttribute('data-original-owner-cross-generation','');
+                generation.setAttribute('aria-label','Historical decision for '+row.originalId);
+                generation.dataset.caseKind=row.kind;
+                generation.dataset.caseId=row.originalId;
+                for(let visitsBack=1;visitsBack<=(originalCaseTimeline?.past.length??0);visitsBack++){
+                    const history=originalCaseTimeline!.past[originalCaseTimeline!.past.length-visitsBack]!;
+                    const choice=history.choices.find(c=>c.kind===row.kind&&c.originalId===row.originalId);
+                    if(!choice)continue;
+                    const option=document.createElement('option');
+                    option.value=String(visitsBack);
+                    option.textContent=choice.choice.replace(/_/gu,' ')+' · '+visitsBack+' visit(s) back';
+                    generation.append(option);
+                }
+                generation.value=String(originalCrossVisitGenerations.get(sourceMarkKey(row.kind,row.originalId))??row.visitsBack);
+                label.append(checkbox,evidence,generation);
+                candidates.append(label);
+            }
+        }
+        const selectedCount=originalCrossVisitSelected.size;
+        if(restore){
+            restore.disabled=!originalCrossVisitPreview||selectedCount===0;
+            restore.textContent='Restore '+selectedCount+' selected missing decision'+(selectedCount===1?'':'s');
+        }
+        const crossStatus=host.querySelector<HTMLElement>('[data-owner-cross-status]');
+        if(crossStatus)crossStatus.textContent=originalCrossVisitPreview
+          ?originalCrossVisitPreview.recoverable.length+' missing decisions recoverable from '+
+           originalCrossVisitPreview.visitsUsed+' independent historical visits · '+
+           originalCrossVisitPreview.protectedCurrent+' protected current · '+
+           originalCrossVisitPreview.unchangedCurrent+' unchanged · '+
+           originalCrossVisitPreview.withoutHistory+' without historical evidence · '+
+           selectedCount+' explicitly selected · zero writes'
+          :'No cross-visit preview · independent current decisions stay protected.';
+    }
+    function recordOriginalOwnerHistory(){
+        if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+        const frame=makeOriginalOwnerCaseFrame(activeLegacyPlan,[...originalCaseChoices.values()],
+            [...originalCaseMarks.values()],originalCasePage,originalCaseFilter,
+            originalReviewFilter,originalMarkFilter,activeLegacyPlan.originalFileSha256,state.revision);
+        const next=advanceOriginalOwnerCaseTimeline(activeLegacyPlan,originalCaseTimeline,frame);
+        if(next!==originalCaseTimeline){
+            originalRecoveryPreview=null;
+            originalCrossVisitPreview=null;
+            originalCrossVisitSelected.clear();
+            originalCrossVisitGenerations.clear();
+        }
+        originalCaseTimeline=next;
+        syncOriginalOwnerHistoryButtons();
+    }
+    function showLegacyCasePage(trackHistory=true){
+        if(!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+        const review=reviewOriginalOwnerCases(activeLegacyPlan,[...originalCaseChoices.values()],activeLegacyPlan.originalFileSha256,state.revision);
+        validateOriginalOwnerMarks(activeLegacyPlan,[...originalCaseMarks.values()],activeLegacyPlan.originalFileSha256,state.revision);
+        const host=root.querySelector<HTMLElement>('[data-owner-casework]');
+        if(!host)return;
+        const matching=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
+        originalCasePage=Math.min(originalCasePage,Math.floor(Math.max(matching.length-1,0)/OWNER_CASE_PAGE_SIZE));
+        host.outerHTML=renderOriginalOwnerCaseworkForm(activeLegacyPlan,originalCasePage*OWNER_CASE_PAGE_SIZE,[...originalCaseChoices.values()],originalCaseFilter,originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
+        const status=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
+        if(status)status.textContent=renderOriginalOwnerCaseworkReceipt(review);
+        if(trackHistory)recordOriginalOwnerHistory();
+        else syncOriginalOwnerHistoryButtons();
+    }
+    function focusLegacyCasework(){
+        const heading=root.querySelector<HTMLElement>('[data-owner-casework] h4');
+        heading?.scrollIntoView({block:'start',behavior:'auto'});
+        heading?.focus({preventScroll:true});
+    }
+    /** A checkbox never remounts itself; native touch/keyboard click remains stable. */
+    function syncOriginalMarkControls(){
+        const host=root.querySelector<HTMLElement>('[data-owner-casework]');
+        if(!host)return;
+        const count=originalCaseMarks.size;
+        const label=host.querySelector<HTMLElement>('[data-owner-mark-count]');
+        if(label)label.textContent=String(count);
+        const actions:Readonly<Record<string,string>>={
+            'original-owner-marked-keep':'Keep '+count+' marked in source',
+            'original-owner-marked-clear':'Clear '+count+' marked choices',
+            'original-owner-marked-reset':'Unmark all',
+        };
+        for(const [action,title] of Object.entries(actions)){
+            const button=host.querySelector<HTMLButtonElement>('[data-action="'+action+'"]');
+            if(button){button.textContent=title;button.disabled=count===0;}
+        }
+        recordOriginalOwnerHistory();
+        const filter=host.querySelector<HTMLSelectElement>('[data-original-owner-mark-filter]');
+        if(filter){
+            for(const option of filter.options){
+                if(option.value==='MARKED')option.textContent='Marked for review ('+count+')';
+                else if(option.value==='UNMARKED')option.textContent='Not marked ('+((activeLegacyPlan?.rows.length??0)-count)+')';
+            }
+        }
+    }
+    const nativeKeep=attachNativeKeep(root,()=>view==='knowledge'&&!!state&&!locked&&!privacyHeld&&!state.preferences.hidden,()=>render(),message=>toast(message));
     // Context handoff is UI-only and never a new relation table or cross-app progress record.
     let handoffOrigin: WorkOrigin | null = null;
+    let knowledgeNoteId:string|null=null,knowledgeQuery='';
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
+    let weeklyReviewStage:WeeklyReviewStage='triage';
+    let weeklyReviewDraft:WeeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    const focusWork=new Map<string,FocusWorkDraft>();
+    function focusWorkForSelection():Readonly<FocusWorkDraft>{
+        return focus.selectedId?(focusWork.get(focus.selectedId)??EMPTY_FOCUS_WORK):EMPTY_FOCUS_WORK;
+    }
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -117,7 +310,11 @@ async function setup(root: HTMLElement) {
     let notesSourceNonce: string | null = null;
     let notesSourceWindow: Window | null = null;
     let notesSourceDeadline: ReturnType<typeof setTimeout> | null = null;
+    let notesSourceExpiry: ReturnType<typeof setTimeout> | null = null;
     function clearNotesSource() {
+        root.querySelectorAll('[data-context-owner="notes"]').forEach(node=>node.remove());
+        if(notesSourceExpiry)clearTimeout(notesSourceExpiry);
+        notesSourceExpiry=null;
         notesSourceNonce = null;
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
@@ -127,7 +324,8 @@ async function setup(root: HTMLElement) {
         notesSourceStatus = 'disconnected';
     }
     function openNotesSource() {
-        if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        if (!state || locked || editing || privacyHeld || state.preferences.hidden ||
+            (hubIdentity.status!=='signed-in'&&hubIdentity.status!=='signed-out')) return;
         clearNotesSource();
         notesSourceOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
         notesSourceNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)),
@@ -154,7 +352,7 @@ async function setup(root: HTMLElement) {
             hubIdentity.status === 'signed-out' ? 'guest' : null;
         if (!notesSourceNonce || event.origin !== location.origin ||
             event.source !== notesSourceWindow || !notesSourceOwner ||
-            (scope && scope !== notesSourceOwner) || privacyHeld || state?.preferences.hidden)
+            !scope || scope !== notesSourceOwner || privacyHeld || state?.preferences.hidden)
             return;
         try {
             notesSource = acceptNotesReply(event.data, notesSourceNonce);
@@ -166,6 +364,12 @@ async function setup(root: HTMLElement) {
         notesSourceWindow = null;
         if (notesSourceDeadline) clearTimeout(notesSourceDeadline);
         notesSourceDeadline = null;
+        const approved=freshNotesReminderShare(notesSource);
+        if(!approved){clearNotesSource();repaintOverview();return;}
+        const captured=approved;
+        notesSourceExpiry=setTimeout(()=>{
+            if(notesSource===captured){clearNotesSource();repaintOverview();}
+        },Math.max(0,Date.parse(approved.generatedAt)+NOTES_REMINDER_MAX_AGE_MS-Date.now()));
         repaintOverview();
     });
     let folioSnapshot: FolioDeviceSnapshot | null = null;
@@ -252,12 +456,26 @@ async function setup(root: HTMLElement) {
                 status: folioStatus, snapshot: folioSnapshot,
             }, {status: notesSourceStatus, snapshot: notesSource});
         }
+        const workbench = root.querySelector<HTMLElement>('[data-today-workbench]');
+        if(workbench && state && view==='home' && !privacyHeld && !state.preferences.hidden)
+            workbench.outerHTML = renderTodayWorkbench(state,today(),null,Date.now(),null,true);
+        const notesCalendarPanel=root.querySelector<HTMLElement>('[data-notes-reminder-continuity]');
+        if(notesCalendarPanel && state && view==='calendar' && !privacyHeld && !state.preferences.hidden)
+            notesCalendarPanel.outerHTML=renderNotesCalendarContinuity(
+                selected,agendaMode,today(),state.preferences.timezone,authorizedNotesPlanningSnapshot());
+        const legacyReview=root.querySelector<HTMLElement>('[data-legacy-reconciliation]');
+        if(legacyReview && view==='legacy') {
+            legacyReview.innerHTML=state&&!locked&&!privacyHeld&&!state.preferences.hidden
+              ?renderLegacyReconciliation(previewLegacyReconciliation(state,folioSnapshot,notesSource))
+              :'<p>Private record review is unavailable while Hub content is hidden.</p>';
+        }
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
-            todayPanel.outerHTML = renderSourceToday({
+            todayPanel.outerHTML = (view==='legacy'?renderSourceToday:renderHubLanguageToday)({
                 folio: {status: folioStatus, snapshot: folioSnapshot},
                 notes: {status: notesSourceStatus, snapshot: notesSource},
-                languages: {status: languageStatus, cards: languageCards}, apps
+                languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
             });
         }
     }
@@ -313,7 +531,15 @@ async function setup(root: HTMLElement) {
     const inputFocused = () => document.activeElement instanceof Element && !!document.activeElement.closest('input,textarea,select,[contenteditable=true]');
     function connectedHTML() {
         return insights.filter(item => item.expiresAt > Date.now()).slice(0,8).map(item => {
-            const app=apps.find(app=>app.id===item.appId);
+            // Notes is source-owned and absent from the public Apps catalogue.
+            // A summary returned by the already consent-gated Notes reader may
+            // still offer its original, allowlisted source handoff. Never add
+            // private Notes records to the public launch registry.
+            const notesHandoff=item.appId==='notes'&&
+                typeof item.resumeUrl==='string'&&
+                /^https:\/\/thiepn\.dev\/notes\/\?note=[0-9a-f-]{36}$/u.test(item.resumeUrl);
+            const app=apps.find(app=>app.id===item.appId) ??
+                (notesHandoff?{id:'notes',title:'Notes',url:'https://thiepn.dev/notes/',icon:appIcon('notes'),category:'tools' as const}:undefined);
             return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(item.resumeUrl??app.url)}" rel="noreferrer">${item.resumeUrl?'Resume':'Open'} ${esc(app.title)}</a></div>` : '';
         }).join('');
     }
@@ -390,6 +616,7 @@ async function setup(root: HTMLElement) {
     let formReturn: { element: HTMLElement; action: string; id: string; widget: string; epoch: number } | null = null;
     dialog.addEventListener('close', () => {
         activeWeekReview=null;
+        activeSpreadReview=null;
         activeUnifiedReview=null;
         void flushCaptureDraft();
         const target = formReturn;
@@ -602,6 +829,10 @@ async function setup(root: HTMLElement) {
         focus.elapsed=false;
     }
     function clearFocusIdentity() {
+        knowledgeNoteId=null;knowledgeQuery='';
+        weeklyReviewStage='triage';
+        weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};
+        focusWork.clear();
         pauseFocusSession();
         focus={queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
         root.dataset.focusQuiet='false';
@@ -743,13 +974,18 @@ async function setup(root: HTMLElement) {
             case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div>${dirty ? '<small class="ws-error">Draft not saved yet</small>' : ''}</form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
+            case 'task-event-links': return renderTaskEventBoard(state!,w.view==='compact');
+            case 'outcome-board': return renderOutcomes(state!,today(),w.view==='compact');
+            case 'decision-register': return renderDecisions(state!,today(),w.view==='compact');
+            case 'record-pinboard': return renderHubPinboard(state!,false);
             case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
     }
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('No widgets', '', 'add-widget', 'Add widget') : ''}`; }
-    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a><a class="ws-text-button" href="/home/legacy/">Legacy Folio and Notes data</a></section>`; }
     function fullContent() {
+        if (view === 'knowledge') return nativeKeep.active()?'<section class="ws-surface" data-keep-native-state>Original KEEP is open below. Close and lock to return to Hub Knowledge.</section>':renderHubKnowledge(state!,knowledgeNoteId,knowledgeQuery);
         if (view === 'settings')
             return settingsHTML();
         if (view === 'tasks') {
@@ -773,17 +1009,30 @@ async function setup(root: HTMLElement) {
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
         if (view === 'trackers')
-            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
+            return `<div class="ws-content-toolbar">${button('new-tracker', '+ Create tracker')}</div>${state!.trackers.map(t => `<section class="ws-surface"><header><div><h2>${esc(t.title)}</h2><p class="ws-muted">${trackerTotal(state!, t.id, today())} / ${t.goal} ${esc(t.unit)} · ${t.cadence}</p></div><div>${button('edit-tracker', 'Edit', t.id)}${button('log-tracker', '+ Log', t.id)}${hubPinAction('tracker',t.id)}</div></header>${state!.logs.filter(l => l.trackerId === t.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(l => `<div class="ws-row"><div>${l.value} ${esc(t.unit)}<small>${l.date}${l.note ? ' · ' + esc(l.note) : ''}</small></div>${button('edit-log', 'Edit', l.id)}${button('delete-log', 'Delete', l.id)}</div>`).join('') || '<p class="ws-muted">No entries yet.</p>'}</section>`).join('') || empty('No trackers', '', 'new-tracker', 'Create a tracker')}`;
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                renderSourceToday({
+            if(mode==='today') {
+                const extraPanels=todayMoreExpanded?
+                    renderTodayWorkbench(state!,today(),null,Date.now(),null,true)+
+                renderUpcomingEventPreparation(state!,today())+
+                (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
+                '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
+                (hubPinnedKeys(hubPinboard(state!)).length?renderHubPinboard(state!,true):'')+
+                renderHubLanguageToday({
                     folio: {status: folioStatus, snapshot: folioSnapshot},
                     notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
-                });
-            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
+                    languages: {status: languageStatus, cards: languageCards}, apps,
+                hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
+                }) : '';
+                return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+                    '<section class="ws-today-more"><button type="button" class="ws-today-more-toggle" data-action="toggle-today-more" aria-label="'+(todayMoreExpanded?'Hide additional sections':'More sections')+'" aria-expanded="'+String(todayMoreExpanded)+'" aria-controls="ws-today-more-content">'+
+                    (todayMoreExpanded?'Hide additional sections':'More sections')+'</button>'+
+                    '<div id="ws-today-more-content" class="ws-today-more-content" data-today-more-content'+(todayMoreExpanded?'':' hidden')+'>'+extraPanels+'</div></section>';
+            }
+            if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
+            if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,activeFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
@@ -830,6 +1079,14 @@ async function setup(root: HTMLElement) {
     }
     function render() {
         observer?.disconnect();
+        nativeKeep.recheck();
+        if(view==='legacy' && (locked||privacyHeld||state?.preferences.hidden||
+            (activeLegacyPlan&&state?.revision!==activeLegacyPlan.hubRevision))){
+            clearLegacyCasework();
+            root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+            const receipt=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
+            if(receipt)receipt.textContent='Private original-source inspection cleared.';
+        }
         if (!state)
             return;
         const focusedElement = document.activeElement as HTMLElement | null;
@@ -840,21 +1097,23 @@ async function setup(root: HTMLElement) {
         root.dataset.calendarPrivate = privacyHeld || state.preferences.hidden ? 'true' : 'false';
         if (focus.selectedId && !state.tasks.some(t=>t.id===focus.selectedId && !t.completedAt)) resetFocusSelection();
         if (handoffOrigin && !originalHandoffRecord()) handoffOrigin=null;
+        if(knowledgeNoteId && !state.notes.some(n=>n.id===knowledgeNoteId)) knowledgeNoteId=null;
         pruneWeekSelection();
-        if (privacyHeld || state.preferences.hidden) { pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
+        if (privacyHeld || state.preferences.hidden) { knowledgeNoteId=null;knowledgeQuery='';focusWork.clear();weeklyReviewDraft={...EMPTY_WEEKLY_REVIEW};weeklyReviewStage='triage';pauseFocusSession(); focus.quiet=false; weekSelection.clear(); }
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='workspace'?'?mode=workspace':mode==='review'?'?mode=review':mode==='today'?'':'?mode=focus');
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         root.dataset.homeMode = view==='home' ? (editing?'workspace':homeMode) : '';
+        root.dataset.todayMoreExpanded=String(view==='home' && homeMode==='today' && todayMoreExpanded);
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
-        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
+        $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents',legacy:'Legacy data'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? (homeMode==='today'?'Today':homeMode==='focus'?'Focus':current().title)) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
         welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
@@ -862,17 +1121,19 @@ async function setup(root: HTMLElement) {
             $('[data-workspace-date]').textContent='';
         }
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : (homeMode==='workspace' ? `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}` : '')) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (!staticView()) {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
                 $('[data-workspace-content]').innerHTML = empty('Personal content is hidden', '', 'privacy', 'Show content');
             else
                 $('[data-workspace-content]').innerHTML = fullContent();
+            if(view==='knowledge'&&!nativeKeep.active())$('[data-workspace-content]').hidden=false;
         }
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
         renderAttention();
         renderPlanner();
+        if(view==='legacy')repaintOverview();
         // C2 read-only handoff from the ORIGINAL Hub calendar owner. Ephemeral and
         // never an invitation to write back; source IDs and edit controls stay here.
         // Clear on privacy transitions, account changes and unavailable storage.
@@ -938,11 +1199,13 @@ async function setup(root: HTMLElement) {
     $('[data-more-close]').addEventListener('click', () => more.close());
     let moreNavigation = false;
     more.addEventListener('close', () => { if (!moreNavigation) moreTrigger.focus(); moreNavigation = false; });
-    const routes: Record<string, string> = { '/': 'home', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
+    const routes: Record<string, string> = { '/': 'home', '/home/knowledge/': 'knowledge', '/apps/': 'apps', '/home/tasks/': 'tasks', '/home/calendar/': 'calendar', '/home/trackers/': 'trackers', '/home/settings/': 'settings' };
     const documents = new Map<string, Document>();
     let navigationTicket = 0;
     let committedUrl = location.pathname + location.search;
     function updateNavigation() {
+        const navMore=root.querySelector<HTMLDetailsElement>('[data-nav-more]');
+        if(navMore)navMore.open=['knowledge','trackers','documents','inbox','connections','flows','settings'].includes(view);
         root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link').forEach(link => {
             const active = (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
             link.classList.toggle('active', active);
@@ -978,6 +1241,10 @@ async function setup(root: HTMLElement) {
                 editing = null; layoutUndo = []; layoutRedo = [];
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
+            if(next==='home'){
+                const requested=url.searchParams.get('mode');
+                homeMode=requested==='workspace'||requested==='focus'||requested==='review'?requested:'today';
+            }
             view = next; root.dataset.view = next;
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
@@ -1053,14 +1320,28 @@ async function setup(root: HTMLElement) {
         renderHandoffBar();
         return true;
     }
+    function contextOwnerInput() {
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return {folio:activeFolioPlanningSnapshot(),
+            notes:notesSourceStatus==='ready'&&owner&&notesSourceOwner===owner?notesSource:null,
+            now:Date.now()};
+    }
+    function hubPinAction(kind:'task'|'note'|'event'|'tracker',id:string){
+        const key=kind+':'+id;
+        return button('toggle-record-pin',hasHubPin(state!,key)?'Unpin from Workspace':'Pin to Workspace',key,'ws-button');
+    }
     function showTaskContext(id:string) {
         if(!startHandoff('task',id))return;
         const task=state!.tasks.find(t=>t.id===id)!;
         const details=`<div class="ws-context-summary">
             <strong>${esc(task.title)}</strong><p>Hub task · ${task.due?'due '+esc(task.due):'Inbox · no due date'} · ${esc(task.priority)} priority</p>
-
+            ${renderTaskKnowledgeContext(state!,task,contextOwnerInput())}
+            ${renderTaskEventContext(state!,'task',id)}
+            ${renderConfirmedHubBacklinks(state!,'task',id)}
             <div class="ws-context-actions">
               ${button('edit-task','Edit original task',id)}
+              ${hubPinAction('task',id)}
               ${!task.completedAt?button('plan-task-event','Review calendar time',id):''}
               ${button('create-note-from-task','Draft a local note',id)}
               <a class="ws-button" href="/home/tasks/">Open Tasks</a>
@@ -1076,8 +1357,11 @@ async function setup(root: HTMLElement) {
         const ownerUrl=providerAction('notes','capture-text');
         const html=`<div class="ws-context-summary"><strong>${esc(note.title)}</strong>
           <p>Hub local note · last edited ${esc(new Date(note.updatedAt).toLocaleDateString())}</p>
+          ${renderNoteWorkContext(state!,note,contextOwnerInput())}
+          ${renderConfirmedHubBacklinks(state!,'note',id)}
           <div class="ws-context-actions">
             ${button('edit-note','Edit original note',id)}
+            ${hubPinAction('note',id)}
             ${button('create-task-from-note','Draft a Hub task',id)}
             <a class="ws-button" href="/home/tasks/">Hub Tasks</a>
             ${ownerUrl?`<a class="ws-button" href="${esc(ownerUrl)}" rel="noreferrer">Open owner Notes ↗</a>`:''}
@@ -1090,6 +1374,9 @@ async function setup(root: HTMLElement) {
         const item=state!.events.find(e=>e.id===id)!;
         const html=`<div class="ws-context-summary"><strong>${esc(item.title)}</strong>
           <p>Hub local event · ${esc(item.date)} · ${item.allDay?'all day':esc(item.zone)}</p>
+          ${renderEventPreparation(state!,item,contextOwnerInput())}
+          ${renderTaskEventContext(state!,'event',id)}
+          ${hubPinAction('event',id)}
           <div class="ws-context-actions">
             ${button('edit-event','Edit original event',id)}
             ${button('create-task-from-event','Draft an unscheduled Hub task',id)}
@@ -1189,6 +1476,229 @@ async function setup(root: HTMLElement) {
             el.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the selected tasks and date.')}</p>`;
         }
     }
+    function activeFolioPlanningSnapshot():FolioDeviceSnapshot|null {
+        if(!state || privacyHeld || state.preferences.hidden || folioStatus!=='ready')return null;
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return owner&&owner===folioOwner?freshFolioPlanningShare(folioSnapshot):null;
+    }
+    function authorizedNotesPlanningSnapshot():NotesDeviceSummary|null {
+        if(!state||locked||privacyHeld||state.preferences.hidden||notesSourceStatus!=='ready')return null;
+        const owner=hubIdentity.status==='signed-in'?'user:'+hubIdentity.id:
+            hubIdentity.status==='signed-out'?'guest':null;
+        return owner && owner===notesSourceOwner?freshNotesReminderShare(notesSource):null;
+    }
+    function paintDistributedPreview(snapshots:readonly TaskBeforeMove[],origin:number) {
+        const panel=dialog.querySelector<HTMLElement>('[data-week-spread-preview]');
+        if(!panel || !state || origin!==epoch)return;
+        const date=dialog.querySelector<HTMLInputElement>('[name=spreadStart]')?.value??'';
+        const raw=dialog.querySelector<HTMLSelectElement>('[name=spreadDays]')?.value??'';
+        try {
+            if(date<today())throw new Error('Choose today or a future starting date.');
+            const useFolio=dialog.querySelector<HTMLInputElement>('[name=includeFolio]')?.checked===true;
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio sharing changed or expired. Refresh and reopen the review.');
+            const prepared=prepareDistributedWeek(state,snapshots,date,planningHorizon(raw),useFolio?pinned:null);
+            panel.innerHTML=`<strong>${prepared.changes.length} due-date changes across ${prepared.days} days</strong>
+              <ul>${prepared.changes.map(item=>`<li><strong>${esc(item.title)}</strong>:
+                ${esc(item.before)} → ${esc(item.after)}${item.clearedTime?' · clears '+esc(item.clearedTime):''}</li>`).join('')}</ul>
+              <p>${prepared.folioConsidered?'Hub workload plus explicitly shared Folio hints':'Existing Hub workload'} for these days:</p>
+              <ul>${prepared.load.map(row=>`<li>${esc(row.date)} · ${row.assigned} selected task${row.assigned===1?'':'s'},
+              ${row.hubDeadlines} other deadlines, ${row.hubTimed} timed event occurrence${row.hubTimed===1?'':'s'},
+              ${row.hubAllDay} all-day occurrence${row.hubAllDay===1?'':'s'}${prepared.folioConsidered?', '+row.folioTasks+' Folio task hints, '+row.folioTimed+' timed and '+row.folioAllDay+' all-day Folio blocks':''}</li>`).join('')}</ul>
+              <p>Distribution balances record counts, not task duration or calendar availability.
+              It does not create appointments or change imported/owner-app data.</p>`;
+        } catch(error) {
+            panel.innerHTML=`<p class="ws-week-preview-error">${esc(error instanceof Error?error.message:'Review the distribution fields.')}</p>`;
+        }
+    }
+    function reviewDistributedWeek() {
+        if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)return;
+        if(!storageReady || dirty || conflict || !store) {
+            toast('Resolve storage or saved-state conflicts before spreading task due dates.');
+            return;
+        }
+        pruneWeekSelection();
+        const ids=[...weekSelection];
+        if(!ids.length || ids.length>MAX_WEEK_BATCH) {
+            toast(`Select between 1 and ${MAX_WEEK_BATCH} unfinished tasks to distribute.`);
+            return;
+        }
+        const snapshots:TaskBeforeMove[]=ids.map(id=>taskSnapshot(state!.tasks.find(t=>t.id===id)!));
+        const start=weekDays(selected)[0]!>=today()?weekDays(selected)[0]!:today();
+        const own=epoch,source=store;
+        const availableFolio=activeFolioPlanningSnapshot();
+        activeSpreadReview={snapshots,epoch:own,folio:availableFolio};
+        const formHtml=`<div class="ws-week-review-form" data-week-spread-review>
+          <p><strong>Spread ${snapshots.length} selected Hub tasks across reviewed days.</strong></p>
+          <p>Hub's existing task writer will change only selected task due dates. Priority is considered when distributing,
+            and dates with fewer existing Hub deadlines/events are considered first.</p>
+          ${field('Distribution starts','spreadStart',start,'date',`required min="${today()}"`)}
+          ${select('Days to distribute across','spreadDays',[['3','3 days'],['5','5 days'],['7','7 days']],'5')}
+          ${availableFolio?'<label class="ws-week-confirm"><input type="checkbox" name="includeFolio"/>Consider this one-time Folio snapshot as *partial* day-load hints. The planner changes only Hub task due dates; refresh if the source share expires.</label>':'<p class="ws-muted">Share from Folio separately to optionally include its workload in this task review.</p>'}
+          <div data-week-spread-preview class="ws-week-preview" aria-live="polite"></div>
+          <label class="ws-week-confirm"><input type="checkbox" name="confirm" required/>
+            I reviewed every proposed due date and authorize changes to these Hub tasks only,
+            without scheduling event blocks or updating Folio, Notes, or external calendars.</label>
+          <p class="ws-muted">Original IDs, titles, priorities and completion states survive; clock times on moved tasks are cleared.
+            All changes use one existing owner-scoped workspace mutation and its undo/conflict protection.</p>
+        </div>`;
+        openForm('Review multi-day task distribution',formHtml,async data=>{
+            if(epoch!==own || store!==source || !state || !storageReady || locked ||
+              privacyHeld || state.preferences.hidden || dirty || conflict)
+                throw new Error('Identity or storage changed. Reopen this planning review.');
+            if(!data.has('confirm'))throw new Error('Confirm all proposed Hub task due-date changes.');
+            const requestedStart=String(data.get('spreadStart')??'');
+            if(!validDate(requestedStart) || requestedStart<today())
+                throw new Error('Select a current or future distribution date.');
+            const horizon:PlanningHorizon=planningHorizon(String(data.get('spreadDays')??''));
+            const useFolio=data.has('includeFolio');
+            const pinned=activeSpreadReview?.folio??null;
+            if(useFolio && (!pinned || pinned!==activeFolioPlanningSnapshot()))
+                throw new Error('Folio share changed or expired. Review the distribution again.');
+            const hint=useFolio?pinned:null;
+            const preview=prepareDistributedWeek(state,snapshots,requestedStart,horizon,hint);
+            await mutate(next=>{
+                if(useFolio && pinned!==activeFolioPlanningSnapshot())
+                    throw new Error('Folio share changed while saving. No Hub task dates were changed.');
+                const committed=applyDistributedWeek(next,snapshots,requestedStart,horizon,hint);
+                activity(next,`Reviewed ${committed.changes.length} Hub task due dates across ${horizon} days`,'task');
+            },'Reviewed multi-day task plan updated');
+            if(epoch!==own || !state)throw new Error('The active identity changed after scheduling.');
+            if(preview.changes.some(change=>{
+                const record=state!.tasks.find(task=>task.id===change.id);
+                return !record || record.due!==change.after || !!record.time;
+            }))throw new Error('The due-date distribution was not applied. Reopen planning.');
+            if(dirty || conflict)throw new Error('The plan remains unsaved in this tab. Export or retry before resubmitting.');
+            weekSelection.clear();
+            weekFilter='week';
+            weekReturnDate=weekDays(selected)[0]!;
+            selected=requestedStart;
+            month=selected.slice(0,7)+'-01';
+            agendaMode='week';
+            render();
+        },'Apply reviewed distribution');
+        paintDistributedPreview(snapshots,own);
+    }
+    function editOutcome(id='') {
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=id?outcomes(state!).find(o=>o.id===id):undefined;
+        if(id&&!prior){toast('Outcome no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const tasks=[...state!.tasks.filter(t=>prior?.taskIds.includes(t.id)),...state!.tasks.filter(t=>!prior?.taskIds.includes(t.id)&&!t.completedAt)].slice(0,80);
+        const trackers=state!.trackers;
+        const fields=field('Outcome title','title',prior?.title??'','text','maxlength="100" required')+
+          field('Target date','target',prior?.target??'','date')+
+          '<p>Link original Hub records only. At most 16 tasks and 8 trackers; no source data is copied.</p>'+
+          '<fieldset><legend>Tasks</legend>'+tasks.map(t=>'<label class="ws-choice"><input type="checkbox" name="taskIds" aria-label="Link task '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.taskIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          '<fieldset><legend>Trackers</legend>'+trackers.map(t=>'<label class="ws-choice"><input type="checkbox" name="trackerIds" aria-label="Link tracker '+esc(t.title)+'" value="'+esc(t.id)+'"'+(prior?.trackerIds.includes(t.id)?' checked':'')+'/>'+esc(t.title)+'</label>').join('')+'</fieldset>'+
+          (state!.tasks.length>tasks.length?'<p>Showing selected and up to 80 open tasks. Other Hub tasks remain in Tasks.</p>':'');
+        openForm(prior?'Edit outcome':'Create outcome',fields,async data=>{
+          const draft:OutcomeDraft={title:String(data.get('title')??''),target:String(data.get('target')??''),
+            taskIds:data.getAll('taskIds').map(String),trackerIds:data.getAll('trackerIds').map(String)};
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the editor.');saveOutcome(s,id||null,draft,snapshot);},'Outcome saved',true,false,true);
+        });
+    }
+    function updateOutcome(id:string,remove=false){
+       if(editing){toast('Finish editing the layout first.');return;}
+       const prior=outcomes(state!).find(o=>o.id===id);
+       if(!prior){toast('Outcome no longer exists.');return;}
+       const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+       const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');changeOutcome(s,id,snapshot,remove);},
+         remove?'Outcome grouping removed':prior.archived?'Outcome restored':'Outcome archived',true,false,remove);
+       if(remove)openForm('Remove outcome','<p>Remove this grouping only? All original tasks and tracker logs will remain.</p>',apply,'Remove grouping');
+       else void apply().catch(error=>toast(error instanceof Error?error.message:'Unable to change outcome.'));
+    }
+
+
+    function editDecision(idValue=''){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=idValue?decisions(state!).find(d=>d.id===idValue):undefined;
+        if(idValue&&!prior){toast('Decision no longer exists.');return;}
+        const snapshot=prior?JSON.stringify(prior):null,workspaceId=state!.active;
+        const choice=(items:{id:string;title:string}[],label:string,fieldName:string,current='')=>
+          select(label,fieldName,[['','None'],...items.map(x=>[x.id,x.title])],current);
+        const fields=field('Decision title','title',prior?.title??'','text','required maxlength="100"')+
+          area('Situation and criteria','context',prior?.context??'',300)+
+          area('Options, one per line','options',prior?.options.join('\n')??'',370)+
+          field('Review date','review',prior?.review??'','date')+
+          choice(state!.tasks,'Related original task','taskId',prior?.taskId??'')+
+          choice(state!.notes,'Related original note','noteId',prior?.noteId??'')+
+          '<p class="ws-muted">Two to four distinct options, each at most 90 characters. Decisions are Hub-owned; linked original records are not copied or edited.</p>';
+        openForm(prior?'Edit decision':'New decision',fields,async data=>{
+          const draft:DecisionDraft={
+            title:String(data.get('title')??''),context:String(data.get('context')??''),
+            options:String(data.get('options')??'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
+            review:String(data.get('review')??''),taskId:String(data.get('taskId')??''),noteId:String(data.get('noteId')??'')
+          };
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed. Reopen decision.');saveDecision(s,idValue||null,draft,snapshot);},'Decision saved',true,false,true);
+        });
+    }
+    function chooseDecision(idValue:string){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior||prior.status==='archived'){toast('Restore or reopen the decision first.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const fields=select('Selected option','choice',prior.options.map(x=>[x,x]),prior.choice||prior.options[0]!)+
+          area('Why this option?','reason',prior.reason,500)+
+          '<p>Confirm the chosen alternative and rationale; earlier decision text is replaced, not historically versioned.</p>';
+        openForm(prior.status==='open'?'Make decision':'Revise decision',fields,async data=>{
+          await mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');decide(s,idValue,snapshot,String(data.get('choice')??''),String(data.get('reason')??''));},
+            'Decision recorded',true,false,true);
+        },'Record decision');
+    }
+    function decisionTransition(idValue:string,mode:'reopen'|'archive'|'restore'|'remove'){
+        if(editing){toast('Finish editing the layout first.');return;}
+        const prior=decisions(state!).find(d=>d.id===idValue);
+        if(!prior){toast('Decision no longer exists.');return;}
+        const snapshot=JSON.stringify(prior),workspaceId=state!.active;
+        const apply=async()=>mutate(s=>{if(s.active!==workspaceId)throw Error('Workspace changed.');transitionDecision(s,idValue,snapshot,mode);},
+          mode==='remove'?'Decision removed':'Decision updated',true,false,true);
+        if(mode==='remove'||mode==='reopen')
+          openForm(mode==='remove'?'Remove decision?':'Reopen decision?',
+            '<p>'+ (mode==='remove'?'Remove this Hub-owned decision record? Original linked records remain unchanged.':'Clear the current choice and rationale to deliberate again? The previous choice is not retained in a decision history.')+'</p>',apply,mode==='remove'?'Remove':'Reopen');
+        else void apply().catch(e=>toast(e instanceof Error?e.message:'Unable to update decision.'));
+    }
+
+
+    function reviewTaskEventLink(reference='') {
+        if(editing){toast('Finish editing the layout before linking records.');return;}
+        const [kind,sourceId]=reference.includes(':')?[reference.split(':')[0],reference.slice(reference.indexOf(':')+1)]:['',''];
+        const currentTask=kind==='task'?sourceId:'';
+        const currentEvent=kind==='event'?sourceId:'';
+        const workspaceId=state!.active;
+        const currentTasks=state!.tasks.map(t=>[t.id,t.title+(t.completedAt?' · completed':'')]);
+        const currentEvents=state!.events.map(e=>[e.id,e.title+' · '+e.date]);
+        if(currentTasks.length===0||currentEvents.length===0){
+          toast('Create an original Hub task and calendar event before linking them.');return;
+        }
+        openForm('Link original Hub task and event',
+          select('Original Hub task','taskId',currentTasks,currentTask||currentTasks[0]![0]!)+
+          select('Original Hub calendar event','eventId',currentEvents,currentEvent||currentEvents[0]![0]!)+
+          select('Relationship','role',[['work','Scheduled work'],['prepare','Preparation'],['followup','Follow-up']],'work')+
+          '<p>Review an explicit reference only. Neither task dates nor calendar times change; no external calendar receives anything.</p>',
+          async data=>{
+            const draft:RelationDraft={taskId:String(data.get('taskId')??''),eventId:String(data.get('eventId')??''),
+              role:String(data.get('role')??'') as RelationDraft['role']};
+            await mutate(s=>{
+              if(s.active!==workspaceId)throw Error('Workspace changed. Reopen the link review.');
+              linkTaskEvent(s,draft);
+            },'Task–calendar relationship saved',true,false,true);
+          },'Link originals');
+    }
+    function reviewTaskEventUnlink(idValue:string) {
+        if(editing){toast('Finish editing the layout before unlinking.');return;}
+        const original=taskEventLinks(state!).find(x=>x.id===idValue);
+        if(!original){toast('Link no longer available.');return;}
+        const snapshot=JSON.stringify(original),workspaceId=state!.active;
+        openForm('Unlink task and event','<p>Remove only the relationship? Both original records, dates, status and activity remain unchanged.</p>',
+          async()=>mutate(s=>{
+            if(s.active!==workspaceId)throw Error('Workspace changed. Reopen this relationship.');
+            unlinkTaskEvent(s,idValue,snapshot);
+          },'Task–calendar relationship removed',true,false,true),'Unlink');
+    }
+
     function reviewWeeklyCarryover() {
         if(view!=='calendar' || !state || locked || privacyHeld || state.preferences.hidden)
             return;
@@ -1520,7 +2030,7 @@ async function setup(root: HTMLElement) {
             notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
             return;
         }
-        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
+        await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); if(index<0)throw Error('Original layout unavailable.');assertWorkspaceMetadataRetained(s.workspaces[index]!,draft.workspace); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
         if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
             editing = null;
             recoveryDraft = null;
@@ -1645,7 +2155,7 @@ async function setup(root: HTMLElement) {
         if (!editing)
             beginEdit();
         const groups: Array<{title:string;description:string;types:string[]}> = [
-            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures']},
+            {title:'Plan & do',description:'Local Hub tasks, deadlines and captures',types:['task-inbox','task-priorities','upcoming-commitments','quick-plan','recent-captures','task-event-links','outcome-board','decision-register','record-pinboard']},
             {title:'Open & continue',description:'Apps and owner-authorized handoffs',types:['app-shortcuts','continue','owner-handoffs','capture']},
             {title:'Track & reflect',description:'Your local activity and recurring habits',types:['tracker-summary','tracker-history','recent-activity']},
         ];
@@ -1658,14 +2168,14 @@ async function setup(root: HTMLElement) {
             toast('You can save up to 10 workspaces. Rename or remove an unused layout first.');
             return;
         }
-        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
+        openForm(original ? 'Duplicate workspace' : 'New workspace', field('Name', 'title', original ? original.title + ' copy' : '', 'text', 'required maxlength="80"') + (original ? '<p>Saved outcomes, decisions, pins and task–calendar links stay with the original workspace.</p>' : select('Start from', 'preset', PRESETS.map((p, i) => [String(i), p]), '0')), async (data) => {
             const title = String(data.get('title')).trim();
             if (!title)
                 throw new Error('Choose a name.');
             await mutate(s => {
-                const workspace = original ? { ...clone(original), id: uid(), title, revision: 0, updatedAt: stamp() } : preset(title, pins(), Number(data.get('preset')));
-                if (original)
-                    workspace.widgets.forEach(w => w.id = uid());
+                const existing=original?s.workspaces.find(w=>w.id===original.id):undefined;
+                if(original&&!existing)throw Error('Source workspace changed.');
+                const workspace = existing ? duplicatePresentationLayout(existing,title) : preset(title, pins(), Number(data.get('preset')));
                 s.workspaces.push(workspace);
                 s.active = workspace.id;
             }, 'Workspace created');
@@ -1688,9 +2198,13 @@ async function setup(root: HTMLElement) {
                 }
                 else {
                     const index = s.workspaces.findIndex(w => w.id === s.active);
+                    if(index<0)throw Error('Original workspace unavailable.');
+                    if(workspaceOwnedSummary(s.workspaces[index]!).length)
+                        throw Error('This layout contains original Hub groupings or relationships. Remove them explicitly before replacing it, or create a new workspace.');
                     next.id = s.active;
                     next.title = s.workspaces[index]!.title;
                     next.revision = s.workspaces[index]!.revision + 1;
+                    assertWorkspaceMetadataRetained(s.workspaces[index]!,next);
                     s.workspaces[index] = next;
                 }
             }, 'Layout applied', true, true);
@@ -1735,23 +2249,8 @@ async function setup(root: HTMLElement) {
                     Object.assign(s, clone(imported), { revision });
                     return;
                 }
-                const copy = clone(imported), ids = new Map<string, string>();
-            copy.trackers.forEach(t => ids.set(t.id,uid()));
-                for (const list of [copy.workspaces, copy.tasks, copy.notes, copy.events, copy.trackers, copy.logs, copy.activity])
-                    for (const record of list) {
-                        const id = uid();
-                        ids.set(record.id, id);
-                        record.id = id;
-                    }
-                for (const w of copy.workspaces) {
-                    w.widgets.forEach(widget => {
-                        widget.id = uid();
-                        if (Array.isArray(widget.config.trackerIds))
-                            widget.config.trackerIds = widget.config.trackerIds.map(id => ids.get(String(id)) ?? id);
-                if (typeof widget.config.selectedTracker === 'string') widget.config.selectedTracker = ids.get(widget.config.selectedTracker) ?? widget.config.selectedTracker;
-                    });
-                }
-                copy.logs.forEach(l => l.trackerId = ids.get(l.trackerId)!);
+                const copy = rebaseAddedHubBackup(imported);
+                /* IDs and typed widget-owned references were atomically rebased before merge. */
                 s.workspaces.push(...copy.workspaces);
                 s.tasks.push(...copy.tasks);
                 s.notes.push(...copy.notes);
@@ -1858,6 +2357,179 @@ async function setup(root: HTMLElement) {
         if (!target)
             return;
         const action = target.dataset.action ?? '', id = target.dataset.id ?? '';
+        if(action==='knowledge-native-start'){void nativeKeep.start().catch(error=>toast(error instanceof Error?error.message:'Original KEEP is unavailable.'));return;}
+        if(action==='original-owner-cross-preview'||action==='original-owner-cross-apply'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden||!originalCaseTimeline)return;
+            try{
+                if(action==='original-owner-cross-preview'){
+                    originalCrossVisitPreview=previewOriginalOwnerCrossVisitRecovery(activeLegacyPlan,originalCaseTimeline);
+                    originalCrossVisitSelected.clear();
+                    originalCrossVisitGenerations.clear();
+                    for(const row of originalCrossVisitPreview.recoverable){
+                        const key=sourceMarkKey(row.kind,row.originalId);
+                        originalCrossVisitSelected.add(key);
+                        originalCrossVisitGenerations.set(key,row.visitsBack);
+                    }
+                    syncOriginalOwnerHistoryButtons();
+                }else{
+                    if(!originalCrossVisitPreview)throw new Error('A fresh cross-visit preview is required.');
+                    const requested:OriginalOwnerGenerationRequest[]=originalCrossVisitPreview.recoverable
+                        .filter(row=>originalCrossVisitSelected.has(sourceMarkKey(row.kind,row.originalId)))
+                        .map(row=>({kind:row.kind,originalId:row.originalId,
+                            visitsBack:originalCrossVisitGenerations.get(sourceMarkKey(row.kind,row.originalId))??row.visitsBack}));
+                    const receipt=previewOriginalOwnerGenerationSelection(activeLegacyPlan,originalCaseTimeline,
+                        originalCrossVisitPreview,requested);
+                    const changed=applyOriginalOwnerGenerationSelection(activeLegacyPlan,originalCaseTimeline,receipt);
+                    // Entire immutable source and history preflight completed.
+                    originalCaseChoices.clear();
+                    for(const row of changed)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
+                    originalCrossVisitPreview=null;
+                    originalCrossVisitSelected.clear();
+                    originalCrossVisitGenerations.clear();
+                    showLegacyCasePage();
+                    focusLegacyCasework();
+                }
+            }catch(error){
+                originalCrossVisitPreview=null;
+                originalCrossVisitSelected.clear();
+                originalCrossVisitGenerations.clear();
+                syncOriginalOwnerHistoryButtons();
+                toast(error instanceof Error?error.message:'Cross-visit source recovery failed closed.');
+            }
+            return;
+        }
+        if(action==='original-owner-recovery-preview'||action==='original-owner-recovery-apply'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden||!originalCaseTimeline)return;
+            try{
+                if(action==='original-owner-recovery-preview'){
+                    originalRecoveryPreview=previewOriginalOwnerSelectiveRecovery(
+                        activeLegacyPlan,originalCaseTimeline,originalRecoverySteps);
+                    syncOriginalOwnerHistoryButtons();
+                }else{
+                    if(!originalRecoveryPreview)throw new Error('Original owner recovery requires a fresh review preview.');
+                    const next=applyOriginalOwnerSelectiveRecovery(activeLegacyPlan,originalCaseTimeline,originalRecoveryPreview);
+                    originalCaseChoices.clear();
+                    for(const choice of next)originalCaseChoices.set(sourceCaseKey(choice.kind,choice.originalId),choice);
+                    originalRecoveryPreview=null;
+                    showLegacyCasePage();
+                    focusLegacyCasework();
+                }
+            }catch(error){
+                // Never apply a partial subset from stale source or history.
+                originalRecoveryPreview=null;
+                syncOriginalOwnerHistoryButtons();
+                toast(error instanceof Error?error.message:'Original owner recovery preview is invalid.');
+            }
+            return;
+        }
+        if(action==='original-owner-undo'||action==='original-owner-redo'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden||!originalCaseTimeline)return;
+            try{
+                const restored=traverseOriginalOwnerCaseTimeline(activeLegacyPlan,originalCaseTimeline,
+                    action==='original-owner-undo'?'undo':'redo');
+                const frame=restored.current;
+                // Validate the entire source-owned history before replacing any current choices.
+                originalRecoveryPreview=null;
+                originalCrossVisitPreview=null;
+                originalCrossVisitSelected.clear();
+                originalCrossVisitGenerations.clear();
+                originalCaseTimeline=restored;
+                originalCaseChoices.clear();
+                for(const row of frame.choices)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
+                originalCaseMarks.clear();
+                for(const row of frame.marks)originalCaseMarks.set(sourceMarkKey(row.kind,row.originalId),row);
+                originalCaseFilter=frame.filter;originalReviewFilter=frame.reviewFilter;
+                originalMarkFilter=frame.markFilter;originalCasePage=frame.page;
+                showLegacyCasePage(false);
+                focusLegacyCasework();
+            }catch(error){
+                clearLegacyCasework();
+                root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+                toast(error instanceof Error?error.message:'Original casework recovery is no longer valid.');
+            }
+            return;
+        }
+        if(action==='original-owner-next-unreviewed'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            const matched=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
+            const start=originalCasePage*OWNER_CASE_PAGE_SIZE;
+            const pending=matched.map(({row},index)=>({row,index}))
+                .filter(({row})=>!originalCaseChoices.has(sourceCaseKey(row.kind,row.originalId)));
+            const selected=pending.find(({index})=>index>=start)??pending[0];
+            if(!selected)return;
+            originalCasePage=Math.floor(selected.index/OWNER_CASE_PAGE_SIZE);
+            try{
+                showLegacyCasePage();
+                const control=[...root.querySelectorAll<HTMLSelectElement>('[data-original-owner-choice]')]
+                    .find(el=>el.dataset.caseKind===selected.row.kind&&el.dataset.caseId===selected.row.originalId);
+                control?.focus({preventScroll:true});
+                control?.scrollIntoView({block:'nearest',behavior:'auto'});
+            }catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
+        if(action==='original-owner-mark-visible'||action==='original-owner-unmark-visible'||
+           action==='original-owner-marked-keep'||action==='original-owner-marked-clear'||action==='original-owner-marked-reset'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            try{
+                if(action==='original-owner-mark-visible'||action==='original-owner-unmark-visible'){
+                    const marked=updateOriginalOwnerPageMarks(activeLegacyPlan,[...originalCaseChoices.values()],
+                        [...originalCaseMarks.values()],originalCasePage*OWNER_CASE_PAGE_SIZE,
+                        action==='original-owner-mark-visible',activeLegacyPlan.originalFileSha256,state.revision,
+                        originalCaseFilter,originalReviewFilter,originalMarkFilter);
+                    originalCaseMarks.clear();
+                    for(const row of marked)originalCaseMarks.set(sourceMarkKey(row.kind,row.originalId),row);
+                }else if(action==='original-owner-marked-reset'){
+                    validateOriginalOwnerMarks(activeLegacyPlan,[...originalCaseMarks.values()],activeLegacyPlan.originalFileSha256,state.revision);
+                    originalCaseMarks.clear();
+                }else{
+                    const next=applyOriginalOwnerMarkedChoice(activeLegacyPlan,[...originalCaseChoices.values()],
+                        [...originalCaseMarks.values()],action==='original-owner-marked-keep'?'KEEP_SEPARATE':null,
+                        activeLegacyPlan.originalFileSha256,state.revision);
+                    originalCaseChoices.clear();
+                    for(const row of next)originalCaseChoices.set(sourceCaseKey(row.kind,row.originalId),row);
+                }
+                showLegacyCasePage();
+                root.querySelector<HTMLButtonElement>('[data-action="'+action+'"]')?.focus({preventScroll:true});
+            }catch(error){
+                // Capacity errors must not erase valid, still memory-only selections.
+                if(error instanceof Error&&error.message.includes('memory limit')){
+                    toast(error.message);return;
+                }
+                // Only a stale/forged source receipt invalidates the private draft.
+                clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+                toast(error instanceof Error?error.message:'Original source review was invalidated.');
+            }
+            return;
+        }
+        if(action==='original-owner-page-keep'||action==='original-owner-page-clear'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            try{
+                const decisions=applyOriginalOwnerPageChoice(
+                    activeLegacyPlan,[...originalCaseChoices.values()],
+                    originalCasePage*OWNER_CASE_PAGE_SIZE,
+                    action==='original-owner-page-keep'?'KEEP_SEPARATE':null,
+                    activeLegacyPlan.originalFileSha256,state.revision,originalCaseFilter,originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter);
+                originalCaseChoices.clear();
+                for(const decision of decisions)originalCaseChoices.set(sourceCaseKey(decision.kind,decision.originalId),decision);
+                showLegacyCasePage();
+                root.querySelector<HTMLButtonElement>('[data-action="'+action+'"]')?.focus();
+            }catch{
+                clearLegacyCasework();
+                root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+                toast('Original source changed. Inspect a new export before reviewing cases.');
+            }
+            return;
+        }
+        if(action==='original-owner-page-next'||action==='original-owner-page-prev'){
+            if(view!=='legacy'||!activeLegacyPlan||!state||locked||privacyHeld||state.preferences.hidden)return;
+            const next=originalCasePage+(action==='original-owner-page-next'?1:-1);
+            if(next<0||next*OWNER_CASE_PAGE_SIZE>=originalOwnerFilteredRows(activeLegacyPlan,originalCaseFilter,[...originalCaseChoices.values()],originalReviewFilter,[...originalCaseMarks.values()],originalMarkFilter).length)return;
+            originalCasePage=next;
+            try{showLegacyCasePage();}catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            focusLegacyCasework();
+            return;
+        }
+        if(action==='knowledge-native-stop'){nativeKeep.revoke();render();return;}
         if (action === 'close-dialog') {
             dialog.close();
             return;
@@ -1937,6 +2609,13 @@ async function setup(root: HTMLElement) {
             return;
         }
         switch (action) {
+            case 'toggle-today-more':
+                if(view==='home' && homeMode==='today' && !editing && !privacyHeld && !state.preferences.hidden) {
+                    todayMoreExpanded=!todayMoreExpanded;
+                    render();
+                    root.querySelector<HTMLButtonElement>('[data-action="toggle-today-more"]')?.focus();
+                }
+                break;
             case 'unified-mode':
                 if(view==='home' && (HOME_JOURNEY_MODES as readonly string[]).includes(id)) {
                     if(editing && id!=='workspace'){toast('Save or cancel the current layout edit before switching views.');break;}
@@ -1945,6 +2624,19 @@ async function setup(root: HTMLElement) {
                     render();
                     root.querySelector<HTMLButtonElement>(`[data-action="unified-mode"][data-id="${id}"]`)?.focus();
                 }
+                break;
+            case 'weekly-review-stage':
+                if(view==='home' && homeMode==='review' &&
+                    (WEEKLY_REVIEW_STAGES as readonly string[]).includes(id)){
+                    weeklyReviewStage=id as WeeklyReviewStage;
+                    render();
+                    root.querySelector<HTMLHeadingElement>('#ws-review-stage-title')?.focus();
+                }
+                break;
+            case 'weekly-review-note':
+                if(view!=='home'||homeMode!=='review'||!state || locked ||
+                    privacyHeld || state.preferences.hidden || editing)break;
+                editNote('',weeklyReviewNoteSeed(state,today(),weeklyReviewDraft));
                 break;
             case 'unified-triage':
                 reviewUnifiedTask(id);
@@ -1962,6 +2654,35 @@ async function setup(root: HTMLElement) {
                     root.querySelector<HTMLButtonElement>('[data-action=focus-start]')?.focus();
                 }
                 break;
+            case 'focus-work-note': {
+                const task=state.tasks.find(t=>t.id===focus.selectedId&&!t.completedAt);
+                if(!task){toast('Choose an unfinished Hub task before preparing a note.');break;}
+                const work=focusWorkForSelection();
+                if(!hasFocusWork(work)){toast('Enter working notes, a blocker or a next step first.');break;}
+                const seed=focusWorkNoteSeed(task,work);
+                // Review in the original Hub note editor; no write is made now.
+                editNote('',seed);
+                break;
+            }
+            case 'focus-work-plan':
+                if(focus.selectedId)reviewUnifiedTask(focus.selectedId);
+                break;
+            case 'focus-work-knowledge':
+                if(focus.selectedId)showTaskContext(focus.selectedId);
+                break;
+            case 'focus-work-clear': {
+                const taskId=focus.selectedId;
+                if(!taskId||!focusWork.has(taskId))break;
+                openForm('Discard working session pad?',
+                    '<p>This removes only the unsaved scratch for this task in this tab. '+
+                    'Original Hub notes, tasks and other session pads are unchanged.</p>',
+                    ()=>{
+                        if(focus.selectedId!==taskId)throw new Error('Selected task changed. Review before discarding.');
+                        focusWork.delete(taskId);
+                        render();
+                    },'Discard pad');
+                break;
+            }
             case 'focus-queue':
                 if (view==='home' && ['due','priority','inbox','all'].includes(id)) {
                     focus.queue=id as FocusQueue;
@@ -2014,15 +2735,58 @@ async function setup(root: HTMLElement) {
             case 'context-task':
                 showTaskContext(id);
                 break;
+            case 'knowledge-open': {
+                if(view!=='knowledge'||!state||locked||privacyHeld||state.preferences.hidden)break;
+                const chosen=projectHubKnowledge(state,knowledgeQuery,id);
+                if(!chosen.notes.some(n=>n.id===id))break;
+                knowledgeNoteId=id;
+                const list=root.querySelector<HTMLElement>('[data-knowledge-results]');
+                const preview=root.querySelector<HTMLElement>('[data-knowledge-document]');
+                if(list)list.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,id);
+                if(preview && chosen.selected)preview.innerHTML=renderHubKnowledgePreview(state,chosen.selected);
+                root.querySelector<HTMLElement>('#ws-knowledge-preview-title')?.focus();
+                break;
+            }
             case 'context-note':
                 showNoteContext(id);
                 break;
             case 'context-event':
                 showEventContext(id);
                 break;
+            case 'new-decision':editDecision();break;
+            case 'edit-decision':editDecision(id);break;
+            case 'choose-decision':chooseDecision(id);break;
+            case 'reopen-decision':decisionTransition(id,'reopen');break;
+            case 'archive-decision':decisionTransition(id,'archive');break;
+            case 'restore-decision':decisionTransition(id,'restore');break;
+            case 'remove-decision':decisionTransition(id,'remove');break;
+            case 'new-outcome':editOutcome();break;
+            case 'edit-outcome':editOutcome(id);break;
+            case 'toggle-outcome':updateOutcome(id);break;
+            case 'remove-outcome':updateOutcome(id,true);break;
+            case 'review-task-event-link':
+                reviewTaskEventLink(id);
+                break;
+            case 'unlink-task-event':
+                reviewTaskEventUnlink(id);
+                break;
             case 'plan-task-event':
                 planTaskInCalendar(id);
                 break;
+            case 'prep-event-task':
+            case 'followup-event-task': {
+                if(!startHandoff('event',id))break;
+                const original=state.events.find(e=>e.id===id);
+                if(original)editTask('',preparationTaskSeed(original,today(),
+                    action==='prep-event-task'?'prepare':'followup'));
+                break;
+            }
+            case 'prep-event-note': {
+                if(!startHandoff('event',id))break;
+                const original=state.events.find(e=>e.id===id);
+                if(original)editNote('',preparationNoteSeed(original));
+                break;
+            }
             case 'create-note-from-task': {
                 if(!startHandoff('task',id))break;
                 const task=state.tasks.find(t=>t.id===id);
@@ -2204,6 +2968,9 @@ async function setup(root: HTMLElement) {
             case 'week-preview':
                 reviewWeeklyCarryover();
                 break;
+            case 'week-spread':
+                reviewDistributedWeek();
+                break;
             case 'week-scroll-review':
                 if(view==='calendar' && agendaMode==='week') {
                     root.querySelector<HTMLElement>('[data-week-followthrough]')?.scrollIntoView({block:'start'});
@@ -2331,6 +3098,8 @@ async function setup(root: HTMLElement) {
                 widgetPicker();
                 break;
             case 'add-type': {
+                if(['outcome-board','decision-register','record-pinboard'].includes(id) && editing?.workspace.widgets.some(w=>w.type===id)){toast('This workspace already has that record grouping.');break;}
+                if(id==='task-event-links' && editing?.workspace.widgets.some(w=>w.type==='task-event-links')) {toast('One task–calendar links widget per workspace.');break;}
                 const spec = specification(id);
                 if (!spec)
                     return;
@@ -2353,10 +3122,30 @@ async function setup(root: HTMLElement) {
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
+            case 'enable-record-pinboard':
+                if(editing){toast('Finish layout editing before adding a pinboard.');break;}
+                void mutate(s=>enableHubPinboard(s),'Pinboard ready')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to create pinboard.'));
+                break;
+            case 'toggle-record-pin':
+                if(editing){toast('Finish layout editing before changing pins.');break;}
+                void mutate(s=>{toggleHubRecordPin(s,id);},'Pinned records updated')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to change pin.'));
+                break;
+            case 'move-record-pin-up':
+            case 'move-record-pin-down':
+                if(editing){toast('Finish layout editing before changing pins.');break;}
+                void mutate(s=>{moveHubRecordPin(s,id,action==='move-record-pin-up'?-1:1);},'Pinboard updated')
+                  .catch(e=>toast(e instanceof Error?e.message:'Unable to move pin.'));
+                break;
             case 'configure-widget':
                 configureWidget(id);
                 break;
             case 'remove-widget':
+                if(hasWidgetOwnedRecords((editing?.workspace??current()).widgets.find(x=>x.id===id))){
+                    toast('Remove saved links or records from this widget before removing the layout.');
+                    break;
+                }
                 changeLayout(w => w.widgets = w.widgets.filter(x => x.id !== id));
                 dialog.close();
                 toast('Widget removed; its content is kept.');
@@ -2428,7 +3217,7 @@ async function setup(root: HTMLElement) {
             case 'privacy': {
                 insightController?.abort(); insights=[];clearSourceStates();
                 const hiding = !(privacyHeld || state.preferences.hidden);
-                if (hiding) { resetLanguages(); resetFolio(); clearNotesSource(); }
+                if (hiding) { knowledgeNoteId=null;knowledgeQuery='';resetLanguages(); resetFolio(); clearNotesSource(); }
                 void mutate(s => {
                     s.preferences.hidden = hiding;
                     privacyHeld = hiding;
@@ -2562,6 +3351,7 @@ async function setup(root: HTMLElement) {
                     void mutate(s => s.active = draft.workspaceId, '', false).then(() => {
                         if(dirty || !state || epoch!==draftEpoch) return;
                         editing=draft;
+                        homeMode='workspace';
                         recoveryDraft=null;
                         notice('');
                         render();
@@ -2575,11 +3365,7 @@ async function setup(root: HTMLElement) {
                 break;
             case 'save-draft-as':
                 if (editing && state.workspaces.length < 10) {
-                    const w = clone(editing.workspace);
-                    w.id = uid();
-                    w.title += ' recovered';
-                    w.revision = 0;
-                    w.widgets.forEach(x => x.id = uid());
+                    const w = duplicatePresentationLayout(editing.workspace,(editing.workspace.title.slice(0,68)+' recovered').slice(0,80));
                     editing = null;
                     conflict = false;
                     void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
@@ -2597,6 +3383,188 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('change', event => {
         const el = event.target as HTMLInputElement;
+        if(view==='legacy'&&el.matches('[data-legacy-backup-file]')){
+            const input=el,source=input.files?.[0],status=root.querySelector<HTMLElement>('[data-legacy-backup-status]'),
+                  output=root.querySelector<HTMLElement>('[data-legacy-backup-result]');
+            clearLegacyCasework();
+            if(output)output.replaceChildren();
+            if(status)status.textContent='';
+            input.value='';
+            if(!source)return;
+            if(!state||locked||privacyHeld||state.preferences.hidden){
+                if(status)status.textContent='Reopen a verified, visible Hub workspace before inspecting a private backup.';
+                return;
+            }
+            if(source.size>64*1024*1024||source.size===0){
+                if(status)status.textContent='Backup is outside the bounded 64 MiB preview; keep the original file unchanged.';
+                return;
+            }
+            const own=epoch,original=state,sourceGeneration=originalExportGeneration;
+            if(status)status.textContent='Checking original export bytes and record references…';
+            void (async()=>{
+                try{
+                    const bytes=new Uint8Array(await source.arrayBuffer());
+                    const {preflight:result,plan}=await makeOriginalOwnerDryRun(bytes,original);
+                    if(sourceGeneration!==originalExportGeneration||own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    activeLegacyPlan=plan;originalCasePage=0;
+                    originalCaseFilter='ALL';originalReviewFilter='ALL';originalMarkFilter='ALL';
+                    originalCaseChoices.clear();originalCaseMarks.clear();originalCaseTimeline=null;
+                    originalRecoveryPreview=null;originalCrossVisitPreview=null;originalCrossVisitSelected.clear();originalCrossVisitGenerations.clear();originalRecoverySteps=1;
+                    if(output)output.innerHTML=renderOriginalExportPreflight(result)+renderOriginalOwnerDryRun(plan)+renderOriginalOwnerCaseworkForm(plan);
+                    showLegacyCasePage();
+                    if(status)status.textContent='Inspection complete. Source authenticity is not verified; no migration was performed.';
+                }catch(error){
+                    if(sourceGeneration!==originalExportGeneration||own!==epoch||state!==original||locked||privacyHeld||state?.preferences.hidden)return;
+                    if(status)status.textContent=error instanceof Error?error.message:'Original export could not be inspected.';
+                }
+            })();
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-filter]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const selected=el.value as OwnerCaseFilter;
+            if(!(OWNER_CASE_FILTERS as readonly string[]).includes(selected)){el.value=originalCaseFilter;return;}
+            originalCaseFilter=selected;
+            originalCasePage=0;
+            try{
+                showLegacyCasePage();
+                root.querySelector<HTMLSelectElement>('[data-original-owner-filter]')?.focus();
+            }catch{
+                clearLegacyCasework();
+                root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+            }
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-review-filter]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const selected=el.value as OwnerReviewFilter;
+            if(!(OWNER_REVIEW_FILTERS as readonly string[]).includes(selected)){el.value=originalReviewFilter;return;}
+            originalReviewFilter=selected;originalCasePage=0;
+            try{showLegacyCasePage();root.querySelector<HTMLSelectElement>('[data-original-owner-review-filter]')?.focus();}
+            catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-cross-generation]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan||
+               !originalCrossVisitPreview||!originalCaseTimeline)return;
+            const kind=el.dataset.caseKind as OriginalOwnerGenerationRequest['kind'];
+            const originalId=el.dataset.caseId??'',key=sourceMarkKey(kind,originalId);
+            const previous=originalCrossVisitGenerations.get(key);
+            const candidate=new Map(originalCrossVisitGenerations);
+            candidate.set(key,Number(el.value));
+            try{
+                const selected:OriginalOwnerGenerationRequest[]=originalCrossVisitPreview.recoverable
+                    .filter(row=>originalCrossVisitSelected.has(sourceMarkKey(row.kind,row.originalId)))
+                    .map(row=>({kind:row.kind,originalId:row.originalId,
+                        visitsBack:candidate.get(sourceMarkKey(row.kind,row.originalId))??row.visitsBack}));
+                previewOriginalOwnerGenerationSelection(activeLegacyPlan,originalCaseTimeline,
+                    originalCrossVisitPreview,selected);
+                originalCrossVisitGenerations.clear();
+                for(const [k,v] of candidate)originalCrossVisitGenerations.set(k,v);
+                syncOriginalOwnerHistoryButtons(false);
+            }catch(error){
+                el.value=String(previous??'');
+                toast(error instanceof Error?error.message:'Historical source generation was invalidated.');
+            }
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-cross-select]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan||
+               !originalCrossVisitPreview||!originalCaseTimeline)return;
+            const key=sourceMarkKey(el.dataset.caseKind??'',el.dataset.caseId??'');
+            const wasSelected=originalCrossVisitSelected.has(key);
+            const next=new Set(originalCrossVisitSelected);
+            if(el.checked)next.add(key);else next.delete(key);
+            try{
+                const selected:OriginalOwnerGenerationRequest[]=originalCrossVisitPreview.recoverable
+                    .filter(row=>next.has(sourceMarkKey(row.kind,row.originalId)))
+                    .map(row=>({kind:row.kind,originalId:row.originalId,
+                        visitsBack:originalCrossVisitGenerations.get(sourceMarkKey(row.kind,row.originalId))??row.visitsBack}));
+                previewOriginalOwnerGenerationSelection(activeLegacyPlan,originalCaseTimeline,
+                    originalCrossVisitPreview,selected);
+                originalCrossVisitSelected.clear();
+                for(const item of next)originalCrossVisitSelected.add(item);
+                // No remount: real pointer/keyboard checkbox remains focused.
+                syncOriginalOwnerHistoryButtons(false);
+            }catch(error){
+                el.checked=wasSelected;
+                toast(error instanceof Error?error.message:'Invalid historical source selection.');
+            }
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-recovery-step]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan||!originalCaseTimeline)return;
+            const chosen=Number(el.value);
+            if(!Number.isSafeInteger(chosen)||chosen<1||chosen>originalCaseTimeline.past.length){
+                el.value=String(originalRecoverySteps);return;
+            }
+            originalRecoverySteps=chosen;originalRecoveryPreview=null;
+            syncOriginalOwnerHistoryButtons();
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-mark-filter]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const selected=el.value as OwnerMarkFilter;
+            if(!(OWNER_MARK_FILTERS as readonly string[]).includes(selected)){el.value=originalMarkFilter;return;}
+            originalMarkFilter=selected;originalCasePage=0;
+            try{showLegacyCasePage();root.querySelector<HTMLSelectElement>('[data-original-owner-mark-filter]')?.focus({preventScroll:true});}
+            catch{clearLegacyCasework();root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();}
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-mark]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const mark:OwnerMarkedCase={kind:el.dataset.caseKind as OwnerMarkedCase['kind'],
+                originalId:el.dataset.caseId??'',
+                observedStatus:el.dataset.caseStatus as OwnerMarkedCase['observedStatus']};
+            const key=sourceMarkKey(mark.kind,mark.originalId);
+            const candidate=new Map(originalCaseMarks);
+            if(el.checked)candidate.set(key,mark);else candidate.delete(key);
+            try{
+                validateOriginalOwnerMarks(activeLegacyPlan,[...candidate.values()],
+                    activeLegacyPlan.originalFileSha256,state.revision);
+                originalCaseMarks.clear();
+                for(const [id,row] of candidate)originalCaseMarks.set(id,row);
+                if(originalMarkFilter==='ALL')syncOriginalMarkControls();
+                else{
+                    // Filter membership changed; this one row may leave the queue.
+                    showLegacyCasePage();
+                    focusLegacyCasework();
+                }
+            }catch(error){
+                el.checked=originalCaseMarks.has(key);
+                toast(error instanceof Error?error.message:'Mark could not be changed.');
+            }
+            return;
+        }
+        if(view==='legacy'&&el.matches('[data-original-owner-choice]')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||!activeLegacyPlan)return;
+            const candidate=new Map(originalCaseChoices);
+            const selection:OwnerCaseChoiceInput={
+                kind:el.dataset.caseKind as OwnerCaseChoiceInput['kind'],
+                originalId:el.dataset.caseId??'',
+                observedStatus:el.dataset.caseStatus as OwnerCaseChoiceInput['observedStatus'],
+                choice:el.value as OwnerCaseChoiceInput['choice'],
+            };
+            const caseKey=sourceCaseKey(selection.kind,selection.originalId);
+            if(el.value)candidate.set(caseKey,selection);
+            else candidate.delete(caseKey);
+            const receipt=root.querySelector<HTMLElement>('[data-owner-casework-receipt]');
+            try{
+                const review=reviewOriginalOwnerCases(activeLegacyPlan,[...candidate.values()],
+                    activeLegacyPlan.originalFileSha256,state.revision);
+                originalCaseChoices.clear();
+                for(const [key,value] of candidate)originalCaseChoices.set(key,value);
+                if(originalReviewFilter!=='ALL')showLegacyCasePage();
+                else{
+                    if(receipt)receipt.textContent=renderOriginalOwnerCaseworkReceipt(review);
+                    recordOriginalOwnerHistory();
+                }
+            }catch(error){
+                el.value=originalCaseChoices.get(caseKey)?.choice??'';
+                if(receipt)receipt.textContent=error instanceof Error?error.message:'Casework review was invalidated.';
+            }
+            return;
+        }
         if (!state || locked)
             return;
         if (el.closest('[data-task-calendar-review]')) {
@@ -2634,6 +3602,11 @@ async function setup(root: HTMLElement) {
             } else weekSelection.delete(id);
             render();
             root.querySelector<HTMLInputElement>(`[data-week-task-id="${CSS.escape(id)}"]`)?.focus();
+            return;
+        }
+        if (el.closest('[data-week-spread-review]')) {
+            const review=activeSpreadReview;
+            if(review && review.epoch===epoch)paintDistributedPreview(review.snapshots,review.epoch);
             return;
         }
         if (el.closest('[data-week-review-form]')) {
@@ -2696,6 +3669,37 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(el.hasAttribute('data-weekly-review-field')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||
+                view!=='home'||homeMode!=='review'||weeklyReviewStage!=='finish')return;
+            weeklyReviewDraft=weeklyReviewField(weeklyReviewDraft,
+                el.dataset.weeklyReviewField??'',el.value);
+            return;
+        }
+        if(el.hasAttribute('data-focus-work-field')){
+            const source=el.closest<HTMLElement>('[data-focus-work]');
+            const taskId=source?.dataset.sourceTask;
+            if(!state || locked || privacyHeld || state.preferences.hidden || !taskId ||
+                taskId!==focus.selectedId || !state.tasks.some(t=>t.id===taskId&&!t.completedAt))return;
+            const field=el.dataset.focusWorkField!;
+            const next=focusWorkInput(focusWork.get(taskId)??EMPTY_FOCUS_WORK,field,el.value);
+            focusWork.set(taskId,next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-note]')!.disabled=!hasFocusWork(next);
+            source.querySelector<HTMLButtonElement>('[data-action=focus-work-clear]')!.disabled=!hasFocusWork(next);
+            return;
+        }
+        if(el.hasAttribute('data-knowledge-query')){
+            if(!state||locked||privacyHeld||state.preferences.hidden||view!=='knowledge')return;
+            knowledgeQuery=el.value.slice(0,100);
+            const result=projectHubKnowledge(state,knowledgeQuery,knowledgeNoteId);
+            knowledgeNoteId=result.selected?.id??null;
+            const list=root.querySelector<HTMLElement>('[data-knowledge-results]');
+            const preview=root.querySelector<HTMLElement>('[data-knowledge-document]');
+            if(list)list.innerHTML=renderHubKnowledgeList(state,knowledgeQuery,knowledgeNoteId);
+            if(preview)preview.innerHTML=result.selected?renderHubKnowledgePreview(state,result.selected):
+                '<div class="ws-knowledge-blank"><h3>No matching Hub notes</h3></div>';
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
@@ -2889,15 +3893,24 @@ async function setup(root: HTMLElement) {
         }
     }
     async function loadIdentity(identity: HubIdentity) {
+        clearLegacyCasework();
+        root.querySelector<HTMLElement>('[data-legacy-backup-result]')?.replaceChildren();
+        const backupStatus=root.querySelector<HTMLElement>('[data-legacy-backup-status]');
+        if(backupStatus)backupStatus.textContent='';
         clearFocusIdentity();
-        if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+        const currentOwner=identity.status==='signed-in'?'user:'+identity.id:
+            identity.status==='signed-out'?'guest':null;
+        if(homeModeRestorePending && currentOwner) {
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'||homeModeFromUrl==='review'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else if(lastVerifiedHomeOwner && (!currentOwner || lastVerifiedHomeOwner!==currentOwner))
+            homeMode='today';
+        if(currentOwner)lastVerifiedHomeOwner=currentOwner;
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
         activeWeekReview=null;
+        activeSpreadReview=null;
         weekFilter='carry';
         const own = ++epoch;
         cloud?.stop(); cloud = null; cloudConflict=false; pendingCloudRender=false; insightController?.abort(); insights=[];clearSourceStates();

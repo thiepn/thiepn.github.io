@@ -3,16 +3,31 @@
  * IndexedDB has a separate quota from localStorage used by the app catalogue. */
 export async function persistHubAccountStorage(fallback: Storage, keys: readonly string[], persistent: Storage | null) {
   let db: IDBDatabase | null = null;
-  try {
-    db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('thiepn-hub-account', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('session');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => reject(new Error('ACCOUNT_STORAGE_BLOCKED'));
-    });
-    db.onversionchange = () => db?.close();
-  } catch { /* Restricted browsers can still use the existing local/tab store. */ }
+  // Contending tab startups can transiently fail to open an Account DB.
+  // Do not silently downgrade the rotating-token lock to uncoordinated
+  // localStorage in that case. Only explicit browser storage denial may fall
+  // back to the legacy/tab adapter.
+  for (let attempt=0; attempt<4; attempt++) {
+    try {
+      db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('thiepn-hub-account', 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains('session'))
+            request.result.createObjectStore('session');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error ?? new Error('ACCOUNT_STORAGE_OPEN_FAILED'));
+        request.onblocked = () => reject(new Error('ACCOUNT_STORAGE_BLOCKED'));
+      });
+      db.onversionchange = () => db?.close();
+      break;
+    } catch(error) {
+      if (error instanceof DOMException &&
+          ['SecurityError','NotAllowedError','QuotaExceededError'].includes(error.name)) break;
+      if (attempt===3) throw error;
+      await new Promise<void>(resolve=>setTimeout(resolve,100*(attempt+1)));
+    }
+  }
   const cache = new Map<string, string | null>();
   let pending = Promise.resolve(), writeError: unknown;
   const assertKey = (key: string) => { if (!keys.includes(key)) throw new Error('ACCOUNT_STORAGE_KEY_INVALID'); };
@@ -50,25 +65,12 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       // record, but never replace a durable credential with an unchanged stale
       // local record left behind by a quota failure.
       const changed = record !== undefined && currentLegacy !== undefined && currentLegacy !== record.legacy;
-      // A stale localStorage mirror must never roll back a freshly rotated
-      // refresh token from IndexedDB. This can otherwise trigger a SECOND
-      // OAuth refresh in another tab even after the cross-tab lease succeeded.
-      const tokenExpiry = (raw: string | null | undefined): number | null => {
-        if (typeof raw !== 'string') return null;
-        try {
-          const candidate: unknown = JSON.parse(raw);
-          if (!candidate || typeof candidate !== 'object' || !('expiresAt' in candidate)) return null;
-          const expiresAt = (candidate as {expiresAt?: unknown}).expiresAt;
-          return typeof expiresAt === 'number' && Number.isFinite(expiresAt) ? expiresAt : null;
-        } catch { return null; }
-      };
-      const durableExpiry = key.endsWith(':tokens') ? tokenExpiry(record?.value) : null;
-      const legacyExpiry = key.endsWith(':tokens') ? tokenExpiry(currentLegacy) : null;
-      const preventRollback = key.endsWith(':tokens') && record !== undefined &&
-        (record.value === null || durableExpiry !== null &&
-          durableExpiry > Date.now() + 30_000 &&
-          (legacyExpiry === null || legacyExpiry <= durableExpiry));
-      const importLegacy = changed && !preventRollback;
+      // Once an OAuth token has a durable record it is authoritative.
+      // ExpiresAt cannot order rotating refresh tokens: a stale tab may
+      // overwrite a mirror with a later expiry but an already consumed token.
+      // Never import that mirror over the committed IDB credential/tombstone.
+      // Only the first import from pre-durable versions is permitted.
+      const importLegacy = changed && (!key.endsWith(':tokens') || record === undefined);
       cache.set(key, importLegacy ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
       if (record === undefined || importLegacy) await write(key, cache.get(key)!, currentLegacy);
     }
@@ -100,6 +102,22 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
   // Web Locks may be absent in Safari. This IndexedDB transaction provides a
   // cross-tab lease before reading or rotating any Account credentials.
   // The lease never contains tokens and is not exposed through SDK storage.
+  // Without durable IDB or native Web Locks a rotating refresh-token
+  // request has no safe cross-tab exclusion. Keep fresh offline credentials
+  // usable, but never send a potentially duplicate spent token.
+  function assertSafeFallback() {
+    if (db || navigator.locks) return;
+    const tokenKey=keys.find(key=>key.endsWith(':tokens'));
+    if (!tokenKey) return;
+    const raw=storage.getItem(tokenKey);
+    if (!raw) return;
+    let expiry:unknown;
+    try { expiry=(JSON.parse(raw) as {expiresAt?:unknown}).expiresAt; }
+    catch { throw new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE'); }
+    if (typeof expiry!=='number'||!Number.isFinite(expiry)||
+        expiry-Date.now()<=30_000)
+      throw new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE');
+  }
   const leaseKey = 'thiepn:hub-account-storage:refresh-lease';
   async function withIdbLease<T>(operation: () => Promise<T>): Promise<T> {
     if (!db) return operation(); // Preserve the restricted-storage fallback.
@@ -136,11 +154,20 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
     const perform = async () => {
       await flush();
       await load();
+      assertSafeFallback();
       try { return await operation(); } finally { await flush(); }
     };
-    const work = tail.then(() => navigator.locks
-      ? navigator.locks.request('thiepn:hub-account-storage', perform)
-      : withIdbLease(perform));
+    // All tabs sharing the durable IndexedDB credential MUST use the same
+    // cross-tab mutex. Mixing Web Locks with the fallback IDB lease leaves
+    // two independent locks and permits duplicate rotating OAuth refreshes
+    // if capabilities differ across tabs, browser windows, or test harnesses.
+    // Native Web Locks is only a fallback when durable IndexedDB is denied.
+    // Unlocked/expired credentials with neither mechanism fail closed above.
+    const work = tail.then(() => db
+      ? withIdbLease(perform)
+      : navigator.locks
+        ? navigator.locks.request('thiepn:hub-account-storage', perform)
+        : perform());
     tail = work.then(() => {}, () => {});
     return work;
   }

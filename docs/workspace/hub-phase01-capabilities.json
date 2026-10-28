@@ -1,0 +1,465 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "repository": "thiepn/thiepn.github.io",
+    "mainCommit": "3d9a750766a280fbb5ba5733b02ad50f2b38f065",
+    "verifiedOn": "2026-10-24",
+    "integrationBranch": "feat/connected-hub",
+    "previousIntegrationHead": "ff460f7d9ab124bc99c72b18398cbd84d5a7a8cc",
+    "release": "DRAFT_ONLY"
+  },
+  "policy": {
+    "approvedPublishedInventory": "thiepn/core reviewed launch manifest; Hub pinned projection",
+    "optionalShortcutInventory": "Hub additionalShortcutLaunches; separate from published modules",
+    "hubWorkspaceWriter": "src/lib/workspace/store.ts and existing commands with owner/CAS protections",
+    "crossAppData": "Native owners retain private data; Hub uses consented bounded source projections and exact deep links only",
+    "prohibited": [
+      "silent native writes",
+      "automatic OAuth scope changes",
+      "production migrations",
+      "auto-enrollment of repositories",
+      "duplicate calendars",
+      "duplicate note stores",
+      "fabricated completion",
+      "unapproved deployment"
+    ]
+  },
+  "catalogue": {
+    "publishedEntries": 31,
+    "additionalShortcutOnly": 12,
+    "legacyIdsPreserved": true,
+    "notAutomaticallyPromoted": true
+  },
+  "capabilities": [
+    {
+      "id": "apps",
+      "owner": "core",
+      "consumer": "hub",
+      "source": "src/generated/launch-manifest.json",
+      "state": "main_plus_phase01",
+      "scope": "31 reviewed publications and 12 independent launch-only shortcuts; same counts across filters; no promotion",
+      "next": "P02"
+    },
+    {
+      "id": "navigation",
+      "owner": "hub",
+      "source": "src/components/workspace/WorkspaceShell.astro",
+      "state": "phase02_candidate",
+      "scope": "Today on fresh Home; explicit ?mode=workspace deep-link persists on reload, Focus and app navigation preserve native state",
+      "next": "P03"
+    },
+    {
+      "id": "tasks",
+      "owner": "hub",
+      "source": "src/lib/workspace/store.ts",
+      "state": "phase05_candidate",
+      "scope": "Original Hub tasks, native planning/CAS, plus explicit task↔event ID references in existing schema-v1 workspace widget",
+      "next": "P06"
+    },
+    {
+      "id": "today",
+      "owner": "hub",
+      "source": "src/lib/workspace/source-today.ts",
+      "state": "phase09_candidate",
+      "scope": "Today-first Workbench plus current Hub owner IDs pinned explicitly, no external note copies",
+      "next": "P10"
+    },
+    {
+      "id": "calendar",
+      "owner": "hub",
+      "nativeSourceOwner": "studyos",
+      "source": "src/lib/workspace/google-calendar-c1.ts",
+      "state": "phase07_candidate",
+      "scope": "Original Hub events, read-only StudyOS Calendar, user-reviewed task associations, and ephemeral Notes due reminders",
+      "next": "P08"
+    },
+    {
+      "id": "hub-native-knowledge",
+      "owner": "hub",
+      "consumer": "hub",
+      "source": "src/pages/home/knowledge/index.astro",
+      "state": "phase10_candidate",
+      "sourcePr": 166,
+      "scope": "Native read-only search, browse and full-text view of original Hub-local Notes through existing owner-specific WorkspaceStore; original Hub note editor only; no KEEP encrypted material, no external Notes copies",
+      "next": "P11"
+    },
+    {
+      "id": "knowledge",
+      "owner": "keep",
+      "consumer": "hub",
+      "source": "unmerged-PR-168/KEEP-native-vault",
+      "state": "draft_only",
+      "sourcePr": 168,
+      "scope": "Encrypted KEEP B3 native integration remains an independent draft on PR #168; /home/knowledge/ in PR #189 reads only Hub original local notes and is not the KEEP vault",
+      "next": "P10"
+    },
+    {
+      "id": "documents",
+      "owner": "hub",
+      "source": "src/pages/home/documents/index.astro",
+      "state": "on_main",
+      "sourcePr": 175,
+      "scope": "Owner-scoped local Documents implementation present on main; avoid replay of old PR files",
+      "next": "P09"
+    },
+    {
+      "id": "account",
+      "owner": "account",
+      "consumer": "hub",
+      "source": "src/lib/workspace/cloud-sync.ts",
+      "state": "on_main_with_external_release_blocker",
+      "sourcePr": 83,
+      "scope": "Hub sync journal/CAS client present; Account PR83 and real owner/device acceptance pending",
+      "next": "P05"
+    },
+    {
+      "id": "reading",
+      "owner": "library",
+      "consumer": "hub",
+      "source": "src/data/reading-pilot.json",
+      "state": "on_main",
+      "scope": "Opt-in device consent for summary/continue; Hub cannot read book bytes; do not broaden consent",
+      "next": "P10"
+    },
+    {
+      "id": "languages",
+      "owner": "language_apps",
+      "consumer": "hub",
+      "source": "src/lib/workspace/language-read.ts",
+      "state": "on_main_partial",
+      "scope": "Bounded language progress summaries, no second grading/review engine",
+      "next": "P10-P11"
+    },
+    {
+      "id": "folio",
+      "owner": "folio",
+      "consumer": "hub",
+      "source": "src/lib/workspace/folio-device.ts",
+      "state": "on_main_partial",
+      "scope": "Explicit device-permitted source summary, not Hub-owned Folio data",
+      "next": "P10"
+    },
+    {
+      "id": "search_attention",
+      "owner": "hub",
+      "source": "src/lib/workspace/search-palette.ts",
+      "state": "on_main_partial",
+      "scope": "Local search and inbox present; federated authorized actions and delivery remain pending",
+      "next": "P13-P14"
+    },
+    {
+      "id": "habits_trackers",
+      "owner": "hub",
+      "source": "src/lib/workspace/commands/trackers.ts",
+      "state": "on_main_partial",
+      "scope": "Manual immutable measurement history and correction commands; app-source metric adapters pending",
+      "next": "P12"
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 188,
+      "head": "47f6cdee0faed3925353117ab76c8752f92e1c06",
+      "ahead": 3,
+      "behind": 0,
+      "decision": "select_browser_regression_fix_only",
+      "details": "Apps filter test expectations match 31 published plus 12 shortcut-only; do not keep the temporary Calendar PR merge job"
+    },
+    {
+      "number": 185,
+      "head": "1d947e51d77d9e9fd525919af80a14ea15d1cd13",
+      "ahead": 6,
+      "behind": 4,
+      "decision": "select_source_transport_test_and_ci_gate",
+      "details": "All five PR-specific paths have unchanged main-side ancestors and can be adopted without overwriting unrelated edits"
+    },
+    {
+      "number": 178,
+      "head": "02e477806e4238d657e34a19e35a8f71ca79e098",
+      "ahead": 1,
+      "behind": 41,
+      "decision": "already_equivalent_on_main",
+      "details": "All four original PR files exactly match main blob IDs; no cherry-pick needed"
+    },
+    {
+      "number": 166,
+      "head": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+      "ahead": 86,
+      "behind": 42,
+      "decision": "defer_selective_owner_reconciliation",
+      "details": "59 PR-only files and 37 different shared files; no whole-branch merge over current shell"
+    },
+    {
+      "number": 168,
+      "head": "0d39528b6baaa205ea38f733731f36ad9ea0f16c",
+      "ahead": 224,
+      "behind": 53,
+      "decision": "defer_keep_original_source_qualification",
+      "details": "1334 PR-only files including original B3 vendor subtree; cross-origin/vault boundaries require explicit qualification"
+    },
+    {
+      "number": 175,
+      "head": "df2a119d87449468c96b8205bc406dee1363377a",
+      "ahead": 141,
+      "behind": 42,
+      "decision": "already_implemented_on_main_review_differences",
+      "details": "No PR-exclusive file paths; 982 of 1000 PR blobs match main, including native Documents route/editor; 18 differences need a targeted source check"
+    },
+    {
+      "number": 176,
+      "head": "2eb3bd2ae999e2a1ce9222dc126a284d3abdb848",
+      "ahead": 14,
+      "behind": 42,
+      "decision": "defer_contextual_copy_reconciliation",
+      "details": "Many shared UI files changed since branch point; do not overwrite new routes or privacy copy"
+    },
+    {
+      "number": 174,
+      "head": "c483863f492b933b25489016f735aab44909ee46",
+      "decision": "defer_source_owner_studyos",
+      "details": "Academic source projection remains separately gated; no release activation"
+    },
+    {
+      "number": 153,
+      "head": "366ce5c0223f0217f4bb95938aea518e2664f3b7",
+      "decision": "historical_stacked_draft_do_not_wholesale_merge",
+      "details": "Today/Focus/Week reused on current main; audit unique features when implementing P03/P06"
+    }
+  ],
+  "gates": {
+    "phase01": [
+      "main ancestry",
+      "exact original blob integrity",
+      "canonical catalogue browser coverage",
+      "calendar error classification",
+      "selected-day/week cache invalidation",
+      "owner-neutral source inventory"
+    ],
+    "unverified": [
+      "live owner calendar bearer/revocation",
+      "Account PR83",
+      "physical phones",
+      "KEEP encrypted vault",
+      "production release"
+    ]
+  },
+  "phase02": {
+    "parent": "1f9e8f0b995506a7ae096b51aaf796cf0a233abd",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "scope": "Selective owner-sourced Today and native task due-date distribution",
+    "state": "candidate_pending_exact_head_CI",
+    "originalSources": [
+      "src/lib/workspace/daily-source-queue.ts",
+      "src/lib/workspace/source-today.ts",
+      "src/lib/workspace/distributed-planning.ts",
+      "src/lib/workspace/folio-continuity.ts",
+      "src/lib/workspace/source-time-review.ts"
+    ],
+    "preserved": [
+      "WorkspaceStore/CAS, native tasks and events, schema v1",
+      "Apps 31 published + 12 launch-only",
+      "StudyOS Calendar transport",
+      "Hub Account and device Library consent",
+      "Documents route",
+      "Folio/Notes owner stores and IDs"
+    ]
+  },
+  "phase03": {
+    "parent": "b215a471cc2e35fc3abcb18866d4219e68e3aa37",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "awaiting_exact_head_ci",
+    "adopted": [
+      "Native 7-day Today and approved Folio read-only projection",
+      "native upcoming task, trackers and recent note actions",
+      "knowledge work context over original Hub task/note IDs and explicit fresh owner shares",
+      "Phase02 TypeScript null-state fix verified in source"
+    ],
+    "retained": [
+      "Existing WorkspaceStore and CAS",
+      "existing Focus and task dialog writers",
+      "source-owned Folio and Notes rights",
+      "owner-scoped read-only StudyOS calendar",
+      "31 published plus 12 shortcut apps",
+      "Documents and reading privacy boundaries"
+    ],
+    "provenance": {
+      "quality": "40035679127: FAIL at astro check on 2 TS18047 references in workspace-home.ts line 790; preceding calendar/account smoke PASS",
+      "library": "40035679137: PASS all owner build/three browser consent steps",
+      "reading": "40035679257: CANCELLED after device release check PASS and before browser stage"
+    }
+  },
+  "phase04": {
+    "parent": "1222de4b6675511544880657a55f3ee9857c1203",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "scope": "Keep Today default while preserving explicitly selected Workspace across reload; native event preparation and follow-up",
+    "state": "candidate_pending_exact_head_CI",
+    "provenance": {
+      "Quality": "40045953195 FAIL: 1047 PASS, 155 FAIL, 4 SKIP browser; 579/579 unit and Astro 0 errors; legacy layout default mismatch",
+      "Library": "40045953328 PASS genuine 3-engine device consent and original Library build",
+      "Reading": "40045953182 FAIL 51/52; one WebKit locator.click account control stability timeout in optional-join fixture"
+    },
+    "adoptedPr166": [
+      "src/lib/workspace/event-preparation.ts",
+      "tests/unit/event-preparation.test.ts"
+    ],
+    "sourceOfTruth": [
+      "WorkspaceStore and native task/event/note writers",
+      "ephemeral owner-scoped Folio/Notes reads",
+      "exact current Account and Read-only StudyOS Calendar",
+      "original 31+12 Apps registry and Documents files"
+    ],
+    "noWrites": [
+      "external owners",
+      "Account grants",
+      "StudyOS data",
+      "KEEP vault",
+      "release deployment"
+    ]
+  },
+  "phase05": {
+    "parent": "89a2793698e8b075e0bc8fc1253ee86d037e996f",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "candidate_pending_exact_head_CI",
+    "scope": "Original workspace-scoped Hub task↔event references, native review/create/unlink and strict schema-v1 validation",
+    "provenance": {
+      "Quality": "40075785481: FAIL 20 browser tests, 1188 passed/4 skipped; Astro 0 errors and 584/584 Vitest PASS; Account refresh concurrent Chromium/WebKit PASS",
+      "Library": "40075785522 PASS original owner three-engine consent",
+      "Reading": "40075785484 PASS original pilot 52 browser test release"
+    },
+    "contracts": [
+      "Canonical workspace Store and existing mutate/CAS/undo/revision",
+      "Widget config.links preserves original Hub task/event IDs only, max 32, schemaVersion 1",
+      "Current workspace is association authority; no source cloning or calendar time changes",
+      "Exactly one relationship widget per workspace, optional in Customize",
+      "Ephemeral source owner shares remain read-only and unpersisted",
+      "Retain Today default and identity-owned restoration"
+    ],
+    "openChecks": [
+      "20 remaining legacy consent/identity/accessibility tests: explicitly restore Workspace only after identity transition",
+      "Offlined SW root navigation test must stay meaningful",
+      "Do not claim exact-head browser pass until CI finished",
+      "KEEP #168 and Account ownership remain separate"
+    ]
+  },
+  "phase06": {
+    "parent": "4931a015827b20d8ebcc847717b7942d550f1979",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "exact_head_ci_pending",
+    "added": [
+      "Original Focus session scratch bound to original task ID, tab-only, wiped on identity and privacy",
+      "Existing Hub Notes editor receives draft only on explicit Review as Hub note",
+      "Task plan and task context continue in original source actions",
+      "Home ?mode=workspace navigation accepts explicit mode on full-document and SPA navigation"
+    ],
+    "provenance": {
+      "Quality": "40080382518 FAIL after 589/589 Vitest, 1208 browser PASS, 6 FAIL/4 SKIP: 2 Hub sync presentation/navigation scenarios repeated Chromium/Firefox/WebKit",
+      "Library": "40080382517 PASS",
+      "Reading": "40080382540 PASS"
+    },
+    "preserved": [
+      "Original Account refresh and checks unchanged",
+      "No new store or scheduler, Focus working pad not saved",
+      "Task/event link source IDs and workspace CAS untouched",
+      "31+12 Apps and Documents untouched",
+      "No external owner permission or write"
+    ]
+  },
+  "phase07": {
+    "parent": "ce65cfd49b84e824df6060d77021ee5d2f5bc946",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "exact_head_ci_pending",
+    "feature": "Consent-only original Notes reminder continuity in native Today and Calendar",
+    "implementation": [
+      "Reuse existing same-origin popup nonce and opener validation of Notes",
+      "Permit acceptance only during a known signed-in or signed-out Hub identity",
+      "Reject source shares from mismatched owners during identity checking and prevent projection when identity, revocation, privacy or freshness no longer match",
+      "Fresh Notes reminder summaries live in memory only, bounded to six source reminders and five-minute validity",
+      "Expire the projection automatically without persisting, importing or completing Notes reminders",
+      "Display original source deadlines in the native Today seven-day horizon and day/week Calendar, never as Hub events or tasks",
+      "Refresh/clear share repaints active Today and Calendar without duplicating their engines",
+      "Original unit and three-browser owner-popup tests retained"
+    ],
+    "provenance": {
+      "quality": "40091862265 running audit:studio at Phase07 start; Calendar and Account cross-tab smoke PASS, Vitest and Focus mobile pending",
+      "library": "40091862244 PASS",
+      "reading": "40091862291 PASS"
+    },
+    "protected": [
+      "WorkspaceStore schema v1, CAS/undo, original IDs",
+      "Today's native task/focus and task↔event relationship modules",
+      "Folio/Notes source rights and Account guest partition",
+      "31 published+12 shortcut apps, native Documents and StudyOS Calendar",
+      "No migrations, OAuth grants, private writes, deploys or merge"
+    ]
+  },
+  "phase08": {
+    "parent": "eed0cfd694b4458b26a63d9a8de6cfbcbd9f1da3",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "state": "pending_exact_head_quality",
+    "feature": "Five-stage guided Weekly Review: actual tasks, Calendar, trackers, optional owner shares, outcomes, decisions and explicit original Hub note",
+    "preserved": [
+      "Today default, explicit ?mode=review restored after initial owner verification",
+      "Same schema-v1 WorkspaceStore/CAS + undo, original task/Calendar event/trackers IDs",
+      "Owner approvals and revocation for Notes/Folio; no provider writes",
+      "All original Account durable-token security assertions untouched",
+      "Documents/31+12 Apps/StudyOS read-only Calendar unchanged"
+    ],
+    "tests": [
+      "Original source unit tests for weekly review, decision register and outcome grouping",
+      "Source-authored Chromium/Firefox/WebKit mobile review, decision and outcome journeys",
+      "Original browser regression suite without removing protected assertions"
+    ],
+    "phase07Evidence": {
+      "quality": "40093354970 FAIL: 600/600 Vitest, 1216 PASS, 7 FAIL, 4 SKIP; Notes popup day/week and Today revocation 3-engine PASS; Account rotating-refresh race reproduced Chromium only",
+      "library": "40093354972 PASS",
+      "reading": "40093354986 PASS"
+    }
+  },
+  "phase09": {
+    "parent": "545bd7a01c1523af7cba9e5fdfe1a2229346c739",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "pending_exact_head_ci",
+    "feature": "Original-record pinboard, confirmed Hub record backlinks and safe metadata-preserving layout/import contracts",
+    "adopted": [
+      "Up to 20 pins in original active schema-v1 Workspace widget, original task/note/event/tracker IDs only",
+      "Today and native Workspace pinboard with explicit pin/unpin/reorder, missing originals remain non-resurrected",
+      "Confirmed outcome and decision backlinks from original task/note contexts",
+      "Metadata-safe removal/preset/duplication and CAS current-revision safeguards",
+      "Typed collision-safe rebase of additive backup imports across independent record kinds and original metadata links",
+      "Original unit and real browser safety/owner continuity tests"
+    ],
+    "sourceConstraints": [
+      "Hub Account/token code unchanged",
+      "Today default, Notes/Folio consent and StudyOS read-only Calendar unchanged",
+      "No new persistence, migration, OAuth or external provider writes",
+      "31+12 Apps and Documents unchanged"
+    ],
+    "previousQuality": "40102048965: in_progress executing audit:studio at Phase09 start; preliminary Calendar, Account, TypeScript release gate checks passed, no terminal 3-browser result",
+    "previousLibrary": "40102049054: PASS",
+    "previousReading": "40102048871: PASS",
+    "inventoryCorrection": "No Knowledge route claimed; preserved original draft-only source check instead of fabricating page or relaxing inventory."
+  },
+  "phase10": {
+    "parent": "74bfdb969967d5adbc411c64aff18ea2c851eee4",
+    "sourcePr166": "4c2280294edf3760948fa44c1a853100c3f03c6c",
+    "status": "candidate_pending_exact_head_CI",
+    "feature": "Native original Hub-note Knowledge view and search, not encrypted KEEP vault",
+    "implemented": [
+      "Route /home/knowledge/ with existing WorkspaceShell and same owner-scoped WorkspaceStore",
+      "Original source personal-index-knowledge read-only projection, bounded to 60 rows and max 100-character query",
+      "Full original note body escaped; original edit-note and context-note actions only",
+      "Private search terms and current selection remain memory-only, wiped on identity/privacy",
+      "Responsive Knowledge navigation in existing desktop sidebar/mobile More menu",
+      "Original source units and responsive Chromium/Firefox/WebKit browser tests"
+    ],
+    "protected": [
+      "Separate unmerged encrypted KEEP remains draft_only",
+      "No cloud or external Notes source import",
+      "No source-ID URLs or new storage/writer",
+      "Today, Calendar, task-event links, Apps 31+12, Documents, Account and consent unchanged"
+    ],
+    "priorQuality": "40106262919 remained running full audit:studio at Phase10 start; preliminary Calendar/Account/regression checks passed",
+    "priorLibrary": "40106262957 PASS",
+    "priorReading": "40106262933 PASS"
+  }
+}

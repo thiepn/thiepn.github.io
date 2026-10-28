@@ -1,6 +1,6 @@
 import { integratedLocalDay } from './integrated-overview';
-import { renderFolioDevice, type FolioDeviceStatus } from './folio-panel';
-import { renderNotesDevice, type NotesDeviceStatus } from './notes-panel';
+import type { FolioDeviceStatus } from './folio-panel';
+import type { NotesDeviceStatus } from './notes-panel';
 import type { NotesDeviceSummary } from './notes-device';
 import type { FolioDeviceSnapshot } from './folio-device';
 import { dayKey } from './model';
@@ -23,6 +23,9 @@ export function renderIntegratedHome(
   notesSource: { status: NotesDeviceStatus; snapshot: NotesDeviceSummary | null } =
       { status: 'disconnected', snapshot: null },
 ): string {
+  // Legacy projections are compatibility-only; Today renders native Hub records.
+  void folio;
+  void notesSource;
   const day = integratedLocalDay(state);
   const zone = state.preferences.timezone;
 
@@ -101,12 +104,10 @@ export function renderIntegratedHome(
     '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-new-event">Add event</button><a href="/home/calendar/">Calendar</a></div>' +'</section>' +
     '<section class="ws-brief-card"><header><h3>Latest notes</h3>' + '</header>' +
     (notes || '<p class="ws-muted">No notes yet.</p>') +
-    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button></div>' +'</section>' +
+    '<div class="ws-brief-actions"><button type="button" class="ws-text-button" data-action="brief-capture">Capture note</button><a href="/home/knowledge/">Knowledge</a></div>' +'</section>' +
     '<section class="ws-brief-card"><header><h3>Habits &amp; trackers</h3>' + '</header>' +
     (trackers || '<p class="ws-muted">No trackers yet.</p>') +
     '<div class="ws-brief-actions"><a href="/home/trackers/">All trackers</a></div>' +'</section>' +
-    renderFolioDevice(folio.status, folio.snapshot) +
-    renderNotesDevice(notesSource.status, notesSource.snapshot) +
     '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
     '</header>' +
     (languageMessage ? '<p class="ws-muted" role="status">' + esc(languageMessage) + '</p>' : '') +

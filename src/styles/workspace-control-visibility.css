@@ -1,0 +1,217 @@
+/* Hub controls: separate the 3:1 non-text control boundary from quiet content dividers.
+   The light/dark panel tokens in workspace.css remain unchanged. */
+[data-workspace-page] {
+  --ws-control-line:#79879e;
+  --ws-control-fill:#ffffff;
+  --ws-control-hover:#e8f0ff;
+  --ws-control-pressed:#dce9ff;
+}
+[data-workspace-page][data-theme=dark] {
+  --ws-control-line:#8da0bc;
+  --ws-control-fill:#243044;
+  --ws-control-hover:#2b425e;
+  --ws-control-pressed:#2a496c;
+}
+
+/* One visual hierarchy for native workspace, Today, planning, focus, widgets
+   and command palette. Exclude navigational and data-row buttons by design. */
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+){
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+  color:var(--ws-ink);
+}
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+):not(.ws-primary):not(:disabled):not([aria-disabled=true]):is(:hover,:focus-visible){
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.ws-search-trigger,
+  .ws-unified-task-links a,.portal-button,.ws-review-stages button
+):not(.ws-primary):not(:disabled):active{
+  background:var(--ws-control-pressed);
+}
+
+/* Primary actions retain the established accessible accent fill and text. */
+.ws .ws-primary,
+.ws .portal-search-form button {
+  background:var(--ws-accent);
+  color:#ffffff;
+  border:1px solid var(--ws-accent);
+}
+[data-theme=dark] .ws .ws-primary,
+[data-theme=dark] .ws .portal-search-form button{color:#11233d;}
+.ws .ws-primary:not(:disabled):is(:hover,:focus-visible){filter:brightness(.96);}
+.ws :is(.ws-unified-mode,.ws-plan-button,.ws-focus-chip,.ws-palette-chip,.ws-review-stages button)[aria-pressed=true],
+.ws :is(.ws-unified-mode,.ws-plan-button,.ws-focus-chip,.ws-palette-chip,.ws-review-stages button)[aria-current=step]{
+  border-color:var(--ws-accent);
+  background:var(--ws-accent-soft);
+  color:var(--ws-accent);
+  font-weight:650;
+}
+/* Tertiary controls are visually links rather than indistinguishable labels. */
+.ws .ws-text-button{
+  border:0;
+  background:transparent;
+  color:var(--ws-accent);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  text-decoration-thickness:1px;
+}
+.ws .ws-text-button:hover{text-decoration-thickness:2px;}
+.ws .ws-topbar-actions>.ws-icon-button:last-child,
+.ws .ws-brand .ws-icon-button{
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+}
+.ws .ws-brand .ws-icon-button{width:36px;min-height:36px;}
+/* Small widget utility icons stay compact, but become visible on interaction. */
+.ws .ws-widget .ws-icon-button:is(:hover,:focus-visible){
+  border:1px solid var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+/* A selectable label is also a control, not merely a decorative card. */
+.ws .ws-owner-cross-choice,.ws .ws-unified-choice{
+  border-color:var(--ws-control-line);
+}
+.ws .ws-owner-cross-choice:focus-within,.ws .ws-unified-choice:focus-within{
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws .ws-brief-done{border-color:var(--ws-control-line)!important;}
+/* Disabled actions remain visually bounded without looking operational. */
+.ws :is(
+  .ws-button,.ws-icon-button,.ws-primary,.ws-unified-action,.ws-unified-mode,
+  .ws-plan-button,.ws-focus-button,.ws-focus-chip,.ws-widget-action,
+  .ws-palette-quick-action,.ws-palette-chip,.portal-button
+):is(:disabled,[aria-disabled=true]){
+  opacity:1;
+  cursor:not-allowed;
+  border-color:var(--ws-control-line);
+  background:var(--ws-soft);
+  color:var(--ws-muted);
+  box-shadow:none;
+  filter:none;
+}
+.ws .ws-search-trigger{min-width:0;}
+.ws .ws-search-trigger>span:not(.ws-icon){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media(max-width:767px){
+  .ws :is(.ws-button,.ws-primary,.ws-icon-button,.ws-unified-action,.ws-plan-button,.ws-focus-button,.ws-widget-action,.portal-button){min-height:44px;}
+  .ws .ws-icon-button{width:44px;}
+  .ws .ws-widget .ws-icon-button{width:32px;min-height:32px;}
+}
+@media(forced-colors:active){
+  .ws :is(.ws-button,.ws-icon-button,.ws-primary,.ws-unified-action,.ws-unified-mode,.ws-plan-button,.ws-focus-button,.ws-widget-action,.ws-search-trigger,.portal-button){
+    border-color:ButtonText;
+  }
+  .ws :is(.ws-button,.ws-primary,.ws-unified-action,.ws-plan-button):focus-visible{outline:3px solid Highlight;}
+}
+
+/* Actual Home presentation switch (renderUnifiedJourneyNav): four separately
+   actionable buttons, including the compact 2x2 layout at 320px. */
+.ws .ws-mode-bar>div{border:1px solid var(--ws-control-line);background:var(--ws-soft);}
+.ws .ws-mode-bar button{
+  min-height:40px;
+  border:1px solid var(--ws-control-line);
+  background:var(--ws-control-fill);
+  color:var(--ws-ink);
+}
+.ws .ws-mode-bar button:not([aria-pressed=true]):is(:hover,:focus-visible){
+  border-color:var(--ws-accent);
+  background:var(--ws-control-hover);
+}
+.ws .ws-mode-bar button[aria-pressed=true]{
+  border-color:var(--ws-accent);
+  background:var(--ws-accent-soft);
+  color:var(--ws-accent);
+  box-shadow:none;
+  font-weight:650;
+}
+/* Reading embeds its own more-specific portal button selectors. */
+.ws [data-reading-shell] .portal-button{
+  border-color:var(--ws-control-line);
+  background:var(--ws-control-fill);
+}
+
+/* Desktop navigation: four primary destinations; utilities and projects remain
+   discoverable under a semantic, keyboard-operable disclosure. */
+.ws .ws-nav-more{min-width:0;}
+.ws .ws-nav-more>summary{
+  display:flex;gap:12px;align-items:center;
+  padding:11px 13px;min-height:44px;border-radius:10px;
+  color:var(--ws-muted);font-size:14px;cursor:pointer;list-style:none;
+}
+.ws .ws-nav-more>summary::-webkit-details-marker,
+.ws .ws-workspaces-disclosure>summary::-webkit-details-marker{display:none;}
+.ws .ws-nav-more>summary:hover,
+.ws .ws-nav-more[open]>summary{background:var(--ws-soft);color:var(--ws-ink);}
+.ws .ws-nav-more>summary:focus-visible,
+.ws .ws-workspaces-disclosure>summary:focus-visible{outline:3px solid var(--ws-accent);outline-offset:2px;}
+.ws .ws-nav-more-links{display:grid;gap:2px;padding:4px 0 0 8px;margin-left:12px;border-left:1px solid var(--ws-line);}
+.ws .ws-workspace-list{margin-top:14px;padding-top:12px;}
+.ws .ws-workspaces-disclosure>summary{display:flex;align-items:center;min-height:44px;padding:8px 12px;cursor:pointer;font-size:13px;font-weight:650;color:var(--ws-muted);list-style:none;border-radius:10px;}
+.ws .ws-workspaces-disclosure[open]>summary,
+.ws .ws-workspaces-disclosure>summary:hover{background:var(--ws-soft);color:var(--ws-ink);}
+.ws .ws-nav-bottom{padding-top:10px;}
+.ws[data-rail=collapsed] .ws-nav-more>summary{justify-content:center;padding:11px 9px;}
+.ws[data-rail=collapsed] .ws-nav-more>summary span:not(.ws-icon){display:none;}
+.ws[data-rail=collapsed] .ws-nav-more-links{margin-left:0;padding-left:0;border-left:0;}
+.ws[data-rail=collapsed] .ws-nav-more-links a{justify-content:center;padding:11px 9px;}
+@media (min-width:768px) and (max-width:1279px) {
+ .ws .ws-nav-more>summary{justify-content:center;padding:11px 9px;}
+ .ws .ws-nav-more>summary span:not(.ws-icon){display:none;}
+ .ws .ws-nav-more-links{margin-left:0;padding-left:0;border-left:0;}
+ .ws .ws-nav-more-links a{justify-content:center;padding:11px 9px;}
+ .ws .ws-nav-more-links a span:not(.ws-icon){display:none;}
+}
+
+/* Selected mode contrast: do not mix dark accent with a light inherited
+   accent-soft background (reproduced at 1.79:1 in all three engines). */
+.ws .ws-mode-bar button[aria-pressed=true]{
+  background:#e8f0ff;
+  color:#2162ed;
+  border-color:#2162ed;
+}
+[data-theme=dark] .ws .ws-mode-bar button[aria-pressed=true]{
+  background:#223c60;
+  color:#88b7ff;
+  border-color:#88b7ff;
+}
+
+/* Theme switches must never animate the button fill independently from its
+   boundary. Reproduced transient 1.2–2.4:1 contrast in all browser engines. */
+.ws :is(
+  .ws-button,.ws-primary,.ws-icon-button,.ws-search-trigger,.ws-mode-bar button,
+  .ws-unified-action,.ws-unified-mode,.ws-plan-button,.ws-focus-button,
+  .ws-focus-chip,.ws-widget-action,.ws-palette-chip,.ws-palette-quick-action
+){transition:none;}
+
+/* The quick-capture primary icon is also an icon-button; force its primary
+   fill above generic icon backgrounds in both themes. The 1.19:1 dark-state
+   collision was reproduced consistently in Chromium, Firefox and WebKit. */
+[data-workspace-page] .ws .ws-topbar-actions>.ws-primary.ws-icon-button{
+  background:#2162ed;
+  color:#ffffff;
+  border-color:#2162ed;
+}
+[data-workspace-page][data-theme=dark] .ws .ws-topbar-actions>.ws-primary.ws-icon-button{
+  background:#88b7ff;
+  color:#11233d;
+  border-color:#88b7ff;
+}

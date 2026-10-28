@@ -4,7 +4,7 @@ import { getHubProjects } from '../../lib/hub';
 import { hubSearchProjects } from '../../lib/hub-search';
 import { HUB_ACTIONS } from '../../lib/hub-actions';
 import ProviderCoverage from '../../components/hub/ProviderCoverage.astro';
-const projects = hubSearchProjects(await getHubProjects());
+const projects = hubSearchProjects((await getHubProjects()).filter(({project})=>project.data.slug!=='notes'));
 const payload = JSON.stringify(projects).replaceAll('<', '\\u003c');
 ---
 <WorkspaceShell view="search">

@@ -6,7 +6,9 @@ import { icon, appIcon } from '../../lib/workspace/icons';
 import { getHubCategoryCounts, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
 interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; }
 const { entries, heading = 'Apps', headingLevel = 1, showHeading = true } = Astro.props;
-const counts = getHubCategoryCounts(entries);
+// Preserve the canonical launch manifest and original deep links; retire only the duplicate visible Notes launcher.
+const activeEntries = entries.filter(({project}) => project.data.slug !== 'notes');
+const counts = getHubCategoryCounts(activeEntries);
 for (const app of additionalShortcutLaunches) {
   const category = HUB_CATEGORY_CONFIG.find(item => item.id === app.category);
   if (!category) throw new Error(`Unknown current app category for ${app.id}.`);
@@ -18,7 +20,7 @@ for (const app of additionalShortcutLaunches) {
     {headingLevel === 1 ? <h1 id="apps-heading">{heading}</h1> : <h2 id="apps-heading">{heading}</h2>}
   </header>}
 
-  <HubFilters total={entries.length + additionalShortcutLaunches.length} counts={counts} />
+  <HubFilters total={activeEntries.length + additionalShortcutLaunches.length} counts={counts} />
 
   <section class="hub-current-section" data-hub-current-section aria-labelledby="hub-current-title">
     <header class="hub-section-heading"><h2 id="hub-current-title">Current apps</h2><span>{additionalShortcutLaunches.length}</span></header>
@@ -37,9 +39,9 @@ for (const app of additionalShortcutLaunches) {
   </section>
 
   <section class="hub-published-section" aria-labelledby="hub-published-title">
-    <header class="hub-section-heading"><h2 id="hub-published-title">Published apps</h2><span>{entries.length}</span></header>
+    <header class="hub-section-heading"><h2 id="hub-published-title">Published apps</h2><span>{activeEntries.length}</span></header>
     <div class="hub-grid" data-hub-grid>
-      {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
+      {activeEntries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
     </div>
   </section>
 </section>

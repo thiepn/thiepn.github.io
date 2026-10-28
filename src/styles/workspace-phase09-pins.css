@@ -1,0 +1,12 @@
+.ws-record-pinboard,.ws-confirmed-backlinks{display:grid;gap:.65rem;min-width:0;border-top:1px solid var(--ws-line);padding-block:.8rem}
+.ws-record-pinboard>header,.ws-confirmed-backlinks>header{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.ws-record-pinboard h3,.ws-confirmed-backlinks h4{margin:0;font-size:1rem}
+.ws-record-pinboard :is(ul,ol),.ws-confirmed-backlinks ul{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.ws-record-pinboard li,.ws-confirmed-backlinks li{display:flex;justify-content:space-between;align-items:start;gap:.65rem;flex-wrap:wrap;border-bottom:1px solid var(--ws-line);padding:.55rem 0}
+.ws-record-pinboard li>div,.ws-confirmed-backlinks li>span{display:grid;gap:.2rem;min-width:0;flex:1 1 12rem}
+.ws-record-pinboard li strong,.ws-confirmed-backlinks li strong{font-size:.95rem;overflow-wrap:anywhere}
+.ws-record-pinboard li small,.ws-confirmed-backlinks li small{font-size:.875rem;line-height:1.5}
+.ws-record-pinboard li>div:last-child{display:flex;gap:.4rem;flex-wrap:wrap}
+.ws-record-pinboard button,.ws-confirmed-backlinks button{min-height:42px}
+.ws-record-pinboard p,.ws-confirmed-backlinks p{font-size:.875rem;line-height:1.5}
+@media(max-width:600px){.ws-record-pinboard li>div:last-child{width:100%}}

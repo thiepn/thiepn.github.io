@@ -202,7 +202,12 @@ export async function setupHubAccount(root: HTMLElement, publish: (identity: Hub
     }
     let discovery: Promise<void> | null = null;
     async function check(): Promise<void> {
-      if (busy || document.hidden) return;
+      // A background tab with an existing credential must still establish its
+      // verified owner: otherwise Safari/WebKit may never initialize the
+      // second tab before it is brought to the foreground. Defer only
+      // *tokenless* SSO discovery while hidden; never infer signed-out from
+      // visibility or bypass verification of an existing credential.
+      if (busy || (document.hidden && !storage.getItem(STORAGE+':tokens'))) return;
       if (discovery) return discovery;
       const ticket=++verification;
       const work=(async()=>{

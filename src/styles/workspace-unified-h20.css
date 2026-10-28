@@ -110,3 +110,41 @@
 .ws-unified-last-note small{font-size:11px;color:var(--ws-muted);line-height:1.55;}
 .ws-unified-last-note>div{display:flex;flex-wrap:wrap;gap:6px;}
 @media(max-width:767px){.ws-unified-last-note>div{width:100%;}.ws-unified-last-note .ws-unified-action{min-height:44px;flex:1 1 110px;}}
+
+/* Default Today is a task-first surface, not a second dashboard stacked on
+   planning, source-provenance, outcomes, decisions and language panels. */
+.ws-today-compact{gap:12px;}
+.ws-today-compact .ws-unified-columns{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));}
+.ws-today-compact .ws-unified-heading{align-items:center;}
+.ws-today-compact .ws-unified-heading h2{font-size:17px;}
+.ws-today-compact .ws-unified-head-actions{width:auto;display:flex;flex-wrap:wrap;}
+.ws-today-compact .ws-unified-head-actions>*{min-height:44px;}
+.ws-today-compact .ws-unified-task{flex-wrap:nowrap;}
+.ws-today-compact .ws-unified-task-body{min-width:0;}
+.ws-today-compact .ws-unified-task-actions{width:auto;padding:0;margin-left:auto;flex:0 0 auto;}
+.ws-today-compact .ws-unified-task-actions .ws-unified-action{min-width:64px;min-height:40px;}
+.ws-today-more{margin:12px 0 28px;min-width:0;}
+.ws-today-more-toggle{font:inherit;color:var(--ws-accent);cursor:pointer;font-weight:650;background:transparent;border:0;border-radius:8px;padding:10px 4px;min-height:44px;display:inline-flex;align-items:center;gap:8px;}
+.ws-today-more-toggle::before{content:'▸';font-size:14px;display:inline-block;}
+.ws-today-more-toggle[aria-expanded=true]::before{transform:rotate(90deg);}
+.ws-today-more-toggle:hover{text-decoration:underline;text-underline-offset:3px;}
+.ws-today-more-toggle:focus-visible{outline:3px solid var(--ws-accent);outline-offset:3px;}
+.ws-today-more-content{min-width:0;display:grid;gap:16px;padding-top:14px;border-top:1px solid var(--ws-line);}
+.ws-today-more-content[hidden]{display:none;}
+@media(max-width:767px){
+ .ws-today-compact .ws-unified-head-actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+ .ws-today-compact .ws-unified-head-actions>*:last-child{grid-column:auto;}
+ .ws-today-compact .ws-unified-task-actions .ws-unified-action{min-height:44px;flex:none;}
+}
+
+/* Keep the static calendar integration from becoming a second Today dashboard.
+   No integration is removed: Calendar keeps the full screen, while Today users
+   explicitly reveal secondary sources with the same More sections action. */
+.ws:not([data-view=calendar]) .ws-calendar-details{display:none;}
+.ws[data-view=home][data-home-mode=today][data-today-more-expanded=false] [data-hub-calendar-c1],
+.ws[data-view=home][data-home-mode=focus] [data-hub-calendar-c1],
+.ws[data-view=home][data-home-mode=review] [data-hub-calendar-c1]{display:none!important;}
+
+/* Use one physical card layer on Today, not a card containing other cards. */
+.ws .ws-today-compact{background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;}
+.ws .ws-today-compact .ws-unified-group{border-radius:12px;background:var(--ws-surface);}

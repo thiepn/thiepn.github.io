@@ -1,0 +1,16 @@
+.ws-event-preparation,.ws-upcoming-event-prep{display:grid;gap:.85rem;margin-block:1rem}
+.ws-event-preparation>header,.ws-upcoming-event-prep>header{display:flex;gap:1rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap;padding-block:.5rem;border-bottom:1px solid var(--ws-line)}
+.ws-event-preparation h3,.ws-upcoming-event-prep h4{margin:0;font-size:1.05rem}
+.ws-event-prep-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.ws-event-prep-actions button{min-height:44px}
+.ws-event-prep-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:1rem}
+.ws-event-prep-columns>section{min-width:0}
+.ws-event-preparation h4{font-size:1rem;margin:.2rem 0 .65rem}
+.ws-event-preparation h5{font-size:.9375rem;margin:.8rem 0 .5rem}
+.ws-event-preparation ul,.ws-upcoming-event-prep ul{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.ws-event-preparation li,.ws-upcoming-event-prep li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--ws-line)}
+.ws-event-preparation li span,.ws-upcoming-event-prep li span{display:grid;gap:.15rem;min-width:0;flex:1 1 12rem}
+.ws-event-preparation li :is(button,a),.ws-upcoming-event-prep li button{min-height:40px}
+.ws-event-preparation small,.ws-upcoming-event-prep small{font-size:.875rem;line-height:1.55}
+.ws-event-preparation strong,.ws-upcoming-event-prep strong{overflow-wrap:anywhere}
+.ws-event-prep-disclosure{font-size:.875rem;line-height:1.55}

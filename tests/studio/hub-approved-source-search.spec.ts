@@ -5,9 +5,9 @@ test('consented Notes titles become searchable without storing private source da
   await context.route('**/notes/?hubNotes=*',route=>route.fulfill({
     status:200,contentType:'text/html',body:"<!doctype html><html><body><button id=\"share\">Share Notes once</button><script>\ndocument.getElementById('share').addEventListener('click', () => {\nconst nonce = new URL(location.href).searchParams.get('hubNotes');\nwindow.opener.postMessage({\ntype:'thiepn:notes-hub-local:v1',nonce,\nsnapshot:{schema:'thiepn:notes-hub-local',version:1,source:'notes-local-device',\ngeneratedAt:new Date().toISOString(),activeCount:1,\nnotes:[{id:'n',title:'<Lecture> outline',updatedAt:new Date().toISOString(),pinned:true}],\nreminders:[{id:'r',noteId:'n',title:'Review chapter',dueAt:new Date().toISOString()}]}\n},location.origin);\n});\n</script></body></html>"
   }));
-  await page.goto('/');
+  await page.goto('/home/legacy/');
+ await expect(page.locator('[data-source-today-notes]')).toBeVisible();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await page.locator('[data-action=unified-mode][data-id=today]').click();
   await page.locator('[data-action=search]').click();
   await page.locator('#workspace-search').fill('~lecture');
   await expect(page.locator('[data-search-results]')).not.toContainText('Notes approved title');

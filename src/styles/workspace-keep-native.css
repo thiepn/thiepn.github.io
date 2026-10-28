@@ -1,0 +1,8 @@
+.ws-keep-original[hidden]{display:none!important}
+.ws-keep-original{min-width:0;width:100%;overflow-x:auto;padding:0;margin:1rem 0}
+.ws-keep-original>header{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.ws-keep-original>header h2{font-size:1.125rem;margin:0}
+.ws-keep-original [data-keep-native-host]{min-height:280px;min-width:0}
+.ws-knowledge-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.ws-keep-original button{min-height:44px}
+@media(max-width:720px){.ws-keep-original{margin:.5rem 0}.ws-keep-original>header{align-items:flex-start}}

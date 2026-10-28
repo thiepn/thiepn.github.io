@@ -1,0 +1,29 @@
+---
+import WorkspaceShell from '../../../components/workspace/WorkspaceShell.astro';
+---
+<WorkspaceShell view="legacy">
+  <section class="ws-surface" data-hub-legacy-recovery aria-labelledby="hub-legacy-title">
+    <header><h2 id="hub-legacy-title">Original Folio and Notes data</h2></header>
+    <p>Hub Today, Tasks, Plan, Trackers and Knowledge use Hub-owned records. Existing Folio and standalone Notes records have not been moved or deleted.</p>
+    <p>Open an original application if you need its earlier records, encrypted items, attachments or reminder functions. Do not clear browser site data or uninstall either application before independently verifying and backing up your records.</p>
+    <nav aria-label="Original application recovery">
+      <a class="ws-button" href="/folio/?view=today">Original Folio Today</a>
+      <a class="ws-button" href="/folio/?view=planner">Original Folio Planner</a>
+      <a class="ws-button" href="/folio/?view=habits">Original Folio Habits</a>
+      <a class="ws-button" href="/folio/?view=notes">Original Folio Notes</a>
+      <a class="ws-button" href="/notes/">Original standalone Notes</a>
+    </nav>
+    <div data-source-today></div>
+    <div data-legacy-reconciliation aria-live="polite"></div>
+    <section class="ws-surface" aria-labelledby="legacy-export-heading" data-legacy-export-preflight>
+      <h3 id="legacy-export-heading">Inspect an original backup</h3>
+      <label for="legacy-owner-backup">Folio v24 or Notes v2 JSON backup</label>
+      <input id="legacy-owner-backup" type="file" accept=".json,application/json" data-legacy-backup-file />
+      <p>This is a local, read-only preview. Files above 64 MiB require direct original-owner verification. No records are imported.</p>
+      <p data-legacy-backup-status role="status" aria-live="polite"></p>
+      <div data-legacy-backup-result></div>
+    </section>
+    <p>Native encrypted KEEP editing remains under review. Hub Knowledge currently operates on Hub-local notes, not an imported KEEP vault.</p>
+    <a href="/home/knowledge/">Open Hub Knowledge</a>
+  </section>
+</WorkspaceShell>

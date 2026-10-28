@@ -12,6 +12,13 @@ const read = file => fs.readFile(path.join(dist, file));
 const json = async file => JSON.parse(await read(file));
 const launches = JSON.parse(await fs.readFile('src/generated/launch-manifest.json', 'utf8'));
 const hub={expectedCount:launches.entries.length,projects:launches.entries.map(entry=>({slug:entry.id}))};
+const legacyNotes=launches.entries.filter(entry=>entry.id==='notes');
+assert.equal(legacyNotes.length,1,'Original Notes owner must remain in canonical manifest');
+assert.equal(legacyNotes[0].url,'https://thiepn.dev/notes/','Original Notes deep link must survive retirement');
+assert.equal(legacyNotes[0].moduleRef,'folio/notes','Original Notes module reference must survive retirement');
+assert.equal(legacyNotes[0].ownerRepo,'thiepn/notes','Original Notes rights owner must survive retirement');
+const activeProjects=hub.projects.filter(entry=>entry.slug!=='notes');
+assert.equal(activeProjects.length,hub.expectedCount-1,'Only original Notes may be absent from active catalogue');
 const status = validateHubReleaseStatus(await json('hub-release.json'));
 const release = JSON.parse(await fs.readFile('release-hub.json', 'utf8'));
 assert.equal(release.schemaVersion, 1); assert.equal(release.releaseId, status.releaseId); assert.equal(release.profile, status.profile);
@@ -79,8 +86,8 @@ for (const shell of [root, home]) {
 const embeddedApps = shell.match(/<script[^>]*data-workspace-apps[^>]*>([\s\S]*?)<\/script>/);
 assert(embeddedApps, 'Workspace app registry is missing');
 const workspaceApps = JSON.parse(embeddedApps[1]);
-assert.equal(workspaceApps.length, status.appCount, 'Workspace app registry count differs from release');
-assert.deepEqual(workspaceApps.map(app=>app.id), hub.projects.map(app=>app.slug), 'Workspace app registry differs from reviewed source');
+assert.equal(workspaceApps.length, activeProjects.length, 'Active workspace must exclude only the retired Notes launcher');
+assert.deepEqual(workspaceApps.map(app=>app.id), activeProjects.map(app=>app.slug), 'Active workspace must preserve every other reviewed ID in original order');
 assert(workspaceApps.every(app=>typeof app.url==='string' && new URL(app.url).protocol==='https:'), 'Workspace launch URL rejected');
 }
 const catalogue = (await read('apps/index.html')).toString();
@@ -88,8 +95,15 @@ assert(catalogue.includes('data-workspace') && catalogue.includes('data-view="ap
 assert(!catalogue.includes('class="site-header"') && !catalogue.includes('class="site-footer"'), 'Apps must not expose a second shell');
 assert(!catalogue.includes('name="robots" content="noindex'), 'Public catalogue must remain indexable');
 assert(sitemap.includes('<loc>https://thiepn.dev/apps/</loc>'), 'Public catalogue is missing from sitemap');
-assert.equal([...catalogue.matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Apps catalogue roster does not match release count');
-assert.equal((await json('hub-search.json')).projects.length, status.appCount, 'Search roster does not match release count');
+assert.equal([...catalogue.matchAll(/\bdata-hub-slug=/g)].length, activeProjects.length, 'Apps catalogue must contain all nonretired source IDs, and no retired Notes launcher');
+assert.equal((await json('hub-search.json')).projects.length, status.appCount, 'Canonical historical search roster must preserve all 31 owner IDs');
+const searchHtml=(await read('search/index.html')).toString();
+assert(!searchHtml.includes('data-portal-search-slug="notes"'), 'Retired Notes cannot remain in visible app search');
+const legacyHtml=(await read('home/legacy/index.html')).toString();
+assert(legacyHtml.includes('data-hub-legacy-recovery'), 'Legacy recovery entry is missing');
+for(const href of ['/notes/','/folio/?view=today','/folio/?view=planner','/folio/?view=notes','/folio/?view=habits'])
+  assert(legacyHtml.includes('href="'+href+'"'),'Legacy owner deep link missing: '+href);
+assert(legacyHtml.includes('not been moved or deleted'), 'Legacy data non-migration warning missing');
 const assets = [];
 for (const file of [...files].sort()) {
   const bytes = await read(file);

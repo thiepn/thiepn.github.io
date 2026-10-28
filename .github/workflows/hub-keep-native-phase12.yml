@@ -1,0 +1,111 @@
+name: Hub KEEP B3 original native qualification (no deployment)
+on:
+  push:
+    branches: [feat/connected-hub]
+    paths:
+      - '.github/workflows/hub-keep-native-phase12.yml'
+      - 'vendor/keep-b3/**'
+      - 'scripts/build-original-keep.mjs'
+      - 'scripts/prepare-keep-phase15-fixture.mjs'
+      - 'src/scripts/keep-native-*.ts'
+      - 'src/scripts/workspace-home.ts'
+      - 'src/components/workspace/WorkspaceShell.astro'
+      - 'tests/studio/hub-keep-*.spec.ts'
+      - 'tests/unit/hub-keep-native-manifest.test.ts'
+      - 'tsconfig.json'
+      - 'src/lib/workspace/legacy-full-export-preflight.ts'
+      - 'tests/unit/hub-legacy-full-export-preflight.test.ts'
+      - 'tests/studio/hub-legacy-export-phase13.spec.ts'
+      - 'tests/studio/hub-keep-encrypted-phase14.spec.ts'
+      - 'tests/studio/hub-phase16-overflow.spec.ts'
+      - 'vendor/keep-b3/hub-embed/conversionRehearsal.ts'
+      - 'tests/studio/hub-keep-conversion-phase16.spec.ts'
+      - 'src/styles/workspace.css'
+      - 'tests/studio/hub-phase02-daily-driver.spec.ts'
+      - 'tests/studio/hub-phase03-workbench.spec.ts'
+      - 'tests/studio/hub-approved-source-search.spec.ts'
+      - 'tests/studio/hub-personal-index-p3.spec.ts'
+      - 'tests/studio/hub-folio-device.spec.ts'
+      - 'src/lib/workspace/legacy-migration-dry-run.ts'
+      - 'tests/unit/hub-legacy-migration-dry-run.test.ts'
+      - 'src/lib/workspace/legacy-owner-casework.ts'
+      - 'src/lib/workspace/legacy-migration-dry-run.ts'
+      - 'tests/unit/hub-legacy-owner-casework.test.ts'
+      - 'tests/unit/legacy-owner-casework-page.test.ts'
+      - 'tests/studio/hub-legacy-export-phase13.spec.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hub-keep-native-phase12-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-source:
+    if: github.repository == 'thiepn/thiepn.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      CI: 'true'
+      HUSKY: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact Git tree and original source custody
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f vendor/keep-b3/src/App.tsx
+          test -f vendor/keep-b3/src/pkm/workspace/NoteWorkspaceView.tsx
+          test -f vendor/keep-b3/src/pkm/encryption/vaultEncryptionService.ts
+          test -f vendor/keep-b3/hub-embed/SOURCE_SHA256.json
+          git status --porcelain
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install original KEEP dependencies from its frozen lockfile
+        working-directory: vendor/keep-b3
+        run: bun install --frozen-lockfile
+      - name: Original B1b/B2/B3/source and vault async lifecycle tests
+        working-directory: vendor/keep-b3
+        run: |
+          set -euo pipefail
+          node scripts/check-keep-b1b.cjs
+          node scripts/check-keep-b2.cjs
+          node scripts/check-keep-b3.cjs
+          node scripts/check-keep-b3-wiring.cjs
+          node scripts/check-keep-vault-lock-race.cjs
+          node scripts/check-keep-hub-vault-lifecycle.cjs
+          node scripts/check-keep-aes-webcrypto.cjs
+      - name: Original Argon2id and AES-256-GCM real crypto
+        working-directory: vendor/keep-b3
+        run: bun scripts/check-keep-real-crypto.ts
+      - name: Generate synthetic original KEEP KDF and encrypted-note fixture for Chromium
+        run: bun scripts/prepare-keep-phase15-fixture.mjs
+      - name: Typecheck original KEEP independently
+        working-directory: vendor/keep-b3
+        run: bun run lint
+      - name: Build exact original KEEP bundle with source and asset SHA-256 checks
+        run: node scripts/build-original-keep.mjs vendor/keep-b3
+      - name: Install Hub frozen dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Hub TypeScript and source unit checks
+        run: |
+          npm run typecheck
+          ./node_modules/.bin/vitest run tests/unit/hub-keep-native-manifest.test.ts tests/unit/hub-legacy-reconciliation.test.ts tests/unit/hub-legacy-full-export-preflight.test.ts tests/unit/hub-legacy-migration-dry-run.test.ts tests/unit/hub-legacy-owner-casework.test.ts tests/unit/legacy-owner-casework-page.test.ts tests/unit/hub-consolidation-retirement.test.ts
+      - name: Build Hub with local KEEP bundle (no deployment)
+        run: npm run build
+      - name: Install Chromium on disposable runner
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Genuine native original KEEP desktop/mobile browser acceptance
+        env:
+          KEEP_NATIVE_BUILT: '1'
+        run: ./node_modules/.bin/playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-keep-runtime-phase12.spec.ts tests/studio/hub-legacy-export-phase13.spec.ts tests/studio/hub-keep-encrypted-phase14.spec.ts tests/studio/hub-phase16-overflow.spec.ts tests/studio/hub-keep-conversion-phase16.spec.ts tests/studio/hub-phase02-daily-driver.spec.ts tests/studio/hub-phase03-workbench.spec.ts tests/studio/hub-approved-source-search.spec.ts tests/studio/hub-personal-index-p3.spec.ts tests/studio/hub-folio-device.spec.ts
+      - name: Qualification summary
+        if: always()
+        run: |
+          echo "Original KEEP B3 exact-head qualification: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "No merge, deployment, release, production data write, or migration was performed." >> "$GITHUB_STEP_SUMMARY"

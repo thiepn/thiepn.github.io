@@ -1,4 +1,4 @@
-import { test,expect,type Browser,type Page } from '@playwright/test';
+import { test,expect,type Browser,type Page,type BrowserContext } from '@playwright/test';
 import fs from 'node:fs';
 const configuration=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8'));
 const OWNER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
@@ -7,8 +7,8 @@ const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,clien
 function backend(options={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
- let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
- return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
+ let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false,oauthOwner=OWNER;const writes:{owner:string;state:any}[]=[];
+ return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,switchOAuthOwner:(owner:string)=>{if(![OWNER,OTHER].includes(owner))throw Error('Unknown OAuth fixture owner');oauthOwner=owner;},exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(storageMode!=='normal')await context.addInitScript(mode=>{
    if(location.origin!=='https://thiepn.dev')return;
@@ -21,7 +21,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    sessionStorage.setItem('fixture:quota-filled','1');
    let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
   },storageMode);
-  if(owner)await context.addInitScript(({owner,token})=>localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'})),{owner,token:jwt(owner)});
+  if(owner)await context.addInitScript(({owner,token})=>{if(!localStorage.getItem('thiepn:hub-sso:v1:tokens'))localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));},{owner,token:jwt(owner)});
   await context.route('https://thiepn.dev/**',async route=>{
    try {const url=new URL(route.request().url());const response=await context.request.get(base+url.pathname+url.search,{maxRetries:2});expect(new URL(response.url()).origin).toBe(base);await route.fulfill({response});}
    catch(error){
@@ -40,7 +40,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/auth/v1/oauth/authorize'){expect(url.searchParams.get('client_id')).toBe(configuration.clientId);expect(url.searchParams.get('code_challenge_method')).toBe('S256');challenge=url.searchParams.get('code_challenge')!;const callback=new URL(configuration.callback);callback.searchParams.set('code','fictional-one-use-code');callback.searchParams.set('state',url.searchParams.get('state')!);await route.fulfill({contentType:'text/html',body:'<script>location.replace('+JSON.stringify(callback.href)+')</script>'});return;}
-   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
+   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(oauthOwner),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
    const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
@@ -65,7 +65,40 @@ function backend(options={sharing:false,probeEligible:false}) {
   }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
-async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
+/** Test-only same-origin storage page. No Hub script may race token expiry. */
+async function expireDurableFixtureToken(context:BrowserContext):Promise<void>{
+ const page=await context.newPage();
+ try{
+  await page.route('https://thiepn.dev/__fixture_account_storage__',route=>route.fulfill({
+   status:200,contentType:'text/html',body:'<!doctype html><title>Fixture storage only</title>'
+  }));
+  await page.goto('https://thiepn.dev/__fixture_account_storage__');
+  await page.evaluate(()=>new Promise<void>((resolve,reject)=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   open.onerror=()=>reject(open.error);
+   open.onsuccess=()=>{
+    const db=open.result,tx=db.transaction('session','readwrite');
+    const read=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+    read.onerror=()=>reject(read.error);
+    read.onsuccess=()=>{
+     if(!read.result?.value){reject(new Error('Durable Account token absent'));return;}
+     const record=read.result,token=JSON.parse(record.value);
+     if(token.refreshToken!=='fixture-refreshed'){reject(new Error('Unexpected rotating fixture token'));return;}
+     token.expiresAt=0;record.value=JSON.stringify(token);
+     tx.objectStore('session').put(record,'thiepn:hub-sso:v1:tokens');
+    };
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onabort=()=>{db.close();reject(tx.error);};
+   };
+  }));
+ }finally{await page.close();}
+}
+
+async function workspace(page:Page){
+ if(new URL(page.url()).pathname==='/' && await page.locator('[data-action=unified-mode][data-id=workspace]').count())
+  await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+}
+async function sync(page:Page){await workspace(page);await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
 async function task(page:Page,title:string){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();}
 test('two independent devices sync tasks, offline changes and app navigation without sharing another account',async({browser})=>{
  // This journey opens three independent devices and performs several sync cycles.
@@ -88,7 +121,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
  await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
  await expect(capture).toHaveValue('Still typing');await sync(a.page);await expect(capture).toHaveValue('Still typing');
- await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');await expect(a.page.locator('.ws-task-title')).toHaveCount(0);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+ await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Remote task');await workspace(a.page);await expect(a.page.locator('.ws-task-title')).toHaveCount(0);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
  await Promise.all([a.context.close(),b.context.close()]);
 });
 test('mobile account dialog exposes cloud status and recovery actions',async({browser})=>{
@@ -111,27 +144,58 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
- await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
-  const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
-   const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
-   read.onsuccess=()=>{const record=read.result,token=JSON.parse(record.value);token.expiresAt=0;record.value=JSON.stringify(token);store.put(record,'thiepn:hub-sso:v1:tokens');};
-   tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
-  };request.onerror=()=>reject(request.error);
- }));
+ // The previous tab must finish its initial Account/workspace RPCs before
+ // this test deliberately expires the durable token. Otherwise closing a
+ // still-bootstrapping fixture page aborts an unrelated refresh and leaves an
+ // orphaned lease, which is a distinct crash-recovery scenario.
+ await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+ await a.page.waitForLoadState('networkidle');
+ expect(api.refreshes()).toBe(0);
  await a.page.close();
+ await expireDurableFixtureToken(a.context);
+ expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
   await a.context.addInitScript(()=>{
     Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
   });
   const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
- await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
+ await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});}));
  for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
   expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+});
+test('mixed Web Locks capability still shares exactly one rotating Account refresh',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ // The previous tab must finish its initial Account/workspace RPCs before
+ // this test deliberately expires the durable token. Otherwise closing a
+ // still-bootstrapping fixture page aborts an unrelated refresh and leaves an
+ // orphaned lease, which is a distinct crash-recovery scenario.
+ await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+ await a.page.waitForLoadState('networkidle');
+ expect(api.refreshes()).toBe(0);
+ await a.page.close();
+ await expireDurableFixtureToken(a.context);
+ expect(api.refreshes()).toBe(0); // the setup tab did not initiate the new-tab race
+ const [native,fallback]=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ await Promise.all([native,fallback].map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
+ }));
+ expect(await fallback.evaluate(()=>Boolean(navigator.locks))).toBe(false);
+ expect(api.exchanges()).toBe(1);
+ expect(api.refreshes()).toBe(1);
+ await a.context.close();
 });
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
+  // Verify the initial bootstrap fully completed before modifying the legacy mirror.
+  // Closing an active RPC mid-lease is a different crash-recovery test and must
+  // never be mixed with a stale-localStorage ownership assertion.
+  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+  await a.page.waitForLoadState('networkidle');
+  expect(api.refreshes()).toBe(0);
   await a.page.evaluate(()=>{
     const key='thiepn:hub-sso:v1:tokens';
     const original=JSON.parse(localStorage.getItem(key)!);
@@ -144,6 +208,53 @@ test('durable Account token cannot be downgraded by stale localStorage mirror',a
   expect(api.exchanges()).toBe(1);
   expect(api.refreshes()).toBe(0);
   await a.context.close();
+});
+test('durable rotating Account token cannot be replaced by a later-expiring stale legacy mirror',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ expect(api.exchanges()).toBe(1);
+  // Verify the initial bootstrap fully completed before modifying the legacy mirror.
+  // Closing an active RPC mid-lease is a different crash-recovery test and must
+  // never be mixed with a stale-localStorage ownership assertion.
+  await expect(a.page.locator('[data-cloud-status]').first()).toHaveText('Synced with your account');
+  await a.page.waitForLoadState('networkidle');
+  expect(api.refreshes()).toBe(0);
+ await a.page.evaluate(()=>{
+  const key='thiepn:hub-sso:v1:tokens';
+  const stale=JSON.parse(localStorage.getItem(key)!);
+  localStorage.setItem(key,JSON.stringify({...stale,refreshToken:'fixture-consumed-old-refresh',expiresAt:Date.now()+86400000}));
+ });
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ await Promise.all(pages.map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});
+ }));
+ expect(api.refreshes()).toBe(0);
+ const durable=await pages[0]!.evaluate(()=>new Promise<{refreshToken:string}|null>((resolve,reject)=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   open.onerror=()=>reject(open.error);
+   open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('session','readonly');
+     const read=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     read.onsuccess=()=>{db.close();resolve(read.result?.value?JSON.parse(read.result.value):null)};
+     read.onerror=()=>reject(read.error);
+   };
+ }));
+ expect(durable?.refreshToken).toBe('fixture-refreshed');
+ await a.context.close();
+});
+test('restricted IDB plus no Web Locks never sends an unsafe duplicate rotating refresh',async({browser})=>{
+ const api=backend(),a=await api.device(browser,OWNER,undefined,false,'idb-blocked');
+ await a.page.evaluate(()=>{
+   Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+   const key='thiepn:hub-sso:v1:tokens',tokens=JSON.parse(localStorage.getItem(key)!);
+   localStorage.setItem(key,JSON.stringify({...tokens,expiresAt:0}));
+   window.dispatchEvent(new Event('focus'));
+ });
+ await expect(a.page.locator('[data-auth-status]')).toContainText('Cloud sync unavailable');
+ expect(api.refreshes()).toBe(0);
+ await a.context.close();
 });
 test('full app storage does not block automatic Account connection or erase app data',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null,undefined,false,'quota');
@@ -161,15 +272,27 @@ test('Try again restarts Account initialization after session storage recovers',
  await a.page.evaluate(()=>localStorage.setItem('fixture:session-recovered','1'));await a.page.locator('[data-auth-retry]').click();
  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:15_000});expect(api.exchanges()).toBe(1);await a.context.close();
 });
-test('visitors get an introduction and can choose their local workspace without signing in',async({browser})=>{
- const api=backend(),a=await api.device(browser,null);
- await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
- await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
- await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
- await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
+test('guest opens Today without forced onboarding and can use the native workspace',async({browser})=>{
+  const api=backend(),a=await api.device(browser,null);
+  await expect(a.page.locator('[data-workspace][data-home-mode=today]')).toBeVisible();
+  await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');
+  await a.page.locator('.ws-nav a[href="/apps/"]').click();
+  await expect(a.page.locator('[data-hub-item]')).toHaveCount(30);
+  await a.page.goto('https://thiepn.dev/?mode=workspace');
+  await expect(a.page.locator('[data-home-mode=workspace]')).toBeVisible();
+  await a.page.locator('[data-planner] [data-action=new-task]').first().click();
+  await a.page.getByLabel('Task',{exact:true}).fill('Guest local work');
+  await a.page.locator('[data-workspace-dialog] [data-dialog-submit]').click();
+  await a.page.reload();
+  await expect(a.page.locator('[data-home-mode=workspace]')).toBeVisible();
+  await expect(a.page.locator('.ws-task-title')).toContainText('Guest local work');
+  expect(api.exchanges()).toBe(0);
+  expect(api.writes).toHaveLength(0);
+  await a.context.close();
 });
 test('Account initialization failure leaves local tasks usable and persistent',async({browser})=>{
- const api=backend(),a=await api.device(browser,null,undefined,false,'session-blocked');
+ const api=backend(),a=await api.device(browser,null,undefined,false,'session-blocked');await workspace(a.page);
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();
  await a.page.locator('[data-planner] [data-action=new-task]').first().click();await a.page.getByLabel('Task',{exact:true}).fill('Works without Account');await a.page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
@@ -177,15 +300,87 @@ test('Account initialization failure leaves local tasks usable and persistent',a
  await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-auth-status]')).toContainText('session storage is blocked');expect(api.exchanges()).toBe(0);expect(api.writes).toHaveLength(0);await a.context.close();
 });
 test('consented Notes, Library and TMS60 insights appear together and clear with privacy',async({browser})=>{
- const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
+ const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);await workspace(a.page);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
 });
 
-test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
- const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
- await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
- await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
- const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
- expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
+test('Notes summaries require explicit grant and never create a public Notes catalogue tile',async({browser})=>{
+ const api=backend({sharing:false,probeEligible:false}),a=await api.device(browser);
+ await workspace(a.page);
+ const widget=a.page.locator('[data-widget-type=continue]');
+ await expect(widget).not.toContainText('Connected Notes title');
+ await a.page.goto('https://thiepn.dev/apps/');
+ await expect(a.page.locator('[data-hub-item]').filter({hasText:'Connected Notes title'})).toHaveCount(0);
+ await expect(a.page.locator('[data-hub-item][data-hub-slug=notes]')).toHaveCount(0);
+ await expect(a.page.locator('[data-hub-item] a[href*="note="]')).toHaveCount(0);
+ await a.context.close();
+});
+
+/** Read the authoritative durable Account principal, not the stale localStorage mirror. */
+async function durableAccountOwner(page:Page):Promise<string|null>{
+ return page.evaluate(()=>new Promise<string|null>((resolve,reject)=>{
+  const open=indexedDB.open('thiepn-hub-account');
+  open.onerror=()=>reject(open.error);
+  open.onsuccess=()=>{
+   const db=open.result,tx=db.transaction('session','readonly');
+   const req=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+   req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    try{
+     const value=req.result?.value;
+     if(!value){resolve(null);return;}
+     const token=JSON.parse(value).accessToken as string;
+     const part=token.split('.')[1]??'';
+     const claims=JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
+     resolve(claims.sub??null);
+    }catch(error){reject(error);}
+   };
+   tx.oncomplete=()=>db.close();
+   tx.onabort=()=>{db.close();reject(tx.error);};
+  };
+ }));
+}
+test('real second-tab Account OAuth switch keeps old capture with old owner and never uploads it to new owner',async({browser})=>{
+ test.setTimeout(60_000);
+ const api=backend(),a=await api.device(browser);
+ await sync(a.page);
+ await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
+ await expect.poll(()=>durableAccountOwner(a.page)).toBe(OWNER);
+ // Same-browser-context tab executes the real PKCE owner switch using the
+ // existing Account UI. A synthetic StorageEvent is not an owner transition.
+ const otherTab=await a.context.newPage();
+ await otherTab.goto('https://thiepn.dev/home/');
+ await expect(otherTab.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+ await expect(otherTab.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ api.switchOAuthOwner(OTHER);
+ await otherTab.locator('.ws-topbar [data-action=account]').click();
+ await expect(otherTab.locator('[data-auth-switch]')).toBeVisible();
+ await otherTab.locator('[data-auth-switch]').click();
+ await expect.poll(()=>api.exchanges(),{timeout:20_000}).toBe(1);
+ await expect.poll(()=>durableAccountOwner(otherTab),{timeout:20_000}).toBe(OTHER);
+ await expect.poll(()=>durableAccountOwner(a.page),{timeout:20_000}).toBe(OTHER);
+ // The real owner switch deliberately resets the former tab to Today.
+ // Bring that tab forward to run the native visibility-based identity check,
+ // then open the actual Workspace before looking for its capture form.
+ await a.page.bringToFront();
+ await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+ await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally',{timeout:20_000});
+ await workspace(a.page);
+ await expect(a.page.locator('[data-capture-draft]')).toHaveValue('',{timeout:20_000});
+ await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await sync(a.page);
+ const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{
+  const request=indexedDB.open('thiepn-adaptive-workspace',1);
+  request.onsuccess=()=>{
+   const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);
+   read.onsuccess=()=>{resolve(read.result);db.close();};
+   read.onerror=()=>reject(read.error);
+  };
+  request.onerror=()=>reject(request.error);
+ }),OWNER);
+ expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');
+ expect(api.writes.some(write=>write.owner===OTHER)).toBe(true);
+ expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);
+ await a.context.close();
 });
 
 // Exercises the real shared shell and summary readers, not a standalone status fixture.
@@ -193,6 +388,10 @@ test('Connections preserves last success, distinguishes revoked access and expor
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
  try {
   await a.page.goto('https://thiepn.dev/home/connections/');
+  // This route begins in 'checking identity': do not treat the interim
+  // private-content hold as a revoked grant or a successful data read.
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally',{timeout:20_000});
   const notes=a.page.locator('[data-source-status=notes]'),detail=a.page.locator('[data-source-detail=notes]');
   await expect(notes).toHaveText('Connected · fresh summary');await expect(detail).toContainText('Last successful read');
   api.failures.set('read_thiepn_hub_notes',403);
@@ -212,7 +411,7 @@ test('Connections preserves last success, distinguishes revoked access and expor
 });
 
 test('the shared verified Account session also supplies the existing language summary read',async({browser})=>{
- const api=backend(),a=await api.device(browser);
+ const api=backend(),a=await api.device(browser);await workspace(a.page);
  try{
   const response=a.page.waitForResponse('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard');
   await a.page.locator('[data-action=refresh-languages]').click();await response;
@@ -221,7 +420,7 @@ test('the shared verified Account session also supplies the existing language su
 });
 
 for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is discovered automatically after Hub is already open: ${trigger}`,async({browser})=>{
- const api=backend(),a=await api.device(browser,null,undefined,true);
+ const api=backend(),a=await api.device(browser,null,undefined,true);await workspace(a.page);
  try{
   expect(api.exchanges()).toBe(0);api.accountSignedIn(true);
   await a.page.clock.fastForward(trigger==='focus'?31_000:61_000);
@@ -233,13 +432,16 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
    await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
    await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
    await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
-   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await expect.poll(()=>new URL(a.page.url()).pathname).toBe('/');
    await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
   if(trigger==='focus'){
    const guest=await a.page.evaluate(()=>new Promise<string>((resolve,reject)=>{const open=indexedDB.open('thiepn-adaptive-workspace',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('records').objectStore('records').get('guest');read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};}));
-   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');
+   await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Latest guest draft written during discovery');
+   await workspace(a.page);
+   await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
   }
  }finally{await a.context.close();}
 });

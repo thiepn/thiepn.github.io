@@ -117,6 +117,7 @@ export function renderWeeklyFollowThrough(state:WorkspaceState,anchor:string,tod
     <div class="ws-week-actions">
       <span>Carryover suggestion: next Monday, ${esc(nextMonday)}. You can choose any valid date in the review form.</span>
       <button type="button" data-action="week-preview" class="ws-week-primary">Review selected tasks →</button>
+      <button type="button" data-action="week-spread" class="ws-week-primary">Distribute across days</button>
     </div>
     <footer><a href="/home/tasks/">Tasks</a><a href="/home/calendar/">Calendar</a>
       </footer>

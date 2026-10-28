@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
-const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
+const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.filter((e:{id:string})=>e.id!=='notes').length,historicalCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string,id:string})=>e.id!=='notes'&&e.category===c.id).length]))};
 
 for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`H1 Home and app search reflow ${width} ${theme}`, async ({ page }) => {
@@ -27,19 +27,23 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
 
 test('legacy pins migrate once, customization persists and the Apps catalogue stays separate', async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
-  await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.goto('/home/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
-  await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await expect(page.locator('[data-launch]')).toHaveCount(1);
+  await expect(page.locator('[data-launch="canvas"]')).toHaveCount(1);
+  await expect(page.locator('[data-launch="notes"]')).toHaveCount(0);
+  await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
   await page.getByLabel('Widget title').fill('My tools');await page.locator('input[name=appIds][value=tiny-tools]').check();
   await page.locator('[data-dialog-submit]').click();
-  await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(3);
+  await page.reload();await expect(page.getByRole('heading',{name:'My tools',exact:true})).toBeVisible();await expect(page.locator('[data-launch]')).toHaveCount(2);
+  await expect(page.locator('[data-launch="tiny-tools"]')).toHaveCount(1);
   expect(await page.evaluate(()=>localStorage.getItem('notes:sentinel'))).toBe('keep');
   expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
   await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
 test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/?mode=workspace');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
@@ -74,7 +78,7 @@ test('Apps route, Home privacy, and no-JavaScript launchers', async ({ browser, 
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4321/apps/'); await expect(page).toHaveURL('http://127.0.0.1:4321/apps/'); await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
-  await page.goto('http://127.0.0.1:4321/'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+  await page.goto('http://127.0.0.1:4321/?mode=workspace'); await expect(page.locator('.ws-shortcuts a')).toHaveCount(4); await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.goto('http://127.0.0.1:4321/search/'); await expect(page.locator('[data-portal-search-slug]')).toHaveCount(hub.expectedCount);
   await context.close();
 });
@@ -86,6 +90,8 @@ for (const route of ['/home/', '/search/']) for (const theme of ['light', 'dark'
     const audit = async () => page.evaluate(async () => (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
     expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     if (route === '/home/') {
+      await page.locator('[data-action=unified-mode][data-id=workspace]').click();
+      await expect(page.locator('[data-home-mode=workspace]')).toBeVisible();
       await page.getByRole('button', { name: 'Customize', exact: true }).click();
       expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     }
@@ -133,4 +139,29 @@ for (const count of [100, 250]) {
     await expect(first.locator('h2 a')).toHaveAttribute('href',`https://thiepn.dev/notes/?fixture=${count-1}`);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
+}
+
+for(const width of [390,1440]){
+ test('dark-mode planning action contrast remains at least WCAG AA '+width,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await page.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
+  await page.goto('/home/');
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.locator('[data-action=toggle-today-more]').click();
+  await expect(page.locator('[data-today-decisions] [data-action=new-decision]')).toBeVisible();
+  await expect(page.locator('[data-today-outcomes] [data-action=new-outcome]')).toBeVisible();
+  const ratios=await page.evaluate(()=>{
+   const linear=(x:number)=>{const c=x/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4;};
+   const luminosity=(rgb:string)=>{const channels=(rgb.match(/[0-9.]+/gu)||[]).slice(0,3).map(Number);
+    return .2126*linear(channels[0]??0)+.7152*linear(channels[1]??0)+.0722*linear(channels[2]??0);};
+   return ['new-decision','new-outcome'].map(name=>{
+    const button=document.querySelector<HTMLButtonElement>('button[data-action="'+name+'"]');
+    if(!button)return {name,ratio:0,missing:true};
+    const styles=getComputedStyle(button);
+    const ink=luminosity(styles.color),paper=luminosity(styles.backgroundColor);
+    return {name,ratio:(Math.max(ink,paper)+.05)/(Math.min(ink,paper)+.05),missing:false};
+   });
+  });
+  expect(ratios.every(x=>!x.missing&&x.ratio>=4.5)).toBe(true);
+ });
 }

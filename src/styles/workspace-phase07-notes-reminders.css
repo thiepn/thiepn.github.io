@@ -1,0 +1,15 @@
+.ws-notes-reminder-horizon,.ws-notes-reminder-continuity{display:grid;gap:.8rem;min-width:0;padding-block:.8rem;border-top:1px solid var(--ws-line)}
+.ws-notes-reminder-horizon>header,.ws-notes-reminder-continuity>header{display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap;align-items:baseline}
+.ws-notes-reminder-horizon h4,.ws-notes-reminder-continuity h3{font-size:1rem;margin:0}
+.ws-notes-reminder-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.ws-notes-reminder-actions button{min-height:44px}
+.ws-notes-reminder-horizon ul,.ws-notes-reminder-continuity ul{padding:0;margin:0;display:grid;gap:.5rem;list-style:none}
+.ws-notes-reminder-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1rem}
+.ws-notes-reminder-days>section,.ws-notes-reminder-earlier{padding:.7rem 0;border-top:1px solid var(--ws-line)}
+.ws-notes-reminder-days>section>header{display:flex;justify-content:space-between;gap:.4rem}
+.ws-notes-reminder-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border-bottom:1px solid var(--ws-line);padding:.5rem 0}
+.ws-notes-reminder-item>div{min-width:0;display:grid;gap:.2rem;overflow-wrap:anywhere;flex:1 1 12rem}
+.ws-notes-reminder-item strong{font-size:.9375rem}
+.ws-notes-reminder-item small,.ws-notes-reminder-provenance{font-size:.875rem;line-height:1.5}
+.ws-notes-reminder-item>a{flex-shrink:0;min-height:40px;display:inline-flex;align-items:center}
+@media(max-width:600px){.ws-notes-reminder-item{align-items:flex-start;flex-direction:column}}
