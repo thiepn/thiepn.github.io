@@ -83,6 +83,7 @@ async function setup(root: HTMLElement) {
     const taskFilterFromUrl = view === 'tasks' ? new URLSearchParams(location.search).get('filter') : null;
     const homeModeFromUrl = view === 'home' ? new URLSearchParams(location.search).get('mode') : null;
     let homeModeRestorePending=true;
+    let todayMoreExpanded=false; // View-only progressive disclosure; no stored preference or record changes.
     let lastVerifiedHomeOwner:string|null=null;
     const calendarParams = view === 'calendar' ? new URLSearchParams(location.search) : null;
     const agendaModeFromUrl = calendarParams?.get('mode') ?? null;
@@ -1012,8 +1013,9 @@ async function setup(root: HTMLElement) {
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                renderTodayWorkbench(state!,today(),null,Date.now(),null,true)+
+            if(mode==='today') {
+                const extraPanels=todayMoreExpanded?
+                    renderTodayWorkbench(state!,today(),null,Date.now(),null,true)+
                 renderUpcomingEventPreparation(state!,today())+
                 (state!.tasks.length&&state!.events.length||taskEventLinks(state!).length?renderTaskEventBoard(state!,true):'')+
                 '<div class="ws-weekly-linked-records">'+renderOutcomes(state!,today(),true)+renderDecisions(state!,today(),true)+'</div>'+
@@ -1023,7 +1025,12 @@ async function setup(root: HTMLElement) {
                     notes: {status: notesSourceStatus, snapshot: notesSource},
                     languages: {status: languageStatus, cards: languageCards}, apps,
                 hubEvents: state!.events, day: today(), timezone: state!.preferences.timezone
-                });
+                }) : '';
+                return menu+renderUnifiedToday(state!,today(),journeyStatus())+
+                    '<section class="ws-today-more"><button type="button" class="ws-today-more-toggle" data-action="toggle-today-more" aria-expanded="'+String(todayMoreExpanded)+'" aria-controls="ws-today-more-content">'+
+                    (todayMoreExpanded?'Hide additional sections':'More sections')+'</button>'+
+                    '<div id="ws-today-more-content" data-today-more-content'+(todayMoreExpanded?'':' hidden')+'>'+extraPanels+'</div></section>';
+            }
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus,focusWorkForSelection());
             if(mode==='review')return menu+renderWeeklyReview(state!,today(),weeklyReviewStage,weeklyReviewDraft,activeFolioPlanningSnapshot(),authorizedNotesPlanningSnapshot());
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
@@ -1113,7 +1120,7 @@ async function setup(root: HTMLElement) {
             $('[data-workspace-date]').textContent='';
         }
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : (homeMode==='workspace' ? `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}` : '')) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (!staticView()) {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
@@ -2599,6 +2606,13 @@ async function setup(root: HTMLElement) {
             return;
         }
         switch (action) {
+            case 'toggle-today-more':
+                if(view==='home' && homeMode==='today' && !editing && !privacyHeld && !state.preferences.hidden) {
+                    todayMoreExpanded=!todayMoreExpanded;
+                    render();
+                    root.querySelector<HTMLButtonElement>('[data-action="toggle-today-more"]')?.focus();
+                }
+                break;
             case 'unified-mode':
                 if(view==='home' && (HOME_JOURNEY_MODES as readonly string[]).includes(id)) {
                     if(editing && id!=='workspace'){toast('Save or cancel the current layout edit before switching views.');break;}
