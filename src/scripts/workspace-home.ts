@@ -1108,6 +1108,7 @@ async function setup(root: HTMLElement) {
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         root.dataset.homeMode = view==='home' ? (editing?'workspace':homeMode) : '';
+        root.dataset.todayMoreExpanded=String(view==='home' && homeMode==='today' && todayMoreExpanded);
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');

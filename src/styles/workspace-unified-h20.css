@@ -136,3 +136,11 @@
  .ws-today-compact .ws-unified-head-actions>*:last-child{grid-column:auto;}
  .ws-today-compact .ws-unified-task-actions .ws-unified-action{min-height:44px;flex:none;}
 }
+
+/* Keep the static calendar integration from becoming a second Today dashboard.
+   No integration is removed: Calendar keeps the full screen, while Today users
+   explicitly reveal secondary sources with the same More sections action. */
+.ws:not([data-view=calendar]) .ws-calendar-details{display:none;}
+.ws[data-view=home][data-home-mode=today][data-today-more-expanded=false] [data-hub-calendar-c1],
+.ws[data-view=home][data-home-mode=focus] [data-hub-calendar-c1],
+.ws[data-view=home][data-home-mode=review] [data-hub-calendar-c1]{display:none!important;}
