@@ -39,7 +39,7 @@ describe('Hub shortcut directory', () => {
     ];
     const split = partitionShortcutChoices(choices, ['wordstrike', 'notes']);
     expect(split.pinned.map(a => a.id)).toEqual(['wordstrike', 'notes']);
-    expect(split.primary.map(a => a.id)).toEqual(['chinese', 'japanese', 'mdd']);
+    expect(split.primary.map(a => a.id)).toEqual(['mdd', 'chinese', 'japanese']); // Owner-selected priority ranks MDD first.
     expect(split.other.map(a => a.id)).toEqual(['voidcut']);
     expect([...split.pinned, ...split.primary, ...split.other]).toHaveLength(choices.length);
   });
