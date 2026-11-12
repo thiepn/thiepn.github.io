@@ -5,6 +5,8 @@ import {clearSourceStates} from '../lib/providers/connection-state';
 import {customLinks, setShortcuts, toggleShortcut, shortcutIds} from '../lib/workspace/commands';
 import {resolveLaunch, safeCustomUrl} from '../lib/launches/resolver';
 import { partitionShortcutChoices, additionalShortcutLaunches } from '../lib/launches/shortcut-directory';
+import { pendingHubApps } from '../lib/launches/requested-apps';
+import { PROPOSED_QUICK_SHORTCUT_IDS, personalHiddenAppIds, changeAppVisibility } from '../lib/workspace/app-personalization';
 import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
 import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
 import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
@@ -91,6 +93,7 @@ async function setup(root: HTMLElement) {
         ...additionalShortcutLaunches.map(({id, title, url, category}) => ({id, title, url, icon: appIcon(id), category})),
         ...catalogueApps.map(app => app.id === 'french-3000' ? {...app, title: 'French'} : app),
     ];
+    const personalAppIds = [...apps.map(app => app.id), ...pendingHubApps.map(app => app.id)];
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
@@ -871,6 +874,14 @@ async function setup(root: HTMLElement) {
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
+        const personalHiddenIds = personalHiddenAppIds(state.preferences);
+        root.querySelectorAll<HTMLButtonElement>('[data-action=toggle-app-visibility]').forEach(b=>{
+            const hidden = personalHiddenIds.includes(b.dataset.id!);
+            b.setAttribute('aria-pressed',String(hidden));
+            b.textContent = hidden ? 'Show' : 'Hide';
+            b.setAttribute('aria-label',`${hidden ? 'Show' : 'Hide'} ${b.dataset.id} in my Apps`);
+        });
+        window.dispatchEvent(new CustomEvent('hub:apps-visibility', {detail:{hiddenIds:personalHiddenIds}}));
         renderAttention();
         renderPlanner();
         // C2 read-only handoff from the ORIGINAL Hub calendar owner. Ephemeral and
@@ -2348,6 +2359,26 @@ async function setup(root: HTMLElement) {
                 void mutate(s=>{s.activity=s.activity.filter(a=>!a.kind.startsWith('launch:'));},'Recent app history cleared');break;
             case 'refresh-connections':
                 void refreshInsights();
+                break;
+            case 'toggle-app-visibility':
+                void mutate(s=>{
+                    const hidden = personalHiddenAppIds(s.preferences);
+                    s.preferences.hiddenAppIds = changeAppVisibility(
+                        s.preferences, id, !hidden.includes(id), personalAppIds,
+                    );
+                }, 'Personal Apps visibility saved').catch(error=>toast(error.message));
+                break;
+            case 'apply-suggested-shortcuts':
+                void mutate(s=>{
+                    const ws = s.workspaces.find(w=>w.id===s.active)!;
+                    const widget = ws.widgets.find(w=>w.type==='app-shortcuts');
+                    if (!widget) throw new Error('Add an App shortcuts widget on Home first.');
+                    const selected = PROPOSED_QUICK_SHORTCUT_IDS.filter(pid=>apps.some(app=>app.id===pid));
+                    if (selected.length !== PROPOSED_QUICK_SHORTCUT_IDS.length) throw new Error('A selected shortcut has no approved launch address.');
+                    setShortcuts(ws,widget.id,[...selected]);
+                    widget.config.shortcutSource='pinned';
+                    ws.revision++; ws.updatedAt=stamp();
+                }, 'Selected shortcuts saved').catch(error=>toast(error.message));
                 break;
             case 'pin-app':
                 if(editing){toast('Finish or cancel layout editing first.');break;}
