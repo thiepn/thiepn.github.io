@@ -61,6 +61,7 @@ export const primaryShortcutIds: readonly string[] = [
   'studyos', 'mdd', 'pdf-studio', 'thiepn-library', 'notes', 'tms60',
   'tiny-tools', 'clearpage', 'languages', 'french-3000', 'chinese',
   'japanese', 'korea', 'selah', 'ion', 'chess', 'karaoke', 'gomoku',
+  'ligoquiz', 'control', // Still selectable: personal Apps hiding is not a shortcut ban.
 ];
 
 /** Keep any already pinned apps at the top, then current options, then the rest. */
