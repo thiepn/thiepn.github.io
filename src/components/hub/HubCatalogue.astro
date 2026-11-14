@@ -2,6 +2,7 @@
 import HubCard from './HubCard.astro';
 import HubFilters from './HubFilters.astro';
 import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
+import { pendingHubApps } from '../../lib/launches/requested-apps';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import { getHubCategoryCounts, HUB_CATEGORY_CONFIG, type HubProjectEntry } from '../../lib/hub';
 interface Props { entries: HubProjectEntry[]; heading?: string; headingLevel?: 1 | 2; showHeading?: boolean; }
@@ -9,7 +10,7 @@ const { entries, heading = 'Apps', headingLevel = 1, showHeading = true } = Astr
 const counts = getHubCategoryCounts(entries);
 for (const app of additionalShortcutLaunches) {
   const category = HUB_CATEGORY_CONFIG.find(item => item.id === app.category);
-  if (!category) throw new Error(`Unknown current app category for ${app.id}.`);
+  if (!category) throw new Error(`Unknown shortcut category for ${app.id}.`);
   counts[category.id] += 1;
 }
 ---
@@ -18,10 +19,16 @@ for (const app of additionalShortcutLaunches) {
     {headingLevel === 1 ? <h1 id="apps-heading">{heading}</h1> : <h2 id="apps-heading">{heading}</h2>}
   </header>}
 
+  <div class="hub-personal-controls">
+    <label class="hub-hidden-toggle"><input type="checkbox" data-show-hidden-apps/> Show hidden personal apps</label>
+    <button type="button" class="ws-button" data-action="apply-suggested-shortcuts">Use my selected 8 shortcuts</button>
+    <p class="ws-muted">Saved shortcuts are never replaced automatically. Hiding an app only changes your personal Apps view, not the public project archive.</p>
+  </div>
   <HubFilters total={entries.length + additionalShortcutLaunches.length} counts={counts} />
 
   <section class="hub-current-section" data-hub-current-section aria-labelledby="hub-current-title">
-    <header class="hub-section-heading"><h2 id="hub-current-title">Current apps</h2><span>{additionalShortcutLaunches.length}</span></header>
+    <header class="hub-section-heading"><h2 id="hub-current-title">Additional shortcuts</h2><span>{additionalShortcutLaunches.length}</span></header>
+    <p class="ws-muted">Owner-documented launch addresses. Shortcut listings are not independent production certification.</p>
     <div class="hub-current-grid">
       {additionalShortcutLaunches.map((app) => (
         <article class="hub-current-app" data-hub-current-app={app.id} data-hub-current-category={app.category}>
@@ -30,16 +37,32 @@ for (const app of additionalShortcutLaunches) {
             <span class="hub-current-name"><strong>{app.title}</strong><small>{HUB_CATEGORY_CONFIG.find(c => c.id === app.category)?.label ?? app.category}</small></span>
             <span class="hub-current-arrow"><Fragment set:html={icon('arrow-up-right')}/></span>
           </a>
-          <button type="button" class="ws-button hub-current-pin" data-action="pin-app" data-id={app.id} aria-pressed="false">Pin shortcut</button>
+          <div class="hub-current-actions">
+            <button type="button" class="ws-button hub-current-pin" data-action="pin-app" data-id={app.id} aria-pressed="false">Pin shortcut</button>
+            <button type="button" class="ws-button hub-visibility-button" data-action="toggle-app-visibility" data-id={app.id} aria-pressed="false">Hide</button>
+          </div>
         </article>
       ))}
     </div>
   </section>
 
-  <section class="hub-published-section" aria-labelledby="hub-published-title">
+  <section class="hub-published-section" data-hub-published-section aria-labelledby="hub-published-title">
     <header class="hub-section-heading"><h2 id="hub-published-title">Published apps</h2><span>{entries.length}</span></header>
     <div class="hub-grid" data-hub-grid>
       {entries.map((entry, index) => <HubCard entry={entry} priority={index < 3} />)}
+    </div>
+  </section>
+
+  <section class="hub-pending-section" data-hub-pending-section aria-labelledby="hub-pending-title">
+    <header class="hub-section-heading"><h2 id="hub-pending-title">Requested · awaiting verification</h2><span>{pendingHubApps.length}</span></header>
+    <p class="ws-muted">These apps are on your personal list, but no verified live launch is offered yet. They are not added to the public manifest.</p>
+    <div class="hub-current-grid">
+      {pendingHubApps.map(app => (
+        <article class="hub-pending-app" data-hub-pending-app={app.id} data-hub-pending-category={app.category}>
+          <div><strong>{app.title}</strong><small>{app.note}</small></div>
+          <button type="button" class="ws-button hub-visibility-button" data-action="toggle-app-visibility" data-id={app.id} aria-pressed="false">Hide</button>
+        </article>
+      ))}
     </div>
   </section>
 </section>

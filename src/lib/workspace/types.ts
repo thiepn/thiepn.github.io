@@ -85,6 +85,7 @@ export interface WorkspaceState {
         density: 'compact' | 'comfortable';
         timezone: string;
         hidden: boolean;
+        hiddenAppIds?: string[];
         theme?: 'system' | 'light' | 'dark';
         recordRecentLaunches?: boolean;
     };

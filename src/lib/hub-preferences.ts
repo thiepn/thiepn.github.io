@@ -1,8 +1,9 @@
+import { PROPOSED_QUICK_SHORTCUT_IDS } from './workspace/app-personalization';
 import { defaultHomeView, parseHomeView, type HomeView } from './home-view';
 export const HUB_PREFERENCES_KEY = 'thiepn:hub-preferences';
 export const HUB_PREFERENCES_VERSION = 1;
 export const MAX_HUB_PINS = 12;
-export const DEFAULT_HUB_PINS = ['notes', 'thiepn-library', 'french-3000', 'tms60', 'pdf-studio', 'steadybar', 'mathlab', 'clean30'] as const;
+export const DEFAULT_HUB_PINS = PROPOSED_QUICK_SHORTCUT_IDS;
 export interface HubPreferences { version: 1; pins: string[]; density: 'compact' | 'comfortable'; home: HomeView; }
 
 export function defaultHubPreferences(available: readonly string[]): HubPreferences {

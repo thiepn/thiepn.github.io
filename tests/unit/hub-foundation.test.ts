@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HUB_PREFERENCES_VERSION, DEFAULT_HUB_PINS, defaultHubPreferences, parseHubPreferences, moveHubPin } from '../../src/lib/hub-preferences';
 import { findHubApps } from '../../src/lib/hub-search';
+import { additionalShortcutLaunches } from '../../src/lib/launches/shortcut-directory';
 import hub from '../../src/data/hub.json';
 import publicSearch from '../../src/generated/search-index.json';
 import tasks from '../../src/data/hub-tasks.json';
@@ -11,9 +12,11 @@ const projects = hub.projects.map(app => {
   return { ...item, kind: 'project', aliases: [...item.aliases, ...(tasks[app.slug as keyof typeof tasks] ?? [])] } as SearchableProject;
 });
 describe('H1 preference recovery and pin ownership', () => {
-  it('defaults only to reviewed launchers, in the frozen order', () => {
-    expect(defaultHubPreferences(available).pins).toEqual(DEFAULT_HUB_PINS);
-    expect(DEFAULT_HUB_PINS.every(slug => available.includes(slug))).toBe(true);
+  it('defaults to selected launch targets only when available, without changing catalogue membership', () => {
+    const launchable = [...available, ...additionalShortcutLaunches.map(app => app.id)];
+    expect(defaultHubPreferences(launchable).pins).toEqual([...DEFAULT_HUB_PINS]);
+    expect(defaultHubPreferences(available).pins).toEqual(DEFAULT_HUB_PINS.filter(slug => available.includes(slug)));
+    expect(hub.projects).toHaveLength(27);
   });
   it.each(['{', 'null', '[]', '{"version":2,"pins":[],"density":"compact"}', '{"version":1,"pins":[false],"density":"compact"}', 'x'.repeat(9000)])('recovers invalid or old preferences without inventing app identities', raw => {
     expect(parseHubPreferences(raw, available)).toEqual({ preferences: defaultHubPreferences(available), reset: true });

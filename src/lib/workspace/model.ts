@@ -1,4 +1,5 @@
 import { parseHubPreferences } from '../hub-preferences';
+import { DEFAULT_HIDDEN_APP_IDS } from './app-personalization';
 import { preset } from './presets';
 import { place } from './layout';
 import { validWidget } from './registry';
@@ -6,13 +7,13 @@ import { clone, stamp, uid, type WorkspaceState } from './types';
 export const MAX_EXPORT_BYTES = 5000000;
 export function initialState(apps: string[], legacy: string | null): WorkspaceState {
     const { preferences: p } = parseHubPreferences(legacy, apps);
-    const pins = legacy ? p.pins : ['notes', 'thiepn-library', 'tms60', 'tiny-tools'].filter(id => apps.includes(id));
+    const pins = p.pins; // Existing imported legacy pins still win; use the owner preset for new workspaces.
     const workspace = preset('Personal workspace', pins);
     if (pins.length > 4) {
         const shortcuts = workspace.widgets[0]!;
         workspace.widgets = place(workspace.widgets, shortcuts.id, { ...shortcuts.desktop, h: 30 });
     }
-    return { schemaVersion: 1, revision: 0, active: workspace.id, workspaces: [workspace], preferences: { rail: true, density: p.density, timezone: p.home.timezone === 'device' ? Intl.DateTimeFormat().resolvedOptions().timeZone : p.home.timezone, hidden: p.home.hidden }, tasks: [], events: [], notes: [], trackers: [], logs: [], activity: [], captureDraft: '', legacyBackup: legacy && legacy.length<=8192 ? legacy : null };
+    return { schemaVersion: 1, revision: 0, active: workspace.id, workspaces: [workspace], preferences: { rail: true, density: p.density, timezone: p.home.timezone === 'device' ? Intl.DateTimeFormat().resolvedOptions().timeZone : p.home.timezone, hidden: p.home.hidden, hiddenAppIds: [...DEFAULT_HIDDEN_APP_IDS] }, tasks: [], events: [], notes: [], trackers: [], logs: [], activity: [], captureDraft: '', legacyBackup: legacy && legacy.length<=8192 ? legacy : null };
 }
 function object(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v); }
 function text(v: unknown, max = 10000) { return typeof v === 'string' && v.length <= max; }
@@ -37,6 +38,7 @@ export function parseState(raw: string): WorkspaceState {
     if (!v.workspaces.some(w => w.id === v.active) || !object(v.preferences) || typeof v.preferences.rail !== 'boolean' || typeof v.preferences.hidden !== 'boolean' || !['compact', 'comfortable'].includes(v.preferences.density) || !text(v.preferences.timezone, 100))
         throw new Error('Invalid workspace preferences.');
     if(v.preferences.recordRecentLaunches!==undefined && typeof v.preferences.recordRecentLaunches!=='boolean')throw new Error('Invalid recent app preference.');
+    if (v.preferences.hiddenAppIds !== undefined && (!Array.isArray(v.preferences.hiddenAppIds) || v.preferences.hiddenAppIds.length > 250 || new Set(v.preferences.hiddenAppIds).size !== v.preferences.hiddenAppIds.length || v.preferences.hiddenAppIds.some(id => typeof id !== 'string' || id.length > 128 || !/^[a-z0-9-]+$/.test(id)))) throw new Error('Invalid hidden app preferences.');
     new Intl.DateTimeFormat('en', { timeZone: v.preferences.timezone });
     if (v.preferences.theme !== undefined && !['system','light','dark'].includes(v.preferences.theme)) throw new Error('Invalid theme preference.');
     for (const key of ['tasks', 'events', 'notes', 'trackers', 'logs', 'activity'] as const) {

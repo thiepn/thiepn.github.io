@@ -67,11 +67,14 @@ test('mobile shortcut editor keeps current and older apps searchable without ove
 
 test('Apps tab displays current independent apps while the published catalogue stays frozen', async ({ page }) => {
   await page.goto('/apps/');
-  await expect(page.locator('[data-hub-current-app]')).toHaveCount(12);
+  await expect(page.locator('[data-hub-current-app]')).toHaveCount(13);
   await expect(page.locator('[data-hub-item]')).toHaveCount(manifest.entries.length);
-  for (const app of ['languages', 'chinese', 'japanese', 'korea', 'studyos', 'mdd', 'ion', 'chess', 'karaoke', 'ligoquiz', 'control']) {
+  for (const app of ['languages', 'chinese', 'japanese', 'korea', 'studyos', 'mdd', 'ion', 'chess', 'karaoke', 'ligoquiz', 'control', 'clearpage']) {
     await expect(page.locator(`[data-hub-current-app="${app}"] a`)).toHaveAttribute('href', /https:\/\//);
   }
+  await expect(page.locator('[data-hub-current-app="ligoquiz"]')).toBeHidden();
+  await expect(page.locator('[data-hub-current-app="control"]')).toBeHidden();
+  await expect(page.locator('[data-hub-current-app="clearpage"] a')).toHaveAttribute('href', 'https://page.thiepn.dev/');
   const publiclyRegistered = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
   expect(publiclyRegistered.map(app => app.id)).toEqual(manifest.entries.map(entry => entry.id));
 });

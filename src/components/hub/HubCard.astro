@@ -40,6 +40,7 @@ const badgeLabel = hub.badge === 'rc' ? 'RC' : hub.badge === 'beta' ? 'Beta' : h
       <a class="hub-card__open ws-primary" href={liveUrl}>Open app <Fragment set:html={icon('arrow-up-right')}/></a>
       {resolveLaunch(p.slug)?.contentSlug && <a class="hub-card__details ws-button" href={details}>Details</a>}
       <button type="button" class="ws-button" data-action="pin-app" data-id={p.slug} aria-pressed="false">Pin shortcut</button>
+      <button type="button" class="ws-button hub-visibility-button" data-action="toggle-app-visibility" data-id={p.slug} aria-pressed="false">Hide</button>
     </div>
   </div>
 </article>

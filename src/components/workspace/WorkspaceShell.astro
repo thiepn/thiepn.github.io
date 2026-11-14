@@ -7,6 +7,7 @@ import ReadingPilot from '../hub/ReadingPilot.astro';
 import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
 import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
+import { PROPOSED_QUICK_SHORTCUT_IDS } from '../../lib/workspace/app-personalization';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
 import '../../styles/workspace.css';
@@ -33,6 +34,14 @@ const apps=entries.map(({project,hub})=>{
  const id=project.data.slug;
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
+});
+const starterAppChoices = [
+  ...additionalShortcutLaunches.map(({id,title,url,category})=>({id,title,url,icon:appIcon(id),category})),
+  ...apps,
+];
+const starterShortcuts = PROPOSED_QUICK_SHORTCUT_IDS.slice(0,4).flatMap(id=>{
+  const app=starterAppChoices.find(item=>item.id===id);
+  return app ? [app] : [];
 });
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
 ---
@@ -66,7 +75,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
             <div data-calendar-preview><p>Choose an .ics export to preview upcoming events.</p></div>
             <noscript><p>Calendar file preview requires JavaScript. Your local Hub calendar and the Google Calendar link remain available.</p></noscript>
           </section></details>}
-          <div data-workspace-content>{staticView ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{apps.slice(0,4).map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
+          <div data-workspace-content>{staticView ? <slot/> : <><section class="ws-widget"><header><h2>App shortcuts</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts">{starterShortcuts.map(app=><a href={app.url} class="ws-app"><span class="ws-app-icon" set:html={icon(app.icon)}/><strong>{app.title}</strong><Fragment set:html={icon('arrow-up-right')}/></a>)}</div></section><p class="ws-muted" data-initial-status>Opening your local workspace…</p></>}</div>
           {<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar" hidden={view!=='home'&&view!=='calendar'}>
             <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
             <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>

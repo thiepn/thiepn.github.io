@@ -52,13 +52,16 @@ export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
   shortcut('ion', 'ION', 'https://ion.thiepn.dev/', 'games', 'thiepn/ion'),
   shortcut('ligoquiz', 'LiGoQuiz', 'https://thiepn.dev/ligoquiz/', 'games', 'thiepn/ligoquiz'),
   shortcut('control', 'Control', 'https://control.thiepn.dev/', 'tools', 'thiepn/control'),
+  // Owner-documented live URL. Shortcut-only candidate; independent HTTP validation is outstanding.
+  shortcut('clearpage', 'Clearpage', 'https://page.thiepn.dev/', 'create', 'thiepn/page'),
 ];
 
 /** Prioritize actively used apps without altering old IDs or saved pins. */
 export const primaryShortcutIds: readonly string[] = [
-  'languages', 'french-3000', 'chinese', 'japanese', 'korea', 'studyos',
-  'mdd', 'selah', 'tms60', 'thiepn-library',
-  'ion', 'chess', 'ligoquiz', 'karaoke', 'gomoku', 'control', 'notes', 'tiny-tools',
+  'studyos', 'mdd', 'pdf-studio', 'thiepn-library', 'notes', 'tms60',
+  'tiny-tools', 'clearpage', 'languages', 'french-3000', 'chinese',
+  'japanese', 'korea', 'selah', 'ion', 'chess', 'karaoke', 'gomoku',
+  'ligoquiz', 'control', // Still selectable: personal Apps hiding is not a shortcut ban.
 ];
 
 /** Keep any already pinned apps at the top, then current options, then the rest. */
