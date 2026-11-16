@@ -181,8 +181,12 @@ async function setup(root: HTMLElement) {
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
     let folioExpiryTimer: ReturnType<typeof setTimeout> | null = null;
     function folioProjection() {
-        const snapshot = freshFolioDeviceSnapshot(folioSnapshot) ? folioSnapshot : null;
-        return { status: folioSnapshot && !snapshot ? 'unavailable' as const : folioStatus, snapshot };
+        const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+            hubIdentity.status === 'signed-out' ? 'guest' : null;
+        const allowed = scope !== null && scope === folioOwner && !privacyHeld && !state?.preferences.hidden;
+        const snapshot = allowed && freshFolioDeviceSnapshot(folioSnapshot) ? folioSnapshot : null;
+        return { status: !allowed ? 'disconnected' as const :
+            folioSnapshot && !snapshot ? 'unavailable' as const : folioStatus, snapshot };
     }
     function updateFolioViews() {
         if (view === 'tasks') render();
