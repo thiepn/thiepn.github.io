@@ -404,6 +404,6 @@
 .ws-folio-task-row>div{flex:1;min-width:0;overflow-wrap:anywhere;}
 .ws-folio-task-row strong{display:block;font-weight:600;}
 .ws-folio-task-row small{display:block;margin-top:3px;color:var(--ws-muted);font-size:12px;overflow-wrap:anywhere;}
-.ws-folio-task-mark{flex:0 0 14px;width:14px;height:14px;border:1.5px solid var(--ws-muted);border-radius:50%;margin-top:3px;opacity:.6;}
+.ws-folio-task-mark{flex:0 0 6px;width:6px;height:6px;border:0;background:var(--ws-muted);border-radius:50%;margin:9px 3px 0;opacity:.6;}
 .ws-folio-tasks-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;}
 @media(max-width:480px){.ws-folio-task-preview{margin-top:12px;}.ws-folio-task-row{padding:12px 0;}.ws-folio-tasks-heading>a{min-height:44px;}}
