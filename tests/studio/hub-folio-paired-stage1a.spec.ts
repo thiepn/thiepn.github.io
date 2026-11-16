@@ -14,6 +14,8 @@ test('actual Folio task requires explicit consent and remains read-only in Hub',
   // Exercise Folio's actual taskService/capture path, not an IndexedDB fixture.
   const desktopAdd=folio.locator('.topbar').getByRole('button',{name:'Add',exact:true});
   const mobileAdd=folio.getByRole('button',{name:'Add task or capture'});
+  // React startup is asynchronous: do not choose a responsive trigger before it exists.
+  await expect.poll(async()=>await desktopAdd.isVisible()||await mobileAdd.isVisible(),{timeout:15_000}).toBe(true);
   if(await desktopAdd.isVisible())await desktopAdd.click();
   else await mobileAdd.click();
   await expect(folio.getByRole('dialog',{name:'Quick add'})).toBeVisible();
