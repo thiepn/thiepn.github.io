@@ -392,3 +392,18 @@
 @media(max-width:480px){.ws-visitor-welcome{padding:18px;border-radius:16px;}.ws-visitor-actions>*{white-space:normal;}.ws-visitor-intro h2{font-size:26px;}}
 
 [data-workspace-date]:empty{display:none;}
+
+
+/* Stage 1A: read-only owner-approved Folio projection, distinct from Hub-owned tasks. */
+.ws-folio-task-preview{margin-top:16px;min-width:0;}
+.ws-folio-tasks-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.ws-folio-tasks-heading>div{min-width:0;flex:1;}
+.ws-folio-tasks-heading .ws-muted{margin-top:4px;}
+.ws-folio-task-list{list-style:none;padding:0;margin:12px 0;display:grid;}
+.ws-folio-task-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--ws-line);min-width:0;}
+.ws-folio-task-row>div{flex:1;min-width:0;overflow-wrap:anywhere;}
+.ws-folio-task-row strong{display:block;font-weight:600;}
+.ws-folio-task-row small{display:block;margin-top:3px;color:var(--ws-muted);font-size:12px;overflow-wrap:anywhere;}
+.ws-folio-task-mark{flex:0 0 14px;width:14px;height:14px;border:1.5px solid var(--ws-muted);border-radius:50%;margin-top:3px;opacity:.6;}
+.ws-folio-tasks-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;}
+@media(max-width:480px){.ws-folio-task-preview{margin-top:12px;}.ws-folio-task-row{padding:12px 0;}.ws-folio-tasks-heading>a{min-height:44px;}}
