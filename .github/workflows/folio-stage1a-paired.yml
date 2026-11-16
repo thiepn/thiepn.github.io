@@ -1,0 +1,66 @@
+name: Stage 1A paired Folio + Hub browser acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/lib/workspace/folio-device.ts'
+      - 'src/lib/workspace/folio-panel.ts'
+      - 'src/scripts/workspace-home.ts'
+      - 'src/styles/workspace.css'
+      - 'tests/studio/hub-folio-paired-stage1a.spec.ts'
+      - 'playwright.folio-stage1a.config.ts'
+      - '.github/workflows/folio-stage1a-paired.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: folio-stage1a-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paired-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Hub draft
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build real Hub
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Checkout pinned Folio companion draft
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/folio
+          ref: 3f4538797583e642a43db3e06ff1417ef0c68902
+          path: folio-owner
+          persist-credentials: false
+      - name: Build real Folio and compose read-only local site
+        run: |
+          npm ci --prefix folio-owner --ignore-scripts --no-audit --no-fund
+          npm run build --prefix folio-owner
+          mkdir -p dist/folio
+          cp -a folio-owner/dist/. dist/folio/
+          test -s dist/folio/index.html
+          test -s dist/home/tasks/index.html
+      - name: Install Chromium Firefox and WebKit
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Real cross-app desktop and mobile acceptance
+        run: npx playwright test -c playwright.folio-stage1a.config.ts
+      - name: Upload failure evidence and test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-stage1a-paired-evidence
+          path: |
+            playwright-report/folio-paired/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
