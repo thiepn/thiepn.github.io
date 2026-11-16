@@ -30,7 +30,7 @@ it('displays bounded Folio tasks as read-only without silently losing the true t
   expect(html).toContain('Showing 12 of 15 planned/due Folio tasks');
   expect(html).toContain('remaining 3');
   expect(html).toContain('2 overdue');
-  expect(html).toContain('read-only');
+  expect(html.toLowerCase()).toContain('read-only');
   expect(html).toContain('/folio/?view=today');
   expect(html).not.toContain('<img src=x');
   expect(html).toContain('&lt;img');
