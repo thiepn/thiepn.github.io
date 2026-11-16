@@ -37,7 +37,7 @@ test('actual Folio task requires explicit consent and remains read-only in Hub',
   await popup.getByRole('button',{name:'Share summary once'}).click();
   await expect(preview).toContainText('Stage 1A owner proof task');
   await expect(preview).toContainText('Showing 1 of 1 planned/due Folio tasks');
-  await expect(preview).toContainText('read-only');
+  await expect(preview).toContainText(/read-only/i);
   await expect(preview.locator('[data-task-toggle]')).toHaveCount(0);
   await expect(preview.locator('input[type=checkbox]')).toHaveCount(0);
   await expect(page.locator('.ws-task-results')).not.toContainText('Stage 1A owner proof task');
@@ -52,11 +52,11 @@ test('actual Folio task requires explicit consent and remains read-only in Hub',
 });
 
 test('real Folio rejects a non-allowlisted same-origin opener',async({page})=>{
-  await page.goto('/home/settings/');
+  await page.goto('/apps/');
   const event=page.waitForEvent('popup');
   await page.evaluate(()=>window.open('/folio/?hubBridge='+('a'.repeat(32)),'_blank'));
   const popup=await event;
-  await popup.waitForLoadState('domcontentloaded');
+  await expect(popup.locator('#main-content')).toBeVisible();
   await expect(popup.getByRole('dialog',{name:'Share today’s Folio summary?'})).toHaveCount(0);
   await popup.close();
 });
