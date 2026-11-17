@@ -22,6 +22,7 @@ export class FolioTaskChannel {
   pageQuery:FolioTaskQueryInput|null=null;
   pageLoading=false;
   pageError=false;
+  pageChanged=false;
   private writeGrant:string|null=null;
   private actionRequestId:string|null=null;
   private actionResolve:((outcome:FolioTaskActionResult)=>void)|null=null;
@@ -46,17 +47,19 @@ export class FolioTaskChannel {
     this.pageQuery=null;
     this.pageLoading=false;
     this.pageError=false;
+    this.pageChanged=false;
   }
   queryPage(input:FolioTaskQueryInput,force=false){
     if(!this.ready||!this.iframe||!this.nonce||!this.canRead()||document.hidden)return;
     const current=this.pageQuery;
     const same=current&&current.filter===input.filter&&current.search===input.search&&
       current.projectId===input.projectId&&current.page===input.page;
-    if(!force&&same&&(this.pageLoading||this.page||this.pageError))return;
+    if(!force&&same&&(this.pageLoading||this.page||this.pageError||this.pageChanged))return;
     if(this.pageTimer)clearTimeout(this.pageTimer);
     this.pageQuery={...input};
     this.page=null;
     this.pageError=false;
+    this.pageChanged=false;
     this.pageLoading=true;
     this.pageRequestId=crypto.randomUUID();
     const rid=this.pageRequestId;
@@ -145,18 +148,27 @@ export class FolioTaskChannel {
        event.source!==this.iframe.contentWindow||!this.nonce||
        !event.data||event.data.nonce!==this.nonce||!this.canRead())return;
     if(event.data.type===FOLIO_TASK_QUERY_MESSAGE+':result'||
-       event.data.type===FOLIO_TASK_QUERY_MESSAGE+':error'){
+       event.data.type===FOLIO_TASK_QUERY_MESSAGE+':error'||
+       event.data.type===FOLIO_TASK_QUERY_MESSAGE+':changed'){
       if(!this.pageRequestId||event.data.requestId!==this.pageRequestId||
          !this.pageQuery)return;
       if(this.pageTimer)clearTimeout(this.pageTimer);
       this.pageTimer=null;
       this.pageRequestId=null;
       this.pageLoading=false;
+      if(event.data.type===FOLIO_TASK_QUERY_MESSAGE+':changed'){
+        this.page=null;
+        this.pageError=false;
+        this.pageChanged=true;
+        this.changed();
+        return;
+      }
       try{
         if(event.data.type!==FOLIO_TASK_QUERY_MESSAGE+':result')
           throw Error('Folio query unavailable');
         this.page=parseFolioTaskQueryResult(event.data.result,this.pageQuery);
         this.pageError=false;
+        this.pageChanged=false;
       }catch{this.page=null;this.pageError=true;}
       this.changed();
       return;
@@ -191,7 +203,7 @@ export class FolioTaskChannel {
       this.status='unavailable';
     }
     this.changed();
-    if(this.status==='ready'&&this.pageQuery&&!this.pageLoading)
+    if(this.status==='ready'&&this.pageQuery&&!this.pageLoading&&!this.pageChanged)
       this.queryPage(this.pageQuery,true);
     if(repeat)setTimeout(()=>this.refresh(),0);
   };
