@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: fa7b61bb375b59839042192550d16331ddb92b05
+          ref: 6a302d7431eb5c285656f308157e5dd53b988b41
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
