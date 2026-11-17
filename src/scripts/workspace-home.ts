@@ -188,6 +188,10 @@ async function setup(root: HTMLElement) {
     let folioWritePopup:Window|null=null;
     let folioTaskFilter:FolioTaskFilter='today';
     let folioTaskView:FolioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
+    let folioPageIndex=0;
+    let folioSearchTimer:ReturnType<typeof setTimeout>|null=null;
+    let folioSearchPending=false;
+    let legacyTasksOpen=false;
     const folioLive = new FolioTaskChannel(
         () => {
             const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
@@ -207,6 +211,14 @@ async function setup(root: HTMLElement) {
     }
     function updateFolioViews(force=false) {
         if (view !== 'tasks') { repaintOverview(); return; }
+        const source=folioLive.snapshot;
+        const needed=folioLive.status==='ready' && !!source &&
+            (source.truncated||folioTaskFilter==='completed'||
+             folioTaskView.search.trim().length>0||folioTaskView.projectId!=='all'||folioPageIndex>0);
+        if(needed && !folioSearchPending){
+            folioLive.queryPage({filter:folioTaskFilter,search:folioTaskView.search.trim(),
+                projectId:folioTaskView.projectId,page:folioPageIndex});
+        }else if(!needed && folioLive.pageQuery)folioLive.clearPage();
         // Preserve the native task editor and a user's in-progress Folio form.
         const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
         if (!panel || !state || privacyHeld || state.preferences.hidden) {
@@ -219,8 +231,8 @@ async function setup(root: HTMLElement) {
         const emptyCapture=active instanceof HTMLInputElement &&
             active.matches('[data-folio-create-form] input[name=title]') && !active.value;
         if(!force && active && panel.contains(active) && active.matches('input,select,textarea') &&
-           !emptyCapture)return;
-        const searchFocused=force && active instanceof HTMLInputElement && active.matches('[data-folio-search]');
+           !emptyCapture && !active.matches('[data-folio-search]'))return;
+        const searchFocused=active instanceof HTMLInputElement && active.matches('[data-folio-search]');
         const cursor=searchFocused?{start:(active as HTMLInputElement).selectionStart,end:(active as HTMLInputElement).selectionEnd}:null;
         const optionsOpen=panel.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced')?.open??false;
         const action=active && panel.contains(active) ? active.dataset.action : null;
@@ -231,6 +243,8 @@ async function setup(root: HTMLElement) {
         const projection=folioProjection();
         panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
             status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,view:folioTaskView,
+            paging:{active:needed&&!folioSearchPending,loading:folioLive.pageLoading,
+                error:folioLive.pageError,result:folioLive.page},
             write:{
                 enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                 message:folioLive.actionMessage,failed:folioLive.actionFailed,
@@ -264,6 +278,9 @@ async function setup(root: HTMLElement) {
         folioLive.close();
         folioTaskFilter='today';
         folioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
+        folioPageIndex=0;
+        if(folioSearchTimer)clearTimeout(folioSearchTimer);
+        folioSearchTimer=null;folioSearchPending=false;
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -903,6 +920,8 @@ async function setup(root: HTMLElement) {
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
             </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
                 status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
+                paging:{active:folioLive.pageQuery!==null,loading:folioLive.pageLoading,
+                    error:folioLive.pageError,result:folioLive.page},
                 write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                     message:folioLive.actionMessage,failed:folioLive.actionFailed,
                     undoId:folioLive.lastUndoId},
@@ -2078,9 +2097,12 @@ async function setup(root: HTMLElement) {
             }
             const version=target.dataset.version;
             const completed=snapshot.recentCompleted??[];
-            const item=action==='folio-action-reopen'?
+            const sourcePage=folioLive.page;
+            const sourceRow=sourcePage&&Date.now()-Date.parse(sourcePage.generatedAt)<90_000?
+                sourcePage.rows.find(task=>task.id===id&&task.updatedAt===version):undefined;
+            const item=sourceRow??(action==='folio-action-reopen'?
                 completed.find(task=>task.id===id&&task.updatedAt===version):
-                snapshot.tasks.find(task=>task.id===id&&task.updatedAt===version);
+                snapshot.tasks.find(task=>task.id===id&&task.updatedAt===version));
             if(!item||!version) {
                 toast('This Folio task has changed. Refresh before applying the action.');
                 return;
@@ -2112,8 +2134,26 @@ async function setup(root: HTMLElement) {
         if (action === 'folio-read-filter') {
             if (['today','inbox','upcoming','later','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
+                folioPageIndex=0;
                 updateFolioViews();
             }
+            return;
+        }
+        if (action === 'folio-page-previous'||action==='folio-page-next'||action==='folio-page-retry'){
+            if(action==='folio-page-retry'){
+                const source=folioLive.snapshot;
+                if(source&&folioLive.status==='ready')folioLive.queryPage({
+                    filter:folioTaskFilter,search:folioTaskView.search.trim(),
+                    projectId:folioTaskView.projectId,page:folioPageIndex,
+                },true);
+                return;
+            }
+            const p=folioLive.page;
+            if(!p||folioLive.pageLoading)return;
+            if(action==='folio-page-next'&&p.hasMore)folioPageIndex++;
+            else if(action==='folio-page-previous'&&folioPageIndex>0)folioPageIndex--;
+            else return;
+            updateFolioViews(true);
             return;
         }
         if (action === 'folio-read-refresh') {
@@ -2833,6 +2873,7 @@ async function setup(root: HTMLElement) {
             const value=el.value;
             if(value==='all'||value==='none'||folioLive.snapshot?.availableProjects?.some(p=>p.id===value)){
                 folioTaskView.projectId=value;
+                folioPageIndex=0;
                 updateFolioViews(true);
             }
             return;
@@ -2943,7 +2984,15 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if(view==='tasks'&&el.matches('[data-folio-search]')&&folioLive.status==='ready'){
             folioTaskView.search=el.value.slice(0,100);
+            folioPageIndex=0;
+            if(folioSearchTimer)clearTimeout(folioSearchTimer);
+            folioSearchPending=true;
+            folioLive.clearPage();
             updateFolioViews(true);
+            folioSearchTimer=setTimeout(()=>{
+                folioSearchPending=false;
+                updateFolioViews(true);
+            },180);
             return;
         }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
