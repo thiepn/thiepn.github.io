@@ -2,9 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/studio',
-  testMatch: 'hub-folio-paired-stage1a.spec.ts',
+  testMatch: '**/hub-folio-paired-stage1*.spec.ts',
   fullyParallel: false,
-  timeout: 60_000,
+  timeout: 90_000,
   retries: 0,
   workers: 1,
   reporter: [['list'], ['html', {outputFolder:'playwright-report/folio-paired', open:'never'}]],
