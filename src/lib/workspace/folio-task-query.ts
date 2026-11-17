@@ -22,7 +22,7 @@ const date=(v:unknown):v is string=>typeof v==='string'&&Number.isFinite(Date.pa
 export function validFolioTaskQueryInput(value:unknown):value is FolioTaskQueryInput{
  if(!object(value))return false;
  return [...FOLIO_TASK_BUCKETS,'all','completed'].includes(String(value.filter))&&
-   text(value.search,100)&&text(value.projectId,128)&&value.projectId.length>0&&
+   text(value.search,100)&&text(value.projectId,128)&&!!value.projectId&&
    Number.isSafeInteger(value.page)&&Number(value.page)>=0&&Number(value.page)<=9999;
 }
 export function parseFolioTaskQueryResult(raw:unknown,expected:FolioTaskQueryInput,now=Date.now()):FolioTaskQueryResult{
