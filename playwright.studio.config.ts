@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
- testDir:'./tests/studio',testIgnore:['**/hub-folio-paired-stage1a.spec.ts','**/hub-folio-paired-stage1b.spec.ts','**/hub-folio-paired-stage1c.spec.ts','**/hub-folio-paired-stage1d.spec.ts'],fullyParallel:true,timeout:30000,retries:0,workers:process.env.CI?1:3,
+ testDir:'./tests/studio',testIgnore:['**/hub-folio-paired-stage1a.spec.ts','**/hub-folio-paired-stage1b.spec.ts','**/hub-folio-paired-stage1c.spec.ts','**/hub-folio-paired-stage1d.spec.ts','**/hub-folio-paired-stage1e.spec.ts'],fullyParallel:true,timeout:30000,retries:0,workers:process.env.CI?1:3,
  reporter:[['list'],['json',{outputFile:'test-results/studio.json'}],['html',{outputFolder:'playwright-report',open:'never'}]],
  use:{baseURL:'http://127.0.0.1:4321',trace:'retain-on-failure',screenshot:'only-on-failure'},
  projects:[{name:'chromium',use:{...devices['Desktop Chrome'],...(process.env.HUB_CHROMIUM_PATH?{launchOptions:{executablePath:process.env.HUB_CHROMIUM_PATH}}:{channel:'chromium'})}},{name:'firefox',use:{...devices['Desktop Firefox']}},{name:'webkit',use:{...devices['Desktop Safari']}}],
