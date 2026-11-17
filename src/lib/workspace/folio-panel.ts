@@ -161,7 +161,6 @@ export function renderFolioLiveTaskPreview(
     const details=[
       task.deadline?'Deadline '+task.deadline:'',
       task.plannedDate?'Planned '+task.plannedDate:'',
-      task.projectName?'Project: '+task.projectName:'',
       task.listName?'List: '+task.listName:'',
       task.priority!=='normal'?'Priority: '+task.priority:'',
       task.recurring?'Recurring — completion may create another occurrence':'',
@@ -176,9 +175,13 @@ export function renderFolioLiveTaskPreview(
       esc(task.id)+'" value="'+esc(task.plannedDate??'')+'"'+(canWrite?'':' disabled')+'></label>'+
       '<button class="ws-text-button" type="button" data-action="folio-action-reschedule" data-id="'+
       esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Set date</button></div>':'';
+    const project=task.projectId&&task.projectName?
+      '<button type="button" class="ws-folio-project-link" data-action="folio-project-context" data-id="'+
+      esc(task.projectId)+'">Project: '+esc(task.projectName)+'</button>':'';
     return '<li class="ws-folio-task-row" data-folio-source-task="'+esc(task.id)+'">'+
       '<span class="ws-folio-task-mark" aria-hidden="true"></span>'+
-      '<div class="ws-folio-task-copy"><strong>'+esc(task.title)+'</strong><small>'+details+'</small></div>'+
+      '<div class="ws-folio-task-copy"><strong>'+esc(task.title)+'</strong>'+
+      (project?'<div class="ws-folio-context">'+project+'</div>':'')+'<small>'+details+'</small></div>'+
       controls+'</li>';
   };
   const items=filter==='completed'?completed.map(task=>
@@ -211,8 +214,9 @@ export function renderFolioLiveTaskPreview(
   const shown=filter==='completed'?completed.length:selectedRows.length;
   const narrowed=filter!=='completed'&&selection.isNarrowed;
   const totalText=paging?.active?
-    sourcePage?'Showing '+(shown?sourcePage.page*40+1:0)+'–'+
-      (sourcePage.page*40+shown)+' of '+sourceTotal+' source-matched Folio tasks':
+    sourcePage?(narrowed?'Showing '+shown+' matching of '+sourceTotal+' Folio tasks · page '+(sourcePage.page+1):
+      'Showing '+(shown?sourcePage.page*40+1:0)+'–'+
+        (sourcePage.page*40+shown)+' of '+sourceTotal+' Folio tasks'):
       paging.loading?'Searching all Folio tasks…':
       'Full Folio search unavailable. Retry or open Folio.':
     narrowed?'Showing '+shown+' matching of '+selection.loadedCount+' loaded Folio tasks':
