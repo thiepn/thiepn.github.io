@@ -1,9 +1,10 @@
-name: Folio + Hub paired task command acceptance
+name: Folio + Hub paired daily task acceptance
 on:
   pull_request:
     paths:
       - 'src/lib/workspace/folio-device.ts'
       - 'src/lib/workspace/folio-task-read.ts'
+      - 'src/lib/workspace/folio-task-ux.ts'
       - 'src/lib/workspace/folio-task-channel.ts'
       - 'src/lib/workspace/folio-task-actions.ts'
       - 'src/lib/workspace/folio-panel.ts'
@@ -13,6 +14,8 @@ on:
       - 'tests/studio/hub-folio-paired-stage1b.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1c.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1d.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1e.spec.ts'
+      - 'tests/unit/folio-task-ux.test.ts'
       - 'playwright.folio-stage1a.config.ts'
       - '.github/workflows/folio-stage1a-paired.yml'
   workflow_dispatch:
@@ -42,12 +45,12 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
       - name: Focused Stage 1A and 1B unit tests
-        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts
+        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts tests/unit/folio-task-ux.test.ts
       - name: Checkout pinned Folio companion draft
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: 49bfc1ebbe7c48114e31eed017ece84b08c483a8
+          ref: a5e395bf41ba7eceef3ff0782bebdeb79b7f35f9
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -66,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1d-paired-evidence
+          name: folio-stage1e-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
