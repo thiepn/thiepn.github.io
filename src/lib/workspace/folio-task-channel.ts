@@ -4,6 +4,8 @@ import {
 } from './folio-task-read';
 import { FOLIO_TASK_ACTION_MESSAGE, FOLIO_TASK_WRITE_GRANT_KEY,
   validFolioTaskActionResult, type FolioTaskAction, type FolioTaskActionResult } from './folio-task-actions';
+import {FOLIO_TASK_QUERY_MESSAGE,parseFolioTaskQueryResult,
+  type FolioTaskQueryInput,type FolioTaskQueryResult} from './folio-task-query';
 
 /** The only code permitted to embed the Folio-owned source reader.
  * Consent comes from the existing user-approved Folio popup, not this frame.
@@ -14,6 +16,12 @@ export class FolioTaskChannel {
   private ready=false;
   private requestId:string|null=null;
   private refreshQueued=false;
+  private pageRequestId:string|null=null;
+  private pageTimer:ReturnType<typeof setTimeout>|null=null;
+  page:FolioTaskQueryResult|null=null;
+  pageQuery:FolioTaskQueryInput|null=null;
+  pageLoading=false;
+  pageError=false;
   private writeGrant:string|null=null;
   private actionRequestId:string|null=null;
   private actionResolve:((outcome:FolioTaskActionResult)=>void)|null=null;
@@ -30,6 +38,38 @@ export class FolioTaskChannel {
   constructor(private readonly canRead:()=>boolean,private readonly changed:()=>void){}
 
   get readGrant(){return this.nonce;}
+  clearPage(){
+    if(this.pageTimer)clearTimeout(this.pageTimer);
+    this.pageTimer=null;
+    this.pageRequestId=null;
+    this.page=null;
+    this.pageQuery=null;
+    this.pageLoading=false;
+    this.pageError=false;
+  }
+  queryPage(input:FolioTaskQueryInput,force=false){
+    if(!this.ready||!this.iframe||!this.nonce||!this.canRead()||document.hidden)return;
+    const current=this.pageQuery;
+    const same=current&&current.filter===input.filter&&current.search===input.search&&
+      current.projectId===input.projectId&&current.page===input.page;
+    if(!force&&same&&(this.pageLoading||this.page||this.pageError))return;
+    if(this.pageTimer)clearTimeout(this.pageTimer);
+    this.pageQuery={...input};
+    this.page=null;
+    this.pageError=false;
+    this.pageLoading=true;
+    this.pageRequestId=crypto.randomUUID();
+    const rid=this.pageRequestId;
+    this.pageTimer=setTimeout(()=>{
+      if(this.pageRequestId!==rid)return;
+      this.pageRequestId=null;this.pageLoading=false;this.pageError=true;
+      this.changed();
+    },12_000);
+    this.iframe.contentWindow?.postMessage({
+      type:FOLIO_TASK_QUERY_MESSAGE+':read',nonce:this.nonce,requestId:rid,query:input,
+    },location.origin);
+    this.changed();
+  }
   get actionsEnabled(){
     if(!this.writeGrant||!this.nonce||!this.canRead()||this.status!=='ready')return false;
     try{
@@ -104,6 +144,23 @@ export class FolioTaskChannel {
     if(!this.iframe||event.origin!==location.origin||
        event.source!==this.iframe.contentWindow||!this.nonce||
        !event.data||event.data.nonce!==this.nonce||!this.canRead())return;
+    if(event.data.type===FOLIO_TASK_QUERY_MESSAGE+':result'||
+       event.data.type===FOLIO_TASK_QUERY_MESSAGE+':error'){
+      if(!this.pageRequestId||event.data.requestId!==this.pageRequestId||
+         !this.pageQuery)return;
+      if(this.pageTimer)clearTimeout(this.pageTimer);
+      this.pageTimer=null;
+      this.pageRequestId=null;
+      this.pageLoading=false;
+      try{
+        if(event.data.type!==FOLIO_TASK_QUERY_MESSAGE+':result')
+          throw Error('Folio query unavailable');
+        this.page=parseFolioTaskQueryResult(event.data.result,this.pageQuery);
+        this.pageError=false;
+      }catch{this.page=null;this.pageError=true;}
+      this.changed();
+      return;
+    }
     if(event.data.type===FOLIO_TASK_ACTION_MESSAGE+':result'){
       if(this.actionRequestId===event.data.requestId&&this.writeGrant===event.data.writeGrant&&
          validFolioTaskActionResult(event.data.result))
@@ -134,6 +191,8 @@ export class FolioTaskChannel {
       this.status='unavailable';
     }
     this.changed();
+    if(this.status==='ready'&&this.pageQuery&&!this.pageLoading)
+      this.queryPage(this.pageQuery,true);
     if(repeat)setTimeout(()=>this.refresh(),0);
   };
   private clearTimeout(){if(this.timeout)clearTimeout(this.timeout);this.timeout=null;}
@@ -193,6 +252,7 @@ export class FolioTaskChannel {
   }
   pause(){
     if(this.status==='disconnected')return;
+    this.clearPage();
     this.snapshot=null;
     this.requestId=null;
     this.refreshQueued=false;
@@ -206,6 +266,7 @@ export class FolioTaskChannel {
     this.refresh();
   }
   close(revoke=true){
+    this.clearPage();
     if(revoke)this.revokeActions();
     else if(this.actionResolve){
       this.actionResolve({ok:false,code:'unavailable',
