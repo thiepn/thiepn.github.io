@@ -1,6 +1,8 @@
 import { freshFolioDeviceSnapshot, type FolioDeviceSnapshot } from './folio-device';
 import { freshFolioTaskRead, FOLIO_TASK_BUCKETS, type FolioTaskReadSnapshot, type FolioReadStatus, type FolioTaskFilter } from './folio-task-read';
 import {DEFAULT_FOLIO_TASK_VIEW,selectFolioTaskView,type FolioTaskView} from './folio-task-ux';
+import type {FolioTaskQueryResult} from './folio-task-query';
+import type {FolioReadTask} from './folio-task-read';
 export type FolioDeviceStatus='disconnected'|'awaiting'|'ready'|'unavailable';
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const fixedLink=(view:'today'|'planner'|'notes'|'habits')=>'/folio/?view='+view;
@@ -42,9 +44,10 @@ export function renderFolioTaskPreview(
   status:FolioDeviceStatus, snapshot:FolioDeviceSnapshot|null, now=Date.now(),
   live?:{status:FolioReadStatus;snapshot:FolioTaskReadSnapshot|null;filter:FolioTaskFilter;
     write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null};
-    view?:FolioTaskView},
+    view?:FolioTaskView;
+    paging?:{active:boolean;loading:boolean;error:boolean;result:FolioTaskQueryResult|null}},
 ):string {
-  if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now,live.write,live.view);
+  if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now,live.write,live.view,live.paging);
   const current=freshFolioDeviceSnapshot(snapshot,now)?snapshot:null;
   const state=current?'ready':snapshot?'unavailable':status;
   const heading='<header class="ws-folio-tasks-heading"><div><h2>Folio tasks</h2>'+
@@ -94,6 +97,7 @@ export function renderFolioLiveTaskPreview(
   status:FolioReadStatus, snapshot:FolioTaskReadSnapshot|null, filter:FolioTaskFilter='today', now=Date.now(),
   write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null},
   view:FolioTaskView=DEFAULT_FOLIO_TASK_VIEW,
+  paging?:{active:boolean;loading:boolean;error:boolean;result:FolioTaskQueryResult|null},
 ):string {
   const fresh=freshFolioTaskRead(snapshot,now)?snapshot:null;
   const current=fresh&&status==='ready'?fresh:null;
@@ -124,7 +128,9 @@ export function renderFolioLiveTaskPreview(
   }
   const options=(rows:readonly {id:string;name:string}[]|undefined,chosen='')=>
     (rows??[]).map(x=>'<option value="'+esc(x.id)+'"'+(chosen===x.id?' selected':'')+'>'+esc(x.name)+'</option>').join('');
-  const completed=current.recentCompleted??[];
+  const sourcePage=paging?.active&&paging.result ? paging.result : null;
+  const completed=sourcePage&&filter==='completed'?
+    sourcePage.rows.filter(t=>t.status==='completed'):paging?.active?[]:current.recentCompleted??[];
   const filters:readonly FolioTaskFilter[]=write?.enabled?
     ['today','inbox','upcoming','later','completed','all']:['today','inbox','upcoming','later','all'];
   const label:Record<FolioTaskFilter,string>={today:'Today',inbox:'Inbox',upcoming:'Next 7 days',
@@ -146,7 +152,10 @@ export function renderFolioLiveTaskPreview(
       '<option value="bucket"'+(view.group==='bucket'?' selected':'')+'>By day</option>'+
       '<option value="project"'+(view.group==='project'?' selected':'')+'>By project</option>'+
       '<option value="none"'+(view.group==='none'?' selected':'')+'>No grouping</option></select></label></div>';
-  const selection=selectFolioTaskView(current,filter,view);
+  const queryRows:readonly FolioReadTask[]=sourcePage?
+    sourcePage.rows.filter(t=>t.status!=='completed') as readonly FolioReadTask[]:
+    paging?.active?[]:current.tasks;
+  const selection=selectFolioTaskView({...current,tasks:queryRows},filter,view);
   const selectedRows=selection.rows;
   const rowHTML=(task:(typeof current.tasks)[number])=>{
     const details=[
@@ -198,20 +207,34 @@ export function renderFolioLiveTaskPreview(
     options(current.availableLists)+'</select></label>'+
     '</div></details>'+
     '<p class="ws-muted ws-folio-shortcut-help">Enter saves · Alt+Shift+N focuses quick capture</p></form>':'';
-  const sourceTotal=filter==='completed'?completed.length:selection.sourceCount;
+  const sourceTotal=sourcePage?sourcePage.total:filter==='completed'?completed.length:selection.sourceCount;
   const shown=filter==='completed'?completed.length:selectedRows.length;
   const narrowed=filter!=='completed'&&selection.isNarrowed;
-  const totalText=narrowed?'Showing '+shown+' matching of '+selection.loadedCount+' loaded Folio tasks':
+  const totalText=paging?.active?
+    sourcePage?'Showing '+(shown?sourcePage.page*40+1:0)+'–'+
+      (sourcePage.page*40+shown)+' of '+sourceTotal+' source-matched Folio tasks':
+      paging.loading?'Searching all Folio tasks…':
+      'Full Folio search unavailable. Retry or open Folio.':
+    narrowed?'Showing '+shown+' matching of '+selection.loadedCount+' loaded Folio tasks':
     'Showing '+shown+' of '+sourceTotal+' Folio tasks';
-  const completeness=filter!=='completed'&&current.truncated?
-    '<p class="ws-muted">This device has more tasks than the 160-item read window. Search and project filters apply only to loaded tasks; open Folio for the full list.</p>':'';
+  const completeness=!paging?.active&&filter!=='completed'&&current.truncated?
+    '<p class="ws-muted">This preview contains only 160 tasks. Complete source search is available above.</p>':'';
+  const pageNavigation=paging?.active?'<nav class="ws-folio-pages" aria-label="Folio source result pages">'+
+    '<span>'+ (sourcePage?'Page '+(sourcePage.page+1)+' · '+sourcePage.total+' results':
+      paging.loading?'Reading Folio source…':'No verified source page')+'</span>'+
+    '<button type="button" class="ws-text-button" data-action="folio-page-previous"'+
+       (!sourcePage||sourcePage.page===0?' disabled':'')+'>Previous page</button>'+
+    '<button type="button" class="ws-text-button" data-action="folio-page-next"'+
+       (!sourcePage||!sourcePage.hasMore?' disabled':'')+'>Next page</button>'+
+    (paging.error?'<button type="button" class="ws-button" data-action="folio-page-retry">Retry source search</button>':'')+
+    '</nav>':'';
   return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Folio tasks">'+
     heading+grant+response+form+tabs+finder+
     '<p role="status" class="ws-muted">'+totalText+
     ' · updated '+esc(new Date(current.generatedAt).toLocaleTimeString())+'</p>'+
     (items?filter==='completed'?'<ul class="ws-folio-task-list">'+items+'</ul>':items:
       '<p class="ws-muted">No tasks match this view.</p>')+
-    completeness+
+    completeness+pageNavigation+
     (current.contextTruncated?'<p class="ws-muted">Only the first 80 active projects and lists are offered for creation. Open Folio for others.</p>':'')+
     note+actions+'</section>';
 }
