@@ -45,7 +45,7 @@ export function renderFolioTaskPreview(
   live?:{status:FolioReadStatus;snapshot:FolioTaskReadSnapshot|null;filter:FolioTaskFilter;
     write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null};
     view?:FolioTaskView;
-    paging?:{active:boolean;loading:boolean;error:boolean;result:FolioTaskQueryResult|null}},
+    paging?:{active:boolean;loading:boolean;error:boolean;changed:boolean;result:FolioTaskQueryResult|null}},
 ):string {
   if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now,live.write,live.view,live.paging);
   const current=freshFolioDeviceSnapshot(snapshot,now)?snapshot:null;
@@ -97,7 +97,7 @@ export function renderFolioLiveTaskPreview(
   status:FolioReadStatus, snapshot:FolioTaskReadSnapshot|null, filter:FolioTaskFilter='today', now=Date.now(),
   write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null},
   view:FolioTaskView=DEFAULT_FOLIO_TASK_VIEW,
-  paging?:{active:boolean;loading:boolean;error:boolean;result:FolioTaskQueryResult|null},
+  paging?:{active:boolean;loading:boolean;error:boolean;changed:boolean;result:FolioTaskQueryResult|null},
 ):string {
   const fresh=freshFolioTaskRead(snapshot,now)?snapshot:null;
   const current=fresh&&status==='ready'?fresh:null;
@@ -175,6 +175,9 @@ export function renderFolioLiveTaskPreview(
       esc(task.id)+'" value="'+esc(task.plannedDate??'')+'"'+(canWrite?'':' disabled')+'></label>'+
       '<button class="ws-text-button" type="button" data-action="folio-action-reschedule" data-id="'+
       esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Set date</button></div>':'';
+    const detail='<a class="ws-text-button ws-folio-detail-link" data-folio-detail-link href="/folio/?view=today&amp;hubTask='+
+      encodeURIComponent(task.id)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(task.title)+
+      ' details in Folio">Details in Folio</a>';
     const project=task.projectId&&task.projectName?
       '<button type="button" class="ws-folio-project-link" data-action="folio-project-context" data-id="'+
       esc(task.projectId)+'">Project: '+esc(task.projectName)+'</button>':'';
@@ -182,11 +185,14 @@ export function renderFolioLiveTaskPreview(
       '<span class="ws-folio-task-mark" aria-hidden="true"></span>'+
       '<div class="ws-folio-task-copy"><strong>'+esc(task.title)+'</strong>'+
       (project?'<div class="ws-folio-context">'+project+'</div>':'')+'<small>'+details+'</small></div>'+
-      controls+'</li>';
+      detail+controls+'</li>';
   };
   const items=filter==='completed'?completed.map(task=>
-    '<li class="ws-folio-task-row"><div><strong>'+esc(task.title)+
+    '<li class="ws-folio-task-row" data-folio-source-task="'+esc(task.id)+'"><div><strong>'+esc(task.title)+
     '</strong><small>Completed'+(task.completedAt?' · '+esc(new Date(task.completedAt).toLocaleDateString()):'')+'</small></div>'+
+    '<a class="ws-text-button ws-folio-detail-link" data-folio-detail-link href="/folio/?view=today&amp;hubTask='+
+      encodeURIComponent(task.id)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(task.title)+
+      ' details in Folio">Details in Folio</a>'+
     (write?.enabled?'<button class="ws-text-button" type="button" data-action="folio-action-reopen" data-id="'+
       esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Reopen</button>':'')+
     '</li>').join(''):selection.sections.map(section=>
@@ -217,6 +223,7 @@ export function renderFolioLiveTaskPreview(
     sourcePage?(narrowed?'Showing '+shown+' matching of '+sourceTotal+' Folio tasks · page '+(sourcePage.page+1):
       'Showing '+(shown?sourcePage.page*40+1:0)+'–'+
         (sourcePage.page*40+shown)+' of '+sourceTotal+' Folio tasks'):
+      paging.changed?'Task list changed since you opened this page. Restart results.':
       paging.loading?'Searching all Folio tasks…':
       'Full Folio search unavailable. Retry or open Folio.':
     narrowed?'Showing '+shown+' matching of '+selection.loadedCount+' loaded Folio tasks':
@@ -225,11 +232,13 @@ export function renderFolioLiveTaskPreview(
     '<p class="ws-muted">This preview contains only 160 tasks. Complete source search is available above.</p>':'';
   const pageNavigation=paging?.active?'<nav class="ws-folio-pages" aria-label="Folio source result pages">'+
     '<span>'+ (sourcePage?'Page '+(sourcePage.page+1)+' · '+sourcePage.total+' results':
+      paging.changed?'Task listing changed; previous page is invalid':
       paging.loading?'Reading Folio source…':'No verified source page')+'</span>'+
     '<button type="button" class="ws-text-button" data-action="folio-page-previous"'+
        (!sourcePage||sourcePage.page===0?' disabled':'')+'>Previous page</button>'+
     '<button type="button" class="ws-text-button" data-action="folio-page-next"'+
        (!sourcePage||!sourcePage.hasMore?' disabled':'')+'>Next page</button>'+
+    (paging.changed?'<button type="button" class="ws-button" data-action="folio-page-restart">Restart results</button>':'')+
     (paging.error?'<button type="button" class="ws-button" data-action="folio-page-retry">Retry source search</button>':'')+
     '</nav>':'';
   return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Folio tasks">'+
