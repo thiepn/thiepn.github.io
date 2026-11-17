@@ -192,13 +192,13 @@ test('parent completion cascades via Folio and forbids unsafe descendant overwri
 
 test('completion of real after-completion recurring series creates next occurrence without risky undo',async({page})=>{
   const panel=await approveFolioActions(page)
-  const id=await createTask(page,'Recurring parent proof task')
+  const id=await createTask(page,'Cycle proof task alpha')
   const date=await page.evaluate(()=>{
     const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')
   })
   const seriesId=await modifyFolioStore(page,{sourceId:id,mode:'recurrence',date})
   await panel.getByRole('button',{name:'Refresh now'}).click()
-  const row=panel.locator('.ws-folio-task-row',{hasText:'Recurring parent proof task'})
+  const row=panel.locator('.ws-folio-task-row',{hasText:'Cycle proof task alpha'})
   await expect(row).toContainText('Recurring')
   page.once('dialog',dialog=>{expect(dialog.message()).toContain('recurring');void dialog.accept()})
   await row.getByRole('button',{name:'Complete'}).click()
