@@ -201,8 +201,23 @@ async function setup(root: HTMLElement) {
             folioSnapshot && !snapshot ? 'unavailable' as const : folioStatus, snapshot };
     }
     function updateFolioViews() {
-        if (view === 'tasks') render();
-        else repaintOverview();
+        if (view !== 'tasks') { repaintOverview(); return; }
+        // A 30-second source refresh must not rebuild the native task editor,
+        // interrupt typing, reset scroll position, or steal unrelated focus.
+        const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
+        if (!panel || !state || privacyHeld || state.preferences.hidden) {
+            if (state) render();
+            return;
+        }
+        const active=document.activeElement as HTMLElement|null;
+        const action=active && panel.contains(active) ? active.dataset.action : null;
+        const id=action ? active?.dataset.id : null;
+        const projection=folioProjection();
+        panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
+            status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,
+        });
+        if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
+            (id?'[data-id="'+id+'"]':''))?.focus();
     }
     function resetFolio() {
         folioLive.close();
