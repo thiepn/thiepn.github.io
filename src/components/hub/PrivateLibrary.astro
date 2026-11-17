@@ -7,6 +7,7 @@ const enabled = pilot ? READING_PILOT_ENABLED : import.meta.env.PUBLIC_HUB_LIBRA
 {enabled && <section class="portal-daily" data-private-library data-home-personal={pilot ? undefined : true} data-library-pilot={pilot ? 'v1' : undefined} hidden={pilot} aria-labelledby="private-library-heading">
   <header class="portal-section-heading"><div><h2 id="private-library-heading">Reading on this browser</h2></div></header>
   <p role="status" aria-live="polite" data-library-status>Choose sharing in Library, then connect this browser.</p>
+  <p class="portal-muted">Refresh is manual, limited to eight metadata reads per minute in this tab. Leaving, hiding Home, or changing Library permissions clears this tab’s reading preview. Hub never writes Library records or activates Account cloud sync.</p>
   <div class="portal-account-actions"><button class="portal-button" type="button" data-library-connect>Connect this browser</button><button class="portal-button" type="button" data-library-refresh hidden>Refresh</button><button class="portal-button" type="button" data-library-disconnect hidden>Disconnect this tab</button><a class="portal-button" href="/library/hub" rel="noreferrer">Manage Library sharing</a><a class="portal-button" href="/library/saved">Open My Library</a></div>
   <div data-library-private hidden>
     <fieldset><legend>Show</legend><label><input type="radio" name="library-operation" value="summary" checked/> Reading summary</label> <label><input type="radio" name="library-operation" value="continue"/> Continue</label></fieldset>
