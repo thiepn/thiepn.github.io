@@ -14,7 +14,7 @@ on:
       - 'public/scan/**'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: capture-hub-media
@@ -45,36 +45,14 @@ jobs:
       - name: Capture live Hub apps
         run: node scripts/capture-hub-media.mjs
 
-      - name: Commit canonical Hub media
-        id: commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/assets/hub src/generated/hub-media.json
-          if git diff --cached --quiet; then
-            echo "Canonical Hub media is already current."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "Refresh canonical Hub media"
+      - name: Package generated changes as an owner-reviewable binary patch
+        run: node scripts/prepare-generated-review.mjs capture-hub-media
 
-          for attempt in 1 2 3 4; do
-            echo "Push attempt ${attempt}/4"
-            git pull --rebase origin main
-            if git push origin HEAD:main; then
-              echo "Canonical Hub media pushed successfully."
-              echo "pushed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            sleep 2
-          done
-
-          echo "Failed to push canonical Hub media after 4 attempts."
-          exit 1
-
-      - name: Record owner-controlled Pages release requirement
-        if: steps.commit.outputs.pushed == 'true'
-        run: |
-          echo "::notice title=Owner release required::Hub media was committed to main. Wait for exact-main Quality, then the owner must manually authorize the Pages release."
+      - name: Retain complete generated change patch and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-capture-hub-media
+          path: .cache/generated-review/capture-hub-media/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30

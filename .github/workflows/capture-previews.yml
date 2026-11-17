@@ -9,7 +9,7 @@ on:
       - .github/workflows/capture-previews.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: authentic-project-previews
@@ -39,16 +39,14 @@ jobs:
       - name: Capture live project interfaces
         run: npm run preview:capture -- --all --delay=1400
 
-      - name: Commit refreshed captures
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/projects
-          if git diff --cached --quiet; then
-            echo "No preview captures changed."
-            exit 0
-          fi
-          git commit -m "Refresh authentic project captures"
-          git pull --rebase origin main
-          git push origin HEAD:main
+      - name: Package generated changes as an owner-reviewable binary patch
+        run: node scripts/prepare-generated-review.mjs capture-previews
+
+      - name: Retain complete generated change patch and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-capture-previews
+          path: .cache/generated-review/capture-previews/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
