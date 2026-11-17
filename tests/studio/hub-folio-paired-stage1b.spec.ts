@@ -70,6 +70,7 @@ test('explicit live consent refreshes actual Folio tasks without a second popup 
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   expect(overflow,'No horizontal overflow').toBeLessThanOrEqual(1);
   await live.getByRole('button',{name:'Disconnect'}).click();
+  expect(await page.evaluate(()=>sessionStorage.getItem('folio:hub:task-read-consent:v1'))).toBeNull();
   await expect(page.locator('[data-folio-live]')).toHaveCount(0);
   await expect(page.locator('iframe[title="Folio local task reader"]')).toHaveCount(0);
   await expect(preview).not.toContainText('Stage 1B Inbox item');
@@ -88,4 +89,28 @@ test('original single-share consent remains one-time; live read is not implicit'
   await expect(page.locator('iframe[title="Folio local task reader"]')).toHaveCount(0);
   await expect(page.locator('[data-folio-live]')).toHaveCount(0);
   await popup.close();
+});
+
+test('source-owned iframe refuses requests without Folio popup-issued live consent',async({page})=>{
+  await page.goto('/home/tasks/');
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  const events=await page.evaluate(async()=>{
+    const messages:string[]=[];
+    const listener=(event:MessageEvent)=>{
+      if(event.origin===location.origin && typeof event.data?.type==='string' &&
+        event.data.type.startsWith('thiepn:folio-hub-tasks-read:'))messages.push(event.data.type);
+    };
+    window.addEventListener('message',listener);
+    const iframe=document.createElement('iframe');
+    iframe.hidden=true;
+    iframe.src='/folio/?hubTasksRead='+('a'.repeat(32));
+    document.body.appendChild(iframe);
+    await new Promise<void>(resolve=>{iframe.onload=()=>resolve();setTimeout(resolve,1500)});
+    iframe.contentWindow?.postMessage({type:'thiepn:folio-hub-tasks-read:v1:read',
+      nonce:'a'.repeat(32),requestId:'forged-1'},location.origin);
+    await new Promise(resolve=>setTimeout(resolve,350));
+    iframe.remove();window.removeEventListener('message',listener);
+    return messages;
+  });
+  expect(events).toEqual([]);
 });
