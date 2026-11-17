@@ -10,8 +10,9 @@ function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh
  let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;let refreshConsumed=false;const writes:{owner:string;state:any}[]=[];
  return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
-  if(storageMode!=='normal')await context.addInitScript(mode=>{
+  if(storageMode!=='normal')await context.addInitScript(({mode,noLocks})=>{
    if(location.origin!=='https://thiepn.dev')return;
+   if(noLocks)Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
    if(mode==='idb-blocked'){const open=indexedDB.open.bind(indexedDB);indexedDB.open=(name,version)=>{if(name==='thiepn-hub-account')throw new DOMException('Fixture blocks Account IndexedDB','SecurityError');return open(name,version);};return;}
    if(mode==='session-blocked'){
     if(localStorage.getItem('fixture:session-recovered')!=='1')Object.defineProperty(window,'sessionStorage',{configurable:true,get(){throw new DOMException('Fixture blocks session storage','SecurityError');}});
@@ -20,7 +21,7 @@ function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh
    if(sessionStorage.getItem('fixture:quota-filled'))return;
    sessionStorage.setItem('fixture:quota-filled','1');
    let i=0;for(const size of [500_000,10_000,100,1]){try{for(let n=0;n<1000;n++)localStorage.setItem('fixture:app-data:'+i++,'x'.repeat(size));}catch{}}
-  },storageMode);
+  },{mode:storageMode,noLocks:options.singleUseRefresh===true});
   if(owner)await context.addInitScript(({owner,token,seedOnce})=>{
     if(seedOnce&&localStorage.getItem('a1:seeded')==='1')return;
     localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({
