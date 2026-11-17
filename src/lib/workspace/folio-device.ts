@@ -15,6 +15,20 @@ export interface FolioDeviceSnapshot {
   notes:readonly {id:string;title:string;updatedAt:string}[];
   habits:readonly {id:string;title:string;target:number;value:number;status:'open'|'completed'|'skipped'}[];
 }
+
+/** Short-lived, same-device owner projection; never a cloud synchronization token. */
+export const FOLIO_DEVICE_FRESH_MS = 5 * 60_000;
+export function freshFolioDeviceSnapshot(snapshot:FolioDeviceSnapshot|null,now=Date.now()):snapshot is FolioDeviceSnapshot {
+  if (!snapshot || !Number.isFinite(now)) return false;
+  const created = Date.parse(snapshot.generatedAt);
+  if (!Number.isFinite(created) || now < created || now - created >= FOLIO_DEVICE_FRESH_MS) return false;
+  // Folio's daily projection is created in the device's local calendar day.
+  const date = new Date(now);
+  const localDay = [String(date.getFullYear()).padStart(4,'0'),
+    String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  return snapshot.date === localDay;
+}
 const obj=(v:unknown):v is Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const txt=(v:unknown,max=200)=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f]/.test(v);
 const day=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
