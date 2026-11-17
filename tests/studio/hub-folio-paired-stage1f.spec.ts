@@ -118,7 +118,7 @@ test('source-owned paging beyond row 160 can complete a task with original versi
     try{
       const tx=db.transaction('tasks','readonly');
       return await new Promise<any>((res,rej)=>{
-        const r=tx.objectStore('tasks').get(taskId);
+        const r=tx.objectStore('tasks').get(taskId!);
         r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
       });
     }finally{db.close()}
