@@ -22,7 +22,8 @@ import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import { renderFolioTaskPreview, type FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { FolioTaskChannel } from '../lib/workspace/folio-task-channel';
-import type { FolioTaskFilter } from '../lib/workspace/folio-task-read';
+import { freshFolioTaskRead, type FolioTaskFilter } from '../lib/workspace/folio-task-read';
+import { FOLIO_TASK_ACTION_MESSAGE, type FolioTaskAction } from '../lib/workspace/folio-task-actions';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon, appIcon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
@@ -182,6 +183,8 @@ async function setup(root: HTMLElement) {
     let folioPopup: Window | null = null;
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
     let folioExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+    let folioWriteNonce:string|null=null;
+    let folioWritePopup:Window|null=null;
     let folioTaskFilter:FolioTaskFilter='today';
     const folioLive = new FolioTaskChannel(
         () => {
@@ -202,24 +205,41 @@ async function setup(root: HTMLElement) {
     }
     function updateFolioViews() {
         if (view !== 'tasks') { repaintOverview(); return; }
-        // A 30-second source refresh must not rebuild the native task editor,
-        // interrupt typing, reset scroll position, or steal unrelated focus.
+        // Preserve the native task editor and a user's in-progress Folio form.
         const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
         if (!panel || !state || privacyHeld || state.preferences.hidden) {
             if (state) render();
             return;
         }
         const active=document.activeElement as HTMLElement|null;
+        if(active && panel.contains(active) && active.matches('input,select,textarea'))return;
         const action=active && panel.contains(active) ? active.dataset.action : null;
         const id=action ? active?.dataset.id : null;
+        const savedForm=panel.querySelector<HTMLFormElement>('[data-folio-create-form]');
+        const fields=savedForm?Object.fromEntries(
+            [...new FormData(savedForm).entries()].map(([key,value])=>[key,String(value)])):null;
         const projection=folioProjection();
         panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
             status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,
+            write:{
+                enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
+                message:folioLive.actionMessage,failed:folioLive.actionFailed,
+                undoId:folioLive.lastUndoId,
+            },
         });
+        if(fields){
+            const form=root.querySelector<HTMLFormElement>('[data-folio-create-form]');
+            if(form)for(const [key,value]of Object.entries(fields)){
+                const field=form.elements.namedItem(key);
+                if(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)field.value=value;
+            }
+        }
         if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
             (id?'[data-id="'+id+'"]':''))?.focus();
     }
     function resetFolio() {
+        folioWriteNonce=null;
+        folioWritePopup=null;
         folioLive.close();
         folioTaskFilter='today';
         folioNonce = null;
@@ -232,6 +252,31 @@ async function setup(root: HTMLElement) {
         folioStatus = 'disconnected';
         folioOwner = null;
     }
+    function requestFolioWrite() {
+        if(view!=='tasks'||!state||locked||privacyHeld||state.preferences.hidden||
+           !folioLive.readGrant||folioLive.actionsEnabled||folioLive.status!=='ready')return;
+        folioWriteNonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),
+            byte=>byte.toString(16).padStart(2,'0')).join('');
+        const target=new URL('/folio/',location.origin);
+        target.searchParams.set('hubTaskWrite',folioWriteNonce);
+        folioWritePopup=window.open(target.href,'_blank');
+        if(!folioWritePopup){
+            folioWriteNonce=null;
+            toast('Allow the Folio consent popup and try again.');
+        }
+    }
+    window.addEventListener('message',event=>{
+        const message=event.data;
+        if(!folioWriteNonce||!folioWritePopup||event.origin!==location.origin||
+           event.source!==folioWritePopup||message?.type!==FOLIO_TASK_ACTION_MESSAGE+':consent'||
+           message.nonce!==folioWriteNonce||message.readGrant!==folioLive.readGrant||
+           privacyHeld||!state||state.preferences.hidden||locked)return;
+        folioWriteNonce=null;
+        folioWritePopup=null;
+        if(!folioLive.enableActions(message.writeGrant))
+            toast('Folio task authorization failed. Reopen Folio and review permissions.');
+        updateFolioViews();
+    });
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
         folioLive.close();
@@ -836,6 +881,9 @@ async function setup(root: HTMLElement) {
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
             </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
                 status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,
+                write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
+                    message:folioLive.actionMessage,failed:folioLive.actionFailed,
+                    undoId:folioLive.lastUndoId},
             })}`;
         }
         if (view === 'calendar')
@@ -1991,7 +2039,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'folio-read-filter') {
-            if (['today','inbox','upcoming','all'].includes(target.dataset.id ?? '')) {
+            if (['today','inbox','upcoming','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
                 updateFolioViews();
             }
