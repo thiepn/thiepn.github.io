@@ -1,12 +1,15 @@
-name: Stage 1A paired Folio + Hub browser acceptance
+name: Folio + Hub paired local reader acceptance
 on:
   pull_request:
     paths:
       - 'src/lib/workspace/folio-device.ts'
+      - 'src/lib/workspace/folio-task-read.ts'
+      - 'src/lib/workspace/folio-task-channel.ts'
       - 'src/lib/workspace/folio-panel.ts'
       - 'src/scripts/workspace-home.ts'
       - 'src/styles/workspace.css'
       - 'tests/studio/hub-folio-paired-stage1a.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1b.spec.ts'
       - 'playwright.folio-stage1a.config.ts'
       - '.github/workflows/folio-stage1a-paired.yml'
   workflow_dispatch:
@@ -35,11 +38,13 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+      - name: Focused Stage 1A and 1B unit tests
+        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts
       - name: Checkout pinned Folio companion draft
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: 3f4538797583e642a43db3e06ff1417ef0c68902
+          ref: fa7b61bb375b59839042192550d16331ddb92b05
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -58,7 +63,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1a-paired-evidence
+          name: folio-stage1b-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
