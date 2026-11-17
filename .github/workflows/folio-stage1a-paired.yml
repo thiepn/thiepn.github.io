@@ -1,4 +1,4 @@
-name: Folio + Hub paired Folio-first Task Center acceptance
+name: Folio + Hub paired task-detail and source-consistency acceptance
 on:
   pull_request:
     paths:
@@ -17,6 +17,7 @@ on:
       - 'tests/studio/hub-folio-paired-stage1d.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1e.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1f.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1g.spec.ts'
       - 'tests/unit/folio-task-ux.test.ts'
       - 'tests/unit/folio-task-query.test.ts'
       - 'playwright.folio-stage1a.config.ts'
@@ -53,7 +54,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: 454b6dc27fcc96df7e648be7ffc293911fe6d13d
+          ref: 7a20be9dbbfd6e4074d76072233ff6a8e26aa8bb
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -72,7 +73,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1f-paired-evidence
+          name: folio-stage1g-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
