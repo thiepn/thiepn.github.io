@@ -117,20 +117,26 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
  await a.context.close();
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
- const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true}),a=await api.device(browser,OWNER);
- await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
-  const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
-   const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
-   read.onsuccess=()=>{const record=read.result,token=JSON.parse(record.value);token.expiresAt=0;token.refreshToken='fixture-refreshed';record.value=JSON.stringify(token);store.put(record,'thiepn:hub-sso:v1:tokens');};
-   tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
-  };request.onerror=()=>reject(request.error);
- }));
- await a.page.evaluate(()=>{
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true}),a=await api.device(browser,null);
+ // No prior verified identity or OAuth navigation. Seed a single synthetic,
+ // expired Account credential identically in localStorage and the durable DB.
+ // This isolates true refresh behavior from PKCE and stale VERIFIED cache state.
+ await a.page.evaluate(async accessToken=>{
    const key='thiepn:hub-sso:v1:tokens';
-   const raw=localStorage.getItem(key);
-   if(!raw)throw Error('A1 source mirror missing');
-   localStorage.setItem(key,JSON.stringify({...JSON.parse(raw),expiresAt:0}));
- });
+   const value=JSON.stringify({accessToken,refreshToken:'fixture-refreshed',
+     expiresAt:0,scope:'openid email profile offline_access'});
+   localStorage.setItem(key,value);
+   await new Promise<void>((resolve,reject)=>{
+     const request=indexedDB.open('thiepn-hub-account');
+     request.onsuccess=()=>{
+       const db=request.result,tx=db.transaction('session','readwrite');
+       tx.objectStore('session').put({value,legacy:value},key);
+       tx.oncomplete=()=>{db.close();resolve();};
+       tx.onabort=()=>reject(tx.error);
+     };
+     request.onerror=()=>reject(request.error);
+   });
+ },jwt(OWNER));
  await a.page.close();
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
