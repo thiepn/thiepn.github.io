@@ -20,7 +20,7 @@ export function selectFolioTaskView(snapshot:FolioTaskReadSnapshot,filter:FolioT
   const sourceCount=filter==='all'?snapshot.totalCount:filter==='completed'?(snapshot.recentCompleted??[]).length:snapshot.counts[filter];
   const narrowed=!!query||view.projectId!=='all';
   const rows=active.filter(task=>
-    (view.projectId==='all'||task.projectId===view.projectId) &&
+    (view.projectId==='all'||(view.projectId==='none'?!task.projectId:task.projectId===view.projectId)) &&
     (!query||normalize([task.title,task.projectName??'',task.listName??''].join(' ')).includes(query))
   );
   const groups=new Map<string,{key:string;title:string;rows:FolioReadTask[]}>();
