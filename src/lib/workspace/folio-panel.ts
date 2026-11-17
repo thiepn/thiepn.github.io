@@ -1,4 +1,5 @@
 import { freshFolioDeviceSnapshot, type FolioDeviceSnapshot } from './folio-device';
+import { freshFolioTaskRead, FOLIO_TASK_BUCKETS, type FolioTaskReadSnapshot, type FolioReadStatus, type FolioTaskFilter } from './folio-task-read';
 export type FolioDeviceStatus='disconnected'|'awaiting'|'ready'|'unavailable';
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const fixedLink=(view:'today'|'planner'|'notes'|'habits')=>'/folio/?view='+view;
@@ -38,7 +39,9 @@ export function renderFolioDevice(status:FolioDeviceStatus,snapshot:FolioDeviceS
  * into native Hub tasks, exposes a completion toggle, or claims live synchronization. */
 export function renderFolioTaskPreview(
   status:FolioDeviceStatus, snapshot:FolioDeviceSnapshot|null, now=Date.now(),
+  live?:{status:FolioReadStatus;snapshot:FolioTaskReadSnapshot|null;filter:FolioTaskFilter},
 ):string {
+  if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now);
   const current=freshFolioDeviceSnapshot(snapshot,now)?snapshot:null;
   const state=current?'ready':snapshot?'unavailable':status;
   const heading='<header class="ws-folio-tasks-heading"><div><h2>Folio tasks</h2>'+
@@ -80,4 +83,54 @@ export function renderFolioTaskPreview(
     esc(new Date(current.generatedAt).toLocaleTimeString())+
     '. Not a live task list; Folio remains the task and reminder authority.</p>'+
     refresh+'</section>';
+}
+
+/** A separate live source projection: never creates native Hub task controls. */
+export function renderFolioLiveTaskPreview(
+  status:FolioReadStatus, snapshot:FolioTaskReadSnapshot|null, filter:FolioTaskFilter='today', now=Date.now(),
+):string {
+  const fresh=freshFolioTaskRead(snapshot,now)?snapshot:null;
+  const current=fresh&&status==='ready'?fresh:null;
+  const heading='<header class="ws-folio-tasks-heading"><div><h2>Folio tasks</h2>'+
+    '<p class="ws-muted">Read-only tasks from Folio on this device. Hub tasks above remain separate.</p></div>'+
+    '<a class="ws-text-button" href="/folio/?view=today">Open Folio</a></header>';
+  const actions='<div class="ws-folio-tasks-actions">'+
+    '<button type="button" class="ws-button" data-action="folio-read-refresh">Refresh now</button>'+
+    '<button type="button" class="ws-text-button" data-action="folio-read-disconnect">Disconnect</button></div>';
+  const note='<p class="ws-muted">Local tab only. Automatically refreshes while this Hub tab is visible. '+
+    'No cloud synchronization, task edits or reminders are enabled.</p>';
+  if(!current) {
+    const statusLine=status==='connecting'?'Connecting to Folio on this device…':
+      status==='reading'?'Reading tasks from Folio…':
+      status==='paused'?'Task reads are paused while Hub is in the background.':
+      'Folio tasks are unavailable or stale. Refresh or reconnect; old data is not displayed.';
+    return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Read-only Folio tasks">'+
+      heading+'<p role="status" class="ws-muted">'+statusLine+'</p>'+note+actions+'</section>';
+  }
+  const allFilters:readonly FolioTaskFilter[]=['today','inbox','upcoming','all'];
+  const filterLabel:Record<FolioTaskFilter,string>={today:'Today',inbox:'Inbox',upcoming:'Next 7 days',later:'Later',all:'All'};
+  const tabs='<div class="ws-task-filter-list ws-folio-filter-list" role="group" aria-label="Folio task filters">'+
+    allFilters.map(key=>'<button type="button" class="ws-task-filter-button'+(filter===key?' active':'')+
+    '" aria-pressed="'+(filter===key)+'" data-action="folio-read-filter" data-id="'+key+'">'+
+    filterLabel[key]+' <strong>'+(key==='all'?current.totalCount:current.counts[key])+'</strong></button>').join('')+'</div>';
+  const rows=current.tasks.filter(row=>filter==='all'||row.bucket===filter);
+  const total=filter==='all'?current.totalCount:current.counts[filter];
+  const items=rows.map(task=>{
+    const details=[
+      task.bucket==='today'?'Today':task.bucket==='inbox'?'Inbox':task.bucket==='upcoming'?'Upcoming':'Later',
+      task.deadline?'Deadline '+task.deadline:'',
+      task.plannedDate?'Planned '+task.plannedDate:'',
+      task.priority!=='normal'?'Priority: '+task.priority:'',
+    ].filter(Boolean).map(esc).join(' · ');
+    return '<li class="ws-folio-task-row"><span class="ws-folio-task-mark" aria-hidden="true"></span>'+
+      '<div><strong>'+esc(task.title)+'</strong><small>'+details+'</small></div></li>';
+  }).join('');
+  return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Read-only Folio tasks">'+
+    heading+tabs+'<p role="status" class="ws-muted">Showing '+rows.length+' of '+total+' Folio tasks'+
+    (current.truncated?' · bounded local read':'')+
+    ' · updated '+esc(new Date(current.generatedAt).toLocaleTimeString())+'</p>'+
+    (rows.length?'<ul class="ws-folio-task-list">'+items+'</ul>':
+      '<p class="ws-muted">No tasks in this view.</p>')+
+    (total>rows.length?'<p class="ws-muted">'+(total-rows.length)+' more in Folio; open the source app for the full list.</p>':'')+
+    note+actions+'</section>';
 }
