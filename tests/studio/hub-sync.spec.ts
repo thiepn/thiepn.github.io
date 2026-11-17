@@ -24,7 +24,7 @@ function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh
   if(owner)await context.addInitScript(({owner,token,seedOnce})=>{
     if(seedOnce&&localStorage.getItem('a1:seeded')==='1')return;
     localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({
-      accessToken:token,refreshToken:'fixture-refresh',
+      accessToken:token,refreshToken:seedOnce?'fixture-refreshed':'fixture-refresh',
       expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));
     if(seedOnce)localStorage.setItem('a1:seeded','1');
   },{owner,token:jwt(owner),seedOnce:options.singleUseRefresh===true});
@@ -124,6 +124,12 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
    tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
   };request.onerror=()=>reject(request.error);
  }));
+ await a.page.evaluate(()=>{
+   const key='thiepn:hub-sso:v1:tokens';
+   const raw=localStorage.getItem(key);
+   if(!raw)throw Error('A1 source mirror missing');
+   localStorage.setItem(key,JSON.stringify({...JSON.parse(raw),expiresAt:0}));
+ });
  await a.page.close();
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
