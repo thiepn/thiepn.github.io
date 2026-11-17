@@ -72,7 +72,7 @@ export class FolioTaskChannel {
     frame.tabIndex=-1;
     frame.setAttribute('aria-hidden','true');
     frame.setAttribute('title','Folio local task reader');
-    frame.src='/folio/?hubTasksRead='+this.nonce;
+    frame.src='/folio/?hubTasksRead=1'; // Nonsecret marker; Folio checks tab-scoped grant.
     this.iframe=frame;
     window.addEventListener('message',this.onMessage);
     document.body.appendChild(frame);
