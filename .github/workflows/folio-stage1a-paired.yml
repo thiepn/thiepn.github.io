@@ -1,15 +1,17 @@
-name: Folio + Hub paired local reader acceptance
+name: Folio + Hub paired task development acceptance
 on:
   pull_request:
     paths:
       - 'src/lib/workspace/folio-device.ts'
       - 'src/lib/workspace/folio-task-read.ts'
       - 'src/lib/workspace/folio-task-channel.ts'
+      - 'src/lib/workspace/folio-task-actions.ts'
       - 'src/lib/workspace/folio-panel.ts'
       - 'src/scripts/workspace-home.ts'
       - 'src/styles/workspace.css'
       - 'tests/studio/hub-folio-paired-stage1a.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1b.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1c.spec.ts'
       - 'playwright.folio-stage1a.config.ts'
       - '.github/workflows/folio-stage1a-paired.yml'
   workflow_dispatch:
@@ -39,12 +41,12 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
       - name: Focused Stage 1A and 1B unit tests
-        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts
+        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts
       - name: Checkout pinned Folio companion draft
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: d59ca2248908c68d3d6f07d8d253b30f77eca47a
+          ref: 68ad04ccace419a9a2cf1dcc3164c27e041679fb
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -63,7 +65,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1b-paired-evidence
+          name: folio-stage1c-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
