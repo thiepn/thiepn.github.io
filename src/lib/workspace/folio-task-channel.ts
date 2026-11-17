@@ -2,6 +2,8 @@ import {
   FOLIO_TASK_READ_MESSAGE, FOLIO_LIVE_GRANT_KEY, freshFolioTaskRead, parseFolioTaskRead,
   type FolioTaskReadSnapshot, type FolioReadStatus,
 } from './folio-task-read';
+import { FOLIO_TASK_ACTION_MESSAGE, FOLIO_TASK_WRITE_GRANT_KEY,
+  validFolioTaskActionResult, type FolioTaskAction, type FolioTaskActionResult } from './folio-task-actions';
 
 /** The only code permitted to embed the Folio-owned source reader.
  * Consent comes from the existing user-approved Folio popup, not this frame.
@@ -12,6 +14,14 @@ export class FolioTaskChannel {
   private ready=false;
   private requestId:string|null=null;
   private refreshQueued=false;
+  private writeGrant:string|null=null;
+  private actionRequestId:string|null=null;
+  private actionResolve:((outcome:FolioTaskActionResult)=>void)|null=null;
+  private actionTimeout:ReturnType<typeof setTimeout>|null=null;
+  actionPending=false;
+  actionMessage='';
+  actionFailed=false;
+  lastUndoId:string|null=null;
   private timeout:ReturnType<typeof setTimeout>|null=null;
   private tick:ReturnType<typeof setInterval>|null=null;
   snapshot:FolioTaskReadSnapshot|null=null;
@@ -19,10 +29,87 @@ export class FolioTaskChannel {
 
   constructor(private readonly canRead:()=>boolean,private readonly changed:()=>void){}
 
+  get readGrant(){return this.nonce;}
+  get actionsEnabled(){
+    if(!this.writeGrant||!this.nonce||!this.canRead()||this.status!=='ready')return false;
+    try{
+      const saved=JSON.parse(sessionStorage.getItem(FOLIO_TASK_WRITE_GRANT_KEY)||'null');
+      return saved?.grant===this.writeGrant && saved?.readGrant===this.nonce &&
+        Number.isFinite(saved.expiresAt) && saved.expiresAt>Date.now();
+    }catch{return false;}
+  }
+  enableActions(grant:string){
+    if(!this.nonce||this.status!=='ready'||!/^[0-9a-f]{32}$/.test(grant))return false;
+    this.writeGrant=grant;
+    if(!this.actionsEnabled){this.writeGrant=null;return false;}
+    this.actionMessage='Task actions enabled for this Hub tab';
+    this.actionFailed=false;
+    this.changed();
+    return true;
+  }
+  revokeActions(){
+    if(this.actionResolve)this.actionResolve({ok:false,code:'unavailable',
+      message:'Outcome unconfirmed after disconnect. Check Folio before retrying'});
+    this.actionResolve=null;
+    this.actionRequestId=null;
+    if(this.actionTimeout)clearTimeout(this.actionTimeout);
+    this.actionTimeout=null;
+    this.actionPending=false;
+    try{sessionStorage.removeItem(FOLIO_TASK_WRITE_GRANT_KEY)}catch{}
+    this.writeGrant=null;
+    this.lastUndoId=null;
+    this.actionMessage='';
+    this.actionFailed=false;
+  }
+  async executeAction(action:FolioTaskAction):Promise<FolioTaskActionResult>{
+    if(!this.actionsEnabled||!this.ready||!this.iframe||this.actionPending)return {
+      ok:false,code:'forbidden',message:'Connect Folio and approve task actions first',
+    };
+    const requestId=crypto.randomUUID();
+    this.actionRequestId=requestId;
+    this.actionPending=true;
+    this.actionMessage='Applying action in Folio…';
+    this.actionFailed=false;
+    this.lastUndoId=null;
+    this.changed();
+    return await new Promise<FolioTaskActionResult>(resolve=>{
+      this.actionResolve=resolve;
+      this.actionTimeout=setTimeout(()=>{
+        if(this.actionRequestId!==requestId)return;
+        this.finishAction({ok:false,code:'unavailable',
+          message:'Outcome unconfirmed. Open Folio and check the task before retrying'});
+      },18_000);
+      this.iframe?.contentWindow?.postMessage({
+        type:FOLIO_TASK_ACTION_MESSAGE+':request',nonce:this.nonce,writeGrant:this.writeGrant,
+        requestId,action,
+      },location.origin);
+    });
+  }
+  private finishAction(result:FolioTaskActionResult){
+    const resolve=this.actionResolve;
+    this.actionResolve=null;
+    this.actionRequestId=null;
+    if(this.actionTimeout)clearTimeout(this.actionTimeout);
+    this.actionTimeout=null;
+    this.actionPending=false;
+    this.actionMessage=result.message;
+    this.actionFailed=!result.ok;
+    this.lastUndoId=result.ok?result.undoId??null:null;
+    this.changed();
+    if(result.ok)this.refresh(); // Read original source after an acknowledged mutation
+    resolve?.(result);
+  }
+
   private readonly onMessage=(event:MessageEvent)=>{
     if(!this.iframe||event.origin!==location.origin||
        event.source!==this.iframe.contentWindow||!this.nonce||
        !event.data||event.data.nonce!==this.nonce||!this.canRead())return;
+    if(event.data.type===FOLIO_TASK_ACTION_MESSAGE+':result'){
+      if(this.actionRequestId===event.data.requestId&&this.writeGrant===event.data.writeGrant&&
+         validFolioTaskActionResult(event.data.result))
+        this.finishAction(event.data.result);
+      return;
+    }
     if(event.data.type===FOLIO_TASK_READ_MESSAGE+':ready'){
       if(this.ready)return;
       this.ready=true;
@@ -61,8 +148,10 @@ export class FolioTaskChannel {
     if(repeat)setTimeout(()=>this.refresh(),0);
   }
   start(grant:string,reconnect=false){
+    const oldWrite=reconnect?this.writeGrant:null;
     this.close(!reconnect);
     if(!this.canRead()||!/^[0-9a-f]{32}$/.test(grant))return;
+    this.writeGrant=oldWrite;
     // The capability was issued by Folio's explicit consent click.
     // Hub never provisions or persists it.
     this.nonce=grant;
@@ -117,6 +206,16 @@ export class FolioTaskChannel {
     this.refresh();
   }
   close(revoke=true){
+    if(revoke)this.revokeActions();
+    else if(this.actionResolve){
+      this.actionResolve({ok:false,code:'unavailable',
+        message:'Outcome unconfirmed. Check Folio before trying again'});
+      this.actionResolve=null;
+      this.actionPending=false;
+      this.actionRequestId=null;
+      if(this.actionTimeout)clearTimeout(this.actionTimeout);
+      this.actionTimeout=null;
+    }
     if(revoke&&this.nonce){
       try {
         const saved=JSON.parse(sessionStorage.getItem(FOLIO_LIVE_GRANT_KEY)||'null');
@@ -134,6 +233,7 @@ export class FolioTaskChannel {
     this.refreshQueued=false;
     this.ready=false;
     this.snapshot=null;
+    if(revoke)this.writeGrant=null;
     this.status='disconnected';
   }
 }
