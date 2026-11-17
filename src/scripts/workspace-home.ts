@@ -3141,6 +3141,24 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        // The full Folio task inspector links form a lightweight keyboard
+        // roving list. Do not intercept input, date or native Hub controls.
+        const focused=event.target as HTMLElement;
+        if(view==='tasks' && !event.altKey && !event.ctrlKey && !event.metaKey &&
+           !event.shiftKey && !event.isComposing &&
+           focused.matches?.('[data-folio-detail-link]') &&
+           (event.key==='ArrowDown'||event.key==='ArrowUp')){
+            const links=[...root.querySelectorAll<HTMLAnchorElement>(
+                '[data-folio-live] [data-folio-detail-link]')];
+            const at=links.indexOf(focused as HTMLAnchorElement);
+            const next=event.key==='ArrowDown'?at+1:at-1;
+            if(at>=0&&next>=0&&next<links.length){
+                event.preventDefault();
+                links[next].focus({preventScroll:true});
+                links[next].scrollIntoView({block:'nearest'});
+            }
+            return;
+        }
         if(event.altKey && event.shiftKey && event.key.toLowerCase()==='n' &&
            !event.repeat && !dialog.open && !searchDialog.open && !account.open &&
            view==='tasks' && folioLive.actionsEnabled && !privacyHeld && !locked &&
