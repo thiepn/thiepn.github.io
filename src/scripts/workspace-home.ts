@@ -2062,6 +2062,14 @@ async function setup(root: HTMLElement) {
                 toast('This Folio task has changed. Refresh before applying the action.');
                 return;
             }
+            if(action==='folio-action-complete'&&'bucket' in item&&
+               (item.recurring||item.hasSubtasks)){
+                const warning=[item.recurring?'Completing this recurring task may create a next occurrence.':'',
+                    item.hasSubtasks?'Completing this parent task also completes its subtasks.':'',
+                    'Undo may be unavailable; review the full task in Folio if necessary.'
+                ].filter(Boolean).join(' ');
+                if(!window.confirm(warning))return;
+            }
             let command:FolioTaskAction;
             if(action==='folio-action-reschedule'){
                 const day=root.querySelector<HTMLInputElement>('[data-folio-plan-id="'+CSS.escape(id)+'"]')?.value ?? '';
