@@ -1,4 +1,4 @@
-name: Folio + Hub paired task development acceptance
+name: Folio + Hub paired task command acceptance
 on:
   pull_request:
     paths:
@@ -12,6 +12,7 @@ on:
       - 'tests/studio/hub-folio-paired-stage1a.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1b.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1c.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1d.spec.ts'
       - 'playwright.folio-stage1a.config.ts'
       - '.github/workflows/folio-stage1a-paired.yml'
   workflow_dispatch:
@@ -46,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: 68ad04ccace419a9a2cf1dcc3164c27e041679fb
+          ref: 49bfc1ebbe7c48114e31eed017ece84b08c483a8
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -65,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1c-paired-evidence
+          name: folio-stage1d-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
