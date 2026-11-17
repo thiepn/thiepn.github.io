@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,validHubCalendarDay,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
+import { CalendarConnectionFailure,calendarEsc,fetchHubCalendar,hubCalendarOrigin,hubCalendarCoversWindow,validHubCalendarDay,parseHubCalendar } from "../../src/lib/workspace/google-calendar-c1";
 const NOW=Date.parse("2026-10-21T15:00:00Z");
 const source=()=>{
   const event={id:'["primary","event-1"]',source:"google-calendar",title:"TI Übung",
@@ -32,6 +32,17 @@ describe("C1 owner calendar client",()=>{
     expect(calendarEsc('<img src=x onerror="alert(1)">')).toContain("&lt;img");
     expect(calendarEsc('<img src=x onerror="alert(1)">')).not.toContain("<img");
   });
+  it("rejects a stale or out-of-window projection when the selected day/week changes",()=>{
+    const cached=parseHubCalendar(source(),NOW);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",1,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",7,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-27",1,NOW)).toBe(true);
+    expect(hubCalendarCoversWindow(cached,"2026-10-20",1,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-28",1,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-22",7,NOW)).toBe(false);
+    expect(hubCalendarCoversWindow(cached,"2026-10-21",1,NOW+300001)).toBe(false);
+    expect(hubCalendarCoversWindow(null,"2026-10-21",1,NOW)).toBe(false);
+  });
   it("sends only a bearer, read-only, no-store request and checks its window",async()=>{
     const params:{url?:string;init?:RequestInit}={};
     const fetcher=(async(url:RequestInfo|URL,init?:RequestInit)=>{
@@ -51,13 +62,21 @@ describe("C1 owner calendar client",()=>{
 });
 
 describe("C1 actionable source failures",()=>{
-  for(const [status,issue] of [[401,"session"],[403,"permission"],[404,"endpoint"],[503,"source"]] as const){
+  for(const [status,issue] of [[400,"request"],[401,"session"],[403,"permission"],[404,"endpoint"],[500,"source"],[503,"source"]] as const){
     it("classifies HTTP "+status+" without exposing response details",async()=>{
       const fetcher=(async()=>new Response(JSON.stringify({error:"private"}),{status})) as typeof fetch;
       await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,fetcher))
         .rejects.toMatchObject({name:"CalendarConnectionFailure",issue});
     });
   }
+  it("classifies an invalid 200 payload separately from a failed network request",async()=>{
+    const html=(async()=>new Response("<html>Sign in</html>",{status:200,headers:{"content-type":"text/html"}})) as typeof fetch;
+    await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,html))
+      .rejects.toMatchObject({name:"CalendarConnectionFailure",issue:"invalid-response"});
+    const invalid=(async()=>new Response(JSON.stringify({ok:true,data:{...source(),generatedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString(),events:[{...source().events[0],end:"bad-date"}]}}),{status:200})) as typeof fetch;
+    await expect(fetchHubCalendar("https://study.thiepn.dev","signed.example.token","2026-10-21",new AbortController().signal,invalid))
+      .rejects.toMatchObject({name:"CalendarConnectionFailure",issue:"invalid-response"});
+  });
   it("does not mistake an unreachable provider for a connected calendar",()=>{
     expect(new CalendarConnectionFailure("network").issue).toBe("network");
   });

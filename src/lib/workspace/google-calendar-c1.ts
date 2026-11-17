@@ -1,5 +1,6 @@
 /** Read-only StudyOS Google Calendar consumer. No second calendar store or OAuth tokens. */
-export type CalendarConnectionIssue = "session"|"permission"|"endpoint"|"source"|"network"|"timeout";
+import { addDays } from "./model";
+export type CalendarConnectionIssue = "session"|"permission"|"endpoint"|"source"|"request"|"invalid-response"|"network"|"timeout";
 export class CalendarConnectionFailure extends Error {
   constructor(public readonly issue:CalendarConnectionIssue){
     super("StudyOS calendar request failed: "+issue);
@@ -62,6 +63,13 @@ export function parseHubCalendar(input:unknown,now=Date.now()):HubCalendarData {
   }
   return input as HubCalendarData;
 }
+/** A cached seven-day response is not evidence for a different selected day/week. */
+export function hubCalendarCoversWindow(
+  data:HubCalendarData|null,from:string,days:1|7,now=Date.now()
+):boolean {
+  return data!==null&&date(from)&&Date.parse(data.expiresAt)>now&&
+    data.from<=from&&addDays(data.from,data.days)>=addDays(from,days);
+}
 export async function fetchHubCalendar(origin:string,token:string,from:string,signal:AbortSignal,fetcher:typeof fetch=fetch):Promise<HubCalendarData>{
   if(!hubCalendarOrigin(origin)||!date(from)||!token||token.length>16000||
     !/^[\x21-\x7e]+$/.test(token))throw Error("Calendar connection unavailable");
@@ -72,16 +80,21 @@ export async function fetchHubCalendar(origin:string,token:string,from:string,si
   if(!response.ok){
     const issue:CalendarConnectionIssue=response.status===401?"session":
       response.status===403?"permission":response.status===404?"endpoint":
-      response.status===503?"source":"network";
+      [500,502,503,504].includes(response.status)?"source":response.status===400?"request":"network";
     throw new CalendarConnectionFailure(issue);
   }
-  if(Number(response.headers.get("content-length")||0)>100000)throw Error("Calendar response too large");
-  const text=await response.text();
-  if(new TextEncoder().encode(text).byteLength>100000)throw Error("Calendar response too large");
-  const result:unknown=JSON.parse(text);
-  if(!obj(result)||result.ok!==true)throw Error("Invalid calendar envelope");
-  const data=parseHubCalendar(result.data);
-  if(data.from!==from||data.days!==7)throw Error("Calendar returned wrong window");
+  if(Number(response.headers.get("content-length")||0)>100000)
+    throw new CalendarConnectionFailure("invalid-response");
+  const body=await response.text();
+  if(new TextEncoder().encode(body).byteLength>100000)
+    throw new CalendarConnectionFailure("invalid-response");
+  let result:unknown;
+  try { result=JSON.parse(body) } catch { throw new CalendarConnectionFailure("invalid-response"); }
+  if(!obj(result)||result.ok!==true)throw new CalendarConnectionFailure("invalid-response");
+  let data:HubCalendarData;
+  try { data=parseHubCalendar(result.data); }
+  catch { throw new CalendarConnectionFailure("invalid-response"); }
+  if(data.from!==from||data.days!==7)throw new CalendarConnectionFailure("invalid-response");
   return data;
 }
 export const calendarEsc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,c=>
