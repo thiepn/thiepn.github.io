@@ -11,6 +11,7 @@ export class FolioTaskChannel {
   private nonce:string|null=null;
   private ready=false;
   private requestId:string|null=null;
+  private refreshQueued=false;
   private timeout:ReturnType<typeof setTimeout>|null=null;
   private tick:ReturnType<typeof setInterval>|null=null;
   snapshot:FolioTaskReadSnapshot|null=null;
@@ -34,6 +35,8 @@ export class FolioTaskChannel {
        event.data.type!==FOLIO_TASK_READ_MESSAGE+':error')return;
     this.requestId=null;
     this.clearTimeout();
+    const repeat=this.refreshQueued;
+    this.refreshQueued=false;
     try {
       if(event.data.type!==FOLIO_TASK_READ_MESSAGE+':result')throw Error('Folio source unavailable');
       const snapshot=parseFolioTaskRead(event.data.snapshot);
@@ -44,14 +47,18 @@ export class FolioTaskChannel {
       this.status='unavailable';
     }
     this.changed();
+    if(repeat)setTimeout(()=>this.refresh(),0);
   };
   private clearTimeout(){if(this.timeout)clearTimeout(this.timeout);this.timeout=null;}
   private fail(){
+    const repeat=this.refreshQueued;
+    this.refreshQueued=false;
     this.snapshot=null;
     this.requestId=null;
     this.status='unavailable';
     this.clearTimeout();
     this.changed();
+    if(repeat)setTimeout(()=>this.refresh(),0);
   }
   start(grant:string,reconnect=false){
     this.close(!reconnect);
@@ -81,7 +88,9 @@ export class FolioTaskChannel {
       else this.fail();
       return;
     }
-    if(this.requestId)return;
+    // A user-requested refresh must not disappear behind a still-in-flight
+    // focus/visibility poll. Deliver one guaranteed trailing source read.
+    if(this.requestId){this.refreshQueued=true;return;}
     if(this.snapshot&&!freshFolioTaskRead(this.snapshot)){
       this.snapshot=null;
     }
@@ -97,6 +106,7 @@ export class FolioTaskChannel {
     if(this.status==='disconnected')return;
     this.snapshot=null;
     this.requestId=null;
+    this.refreshQueued=false;
     this.clearTimeout();
     this.status='paused';
     this.changed();
@@ -121,6 +131,7 @@ export class FolioTaskChannel {
     this.iframe=null;
     this.nonce=null;
     this.requestId=null;
+    this.refreshQueued=false;
     this.ready=false;
     this.snapshot=null;
     this.status='disconnected';
