@@ -237,6 +237,9 @@ async function setup(root: HTMLElement) {
         const searchFocused=active instanceof HTMLInputElement && active.matches('[data-folio-search]');
         const cursor=searchFocused?{start:(active as HTMLInputElement).selectionStart,end:(active as HTMLInputElement).selectionEnd}:null;
         const optionsOpen=panel.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced')?.open??false;
+        const detailFocused=active instanceof HTMLAnchorElement &&
+            active.matches('[data-folio-detail-link]')?
+            active.closest<HTMLElement>('[data-folio-source-task]')?.dataset.folioSourceTask:null;
         const action=active && panel.contains(active) ? active.dataset.action : null;
         const id=action ? active?.dataset.id : null;
         const savedForm=panel.querySelector<HTMLFormElement>('[data-folio-create-form]');
@@ -269,6 +272,10 @@ async function setup(root: HTMLElement) {
                 if(cursor?.start!==null&&cursor?.start!==undefined)
                     next.setSelectionRange(cursor.start,cursor.end??cursor.start);
             }
+        }else if(detailFocused){
+            const link=root.querySelector<HTMLAnchorElement>('[data-folio-source-task="'+
+                CSS.escape(detailFocused)+'"] [data-folio-detail-link]');
+            (link??root.querySelector<HTMLButtonElement>('[data-action=folio-page-restart]'))?.focus({preventScroll:true});
         }else if(emptyCapture){
             root.querySelector<HTMLInputElement>('[data-folio-create-form] input[name=title]')?.focus({preventScroll:true});
         }else if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
@@ -3104,6 +3111,22 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('keydown', event => {
         const target = event.target as HTMLElement;
+        if(target.matches('[data-folio-detail-link]')&&!event.altKey&&!event.metaKey&&
+           !event.ctrlKey&&!event.shiftKey&&!event.isComposing&&
+           ['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+            const panel=target.closest<HTMLElement>('[data-folio-task-preview]');
+            const links=panel?[...panel.querySelectorAll<HTMLAnchorElement>('[data-folio-detail-link]')]
+                .filter(link=>link.getClientRects().length>0):[];
+            const idx=links.indexOf(target as HTMLAnchorElement);
+            if(idx>=0&&links.length){
+                event.preventDefault();
+                const next=event.key==='Home'?0:event.key==='End'?links.length-1:
+                    Math.max(0,Math.min(links.length-1,idx+(event.key==='ArrowDown'?1:-1)));
+                links[next]?.focus({preventScroll:true});
+                links[next]?.scrollIntoView({block:'nearest',inline:'nearest'});
+            }
+            return;
+        }
         if (target.matches('[data-capture-draft]') && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             event.preventDefault();
             target.closest<HTMLFormElement>('form')?.requestSubmit();
