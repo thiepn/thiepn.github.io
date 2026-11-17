@@ -458,3 +458,10 @@
 .ws-folio-project-link:focus-visible,.ws-legacy-task-drawer>summary:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px;}
 .ws-folio-task-preview:first-child{margin-top:0;}
 @media(max-width:480px){.ws-legacy-task-drawer{padding:0 10px 10px;}.ws-legacy-task-drawer>summary{flex-direction:column;align-items:flex-start;padding:10px 0;}.ws-legacy-task-drawer>summary span{text-align:left;}.ws-folio-pages span{flex-basis:100%;}}
+
+
+/* Stage 1G: usable source detail links, keyboard travel and changed-page state. */
+.ws-folio-detail-link{display:inline-flex;align-items:center;min-height:44px;padding-inline:8px;box-sizing:border-box;text-underline-offset:3px;}
+.ws-folio-detail-link:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px;}
+.ws-folio-pages [data-action=folio-page-restart]{min-height:44px;}
+@media(max-width:390px){.ws-folio-detail-link{width:auto;min-width:110px;justify-content:flex-start;}}
