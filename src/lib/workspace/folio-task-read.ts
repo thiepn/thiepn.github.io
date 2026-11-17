@@ -10,6 +10,7 @@ export const FOLIO_TASK_BUCKETS:readonly FolioTaskBucket[]=['today','inbox','upc
 export interface FolioReadTask {
   id:string;title:string;status:'todo'|'inbox';priority:'normal'|'high'|'critical';
   updatedAt:string;plannedDate?:string;deadline?:string;bucket:FolioTaskBucket;
+  recurring?:boolean;hasSubtasks?:boolean;
 }
 export interface FolioTaskReadSnapshot {
   schema:'thiepn:folio-hub-tasks';version:1;source:'folio-local-device';
@@ -48,6 +49,8 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
       !FOLIO_TASK_BUCKETS.includes(value.bucket as FolioTaskBucket)||
       (value.deadline!==undefined&&!day(value.deadline))||
       (value.plannedDate!==undefined&&!day(value.plannedDate))||
+      (value.recurring!==undefined&&typeof value.recurring!=='boolean')||
+      (value.hasSubtasks!==undefined&&typeof value.hasSubtasks!=='boolean')||
       seen.has(value.id as string))throw Error('Invalid Folio task');
     seen.add(value.id as string);
     visible[value.bucket as string]!++;
