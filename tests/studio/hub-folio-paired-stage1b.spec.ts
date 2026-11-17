@@ -103,7 +103,7 @@ test('source-owned iframe refuses requests without Folio popup-issued live conse
     window.addEventListener('message',listener);
     const iframe=document.createElement('iframe');
     iframe.hidden=true;
-    iframe.src='/folio/?hubTasksRead='+('a'.repeat(32));
+    iframe.src='/folio/?hubTasksRead=1';
     document.body.appendChild(iframe);
     await new Promise<void>(resolve=>{iframe.onload=()=>resolve();setTimeout(resolve,1500)});
     iframe.contentWindow?.postMessage({type:'thiepn:folio-hub-tasks-read:v1:read',
@@ -113,4 +113,5 @@ test('source-owned iframe refuses requests without Folio popup-issued live conse
     return messages;
   });
   expect(events).toEqual([]);
+  expect(await page.evaluate(()=>sessionStorage.getItem('folio:hub:task-read-consent:v1'))).toBeNull();
 });
