@@ -4,7 +4,7 @@ export const FOLIO_TASK_READ_MESSAGE='thiepn:folio-hub-tasks-read:v1' as const;
 export const FOLIO_LIVE_GRANT_KEY='folio:hub:task-read-consent:v1' as const;
 export const FOLIO_TASK_READ_MAX_AGE_MS=90_000;
 export type FolioTaskBucket='today'|'inbox'|'upcoming'|'later';
-export type FolioTaskFilter=FolioTaskBucket|'all';
+export type FolioTaskFilter=FolioTaskBucket|'all'|'completed';
 export type FolioReadStatus='disconnected'|'connecting'|'reading'|'ready'|'paused'|'unavailable';
 export const FOLIO_TASK_BUCKETS:readonly FolioTaskBucket[]=['today','inbox','upcoming','later'];
 export interface FolioReadTask {
@@ -15,6 +15,7 @@ export interface FolioTaskReadSnapshot {
   schema:'thiepn:folio-hub-tasks';version:1;source:'folio-local-device';
   date:string;generatedAt:string;totalCount:number;
   counts:Record<FolioTaskBucket,number>;truncated:boolean;tasks:readonly FolioReadTask[];
+  recentCompleted?:readonly {id:string;title:string;priority:'normal'|'high'|'critical';updatedAt:string;completedAt?:string;plannedDate?:string}[];
 }
 const obj=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const day=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -52,6 +53,19 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
     visible[value.bucket as string]!++;
   }
   if(FOLIO_TASK_BUCKETS.some(b=>visible[b]!>Number(counts[b])))throw Error('Invalid Folio bucket coverage');
+  if(raw.recentCompleted!==undefined){
+    if(!Array.isArray(raw.recentCompleted)||raw.recentCompleted.length>20)throw Error('Invalid Folio completed tasks');
+    const completeIds=new Set<string>();
+    for(const completed of raw.recentCompleted){
+      if(!obj(completed)||!text(completed.id,128)||!text(completed.title,160)||
+         !text(completed.updatedAt,64)||!Number.isFinite(Date.parse(completed.updatedAt))||
+         !['normal','high','critical'].includes(String(completed.priority))||
+         (completed.plannedDate!==undefined&&!day(completed.plannedDate))||
+         (completed.completedAt!==undefined&&!Number.isFinite(Date.parse(String(completed.completedAt))))||
+         seen.has(completed.id)||completeIds.has(completed.id))throw Error('Invalid recently completed Folio task');
+      completeIds.add(completed.id);
+    }
+  }
   const parsed=raw as unknown as FolioTaskReadSnapshot;
   if(!freshFolioTaskRead(parsed,now))throw Error('Expired Folio task read');
   return parsed;
