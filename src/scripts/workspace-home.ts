@@ -23,6 +23,7 @@ import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import { renderFolioTaskPreview, type FolioDeviceStatus } from '../lib/workspace/folio-panel';
 import { FolioTaskChannel } from '../lib/workspace/folio-task-channel';
 import { freshFolioTaskRead, type FolioTaskFilter } from '../lib/workspace/folio-task-read';
+import { DEFAULT_FOLIO_TASK_VIEW, type FolioTaskView } from '../lib/workspace/folio-task-ux';
 import { FOLIO_TASK_ACTION_MESSAGE, type FolioTaskAction } from '../lib/workspace/folio-task-actions';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon, appIcon } from '../lib/workspace/icons';
@@ -186,6 +187,7 @@ async function setup(root: HTMLElement) {
     let folioWriteNonce:string|null=null;
     let folioWritePopup:Window|null=null;
     let folioTaskFilter:FolioTaskFilter='today';
+    let folioTaskView:FolioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
     const folioLive = new FolioTaskChannel(
         () => {
             const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
@@ -203,7 +205,7 @@ async function setup(root: HTMLElement) {
         return { status: !allowed ? 'disconnected' as const :
             folioSnapshot && !snapshot ? 'unavailable' as const : folioStatus, snapshot };
     }
-    function updateFolioViews() {
+    function updateFolioViews(force=false) {
         if (view !== 'tasks') { repaintOverview(); return; }
         // Preserve the native task editor and a user's in-progress Folio form.
         const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
@@ -212,7 +214,10 @@ async function setup(root: HTMLElement) {
             return;
         }
         const active=document.activeElement as HTMLElement|null;
-        if(active && panel.contains(active) && active.matches('input,select,textarea'))return;
+        if(!force && active && panel.contains(active) && active.matches('input,select,textarea'))return;
+        const searchFocused=force && active instanceof HTMLInputElement && active.matches('[data-folio-search]');
+        const cursor=searchFocused?{start:(active as HTMLInputElement).selectionStart,end:(active as HTMLInputElement).selectionEnd}:null;
+        const optionsOpen=panel.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced')?.open??false;
         const action=active && panel.contains(active) ? active.dataset.action : null;
         const id=action ? active?.dataset.id : null;
         const savedForm=panel.querySelector<HTMLFormElement>('[data-folio-create-form]');
@@ -220,13 +225,15 @@ async function setup(root: HTMLElement) {
             [...new FormData(savedForm).entries()].map(([key,value])=>[key,String(value)])):null;
         const projection=folioProjection();
         panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
-            status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,
+            status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,view:folioTaskView,
             write:{
                 enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                 message:folioLive.actionMessage,failed:folioLive.actionFailed,
                 undoId:folioLive.lastUndoId,
             },
         });
+        const newDetails=root.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced');
+        if(newDetails)newDetails.open=optionsOpen;
         if(fields){
             const form=root.querySelector<HTMLFormElement>('[data-folio-create-form]');
             if(form)for(const [key,value]of Object.entries(fields)){
@@ -234,14 +241,22 @@ async function setup(root: HTMLElement) {
                 if(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)field.value=value;
             }
         }
-        if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
-            (id?'[data-id="'+id+'"]':''))?.focus();
+        if(searchFocused){
+            const next=root.querySelector<HTMLInputElement>('[data-folio-search]');
+            if(next){
+                next.focus({preventScroll:true});
+                if(cursor?.start!==null&&cursor?.start!==undefined)
+                    next.setSelectionRange(cursor.start,cursor.end??cursor.start);
+            }
+        }else if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
+            (id?'[data-id="'+id+'"]':''))?.focus({preventScroll:true});
     }
     function resetFolio() {
         folioWriteNonce=null;
         folioWritePopup=null;
         folioLive.close();
         folioTaskFilter='today';
+        folioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -880,7 +895,7 @@ async function setup(root: HTMLElement) {
               <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
             </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
-                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,
+                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
                 write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                     message:folioLive.actionMessage,failed:folioLive.actionFailed,
                     undoId:folioLive.lastUndoId},
@@ -2047,7 +2062,8 @@ async function setup(root: HTMLElement) {
                 void folioLive.executeAction({kind:'undo',undoId:id});
             return;
         }
-        if (['folio-action-complete','folio-action-reopen','folio-action-reschedule'].includes(action)) {
+        if (['folio-action-complete','folio-action-reopen','folio-action-reschedule',
+            'folio-action-today','folio-action-tomorrow'].includes(action)) {
             const snapshot=folioLive.snapshot;
             if(!folioLive.actionsEnabled||!freshFolioTaskRead(snapshot)||folioLive.actionPending){
                 toast('Folio actions are unavailable. Refresh and review the source task.');
@@ -2071,8 +2087,10 @@ async function setup(root: HTMLElement) {
                 if(!window.confirm(warning))return;
             }
             let command:FolioTaskAction;
-            if(action==='folio-action-reschedule'){
-                const day=root.querySelector<HTMLInputElement>('[data-folio-plan-id="'+CSS.escape(id)+'"]')?.value ?? '';
+            if(action==='folio-action-reschedule'||action==='folio-action-today'||action==='folio-action-tomorrow'){
+                const day=action==='folio-action-today'?today():
+                    action==='folio-action-tomorrow'?addDays(today(),1):
+                    root.querySelector<HTMLInputElement>('[data-folio-plan-id="'+CSS.escape(id)+'"]')?.value ?? '';
                 if(day && !safeNavigationDay(day)){toast('Choose a valid planned date.');return;}
                 command={kind:'reschedule',taskId:id,expectedUpdatedAt:version,plannedDate:day||null};
             }else{
@@ -2085,7 +2103,7 @@ async function setup(root: HTMLElement) {
             return;
         }
         if (action === 'folio-read-filter') {
-            if (['today','inbox','upcoming','completed','all'].includes(target.dataset.id ?? '')) {
+            if (['today','inbox','upcoming','later','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
                 updateFolioViews();
             }
@@ -2932,16 +2950,25 @@ async function setup(root: HTMLElement) {
             }
             const data=new FormData(sourceForm);
             const title=String(data.get('title')??'').trim();
-            const status=data.get('status')==='inbox'?'inbox':'todo';
+            const trigger=event.submitter as HTMLElement|null;
+            const status=trigger?.dataset.folioSubmit==='inbox'||data.get('status')==='inbox'?'inbox':'todo';
             const priority=['high','critical'].includes(String(data.get('priority'))) ?
                 String(data.get('priority')) as 'high'|'critical':'normal';
             const plannedDate=String(data.get('plannedDate')??'');
+            const projectId=String(data.get('projectId')??'');
+            const listId=String(data.get('listId')??'');
             if(!title||title.length>160||status==='todo'&&plannedDate&&!safeNavigationDay(plannedDate)){
                 toast('Check the Folio task title and planned date.');
                 return;
             }
+            const snapshot=folioLive.snapshot;
+            if(projectId && !snapshot?.availableProjects?.some(p=>p.id===projectId)||
+               listId && !snapshot?.availableLists?.some(l=>l.id===listId)){
+                toast('Project or list changed in Folio. Refresh before creating.');return;
+            }
             const command:FolioTaskAction={kind:'create',title,status,priority,
-                ...(status==='todo'&&plannedDate?{plannedDate}:{})};
+                ...(status==='todo'&&plannedDate?{plannedDate}:{}),
+                ...(projectId?{projectId}:{}),...(listId?{listId}:{})};
             void folioLive.executeAction(command).then(result=>{
                 if(result.ok){
                     root.querySelector<HTMLFormElement>('[data-folio-create-form]')?.reset();
