@@ -1,5 +1,13 @@
 name: Account A1 isolated no-Web-Locks diagnostics
 on:
+  pull_request:
+    paths:
+      - 'src/lib/hub-account-persistence.ts'
+      - 'src/lib/hub-account-storage.ts'
+      - 'src/scripts/hub-account.ts'
+      - 'vendor/account-session/src/**'
+      - 'tests/studio/hub-sync.spec.ts'
+      - '.github/workflows/account-a1-isolated.yml'
   push:
     branches: [fix/account-cross-tab-a1]
     paths:
