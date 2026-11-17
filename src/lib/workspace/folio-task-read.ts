@@ -71,12 +71,12 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
     const completeIds=new Set<string>();
     for(const completed of raw.recentCompleted){
       if(!obj(completed)||!text(completed.id,128)||!text(completed.title,160)||
-         !text(completed.updatedAt,64)||!Number.isFinite(Date.parse(completed.updatedAt))||
+         !text(completed.updatedAt,64)||!Number.isFinite(Date.parse(completed.updatedAt as string))||
          !['normal','high','critical'].includes(String(completed.priority))||
          (completed.plannedDate!==undefined&&!day(completed.plannedDate))||
          (completed.completedAt!==undefined&&!Number.isFinite(Date.parse(String(completed.completedAt))))||
-         seen.has(completed.id)||completeIds.has(completed.id))throw Error('Invalid recently completed Folio task');
-      completeIds.add(completed.id);
+         seen.has(completed.id as string)||completeIds.has(completed.id as string))throw Error('Invalid recently completed Folio task');
+      completeIds.add(completed.id as string);
     }
   }
   for(const key of ['availableProjects','availableLists'] as const){
@@ -85,9 +85,9 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
       if(!Array.isArray(values)||values.length>80)throw Error('Invalid Folio source context');
       const ids=new Set<string>();
       for(const entry of values){
-        if(!obj(entry)||!text(entry.id,128)||!text(entry.name,120)||ids.has(entry.id))
+        if(!obj(entry)||!text(entry.id,128)||!text(entry.name,120)||ids.has(entry.id as string))
           throw Error('Invalid Folio source context entry');
-        ids.add(entry.id);
+        ids.add(entry.id as string);
       }
     }
   }
