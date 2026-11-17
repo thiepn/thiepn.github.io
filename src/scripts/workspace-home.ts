@@ -285,8 +285,10 @@ async function setup(root: HTMLElement) {
             folioTimeout = null;
             // An explicit, separate Folio Share click authorizes auto-refresh
             // only in this Tasks tab. A normal one-time share remains unchanged.
-            if (view === 'tasks' && event.data?.liveTasks === true)
-                folioLive.start();
+            if (view === 'tasks' && event.data?.liveTasks === true &&
+                typeof event.data?.liveGrant === 'string' &&
+                /^[0-9a-f]{32}$/.test(event.data.liveGrant))
+                folioLive.start(event.data.liveGrant);
         } catch {
             // Ignore unrelated messages: no echo, fallback data or weakened validation.
             return;
