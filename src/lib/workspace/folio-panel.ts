@@ -143,6 +143,8 @@ export function renderFolioLiveTaskPreview(
       task.deadline?'Deadline '+task.deadline:'',
       task.plannedDate?'Planned '+task.plannedDate:'',
       task.priority!=='normal'?'Priority: '+task.priority:'',
+      task.recurring?'Recurring — completion may create another occurrence':'',
+      task.hasSubtasks?'Parent task — completing also completes subtasks':'',
     ].filter(Boolean).map(esc).join(' · ');
     const controls=write?.enabled?
       '<div class="ws-folio-row-actions"><button class="ws-text-button" type="button" data-action="folio-action-complete" data-id="'+
