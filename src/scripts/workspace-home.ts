@@ -214,7 +214,12 @@ async function setup(root: HTMLElement) {
             return;
         }
         const active=document.activeElement as HTMLElement|null;
-        if(!force && active && panel.contains(active) && active.matches('input,select,textarea'))return;
+        // Empty quick capture after an acknowledged Enter submission is safe
+        // to redraw. Nonempty drafts, date edits and IME compositions are not.
+        const emptyCapture=active instanceof HTMLInputElement &&
+            active.matches('[data-folio-create-form] input[name=title]') && !active.value;
+        if(!force && active && panel.contains(active) && active.matches('input,select,textarea') &&
+           !emptyCapture)return;
         const searchFocused=force && active instanceof HTMLInputElement && active.matches('[data-folio-search]');
         const cursor=searchFocused?{start:(active as HTMLInputElement).selectionStart,end:(active as HTMLInputElement).selectionEnd}:null;
         const optionsOpen=panel.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced')?.open??false;
@@ -248,6 +253,8 @@ async function setup(root: HTMLElement) {
                 if(cursor?.start!==null&&cursor?.start!==undefined)
                     next.setSelectionRange(cursor.start,cursor.end??cursor.start);
             }
+        }else if(emptyCapture){
+            root.querySelector<HTMLInputElement>('[data-folio-create-form] input[name=title]')?.focus({preventScroll:true});
         }else if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
             (id?'[data-id="'+id+'"]':''))?.focus({preventScroll:true});
     }
