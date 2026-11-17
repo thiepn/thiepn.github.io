@@ -4,10 +4,10 @@ const configuration=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8
 const OWNER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const base='http://127.0.0.1:4321';
 const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,client_id:configuration.clientId,iss:configuration.issuer+'/auth/v1',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'fixture'].join('.');
-function backend(options={sharing:false,probeEligible:false}) {
+function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh?:boolean}={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
- let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;const writes:{owner:string;state:any}[]=[];
+ let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;let refreshConsumed=false;const writes:{owner:string;state:any}[]=[];
  return {heads,failures,writes,delayProbe:(ms:number)=>probeDelay=ms,accountSignedIn:(value:boolean)=>options.probeEligible=value,exchanges:()=>exchanges,refreshes:()=>refreshes,offline:(value:boolean)=>unavailable=value,async device(browser:Browser,owner:string|null=OWNER,viewport={width:1440,height:1024},clock=false,storageMode:'normal'|'quota'|'session-blocked'|'idb-blocked'='normal') {
   const context=await browser.newContext({viewport,timezoneId:'Europe/Berlin',serviceWorkers:'block'});
   if(storageMode!=='normal')await context.addInitScript(mode=>{
@@ -40,7 +40,7 @@ function backend(options={sharing:false,probeEligible:false}) {
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/auth/v1/oauth/authorize'){expect(url.searchParams.get('client_id')).toBe(configuration.clientId);expect(url.searchParams.get('code_challenge_method')).toBe('S256');challenge=url.searchParams.get('code_challenge')!;const callback=new URL(configuration.callback);callback.searchParams.set('code','fictional-one-use-code');callback.searchParams.set('state',url.searchParams.get('state')!);await route.fulfill({contentType:'text/html',body:'<script>location.replace('+JSON.stringify(callback.href)+')</script>'});return;}
-   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;await new Promise(resolve=>setTimeout(resolve,100));await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
+   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;const replay=refreshConsumed;refreshConsumed=true;await new Promise(resolve=>setTimeout(resolve,100));if(replay&&options.singleUseRefresh){await route.fulfill({status:400,json:{error:'invalid_grant'}});return;}await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
    const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
@@ -110,7 +110,7 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
  await a.context.close();
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
- const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ const api=backend({sharing:false,probeEligible:true,singleUseRefresh:true}),a=await api.device(browser,null);
  await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
    const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
@@ -123,11 +123,43 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
   // refresh must still be shared without navigator.locks.
   await a.context.addInitScript(()=>{
     Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+    // Test-only instrumentation: no credentials, token values, task data or
+    // identifiers recorded. Observe IndexedDB lease operations per fresh tab.
+    const metrics={leaseReads:0,leaseWrites:0,leaseReleases:0,accountDbOpens:0,accountDbFailures:0};
+    (window as any).__hubA1Metrics=metrics;
+    const originalOpen=indexedDB.open.bind(indexedDB);
+    Object.defineProperty(indexedDB,'open',{configurable:true,value:(name:string,version?:number)=>{
+      const request=version===undefined?originalOpen(name):originalOpen(name,version);
+      if(name==='thiepn-hub-account'){metrics.accountDbOpens++;
+        request.addEventListener('error',()=>{metrics.accountDbFailures++;});}
+      return request;
+    }});
+    const oldGet=IDBObjectStore.prototype.get,oldPut=IDBObjectStore.prototype.put;
+    const oldDelete=IDBObjectStore.prototype.delete;
+    const leaseKey='thiepn:hub-account-storage:refresh-lease';
+    Object.defineProperty(IDBObjectStore.prototype,'get',{configurable:true,value:function(this:IDBObjectStore,...args:unknown[]){
+      if(this.name==='session'&&args[0]===leaseKey)metrics.leaseReads++;
+      return Reflect.apply(oldGet,this,args);
+    }});
+    Object.defineProperty(IDBObjectStore.prototype,'put',{configurable:true,value:function(this:IDBObjectStore,...args:unknown[]){
+      if(this.name==='session'&&args[1]===leaseKey)metrics.leaseWrites++;
+      return Reflect.apply(oldPut,this,args);
+    }});
+    Object.defineProperty(IDBObjectStore.prototype,'delete',{configurable:true,value:function(this:IDBObjectStore,...args:unknown[]){
+      if(this.name==='session'&&args[0]===leaseKey)metrics.leaseReleases++;
+      return Reflect.apply(oldDelete,this,args);
+    }});
   });
   const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
  await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
  for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
-  expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+ const metrics=await Promise.all(pages.map(page=>page.evaluate(()=>(window as any).__hubA1Metrics)));
+ // Emit only aggregate lease counts and request counts, never credential data.
+ console.info('A1_REFRESH_DIAGNOSTICS',JSON.stringify({refreshAttempts:api.refreshes(),
+   perTab:metrics}));
+ expect(api.exchanges()).toBe(1);
+ expect(api.refreshes(),'single-use refresh and IndexedDB lease evidence: '+JSON.stringify(metrics)).toBe(1);
+ await a.context.close();
 });
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
