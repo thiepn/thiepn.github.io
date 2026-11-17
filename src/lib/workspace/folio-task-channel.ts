@@ -1,5 +1,5 @@
 import {
-  FOLIO_TASK_READ_MESSAGE, freshFolioTaskRead, parseFolioTaskRead,
+  FOLIO_TASK_READ_MESSAGE, FOLIO_LIVE_GRANT_KEY, freshFolioTaskRead, parseFolioTaskRead,
   type FolioTaskReadSnapshot, type FolioReadStatus,
 } from './folio-task-read';
 
@@ -53,11 +53,12 @@ export class FolioTaskChannel {
     this.clearTimeout();
     this.changed();
   }
-  start(){
-    this.close();
-    if(!this.canRead())return;
-    this.nonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),
-      byte=>byte.toString(16).padStart(2,'0')).join('');
+  start(grant:string,reconnect=false){
+    this.close(!reconnect);
+    if(!this.canRead()||!/^[0-9a-f]{32}$/.test(grant))return;
+    // The capability was issued by Folio's explicit consent click.
+    // Hub never provisions or persists it.
+    this.nonce=grant;
     this.status='connecting';
     const frame=document.createElement('iframe');
     frame.hidden=true;
@@ -76,7 +77,9 @@ export class FolioTaskChannel {
     if(!this.canRead()){this.close();this.changed();return;}
     if(document.hidden){this.pause();return;}
     if(!this.iframe||!this.ready){
-      this.start();return;
+      if(this.nonce)this.start(this.nonce,true);
+      else this.fail();
+      return;
     }
     if(this.requestId)return;
     if(this.snapshot&&!freshFolioTaskRead(this.snapshot)){
@@ -103,7 +106,13 @@ export class FolioTaskChannel {
     if(!this.canRead()){this.close();this.changed();return;}
     this.refresh();
   }
-  close(){
+  close(revoke=true){
+    if(revoke&&this.nonce){
+      try {
+        const saved=JSON.parse(sessionStorage.getItem(FOLIO_LIVE_GRANT_KEY)||'null');
+        if(saved?.grant===this.nonce)sessionStorage.removeItem(FOLIO_LIVE_GRANT_KEY);
+      } catch { /* Private browsing or denied session storage: no task data persisted. */ }
+    }
     if(this.tick)clearInterval(this.tick);
     this.tick=null;
     this.clearTimeout();
