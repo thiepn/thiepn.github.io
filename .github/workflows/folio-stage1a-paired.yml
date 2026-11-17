@@ -1,10 +1,11 @@
-name: Folio + Hub paired daily task acceptance
+name: Folio + Hub paired Folio-first Task Center acceptance
 on:
   pull_request:
     paths:
       - 'src/lib/workspace/folio-device.ts'
       - 'src/lib/workspace/folio-task-read.ts'
       - 'src/lib/workspace/folio-task-ux.ts'
+      - 'src/lib/workspace/folio-task-query.ts'
       - 'src/lib/workspace/folio-task-channel.ts'
       - 'src/lib/workspace/folio-task-actions.ts'
       - 'src/lib/workspace/folio-panel.ts'
@@ -15,7 +16,9 @@ on:
       - 'tests/studio/hub-folio-paired-stage1c.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1d.spec.ts'
       - 'tests/studio/hub-folio-paired-stage1e.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1f.spec.ts'
       - 'tests/unit/folio-task-ux.test.ts'
+      - 'tests/unit/folio-task-query.test.ts'
       - 'playwright.folio-stage1a.config.ts'
       - '.github/workflows/folio-stage1a-paired.yml'
   workflow_dispatch:
@@ -45,12 +48,12 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
       - name: Focused Stage 1A and 1B unit tests
-        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts tests/unit/folio-task-ux.test.ts
+        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts tests/unit/folio-task-ux.test.ts tests/unit/folio-task-query.test.ts
       - name: Checkout pinned Folio companion draft
         uses: actions/checkout@v4
         with:
           repository: thiepn/folio
-          ref: a5e395bf41ba7eceef3ff0782bebdeb79b7f35f9
+          ref: 454b6dc27fcc96df7e648be7ffc293911fe6d13d
           path: folio-owner
           persist-credentials: false
       - name: Build real Folio and compose read-only local site
@@ -69,7 +72,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: folio-stage1e-paired-evidence
+          name: folio-stage1f-paired-evidence
           path: |
             playwright-report/folio-paired/
             test-results/
