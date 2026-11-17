@@ -189,6 +189,7 @@ async function setup(root: HTMLElement) {
     let folioTaskFilter:FolioTaskFilter='today';
     let folioTaskView:FolioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
     let folioPageIndex=0;
+    let folioPageRevision:string|null=null;
     let folioSearchTimer:ReturnType<typeof setTimeout>|null=null;
     let folioSearchPending=false;
     let legacyTasksOpen=false;
@@ -217,7 +218,8 @@ async function setup(root: HTMLElement) {
              folioTaskView.search.trim().length>0||folioTaskView.projectId!=='all'||folioPageIndex>0);
         if(needed && !folioSearchPending){
             folioLive.queryPage({filter:folioTaskFilter,search:folioTaskView.search.trim(),
-                projectId:folioTaskView.projectId,page:folioPageIndex});
+                projectId:folioTaskView.projectId,page:folioPageIndex,
+                ...(folioPageRevision?{expectedRevision:folioPageRevision}:{})});
         }else if(!needed && folioLive.pageQuery)folioLive.clearPage();
         // Preserve the native task editor and a user's in-progress Folio form.
         const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
@@ -244,7 +246,7 @@ async function setup(root: HTMLElement) {
         panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
             status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,view:folioTaskView,
             paging:{active:needed&&!folioSearchPending,loading:folioLive.pageLoading,
-                error:folioLive.pageError,result:folioLive.page},
+                error:folioLive.pageError,changed:folioLive.pageChanged,result:folioLive.page},
             write:{
                 enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                 message:folioLive.actionMessage,failed:folioLive.actionFailed,
@@ -283,6 +285,7 @@ async function setup(root: HTMLElement) {
         folioTaskFilter='today';
         folioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
         folioPageIndex=0;
+        folioPageRevision=null;
         if(folioSearchTimer)clearTimeout(folioSearchTimer);
         folioSearchTimer=null;folioSearchPending=false;
         folioNonce = null;
@@ -916,7 +919,7 @@ async function setup(root: HTMLElement) {
             return `${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
                 status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
                 paging:{active:folioLive.pageQuery!==null,loading:folioLive.pageLoading,
-                    error:folioLive.pageError,result:folioLive.page},
+                    error:folioLive.pageError,changed:folioLive.pageChanged,result:folioLive.page},
                 write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
                     message:folioLive.actionMessage,failed:folioLive.actionFailed,
                     undoId:folioLive.lastUndoId},
@@ -2148,6 +2151,7 @@ async function setup(root: HTMLElement) {
                 folioTaskView.search='';
                 folioTaskView.group='project';
                 folioPageIndex=0;
+                folioPageRevision=null;
                 if(folioSearchTimer)clearTimeout(folioSearchTimer);
                 folioSearchPending=false;
                 updateFolioViews(true);
@@ -2158,21 +2162,32 @@ async function setup(root: HTMLElement) {
             if (['today','inbox','upcoming','later','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
                 folioPageIndex=0;
+                folioPageRevision=null;
                 updateFolioViews();
             }
             return;
         }
-        if (action === 'folio-page-previous'||action==='folio-page-next'||action==='folio-page-retry'){
+        if (action === 'folio-page-previous'||action==='folio-page-next'||
+            action==='folio-page-retry'||action==='folio-page-restart'){
+            if(action==='folio-page-restart'){
+                folioPageIndex=0;
+                folioPageRevision=null;
+                folioLive.clearPage();
+                updateFolioViews(true);
+                return;
+            }
             if(action==='folio-page-retry'){
                 const source=folioLive.snapshot;
                 if(source&&folioLive.status==='ready')folioLive.queryPage({
                     filter:folioTaskFilter,search:folioTaskView.search.trim(),
                     projectId:folioTaskView.projectId,page:folioPageIndex,
+                    ...(folioPageRevision?{expectedRevision:folioPageRevision}:{}),
                 },true);
                 return;
             }
             const p=folioLive.page;
             if(!p||folioLive.pageLoading)return;
+            folioPageRevision=p.revision;
             if(action==='folio-page-next'&&p.hasMore)folioPageIndex++;
             else if(action==='folio-page-previous'&&folioPageIndex>0)folioPageIndex--;
             else return;
@@ -2897,6 +2912,7 @@ async function setup(root: HTMLElement) {
             if(value==='all'||value==='none'||folioLive.snapshot?.availableProjects?.some(p=>p.id===value)){
                 folioTaskView.projectId=value;
                 folioPageIndex=0;
+                folioPageRevision=null;
                 updateFolioViews(true);
             }
             return;
@@ -3008,6 +3024,7 @@ async function setup(root: HTMLElement) {
         if(view==='tasks'&&el.matches('[data-folio-search]')&&folioLive.status==='ready'){
             folioTaskView.search=el.value.slice(0,100);
             folioPageIndex=0;
+            folioPageRevision=null;
             if(folioSearchTimer)clearTimeout(folioSearchTimer);
             folioSearchPending=true;
             folioLive.clearPage();
