@@ -136,6 +136,24 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
     const perform = async () => {
       await flush();
       await load();
+      // Without Web Locks AND the durable IndexedDB lease, independently
+      // opened tabs cannot safely rotate the same single-use refresh token.
+      // Keep a valid access token usable and leave the local Hub workspace
+      // untouched, but fail closed before any expired-token SDK operation.
+      if (!db && typeof navigator.locks?.request !== 'function') {
+        const tokenKey=keys.find(key=>key.endsWith(':tokens'));
+        const raw=tokenKey?fallback.getItem(tokenKey):null;
+        if(raw!==null && raw!==undefined){
+          let unsafe=true;
+          try{
+            const token=JSON.parse(raw) as {expiresAt?:unknown}|null;
+            unsafe=typeof token?.expiresAt!=='number'||
+              !Number.isFinite(token.expiresAt)||
+              token.expiresAt-Date.now()<=30_000;
+          }catch{ /* Unreadable credentials must not authorize a refresh. */ }
+          if(unsafe)throw new Error('ACCOUNT_REFRESH_COORDINATION_UNAVAILABLE');
+        }
+      }
       try { return await operation(); } finally { await flush(); }
     };
     const work = tail.then(() => navigator.locks
