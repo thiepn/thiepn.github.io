@@ -4,14 +4,14 @@ import {FOLIO_TASK_READ_MAX_AGE_MS, FOLIO_TASK_BUCKETS,
  * are created, imported or persisted. */
 export const FOLIO_TASK_QUERY_MESSAGE='thiepn:folio-hub-tasks-query:v1' as const;
 export const FOLIO_TASK_QUERY_PAGE_SIZE=40;
-export type FolioTaskQueryInput={filter:FolioTaskFilter;search:string;projectId:string;page:number};
+export type FolioTaskQueryInput={filter:FolioTaskFilter;search:string;projectId:string;page:number;expectedRevision?:string};
 export type FolioQueryTask=Omit<FolioReadTask,'bucket'|'status'> & {
   bucket:FolioReadTask['bucket']|'completed';status:FolioReadTask['status']|'completed';
   completedAt?:string;
 };
 export type FolioTaskQueryResult=FolioTaskQueryInput & {
   schema:'thiepn:folio-hub-task-query';version:1;source:'folio-local-device';
-  generatedAt:string;date:string;pageSize:40;total:number;hasMore:boolean;
+  generatedAt:string;date:string;pageSize:40;revision:string;total:number;hasMore:boolean;
   rows:readonly FolioQueryTask[];
 };
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -23,13 +23,18 @@ export function validFolioTaskQueryInput(value:unknown):value is FolioTaskQueryI
  if(!object(value))return false;
  return [...FOLIO_TASK_BUCKETS,'all','completed'].includes(String(value.filter))&&
    text(value.search,100)&&text(value.projectId,128)&&!!value.projectId&&
-   Number.isSafeInteger(value.page)&&Number(value.page)>=0&&Number(value.page)<=9999;
+   Number.isSafeInteger(value.page)&&Number(value.page)>=0&&Number(value.page)<=9999&&
+   (value.expectedRevision===undefined||(typeof value.expectedRevision==='string'&&
+      /^[0-9a-f]{64}$/.test(value.expectedRevision)));
 }
 export function parseFolioTaskQueryResult(raw:unknown,expected:FolioTaskQueryInput,now=Date.now()):FolioTaskQueryResult{
  if(!object(raw)||raw.schema!=='thiepn:folio-hub-task-query'||raw.version!==1||
    raw.source!=='folio-local-device'||!date(raw.generatedAt)||!day(raw.date)||
    raw.filter!==expected.filter||raw.search!==expected.search||
    raw.projectId!==expected.projectId||raw.page!==expected.page||
+   raw.expectedRevision!==expected.expectedRevision||
+   typeof raw.revision!=='string'||!/^[0-9a-f]{64}$/.test(raw.revision)||
+   (expected.expectedRevision!==undefined&&raw.revision!==expected.expectedRevision)||
    raw.pageSize!==FOLIO_TASK_QUERY_PAGE_SIZE||!bounded(raw.total)||
    typeof raw.hasMore!=='boolean'||!Array.isArray(raw.rows)||
    raw.rows.length>FOLIO_TASK_QUERY_PAGE_SIZE)throw Error('Invalid Folio page');
