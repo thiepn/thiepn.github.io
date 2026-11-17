@@ -407,3 +407,18 @@
 .ws-folio-task-mark{flex:0 0 6px;width:6px;height:6px;border:0;background:var(--ws-muted);border-radius:50%;margin:9px 3px 0;opacity:.6;}
 .ws-folio-tasks-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;}
 @media(max-width:480px){.ws-folio-task-preview{margin-top:12px;}.ws-folio-task-row{padding:12px 0;}.ws-folio-tasks-heading>a{min-height:44px;}}
+
+/* Stage 1C Folio source task actions: use existing Hub surfaces, no new task store. */
+.ws-folio-write-gate{margin:12px 0;padding:12px 0;border-top:1px solid var(--ws-line);}
+.ws-folio-create-form{margin:12px 0 20px;padding:12px 0;border-block:1px solid var(--ws-line);}
+.ws-folio-create-form h3{font-size:1rem;margin:0 0 10px;}
+.ws-folio-create-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:12px;margin-bottom:12px;}
+.ws-folio-create-fields label,.ws-folio-inline-date{display:grid;gap:5px;font-size:.84rem;min-width:0;}
+.ws-folio-create-fields input,.ws-folio-create-fields select,.ws-folio-inline-date input{box-sizing:border-box;min-width:0;max-width:100%;width:100%;font:inherit;min-height:40px;}
+.ws-folio-task-preview .ws-folio-task-row{flex-wrap:wrap;align-items:center;}
+.ws-folio-task-copy{flex:1 1 190px;min-width:0;}
+.ws-folio-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:1 1 200px;min-width:0;}
+.ws-folio-inline-date{flex:0 1 150px;}
+.ws-folio-action-feedback{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;font-size:.9rem;}
+.ws-folio-action-feedback[role=alert]{font-weight:600;}
+@media(max-width:480px){.ws-folio-row-actions{justify-content:flex-start;flex-basis:100%;}.ws-folio-inline-date{flex-basis:140px;}}
