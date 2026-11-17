@@ -422,3 +422,24 @@
 .ws-folio-action-feedback{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;font-size:.9rem;}
 .ws-folio-action-feedback[role=alert]{font-weight:600;}
 @media(max-width:480px){.ws-folio-row-actions{justify-content:flex-start;flex-basis:100%;}.ws-folio-inline-date{flex-basis:140px;}}
+
+/* Folio source daily UX — compact capture and task navigation, responsive without nesting scroll traps. */
+.ws-folio-quick-add{display:flex;align-items:end;gap:10px;flex-wrap:wrap;}
+.ws-folio-quick-add>label{flex:1 1 230px;min-width:0;display:grid;gap:5px;font-size:.85rem;}
+.ws-folio-quick-add input{width:100%;box-sizing:border-box;min-width:0;min-height:44px;padding:8px 12px;font:inherit;}
+.ws-folio-quick-add>button{min-height:44px;white-space:normal;}
+.ws-folio-create-advanced{margin-top:10px;}
+.ws-folio-create-advanced summary{cursor:pointer;min-height:38px;display:flex;align-items:center;font-size:.85rem;color:var(--ws-muted);}
+.ws-folio-create-advanced[open] .ws-folio-create-fields{padding-top:12px;}
+.ws-folio-shortcut-help{font-size:.78rem;margin:8px 0 0;}
+.ws-folio-finder{display:grid;grid-template-columns:minmax(170px,2fr) repeat(2,minmax(115px,1fr));gap:10px;margin:12px 0;}
+.ws-folio-finder label{display:grid;min-width:0;gap:5px;font-size:.8rem;color:var(--ws-muted);}
+.ws-folio-finder input,.ws-folio-finder select{width:100%;min-width:0;box-sizing:border-box;min-height:44px;font:inherit;color:inherit;}
+.ws-folio-task-section{min-width:0;}
+.ws-folio-task-section h3{font-size:.88rem;display:flex;justify-content:space-between;margin:18px 0 5px;font-weight:650;}
+.ws-folio-task-section h3 span{font-variant-numeric:tabular-nums;color:var(--ws-muted);font-weight:450;}
+.ws-folio-row-actions>.ws-text-button{min-height:38px;white-space:nowrap;}
+.ws-folio-task-copy strong{overflow-wrap:anywhere;}
+@media(max-width:680px){.ws-folio-finder{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.ws-folio-finder label:first-child{grid-column:1/-1;}}
+@media(max-width:390px){.ws-folio-finder{grid-template-columns:minmax(0,1fr);}.ws-folio-finder label:first-child{grid-column:auto;}.ws-folio-quick-add>label{flex-basis:100%;}.ws-folio-quick-add>button{flex:1 1 auto;}.ws-folio-shortcut-help{display:none;}}
+@media(prefers-reduced-motion:reduce){.ws-folio-create-advanced summary{scroll-behavior:auto;}}
