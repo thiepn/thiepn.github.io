@@ -272,6 +272,10 @@ async function setup(root: HTMLElement) {
         }else if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
             (id?'[data-id="'+id+'"]':''))?.focus({preventScroll:true});
     }
+    root.addEventListener('toggle',event=>{
+        const drawer=event.target as HTMLDetailsElement;
+        if(drawer.matches?.('[data-legacy-hub-tasks]'))legacyTasksOpen=drawer.open;
+    },true);
     function resetFolio() {
         folioWriteNonce=null;
         folioWritePopup=null;
@@ -909,7 +913,18 @@ async function setup(root: HTMLElement) {
                   || (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')
                   || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
                   || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
-            return `<section class="ws-task-center" aria-label="Task views">
+            return `${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
+                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
+                paging:{active:folioLive.pageQuery!==null,loading:folioLive.pageLoading,
+                    error:folioLive.pageError,result:folioLive.page},
+                write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
+                    message:folioLive.actionMessage,failed:folioLive.actionFailed,
+                    undoId:folioLive.lastUndoId},
+            })}
+            <details class="ws-legacy-task-drawer" data-legacy-hub-tasks${legacyTasksOpen?' open':''}>
+              <summary>Legacy Hub tasks <span>${state!.tasks.length} stored · separate local task system</span></summary>
+              <p class="ws-muted ws-legacy-task-note">These tasks are preserved in Hub. They are not Folio tasks and have not been migrated.</p>
+              <section class="ws-task-center" aria-label="Legacy Hub task views">
               <nav class="ws-unified-task-links" aria-label="Related Hub workflows"><a href="/">Today</a><a href="/?mode=focus">Focus</a><a href="/home/calendar/?mode=week">Week plan</a></nav>
               <div class="ws-task-filter-list" role="group" aria-label="Task views">
                 ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
@@ -918,14 +933,7 @@ async function setup(root: HTMLElement) {
             <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
               <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
-            </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
-                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
-                paging:{active:folioLive.pageQuery!==null,loading:folioLive.pageLoading,
-                    error:folioLive.pageError,result:folioLive.page},
-                write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
-                    message:folioLive.actionMessage,failed:folioLive.actionFailed,
-                    undoId:folioLive.lastUndoId},
-            })}`;
+            </section></details>`;
         }
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
