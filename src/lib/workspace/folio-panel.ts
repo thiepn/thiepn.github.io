@@ -39,9 +39,10 @@ export function renderFolioDevice(status:FolioDeviceStatus,snapshot:FolioDeviceS
  * into native Hub tasks, exposes a completion toggle, or claims live synchronization. */
 export function renderFolioTaskPreview(
   status:FolioDeviceStatus, snapshot:FolioDeviceSnapshot|null, now=Date.now(),
-  live?:{status:FolioReadStatus;snapshot:FolioTaskReadSnapshot|null;filter:FolioTaskFilter},
+  live?:{status:FolioReadStatus;snapshot:FolioTaskReadSnapshot|null;filter:FolioTaskFilter;
+    write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null}},
 ):string {
-  if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now);
+  if(live && live.status!=='disconnected')return renderFolioLiveTaskPreview(live.status,live.snapshot,live.filter,now,live.write);
   const current=freshFolioDeviceSnapshot(snapshot,now)?snapshot:null;
   const state=current?'ready':snapshot?'unavailable':status;
   const heading='<header class="ws-folio-tasks-heading"><div><h2>Folio tasks</h2>'+
@@ -85,52 +86,89 @@ export function renderFolioTaskPreview(
     refresh+'</section>';
 }
 
-/** A separate live source projection: never creates native Hub task controls. */
+/** A Folio-owned projection. Buttons below are active only after separate Folio
+ * write permission; no native Hub Task or workspace store is involved. */
 export function renderFolioLiveTaskPreview(
   status:FolioReadStatus, snapshot:FolioTaskReadSnapshot|null, filter:FolioTaskFilter='today', now=Date.now(),
+  write?:{enabled:boolean;pending:boolean;message:string;failed:boolean;undoId:string|null},
 ):string {
   const fresh=freshFolioTaskRead(snapshot,now)?snapshot:null;
   const current=fresh&&status==='ready'?fresh:null;
+  const canWrite=Boolean(write?.enabled&&current&&!write?.pending);
   const heading='<header class="ws-folio-tasks-heading"><div><h2>Folio tasks</h2>'+
-    '<p class="ws-muted">Read-only tasks from Folio on this device. Hub tasks above remain separate.</p></div>'+
+    '<p class="ws-muted">Owned by Folio on this device. Hub tasks above remain separate.</p></div>'+
     '<a class="ws-text-button" href="/folio/?view=today">Open Folio</a></header>';
   const actions='<div class="ws-folio-tasks-actions">'+
     '<button type="button" class="ws-button" data-action="folio-read-refresh">Refresh now</button>'+
     '<button type="button" class="ws-text-button" data-action="folio-read-disconnect">Disconnect</button></div>';
-  const note='<p class="ws-muted">Local tab only. Automatically refreshes while this Hub tab is visible. '+
-    'No cloud synchronization, task edits or reminders are enabled.</p>';
-  if(!current) {
-    const statusLine=status==='connecting'?'Connecting to Folio on this device…':
+  const note='<p class="ws-muted">Same-device tab only. Automatic reads while visible. '+
+    (write?.enabled?'Task actions require Folio approval. No cloud sync or direct reminder changes.':
+      'No task edits, cloud synchronization or reminder changes until separately authorized.')+'</p>';
+  const grant=write?.enabled?'':status==='ready'?
+    '<div class="ws-folio-write-gate"><p class="ws-muted">Task actions are disabled until you approve them separately in Folio.</p>'+
+    '<button type="button" class="ws-button" data-action="folio-write-request">Enable Folio task actions</button></div>':'';
+  const response=write?.message?'<div role="'+(write.failed?'alert':'status')+
+    '" class="ws-folio-action-feedback">'+esc(write.message)+
+    (write.undoId&&write.enabled?'<button class="ws-text-button" type="button" data-action="folio-action-undo" data-id="'+
+      esc(write.undoId)+'">Undo last Folio action</button>':'')+'</div>':'';
+  if(!current){
+    const message=status==='connecting'?'Connecting to Folio on this device…':
       status==='reading'?'Reading tasks from Folio…':
       status==='paused'?'Task reads are paused while Hub is in the background.':
-      'Folio tasks are unavailable or stale. Refresh or reconnect; old data is not displayed.';
-    return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Read-only Folio tasks">'+
-      heading+'<p role="status" class="ws-muted">'+statusLine+'</p>'+note+actions+'</section>';
+      'Folio tasks are unavailable or stale. Refresh or reconnect. Older titles are hidden.';
+    return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Folio tasks">'+
+      heading+'<p role="status" class="ws-muted">'+message+'</p>'+response+note+actions+'</section>';
   }
-  const allFilters:readonly FolioTaskFilter[]=['today','inbox','upcoming','all'];
-  const filterLabel:Record<FolioTaskFilter,string>={today:'Today',inbox:'Inbox',upcoming:'Next 7 days',later:'Later',all:'All'};
+  const completed=current.recentCompleted??[];
+  const filters:readonly FolioTaskFilter[]=write?.enabled?
+    ['today','inbox','upcoming','completed','all']:['today','inbox','upcoming','all'];
+  const label:Record<FolioTaskFilter,string>={today:'Today',inbox:'Inbox',upcoming:'Next 7 days',
+    later:'Later',completed:'Recently completed',all:'All'};
+  const count=(f:FolioTaskFilter)=>f==='completed'?completed.length:
+    f==='all'?current.totalCount:current.counts[f];
   const tabs='<div class="ws-task-filter-list ws-folio-filter-list" role="group" aria-label="Folio task filters">'+
-    allFilters.map(key=>'<button type="button" class="ws-task-filter-button'+(filter===key?' active':'')+
-    '" aria-pressed="'+(filter===key)+'" data-action="folio-read-filter" data-id="'+key+'">'+
-    filterLabel[key]+' <strong>'+(key==='all'?current.totalCount:current.counts[key])+'</strong></button>').join('')+'</div>';
-  const rows=current.tasks.filter(row=>filter==='all'||row.bucket===filter);
-  const total=filter==='all'?current.totalCount:current.counts[filter];
-  const items=rows.map(task=>{
+    filters.map(key=>'<button type="button" class="ws-task-filter-button'+(filter===key?' active':'')+
+      '" aria-pressed="'+(filter===key)+'" data-action="folio-read-filter" data-id="'+key+'">'+
+      label[key]+' <strong>'+count(key)+'</strong></button>').join('')+'</div>';
+  const rows=filter==='completed'?[]:current.tasks.filter(task=>filter==='all'||task.bucket===filter);
+  const total=count(filter);
+  const items=filter==='completed'?completed.map(task=>
+    '<li class="ws-folio-task-row"><div><strong>'+esc(task.title)+
+    '</strong><small>Completed'+(task.completedAt?' · '+esc(new Date(task.completedAt).toLocaleDateString()):'')+'</small></div>'+
+    (write?.enabled?'<button class="ws-text-button" type="button" data-action="folio-action-reopen" data-id="'+
+      esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Reopen</button>':'')+
+    '</li>').join(''):rows.map(task=>{
     const details=[
       task.bucket==='today'?'Today':task.bucket==='inbox'?'Inbox':task.bucket==='upcoming'?'Upcoming':'Later',
       task.deadline?'Deadline '+task.deadline:'',
       task.plannedDate?'Planned '+task.plannedDate:'',
       task.priority!=='normal'?'Priority: '+task.priority:'',
     ].filter(Boolean).map(esc).join(' · ');
+    const controls=write?.enabled?
+      '<div class="ws-folio-row-actions"><button class="ws-text-button" type="button" data-action="folio-action-complete" data-id="'+
+      esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Complete</button>'+
+      '<label class="ws-folio-inline-date">Plan for<input type="date" aria-label="Plan '+esc(task.title)+' for" data-folio-plan-id="'+
+      esc(task.id)+'" value="'+esc(task.plannedDate??'')+'"'+(canWrite?'':' disabled')+'></label>'+
+      '<button class="ws-text-button" type="button" data-action="folio-action-reschedule" data-id="'+
+      esc(task.id)+'" data-version="'+esc(task.updatedAt)+'"'+(canWrite?'':' disabled')+'>Set date</button></div>':'';
     return '<li class="ws-folio-task-row"><span class="ws-folio-task-mark" aria-hidden="true"></span>'+
-      '<div><strong>'+esc(task.title)+'</strong><small>'+details+'</small></div></li>';
+      '<div class="ws-folio-task-copy"><strong>'+esc(task.title)+'</strong><small>'+details+'</small></div>'+
+      controls+'</li>';
   }).join('');
-  return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Read-only Folio tasks">'+
-    heading+tabs+'<p role="status" class="ws-muted">Showing '+rows.length+' of '+total+' Folio tasks'+
-    (current.truncated?' · bounded local read':'')+
+  const form=write?.enabled?'<form class="ws-folio-create-form" data-folio-create-form>'+
+    '<h3>Create in Folio</h3><div class="ws-folio-create-fields">'+
+    '<label>Task title<input name="title" type="text" maxlength="160" required aria-label="Folio task title" autocomplete="off"></label>'+
+    '<label>Send to<select name="status" aria-label="Folio task destination"><option value="todo">Planned tasks</option><option value="inbox">Inbox</option></select></label>'+
+    '<label>Planned day<input name="plannedDate" type="date" aria-label="Folio planned day" value="'+esc(current.date)+'"></label>'+
+    '<label>Priority<select name="priority" aria-label="Folio priority"><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></select></label>'+
+    '</div><button type="submit" class="ws-button"'+(canWrite?'':' disabled')+'>Create in Folio</button></form>':'';
+  return '<section class="ws-surface ws-folio-task-preview" data-folio-task-preview data-folio-live aria-label="Folio tasks">'+
+    heading+grant+response+form+tabs+
+    '<p role="status" class="ws-muted">Showing '+(filter==='completed'?completed.length:rows.length)+
+    ' of '+total+' Folio tasks'+(current.truncated?' · bounded local read':'')+
     ' · updated '+esc(new Date(current.generatedAt).toLocaleTimeString())+'</p>'+
-    (rows.length?'<ul class="ws-folio-task-list">'+items+'</ul>':
-      '<p class="ws-muted">No tasks in this view.</p>')+
-    (total>rows.length?'<p class="ws-muted">'+(total-rows.length)+' more in Folio; open the source app for the full list.</p>':'')+
+    (items?'<ul class="ws-folio-task-list">'+items+'</ul>':'<p class="ws-muted">No tasks in this view.</p>')+
+    (filter!=='completed'&&total>rows.length?'<p class="ws-muted">'+(total-rows.length)+
+      ' more in Folio; open the source app for the complete list.</p>':'')+
     note+actions+'</section>';
 }
