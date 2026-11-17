@@ -111,14 +111,21 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
- await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
+ // The connected Hub tab can refresh immediately after its IndexedDB token
+ // expires. Close it before test setup; otherwise its cancelled request is
+ // counted as a second refresh alongside the two tabs being tested.
+ await a.page.close();
+ const preparation=await a.context.newPage();
+ await preparation.goto('https://thiepn.dev/robots.txt');
+ await preparation.evaluate(()=>new Promise<void>((resolve,reject)=>{
   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
    const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
    read.onsuccess=()=>{const record=read.result,token=JSON.parse(record.value);token.expiresAt=0;record.value=JSON.stringify(token);store.put(record,'thiepn:hub-sso:v1:tokens');};
    tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);
   };request.onerror=()=>reject(request.error);
  }));
- await a.page.close();
+ await preparation.close();
+ expect(api.refreshes()).toBe(0);
   // Force the Safari/browser fallback on both new tabs; a single rotating
   // refresh must still be shared without navigator.locks.
   await a.context.addInitScript(()=>{
