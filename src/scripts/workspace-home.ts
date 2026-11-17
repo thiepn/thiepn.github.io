@@ -2038,6 +2038,44 @@ async function setup(root: HTMLElement) {
             repaintOverview();
             return;
         }
+        if (action === 'folio-write-request') {
+            requestFolioWrite();
+            return;
+        }
+        if (action === 'folio-action-undo') {
+            if (folioLive.actionsEnabled && !folioLive.actionPending && id)
+                void folioLive.executeAction({kind:'undo',undoId:id});
+            return;
+        }
+        if (['folio-action-complete','folio-action-reopen','folio-action-reschedule'].includes(action)) {
+            const snapshot=folioLive.snapshot;
+            if(!folioLive.actionsEnabled||!freshFolioTaskRead(snapshot)||folioLive.actionPending){
+                toast('Folio actions are unavailable. Refresh and review the source task.');
+                return;
+            }
+            const version=target.dataset.version;
+            const completed=snapshot.recentCompleted??[];
+            const item=action==='folio-action-reopen'?
+                completed.find(task=>task.id===id&&task.updatedAt===version):
+                snapshot.tasks.find(task=>task.id===id&&task.updatedAt===version);
+            if(!item||!version) {
+                toast('This Folio task has changed. Refresh before applying the action.');
+                return;
+            }
+            let command:FolioTaskAction;
+            if(action==='folio-action-reschedule'){
+                const day=root.querySelector<HTMLInputElement>('[data-folio-plan-id="'+CSS.escape(id)+'"]')?.value ?? '';
+                if(day && !safeNavigationDay(day)){toast('Choose a valid planned date.');return;}
+                command={kind:'reschedule',taskId:id,expectedUpdatedAt:version,plannedDate:day||null};
+            }else{
+                command={kind:action==='folio-action-reopen'?'reopen':'complete',
+                    taskId:id,expectedUpdatedAt:version};
+            }
+            void folioLive.executeAction(command).then(result=>{
+                if(!result.ok && result.code==='conflict')folioLive.refresh();
+            });
+            return;
+        }
         if (action === 'folio-read-filter') {
             if (['today','inbox','upcoming','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
@@ -2877,6 +2915,33 @@ async function setup(root: HTMLElement) {
         }
     });
     root.addEventListener('submit', event => {
+        const sourceForm=(event.target as HTMLElement).closest<HTMLFormElement>('[data-folio-create-form]');
+        if(sourceForm){
+            event.preventDefault();
+            if(!folioLive.actionsEnabled||folioLive.actionPending){
+                toast('Approve Folio task actions before creating tasks.');
+                return;
+            }
+            const data=new FormData(sourceForm);
+            const title=String(data.get('title')??'').trim();
+            const status=data.get('status')==='inbox'?'inbox':'todo';
+            const priority=['high','critical'].includes(String(data.get('priority'))) ?
+                String(data.get('priority')) as 'high'|'critical':'normal';
+            const plannedDate=String(data.get('plannedDate')??'');
+            if(!title||title.length>160||status==='todo'&&plannedDate&&!safeNavigationDay(plannedDate)){
+                toast('Check the Folio task title and planned date.');
+                return;
+            }
+            const command:FolioTaskAction={kind:'create',title,status,priority,
+                ...(status==='todo'&&plannedDate?{plannedDate}:{})};
+            void folioLive.executeAction(command).then(result=>{
+                if(result.ok){
+                    root.querySelector<HTMLFormElement>('[data-folio-create-form]')?.reset();
+                    updateFolioViews();
+                }
+            });
+            return;
+        }
         const capture = (event.target as HTMLElement).closest<HTMLFormElement>('[data-capture-form]');
         if (!capture || !state)
             return;
@@ -3075,8 +3140,12 @@ async function setup(root: HTMLElement) {
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && folioOwner !== null && verifyingScope !== folioOwner))
             resetFolio();
-        else if (identity.status === 'checking' && folioLive.status !== 'disconnected')
+        else if (identity.status === 'checking' && folioLive.status !== 'disconnected') {
+            // Read projection may resume after owner verification; permission to
+            // mutate must require a fresh, separate Folio consent.
+            folioLive.revokeActions();
             folioLive.pause();
+        }
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && notesSourceOwner !== null && verifyingScope !== notesSourceOwner))
             clearNotesSource();
@@ -3233,7 +3302,14 @@ async function setup(root: HTMLElement) {
         if (!pendingCloudRender || own!==epoch || dirty || editing || dialog.open || searchDialog.open || inputFocused()) return;
         pendingCloudRender=false; await reloadSaved();if(state?.preferences.theme)applyTheme(state.preferences.theme);
     }
-    root.addEventListener('focusout',()=>{setTimeout(()=>{void refreshCloudView();cloud?.schedule();},0);});
+    root.addEventListener('focusout',event=>{
+        if((event.target as Element).closest?.('[data-folio-task-preview]'))
+            setTimeout(()=>{
+                const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
+                if(panel && !panel.contains(document.activeElement))updateFolioViews();
+            },0);
+        setTimeout(()=>{void refreshCloudView();cloud?.schedule();},0);
+    });
     window.addEventListener('online', () => {cloud?.schedule(0);void refreshInsights();});
     document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud?.schedule(0);void refreshInsights(); });
     setInterval(()=>void refreshInsights(),30000);
