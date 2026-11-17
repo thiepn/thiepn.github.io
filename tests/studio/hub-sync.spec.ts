@@ -4,7 +4,7 @@ const configuration=JSON.parse(fs.readFileSync('src/data/hub-account.json','utf8
 const OWNER='11111111-1111-4111-8111-111111111111',OTHER='22222222-2222-4222-8222-222222222222';
 const base='http://127.0.0.1:4321';
 const jwt=(owner:string)=>['fixture',Buffer.from(JSON.stringify({sub:owner,client_id:configuration.clientId,iss:configuration.issuer+'/auth/v1',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'fixture'].join('.');
-function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh?:boolean}={sharing:false,probeEligible:false}) {
+function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh?:boolean;refreshDelayMs?:number}={sharing:false,probeEligible:false}) {
  const failures=new Map<string,number>();
  const heads=new Map<string,{revision:number;state:unknown}>(),receipts=new Map<string,{hash:string;revision:number}>();
  let challenge='',exchanges=0,refreshes=0,probeDelay=0;let unavailable=false;let refreshConsumed=false;const writes:{owner:string;state:any}[]=[];
@@ -47,7 +47,7 @@ function backend(options:{sharing:boolean;probeEligible:boolean;singleUseRefresh
    if(unavailable){await route.abort('internetdisconnected');return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/auth/v1/oauth/authorize'){expect(url.searchParams.get('client_id')).toBe(configuration.clientId);expect(url.searchParams.get('code_challenge_method')).toBe('S256');challenge=url.searchParams.get('code_challenge')!;const callback=new URL(configuration.callback);callback.searchParams.set('code','fictional-one-use-code');callback.searchParams.set('state',url.searchParams.get('state')!);await route.fulfill({contentType:'text/html',body:'<script>location.replace('+JSON.stringify(callback.href)+')</script>'});return;}
-   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;const replay=refreshConsumed;refreshConsumed=true;await new Promise(resolve=>setTimeout(resolve,100));if(replay&&options.singleUseRefresh){await route.fulfill({status:400,json:{error:'invalid_grant'}});return;}await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
+   if(url.pathname==='/auth/v1/oauth/token'){const data=request.postDataJSON();if(data.grant_type==='refresh_token'){expect(data.client_id).toBe(configuration.clientId);expect(data.refresh_token).toBe('fixture-refreshed');refreshes++;const replay=refreshConsumed;refreshConsumed=true;await new Promise(resolve=>setTimeout(resolve,options.refreshDelayMs??100));if(replay&&options.singleUseRefresh){await route.fulfill({status:400,json:{error:'invalid_grant'}});return;}await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-rotated',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}expect(data.client_id).toBe(configuration.clientId);expect(data.code).toBe('fictional-one-use-code');const {createHash}=await import('node:crypto');expect(createHash('sha256').update(data.code_verifier).digest('base64url')).toBe(challenge);exchanges++;await route.fulfill({json:{access_token:jwt(OWNER),refresh_token:'fixture-refreshed',expires_in:3600,scope:'openid email profile offline_access',token_type:'bearer'}});return;}
    const payload=JSON.parse(Buffer.from((request.headers().authorization??'').split('.')[1]??'','base64url').toString()||'{}');const uid=payload.sub;
    if(url.pathname==='/auth/v1/user'){await route.fulfill({json:{id:uid,email:'fixture@example.test'}});return;}
    const rpc=url.pathname.split('/').at(-1)!,data=request.postDataJSON()??{};let result:unknown;
@@ -212,6 +212,101 @@ test('A1 restricted storage and no Web Locks must preserve local workspace witho
    expect(api.refreshes(),'No distributed lease means no safe rotating refresh').toBe(0);
  }finally{await a.context.close();}
 });
+
+/** A2 test-only fixture: source and durable credentials start identical and expired. */
+async function seedA2ExpiredToken(page:Page){
+ await page.evaluate(async accessToken=>{
+  const key='thiepn:hub-sso:v1:tokens';
+  const value=JSON.stringify({accessToken,refreshToken:'fixture-refreshed',expiresAt:0,
+   scope:'openid email profile offline_access'});
+  localStorage.setItem(key,value);
+  await new Promise<void>((resolve,reject)=>{
+   const request=indexedDB.open('thiepn-hub-account');
+   request.onsuccess=()=>{
+    const db=request.result,tx=db.transaction('session','readwrite');
+    tx.objectStore('session').put({value,legacy:value},key);
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onabort=()=>reject(tx.error);
+   };
+   request.onerror=()=>reject(request.error);
+  });
+ },jwt(OWNER));
+}
+test('A2 lease contention keeps one single-use refresh with four tabs and no Web Locks',async({browser})=>{
+ test.setTimeout(75_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true,refreshDelayMs:1200});
+ const a=await api.device(browser,null);
+ await seedA2ExpiredToken(a.page);
+ await a.page.close();
+ await a.context.addInitScript(()=>{
+  Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+  const metrics={leaseReads:0,leaseWrites:0,leaseReleases:0,dbErrors:0};
+  (window as any).__a2LeaseMetrics=metrics;
+  const get=IDBObjectStore.prototype.get,put=IDBObjectStore.prototype.put,del=IDBObjectStore.prototype.delete;
+  const key='thiepn:hub-account-storage:refresh-lease';
+  IDBObjectStore.prototype.get=function(...args){if(this.name==='session'&&args[0]===key)metrics.leaseReads++;return Reflect.apply(get,this,args);};
+  IDBObjectStore.prototype.put=function(...args){if(this.name==='session'&&args[1]===key)metrics.leaseWrites++;return Reflect.apply(put,this,args);};
+  IDBObjectStore.prototype.delete=function(...args){if(this.name==='session'&&args[0]===key)metrics.leaseReleases++;return Reflect.apply(del,this,args);};
+  const open=indexedDB.open.bind(indexedDB);
+  indexedDB.open=((name:string,version?:number)=>{
+   const request=version===undefined?open(name):open(name,version);
+   if(name==='thiepn-hub-account')request.addEventListener('error',()=>metrics.dbErrors++);
+   return request;
+  }) as typeof indexedDB.open;
+ });
+ const pages=await Promise.all(Array.from({length:4},()=>a.context.newPage()));
+ try{
+  await Promise.all(pages.map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:30_000});
+   expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
+  }));
+  const metrics=await Promise.all(pages.map(page=>page.evaluate(()=>(window as any).__a2LeaseMetrics)));
+  console.info('A2_CONTENTION_COUNTS',JSON.stringify({refreshAttempts:api.refreshes(),leaseReads:metrics.map(m=>m.leaseReads),leaseWrites:metrics.map(m=>m.leaseWrites),leaseReleases:metrics.map(m=>m.leaseReleases),dbErrors:metrics.map(m=>m.dbErrors)}));
+  expect(api.exchanges()).toBe(0);
+  expect(api.refreshes()).toBe(1);
+  expect(metrics.every(m=>m.dbErrors===0&&m.leaseReads>0&&m.leaseWrites>0&&m.leaseReleases>0)).toBe(true);
+ }finally{await a.context.close();}
+});
+test('A2 stale expired localStorage mirror cannot undo a completed durable rotation without Web Locks',async({browser})=>{
+ test.setTimeout(60_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
+ const a=await api.device(browser,null);
+ await seedA2ExpiredToken(a.page);
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const first=await a.context.newPage();
+ try {
+  await first.goto('https://thiepn.dev/');
+  await expect(first.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  expect(api.refreshes()).toBe(1);
+  await first.evaluate(accessToken=>{
+   // Simulate an old tab writing an expired legacy mirror AFTER durable refresh.
+   localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({
+    accessToken,refreshToken:'fixture-refreshed',expiresAt:0,
+    scope:'openid email profile offline_access'}));
+  },jwt(OWNER));
+  const second=await a.context.newPage();
+  await second.goto('https://thiepn.dev/');
+  await expect(second.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  const durableRotated=await second.evaluate(async()=>{
+   return await new Promise<boolean>((resolve,reject)=>{
+    const request=indexedDB.open('thiepn-hub-account');
+    request.onsuccess=()=>{
+     const db=request.result,tx=db.transaction('session','readonly');
+     const read=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     tx.oncomplete=()=>{db.close();resolve(JSON.parse(read.result?.value??'null')?.refreshToken==='fixture-rotated');};
+     tx.onabort=()=>reject(tx.error);
+    };
+    request.onerror=()=>reject(request.error);
+   });
+  });
+  console.info('A2_STALE_MIRROR_COUNTS',JSON.stringify({refreshAttempts:api.refreshes(),durableRotated}));
+  expect(durableRotated).toBe(true);
+  expect(api.refreshes()).toBe(1);
+ }finally{await a.context.close();}
+});
+
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
