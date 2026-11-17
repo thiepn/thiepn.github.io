@@ -11,12 +11,16 @@ export interface FolioReadTask {
   id:string;title:string;status:'todo'|'inbox';priority:'normal'|'high'|'critical';
   updatedAt:string;plannedDate?:string;deadline?:string;bucket:FolioTaskBucket;
   recurring?:boolean;hasSubtasks?:boolean;
+  projectId?:string;projectName?:string;listId?:string;listName?:string;
 }
 export interface FolioTaskReadSnapshot {
   schema:'thiepn:folio-hub-tasks';version:1;source:'folio-local-device';
   date:string;generatedAt:string;totalCount:number;
   counts:Record<FolioTaskBucket,number>;truncated:boolean;tasks:readonly FolioReadTask[];
   recentCompleted?:readonly {id:string;title:string;priority:'normal'|'high'|'critical';updatedAt:string;completedAt?:string;plannedDate?:string}[];
+  availableProjects?:readonly {id:string;name:string}[];
+  availableLists?:readonly {id:string;name:string}[];
+  contextTruncated?:boolean;
 }
 const obj=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const day=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -51,6 +55,12 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
       (value.plannedDate!==undefined&&!day(value.plannedDate))||
       (value.recurring!==undefined&&typeof value.recurring!=='boolean')||
       (value.hasSubtasks!==undefined&&typeof value.hasSubtasks!=='boolean')||
+      (value.projectId!==undefined&&!text(value.projectId,128))||
+      (value.projectName!==undefined&&!text(value.projectName,120))||
+      (value.projectName!==undefined&&value.projectId===undefined)||
+      (value.listId!==undefined&&!text(value.listId,128))||
+      (value.listName!==undefined&&!text(value.listName,120))||
+      (value.listName!==undefined&&value.listId===undefined)||
       seen.has(value.id as string))throw Error('Invalid Folio task');
     seen.add(value.id as string);
     visible[value.bucket as string]!++;
@@ -69,6 +79,20 @@ export function parseFolioTaskRead(raw:unknown,now=Date.now()):FolioTaskReadSnap
       completeIds.add(completed.id);
     }
   }
+  for(const key of ['availableProjects','availableLists'] as const){
+    if(raw[key]!==undefined){
+      const values=raw[key];
+      if(!Array.isArray(values)||values.length>80)throw Error('Invalid Folio source context');
+      const ids=new Set<string>();
+      for(const entry of values){
+        if(!obj(entry)||!text(entry.id,128)||!text(entry.name,120)||ids.has(entry.id))
+          throw Error('Invalid Folio source context entry');
+        ids.add(entry.id);
+      }
+    }
+  }
+  if(raw.contextTruncated!==undefined&&typeof raw.contextTruncated!=='boolean')
+    throw Error('Invalid Folio context completeness');
   const parsed=raw as unknown as FolioTaskReadSnapshot;
   if(!freshFolioTaskRead(parsed,now))throw Error('Expired Folio task read');
   return parsed;
