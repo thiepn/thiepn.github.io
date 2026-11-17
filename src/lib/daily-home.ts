@@ -18,7 +18,8 @@ export const HOME_MODULES: readonly { id: HomeModuleId; title: string; descripti
     { label: 'Capture a thought', detail: 'Notes · Open a new text note', href: providerAction('notes', 'capture-text')! },
     { label: 'New checklist', detail: 'Notes · Open a new checklist', href: providerAction('notes', 'capture-checklist')! },
   ] },
-  { id: 'faith', title: 'Faith', description: 'Scripture memory and a wider view of missions.', actions: [
+  { id: 'faith', title: 'Faith', description: 'Daily devotion, Scripture memory and missions.', actions: [
+    { label: 'Open My Daily Devotion', detail: 'MDD · Private journal on this new origin; earlier journals stay at the original URL', href: 'https://mdd.thiepn.dev/' },
     { label: 'Open TMS60', detail: 'TMS60 · Choose a translation and verse', href: providerAction('tms60', 'open')! },
     { label: 'Explore unreached peoples', detail: 'Unreached · Open the app', app: 'unreached' },
   ] },

@@ -33,6 +33,9 @@ describe('H4 view ownership and recovery', () => {
       if (action.app) expect(action.href).toBe(apps.get(action.app));
     }
     expect(() => resolveHomeActions(HOME_MODULES.find(m => m.id === 'study')!, new Map())).toThrow(/reviewed/);
+    const faith = resolveHomeActions(HOME_MODULES.find(m => m.id === 'faith')!, apps);
+    expect(faith.find(action => action.label === 'Open My Daily Devotion')?.href).toBe('https://mdd.thiepn.dev/');
+    expect(faith.every(action => !action.href.includes('/my-daily-devotion/'))).toBe(true);
   });
 });
 describe('H4 day presentation without invented recurrence', () => {
