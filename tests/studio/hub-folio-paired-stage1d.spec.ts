@@ -130,10 +130,23 @@ test('tab receipt blocks uncertain writes and preserves idempotency after iframe
     const frame=document.createElement('iframe')
     frame.hidden=true;frame.title='Folio local task reader'
     frame.src='/folio/?hubTasksRead=1'
-    document.body.appendChild(frame)
-    await new Promise<void>(resolve=>{
-      if(frame.contentDocument?.readyState==='complete'){resolve();return}
-      frame.addEventListener('load',()=>resolve(),{once:true})
+    // about:blank starts as readyState=complete before the real Folio script
+    // boots in Firefox/Android. Wait for the verified source ready message.
+    await new Promise<void>((resolve,reject)=>{
+      const timeout=setTimeout(()=>{
+        window.removeEventListener('message',onReady)
+        reject(Error('Replacement Folio source never signalled readiness'))
+      },12_000)
+      const onReady=(event:MessageEvent)=>{
+        if(event.origin===location.origin && event.source===frame.contentWindow &&
+           event.data?.type==='thiepn:folio-hub-tasks-read:v1:ready'){
+          clearTimeout(timeout)
+          window.removeEventListener('message',onReady)
+          resolve()
+        }
+      }
+      window.addEventListener('message',onReady)
+      document.body.appendChild(frame)
     })
   })
   const repeat=await sourceAction(page,action,id,1)
