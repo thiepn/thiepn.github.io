@@ -1,6 +1,7 @@
 /** Folio owns every task row. Hub validates and displays only this temporary
  * same-device projection; it never persists, edits, syncs or imports the rows. */
 export const FOLIO_TASK_READ_MESSAGE='thiepn:folio-hub-tasks-read:v1' as const;
+export const FOLIO_LIVE_GRANT_KEY='folio:hub:task-read-consent:v1' as const;
 export const FOLIO_TASK_READ_MAX_AGE_MS=90_000;
 export type FolioTaskBucket='today'|'inbox'|'upcoming'|'later';
 export type FolioTaskFilter=FolioTaskBucket|'all';
