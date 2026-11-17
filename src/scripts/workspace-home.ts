@@ -2822,6 +2822,21 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if(view==='tasks'&&folioLive.status==='ready'&&el.matches('[data-folio-project]')){
+            const value=el.value;
+            if(value==='all'||value==='none'||folioLive.snapshot?.availableProjects?.some(p=>p.id===value)){
+                folioTaskView.projectId=value;
+                updateFolioViews(true);
+            }
+            return;
+        }
+        if(view==='tasks'&&folioLive.status==='ready'&&el.matches('[data-folio-group]')){
+            if(['bucket','project','none'].includes(el.value)){
+                folioTaskView.group=el.value as FolioTaskView['group'];
+                updateFolioViews(true);
+            }
+            return;
+        }
         if (el.closest('[data-task-calendar-review]')) {
             const source=handoffOrigin?.kind==='task'&&handoffOrigin.epoch===epoch
                 ? state.tasks.find(t=>t.id===handoffOrigin!.id):undefined;
@@ -2919,6 +2934,11 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(view==='tasks'&&el.matches('[data-folio-search]')&&folioLive.status==='ready'){
+            folioTaskView.search=el.value.slice(0,100);
+            updateFolioViews(true);
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
@@ -3025,6 +3045,14 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        if(event.altKey && event.shiftKey && event.key.toLowerCase()==='n' &&
+           !event.repeat && !dialog.open && !searchDialog.open && !account.open &&
+           view==='tasks' && folioLive.actionsEnabled && !privacyHeld && !locked &&
+           !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')){
+            const input=root.querySelector<HTMLInputElement>('[data-folio-create-form] input[name=title]');
+            if(input){event.preventDefault();input.focus();input.scrollIntoView({block:'nearest',behavior:'smooth'});}
+            return;
+        }
         if (event.altKey && event.shiftKey && !event.repeat &&
             !dialog.open && !searchDialog.open && !account.open && view==='calendar' &&
             state && !locked && !privacyHeld && !state.preferences.hidden &&
