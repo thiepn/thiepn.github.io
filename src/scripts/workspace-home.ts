@@ -2139,6 +2139,21 @@ async function setup(root: HTMLElement) {
             });
             return;
         }
+        if (action === 'folio-project-context') {
+            const project=folioLive.snapshot?.availableProjects?.find(p=>p.id===id) ||
+                (folioLive.page?.rows.some(t=>t.projectId===id)?{id}:undefined);
+            if(project){
+                folioTaskFilter='all';
+                folioTaskView.projectId=id;
+                folioTaskView.search='';
+                folioTaskView.group='project';
+                folioPageIndex=0;
+                if(folioSearchTimer)clearTimeout(folioSearchTimer);
+                folioSearchPending=false;
+                updateFolioViews(true);
+            }
+            return;
+        }
         if (action === 'folio-read-filter') {
             if (['today','inbox','upcoming','later','completed','all'].includes(target.dataset.id ?? '')) {
                 folioTaskFilter=target.dataset.id as FolioTaskFilter;
