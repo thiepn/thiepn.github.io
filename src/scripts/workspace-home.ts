@@ -21,6 +21,8 @@ import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/note
 import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
 import { renderFolioTaskPreview, type FolioDeviceStatus } from '../lib/workspace/folio-panel';
+import { FolioTaskChannel } from '../lib/workspace/folio-task-channel';
+import type { FolioTaskFilter } from '../lib/workspace/folio-task-read';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon, appIcon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
@@ -180,6 +182,16 @@ async function setup(root: HTMLElement) {
     let folioPopup: Window | null = null;
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
     let folioExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+    let folioTaskFilter:FolioTaskFilter='today';
+    const folioLive = new FolioTaskChannel(
+        () => {
+            const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+                hubIdentity.status === 'signed-out' ? 'guest' : null;
+            return view === 'tasks' && !!state && !locked && !privacyHeld &&
+                !state.preferences.hidden && scope !== null && scope === folioOwner;
+        },
+        () => updateFolioViews(),
+    );
     function folioProjection() {
         const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
             hubIdentity.status === 'signed-out' ? 'guest' : null;
@@ -193,6 +205,8 @@ async function setup(root: HTMLElement) {
         else repaintOverview();
     }
     function resetFolio() {
+        folioLive.close();
+        folioTaskFilter='today';
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
@@ -205,6 +219,7 @@ async function setup(root: HTMLElement) {
     }
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        folioLive.close();
         if (folioTimeout) clearTimeout(folioTimeout);
         folioOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
         folioNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
@@ -242,7 +257,9 @@ async function setup(root: HTMLElement) {
             folioExpiryTimer = setTimeout(() => {
                 if (folioSnapshot !== snapshot) return;
                 if (!freshFolioDeviceSnapshot(folioSnapshot)) {
-                    resetFolio();
+                    // Expire the old v1 card without revoking a separately approved
+                    // live task session (which has its own source freshness gate).
+                    folioSnapshot = null;
                     folioStatus = 'unavailable';
                     updateFolioViews();
                 }
@@ -251,6 +268,10 @@ async function setup(root: HTMLElement) {
             folioPopup = null;
             if (folioTimeout) clearTimeout(folioTimeout);
             folioTimeout = null;
+            // An explicit, separate Folio Share click authorizes auto-refresh
+            // only in this Tasks tab. A normal one-time share remains unchanged.
+            if (view === 'tasks' && event.data?.liveTasks === true)
+                folioLive.start();
         } catch {
             // Ignore unrelated messages: no echo, fallback data or weakened validation.
             return;
@@ -796,7 +817,9 @@ async function setup(root: HTMLElement) {
             <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
               <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
-            </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot)}`;
+            </section>${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
+                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,
+            })}`;
         }
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
@@ -1950,6 +1973,22 @@ async function setup(root: HTMLElement) {
             repaintOverview();
             return;
         }
+        if (action === 'folio-read-filter') {
+            if (['today','inbox','upcoming','all'].includes(target.dataset.id ?? '')) {
+                folioTaskFilter=target.dataset.id as FolioTaskFilter;
+                updateFolioViews();
+            }
+            return;
+        }
+        if (action === 'folio-read-refresh') {
+            folioLive.refresh();
+            return;
+        }
+        if (action === 'folio-read-disconnect') {
+            resetFolio();
+            updateFolioViews();
+            return;
+        }
         if (action === 'connect-folio') {
             openFolioBridge();
             return;
@@ -2971,6 +3010,8 @@ async function setup(root: HTMLElement) {
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && folioOwner !== null && verifyingScope !== folioOwner))
             resetFolio();
+        else if (identity.status === 'checking' && folioLive.status !== 'disconnected')
+            folioLive.pause();
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && notesSourceOwner !== null && verifyingScope !== notesSourceOwner))
             clearNotesSource();
@@ -3085,6 +3126,7 @@ async function setup(root: HTMLElement) {
         }
         languageOwner = owner;
         render();
+        if (folioLive.status === 'paused' && !document.hidden) folioLive.resume();
         if (managedAccountEnabled && identity.status === 'signed-in' && storageReady) {
             const ownStore = nextStore;
             cloud = new WorkspaceCloudSync({
@@ -3170,6 +3212,7 @@ async function setup(root: HTMLElement) {
     window.addEventListener('pagehide', () => { void flushCaptureDraft(); });
     window.addEventListener('focus', () => {
         if (state && !dirty && !editing) void reloadSaved();
+        if (folioLive.status !== 'disconnected' && !document.hidden) folioLive.resume();
         void refreshLanguages();
     });
     window.addEventListener('online', () => void refreshLanguages(true));
@@ -3186,11 +3229,18 @@ async function setup(root: HTMLElement) {
     window.addEventListener('pagehide', resetFolio);
     window.addEventListener('pagehide', clearNotesSource);
     document.addEventListener('visibilitychange', () => {
-        // A pending consent window may hide the Hub until its user-approved reply.
-        // Completed snapshots are one-tab-only and cleared on later backgrounding.
-        if (document.hidden && folioStatus === 'ready') {
+        // Hide source titles on backgrounding. Live authorization remains only
+        // in this tab's memory, and reads resume when the same owner returns.
+        if (document.hidden && folioLive.status !== 'disconnected') {
+            folioLive.pause();
+            folioSnapshot = null;
+            folioStatus = 'unavailable';
+            updateFolioViews();
+        } else if (document.hidden && folioStatus === 'ready') {
             resetFolio();
             updateFolioViews();
+        } else if (!document.hidden && folioLive.status === 'paused') {
+            folioLive.resume();
         }
         if (document.hidden && notesSourceStatus === 'ready') {
             clearNotesSource();
