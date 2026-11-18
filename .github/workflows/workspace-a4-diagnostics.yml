@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   a4-diagnostics:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,13 +32,16 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-a4-playwright-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-ubuntu-24.04-a4-playwright-${{ hashFiles('package-lock.json') }}
+      - name: Install missing WebKit host libraries (bounded)
+        timeout-minutes: 12
+        run: npx playwright install-deps webkit
       - name: Install Chromium and WebKit (bounded)
         id: a4_browsers
         timeout-minutes: 10
         run: |
           npx playwright install chromium webkit
-          node -e "const fs=require('node:fs');const p=require('playwright');for(const n of ['chromium','webkit']){const path=p[n].executablePath();if(!fs.existsSync(path)){console.error('Missing '+n+' executable');process.exitCode=1;}else{console.log(n+' binary verified');}}"
+          node --input-type=module -e "import{chromium,webkit}from'playwright';for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){const b=await type.launch({headless:true});await b.close();console.log(name+' launches');}"
 
       - name: Cold-init, warmed CAS, session fallback and reload (both engines)
         run: |
