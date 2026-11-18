@@ -46,29 +46,14 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
     for (const [index, key] of keys.entries()) {
       const record = values[index], currentLegacy = legacy(key);
       if (record !== undefined && (!record || (record.value !== null && typeof record.value !== 'string'))) throw new Error('ACCOUNT_STORAGE_INVALID');
-      // Older open Hub tabs still write localStorage. Import a changed legacy
-      // record, but never replace a durable credential with an unchanged stale
-      // local record left behind by a quota failure.
+      // Older Hub tabs can still write the localStorage compatibility mirror.
+      // Import other changed legacy records as before, but once a durable token
+      // record exists, IndexedDB is authoritative for the refresh-token lineage.
+      // Expiration timestamps do not prove token recency: a stale one-use
+      // refresh token can be copied with a later expiry and revoke a live login.
+      // First-time token migration (record === undefined) remains supported.
       const changed = record !== undefined && currentLegacy !== undefined && currentLegacy !== record.legacy;
-      // A stale localStorage mirror must never roll back a freshly rotated
-      // refresh token from IndexedDB. This can otherwise trigger a SECOND
-      // OAuth refresh in another tab even after the cross-tab lease succeeded.
-      const tokenExpiry = (raw: string | null | undefined): number | null => {
-        if (typeof raw !== 'string') return null;
-        try {
-          const candidate: unknown = JSON.parse(raw);
-          if (!candidate || typeof candidate !== 'object' || !('expiresAt' in candidate)) return null;
-          const expiresAt = (candidate as {expiresAt?: unknown}).expiresAt;
-          return typeof expiresAt === 'number' && Number.isFinite(expiresAt) ? expiresAt : null;
-        } catch { return null; }
-      };
-      const durableExpiry = key.endsWith(':tokens') ? tokenExpiry(record?.value) : null;
-      const legacyExpiry = key.endsWith(':tokens') ? tokenExpiry(currentLegacy) : null;
-      const preventRollback = key.endsWith(':tokens') && record !== undefined &&
-        (record.value === null || durableExpiry !== null &&
-          durableExpiry > Date.now() + 30_000 &&
-          (legacyExpiry === null || legacyExpiry <= durableExpiry));
-      const importLegacy = changed && !preventRollback;
+      const importLegacy = changed && !key.endsWith(':tokens');
       cache.set(key, importLegacy ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
       if (record === undefined || importLegacy) await write(key, cache.get(key)!, currentLegacy);
     }
