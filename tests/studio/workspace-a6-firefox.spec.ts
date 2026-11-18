@@ -62,11 +62,23 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  await page.mouse.move(box!.x+8,box!.y+88,{steps:5});
  await page.mouse.up();
  const preview=await snapshot(page,id!);
- await page.evaluate(()=>{(window as any).__a6Capture=true;});
+ await page.evaluate(()=>{
+  (window as any).__a6Capture=true;
+  (window as any).__a6DoneClicks=[];
+  document.querySelector('[data-workspace]')?.addEventListener('click',(event:Event)=>{
+   const action=(event.target as Element).closest<HTMLElement>('[data-action]')?.dataset.action??null;
+   if(action==='done-layout'){
+    (window as any).__a6DoneClicks.push({action,defaultPrevented:event.defaultPrevented});
+   }
+  },true);
+ });
  await page.getByRole('button',{name:'Done',exact:true}).click();
  await page.waitForTimeout(350);
  const doneState=await page.evaluate(()=>({
   caught:(window as any).__a6Caught as {name:string;message:string}[],
+  doneClicks:(window as any).__a6DoneClicks as {action:string;defaultPrevented:boolean}[],
+  toast:document.querySelector('[data-workspace-toast]')?.textContent??null,
+  toastHidden:!!(document.querySelector('[data-workspace-toast]') as HTMLElement)?.hidden,
   customizeAvailable:!![...document.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Customize'),
   editLabelPresent:!!document.querySelector('.ws-edit-label'),
   notice:document.querySelector('[data-workspace-notice]')?.textContent??null,
