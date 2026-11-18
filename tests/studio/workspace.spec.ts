@@ -23,9 +23,44 @@ test('the rail, presets and named workspaces are independent from shared content
  await ready(page);await task(page,'Shared task');await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await expect(page.locator('[data-workspace]')).toHaveAttribute('data-rail','collapsed');await expect(page.locator('.ws-planner')).toBeVisible();await page.reload();await expect(page.locator('[data-workspace]')).toHaveAttribute('data-rail','collapsed');
  await page.getByRole('button',{name:'Layouts',exact:true}).click();await page.getByLabel('Layout',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('#ws-title')).toHaveText('Focus console');const shortcut=(await page.locator('.ws-app').first().boundingBox())!,shortcutBody=(await page.locator('[data-widget-type=app-shortcuts] .ws-widget-body').boundingBox())!;expect(shortcut.y+shortcut.height).toBeLessThanOrEqual(shortcutBody.y+shortcutBody.height);await expect(page.locator('.ws-task-title')).toHaveText('Shared task');await expect(page.locator('[data-widget-type=tracker-history]')).toHaveCount(1);await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();await page.locator('[data-workspace-id]').first().click();await expect(page.locator('#ws-title')).toHaveText('Personal workspace');
 });
-test('pointer drag and resize commit logical placement that survives reflow',async({page})=>{
- await ready(page);await page.getByRole('button',{name:'Customize',exact:true}).click();const handle=page.locator('[data-drag]').nth(1),cell=page.locator('[data-widget-id]').nth(1),before=await cell.getAttribute('style');const box=(await handle.boundingBox())!;await page.mouse.move(box.x+8,box.y+8);await page.mouse.down();await page.mouse.move(box.x+8,box.y+88,{steps:5});await page.mouse.up();await expect(cell).not.toHaveAttribute('style',before!);const after=await cell.getAttribute('style');await page.getByRole('button',{name:'Done',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.setViewportSize({width:1440,height:1024});await expect(cell).toHaveAttribute('style',after!);await page.reload();await expect(page.locator('[data-widget-id]').nth(1)).toHaveAttribute('style',after!);
+test('pointer drag and resize commit logical placement that survives reflow',async({page,browserName})=>{
+ await ready(page);
+ await page.getByRole('button',{name:'Customize',exact:true}).click();
+ const selected=page.locator('[data-widget-id]').nth(1);
+ const id=await selected.getAttribute('data-widget-id');
+ expect(id).toBeTruthy();
+ // Reflow and place() may reorder widgets; index 1 need not remain the same
+ // widget after the drag. Follow the stable ID across all rerenders.
+ const cell=page.locator('[data-widget-id="'+id+'"]');
+ const style=()=>cell.evaluate((el:HTMLElement)=>
+  ['--col','--span','--row','--height'].map(k=>el.style.getPropertyValue(k).trim()));
+ const before=await style();
+ const box=await cell.locator('[data-drag]').boundingBox();
+ expect(box).not.toBeNull();
+ await page.mouse.move(box!.x+8,box!.y+8);
+ await page.mouse.down();
+ await page.mouse.move(box!.x+8,box!.y+88,{steps:5});
+ await page.mouse.up();
+ await expect.poll(async()=>JSON.stringify(await style())).not.toBe(JSON.stringify(before));
+ const done=page.getByRole('button',{name:'Done',exact:true});
+ // Firefox drops Playwright's synthesized mouse click immediately following
+ // this pointer drag (A6 3/3 reproduction). Enter tests the accessible
+ // commit path; mouse click remains exercised on Chromium/WebKit. Do not
+ // present this as Firefox mouse-click qualification.
+ if(browserName==='firefox'){await done.focus();await done.press('Enter');}
+ else await done.click();
+ await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ const after=await style();
+ expect(after).not.toEqual(before);
+ await page.setViewportSize({width:390,height:844});
+ await page.setViewportSize({width:1440,height:1024});
+ await expect.poll(async()=>await style()).toEqual(after);
+ await page.reload();
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await expect.poll(async()=>await style()).toEqual(after);
 });
+
 test('another tab cannot silently overwrite an active layout edit',async({page,context})=>{
  await ready(page);const other=await context.newPage();await other.goto('/');await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await page.getByRole('button',{name:'Customize',exact:true}).click();await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await task(other,'From another tab');await expect(page.locator('[data-workspace-notice]')).toContainText('Another tab changed');await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByText('Editing layout',{exact:true})).toBeVisible();await expect(page.locator('[data-workspace-notice]')).toContainText('saved layout changed');await other.reload();await expect(other.locator('.ws-task-title')).toHaveText('From another tab');await other.close();
 });
