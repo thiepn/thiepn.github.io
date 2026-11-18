@@ -307,6 +307,134 @@ test('A2 stale expired localStorage mirror cannot undo a completed durable rotat
  }finally{await a.context.close();}
 });
 
+
+// A3 deliberately uses isolated synthetic credentials and logs only boolean outcomes/counts.
+test('A3 SDK re-entry from focus and online does not duplicate a single-use cross-tab refresh',async({browser})=>{
+ test.setTimeout(65_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true,refreshDelayMs:1200});
+ const a=await api.device(browser,null);
+ await seedA2ExpiredToken(a.page);
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
+ try{
+  await Promise.all(pages.map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await page.evaluate(()=>{
+    for(let n=0;n<4;n++){window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('online'));}
+   });
+   await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:30_000});
+  }));
+  console.info('A3_SDK_REENTRY',JSON.stringify({refreshAttempts:api.refreshes(),tabCount:pages.length}));
+  expect(api.refreshes()).toBe(1);
+  expect(api.exchanges()).toBe(0);
+ }finally{await a.context.close();}
+});
+test('A3 legacy expiry manipulation cannot roll back a rotated durable refresh token',async({browser})=>{
+ test.setTimeout(65_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
+ const a=await api.device(browser,null);
+ await seedA2ExpiredToken(a.page);
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ try{
+  const first=await a.context.newPage();
+  await first.goto('https://thiepn.dev/');
+  await expect(first.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+  expect(api.refreshes()).toBe(1);
+  // A stale predecessor's refresh token may be paired with an expiry larger
+  // than the newly rotated durable expiry; timestamps alone prove no lineage.
+  await first.evaluate(accessToken=>{
+   const key='thiepn:hub-sso:v1:tokens';
+   localStorage.setItem(key,JSON.stringify({accessToken,refreshToken:'fixture-refreshed',
+    expiresAt:Date.now()+7200_000,scope:'openid email profile offline_access'}));
+  },jwt(OWNER));
+  const second=await a.context.newPage();
+  await second.goto('https://thiepn.dev/');
+  await expect(second.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:20_000});
+  const state=await second.evaluate(async()=>{
+   return await new Promise<{rotated:boolean,legacyAhead:boolean}>((resolve,reject)=>{
+    const open=indexedDB.open('thiepn-hub-account');
+    open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('session','readonly');
+     const req=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     tx.oncomplete=()=>{
+      db.close();
+      const entry=req.result;
+      const tokens=JSON.parse(entry?.value??'null');
+      const legacy=JSON.parse(localStorage.getItem('thiepn:hub-sso:v1:tokens')??'null');
+      resolve({rotated:tokens?.refreshToken==='fixture-rotated',
+       legacyAhead:typeof legacy?.expiresAt==='number'&&legacy.expiresAt>Date.now()+6900_000});
+     };
+     tx.onabort=()=>reject(tx.error);
+    };
+    open.onerror=()=>reject(open.error);
+   });
+  });
+  console.info('A3_EXPIRY_LINEAGE',JSON.stringify({refreshAttempts:api.refreshes(),durableRotated:state.rotated,legacyExpiryWasLater:state.legacyAhead}));
+  expect(state.legacyAhead).toBe(true);
+  expect(state.rotated,'durable token must survive changed expiry of its stale predecessor').toBe(true);
+  expect(api.refreshes()).toBe(1);
+ }finally{await a.context.close();}
+});
+test('A3 foreign IndexedDB lease times out without rotating tokens or blocking device workspace',async({browser})=>{
+ test.setTimeout(65_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
+ const a=await api.device(browser,null);
+ await seedA2ExpiredToken(a.page);
+ await a.page.evaluate(async()=>{
+  await new Promise<void>((resolve,reject)=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   open.onsuccess=()=>{
+    const db=open.result,tx=db.transaction('session','readwrite');
+    tx.objectStore('session').put({owner:'fixture-foreign-tab',expiresAt:Date.now()+60_000},'thiepn:hub-account-storage:refresh-lease');
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onabort=()=>reject(tx.error);
+   };
+   open.onerror=()=>reject(open.error);
+  });
+ });
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const page=await a.context.newPage();
+ try{
+  await page.goto('https://thiepn.dev/');
+  await expect(page.locator('[data-workspace]')).toBeVisible();
+  await expect(page.locator('[data-storage-label]')).toHaveText('This device',{timeout:30_000});
+  await expect(page.locator('[data-workspace]')).toBeVisible();
+  console.info('A3_LEASE_TIMEOUT',JSON.stringify({refreshAttempts:api.refreshes(),workspaceAccessible:true}));
+  expect(api.refreshes()).toBe(0);
+ }finally{await a.context.close();}
+});
+test('A3 restricted-storage two-tab saving remains durable across reload',async({browser})=>{
+ test.setTimeout(65_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
+ const a=await api.device(browser,OWNER,undefined,false,'idb-blocked');
+ await a.page.evaluate(()=>{
+  const key='thiepn:hub-sso:v1:tokens',current=JSON.parse(localStorage.getItem(key)!);
+  localStorage.setItem(key,JSON.stringify({...current,expiresAt:0,refreshToken:'fixture-refreshed'}));
+ });
+ await a.page.close();
+ await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ const first=await a.context.newPage(),second=await a.context.newPage();
+ try {
+  await Promise.all([first,second].map(async page=>{
+   await page.goto('https://thiepn.dev/');
+   await expect(page.locator('[data-workspace]')).toBeVisible();
+   await expect(page.locator('[data-storage-label]')).toHaveText('This device');
+  }));
+  const initial=await Promise.all([first,second].map(p=>p.locator('[data-workspace-status]').textContent()));
+  await task(first,'A3 restricted durable fixture');
+  const after=await Promise.all([first,second].map(p=>p.locator('[data-workspace-status]').textContent()));
+  await first.reload();
+  await expect(first.locator('[data-workspace]')).toBeVisible();
+  const preserved=await first.locator('.ws-task-title').filter({hasText:'A3 restricted durable fixture'}).count();
+  console.info('A3_RESTRICTED_DURABILITY',JSON.stringify({initial,after,preserved,refreshAttempts:api.refreshes()}));
+  expect(preserved,'local task must survive reload even with Account IndexedDB disabled').toBe(1);
+  expect(api.refreshes()).toBe(0);
+ }finally{await a.context.close();}
+});
+
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
