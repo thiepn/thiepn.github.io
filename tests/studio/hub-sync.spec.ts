@@ -410,6 +410,53 @@ test('A3 foreign IndexedDB lease times out without rotating tokens or blocking d
   expect(api.refreshes()).toBe(0);
  }finally{await a.context.close();}
 });
+function a3EnforceRestrictedAccountStorage(){
+ Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+ // Test-only deterministic failure, independent of IDBFactory assignment
+ // semantics on different WebKit versions. Other IndexedDB stores still work.
+ const originalOpen=indexedDB.open.bind(indexedDB);
+ Object.defineProperty(indexedDB,'open',{configurable:true,value:(name:string,version?:number)=>{
+  if(name==='thiepn-hub-account')throw new DOMException('A3 test-only Account IDB refusal','SecurityError');
+  return version===undefined?originalOpen(name):originalOpen(name,version);
+ }});
+}
+test('A3 restricted-storage single-tab local task persists without Account refresh',async({browser})=>{
+ test.setTimeout(65_000);
+ const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
+ const a=await api.device(browser,OWNER,undefined,false,'idb-blocked');
+ await a.page.evaluate(()=>{
+  const key='thiepn:hub-sso:v1:tokens',current=JSON.parse(localStorage.getItem(key)!);
+  localStorage.setItem(key,JSON.stringify({...current,expiresAt:0,refreshToken:'fixture-refreshed'}));
+ });
+ await a.page.close();
+ await a.context.addInitScript(a3EnforceRestrictedAccountStorage);
+ const page=await a.context.newPage();
+ try{
+  await page.goto('https://thiepn.dev/');
+  await expect(page.locator('[data-storage-label]')).toHaveText('This device');
+  const mode=await page.evaluate(()=>{
+   let idbBlocked=false;try{indexedDB.open('thiepn-hub-account');}catch{idbBlocked=true;}
+   return {noWebLocks:typeof navigator.locks?.request!=='function',idbBlocked};
+  });
+  expect(mode.noWebLocks&&mode.idbBlocked).toBe(true);
+  const initial=await page.locator('[data-workspace-status]').textContent();
+  try{await task(page,'A3 restricted solo fixture');}catch(error){
+   console.info('A3_SOLO_SAVE_ERROR',JSON.stringify({mode,initial,
+    status:await page.locator('[data-workspace-status]').textContent(),
+    dialogVisible:await page.locator('[data-workspace-dialog]').isVisible(),
+    refreshAttempts:api.refreshes()}));
+   throw error;
+  }
+  await expect(page.locator('.ws-task-title').filter({hasText:'A3 restricted solo fixture'})).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('[data-workspace]')).toBeVisible();
+  const preserved=await page.locator('.ws-task-title').filter({hasText:'A3 restricted solo fixture'}).count();
+  console.info('A3_SOLO_DURABILITY',JSON.stringify({mode,initial,preserved,refreshAttempts:api.refreshes()}));
+  expect(preserved).toBe(1);
+  expect(api.refreshes()).toBe(0);
+ }finally{await a.context.close();}
+});
+
 test('A3 restricted-storage two-tab saving remains durable across reload',async({browser})=>{
  test.setTimeout(65_000);
  const api=backend({sharing:false,probeEligible:false,singleUseRefresh:true});
@@ -419,7 +466,7 @@ test('A3 restricted-storage two-tab saving remains durable across reload',async(
   localStorage.setItem(key,JSON.stringify({...current,expiresAt:0,refreshToken:'fixture-refreshed'}));
  });
  await a.page.close();
- await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
+ await a.context.addInitScript(a3EnforceRestrictedAccountStorage);
  const first=await a.context.newPage(),second=await a.context.newPage();
  try {
   await Promise.all([first,second].map(async page=>{
