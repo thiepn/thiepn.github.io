@@ -398,11 +398,15 @@ test('A3 foreign IndexedDB lease times out without rotating tokens or blocking d
  await a.context.addInitScript(()=>Object.defineProperty(navigator,'locks',{configurable:true,value:undefined}));
  const page=await a.context.newPage();
  try{
+  const started=Date.now();
   await page.goto('https://thiepn.dev/');
   await expect(page.locator('[data-workspace]')).toBeVisible();
-  await expect(page.locator('[data-storage-label]')).toHaveText('This device',{timeout:30_000});
+  await expect(page.locator('[data-hub-account]')).toHaveAttribute('data-account-failure','initialization',{timeout:35_000});
+  const elapsedMs=Date.now()-started;
+  await expect(page.locator('[data-storage-label]')).toHaveText('This device');
   await expect(page.locator('[data-workspace]')).toBeVisible();
-  console.info('A3_LEASE_TIMEOUT',JSON.stringify({refreshAttempts:api.refreshes(),workspaceAccessible:true}));
+  console.info('A3_LEASE_TIMEOUT',JSON.stringify({refreshAttempts:api.refreshes(),workspaceAccessible:true,elapsedMs}));
+  expect(elapsedMs,'must observe actual 20s lease deadline, not an early guest label').toBeGreaterThanOrEqual(18_000);
   expect(api.refreshes()).toBe(0);
  }finally{await a.context.close();}
 });
@@ -423,13 +427,28 @@ test('A3 restricted-storage two-tab saving remains durable across reload',async(
    await expect(page.locator('[data-workspace]')).toBeVisible();
    await expect(page.locator('[data-storage-label]')).toHaveText('This device');
   }));
+  const mode=await Promise.all([first,second].map(page=>page.evaluate(()=>{
+    let idbBlocked=false;
+    try{indexedDB.open('thiepn-hub-account');}catch{idbBlocked=true;}
+    return {noWebLocks:typeof navigator.locks?.request!=='function',idbBlocked};
+  })));
+  console.info('A3_RESTRICTED_MODE',JSON.stringify({mode,refreshBeforeSave:api.refreshes()}));
+  expect(mode.every(item=>item.noWebLocks&&item.idbBlocked)).toBe(true);
   const initial=await Promise.all([first,second].map(p=>p.locator('[data-workspace-status]').textContent()));
-  await task(first,'A3 restricted durable fixture');
+  try{await task(first,'A3 restricted durable fixture');}catch(error){
+    console.info('A3_RESTRICTED_SAVE_ERROR',JSON.stringify({
+      initial,refreshAttempts:api.refreshes(),
+      saveStatus:await first.locator('[data-workspace-status]').textContent(),
+      dialogVisible:await first.locator('[data-workspace-dialog]').isVisible()}));
+    throw error;
+  }
+  await expect(first.locator('.ws-task-title').filter({hasText:'A3 restricted durable fixture'})).toHaveCount(1);
   const after=await Promise.all([first,second].map(p=>p.locator('[data-workspace-status]').textContent()));
   await first.reload();
   await expect(first.locator('[data-workspace]')).toBeVisible();
   const preserved=await first.locator('.ws-task-title').filter({hasText:'A3 restricted durable fixture'}).count();
-  console.info('A3_RESTRICTED_DURABILITY',JSON.stringify({initial,after,preserved,refreshAttempts:api.refreshes()}));
+  console.info('A3_RESTRICTED_DURABILITY',JSON.stringify({
+    initial,after,preserved,refreshAttempts:api.refreshes(),mode}));
   expect(preserved,'local task must survive reload even with Account IndexedDB disabled').toBe(1);
   expect(api.refreshes()).toBe(0);
  }finally{await a.context.close();}
