@@ -35,6 +35,19 @@ test('pointer drag and resize commit logical placement that survives reflow',asy
  const style=()=>cell.evaluate((el:HTMLElement)=>
   ['--col','--span','--row','--height'].map(k=>el.style.getPropertyValue(k).trim()));
  const before=await style();
+ const draftRect=()=>page.evaluate(async widgetId=>{
+  const db=await new Promise<IDBDatabase>((resolve,reject)=>{
+   const r=indexedDB.open('thiepn-adaptive-workspace',1);
+   r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+  });
+  const draft=await new Promise<any>((resolve,reject)=>{
+   const r=db.transaction('drafts','readonly').objectStore('drafts').get('guest');
+   r.onsuccess=()=>resolve(r.result??null);r.onerror=()=>reject(r.error);
+  });db.close();
+  return draft?.workspace?.widgets?.find((w:any)=>w.id===widgetId)?.desktop??null;
+ },id);
+ await expect.poll(draftRect).not.toBeNull();
+ const beforeDraft=await draftRect();
  const box=await cell.locator('[data-drag]').boundingBox();
  expect(box).not.toBeNull();
  await page.mouse.move(box!.x+8,box!.y+8);
@@ -43,12 +56,22 @@ test('pointer drag and resize commit logical placement that survives reflow',asy
  await page.mouse.up();
  await expect.poll(async()=>JSON.stringify(await style())).not.toBe(JSON.stringify(before));
  const done=page.getByRole('button',{name:'Done',exact:true});
- // Firefox drops Playwright's synthesized mouse click immediately following
- // this pointer drag (A6 3/3 reproduction). Enter tests the accessible
- // commit path; mouse click remains exercised on Chromium/WebKit. Do not
- // present this as Firefox mouse-click qualification.
- if(browserName==='firefox'){await done.focus();await done.press('Enter');}
- else await done.click();
+ // Firefox drops Playwright's synthesized click immediately after the
+ // drag. Its first mouse interaction can finish the gesture without
+ // activating Done. Require the proposed geometry in the durable edit
+ // draft before using the accessible Enter commit path; never pass by
+ // saving the original, unchanged layout.
+ if(browserName==='firefox'){
+  await done.click();
+  if(await done.isVisible()){
+   await expect.poll(draftRect,{timeout:10_000}).not.toEqual(beforeDraft);
+   await done.focus();
+   await done.press('Enter');
+  }
+ } else {
+  await expect.poll(draftRect,{timeout:10_000}).not.toEqual(beforeDraft);
+  await done.click();
+ }
  await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  const after=await style();
