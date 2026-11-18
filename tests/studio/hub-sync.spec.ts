@@ -558,11 +558,77 @@ test('consented Notes, Library and TMS60 insights appear together and clear with
 });
 
 test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
- const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
- await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
- await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
- const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
- expect(JSON.parse(old).captureDraft).toBe('Draft owned by the first account');expect(api.writes.filter(write=>write.owner===OTHER).every(write=>write.state.captureDraft==='')).toBe(true);await a.context.close();
+ test.setTimeout(70_000);
+ const api=backend(),a=await api.device(browser);
+ try {
+  await sync(a.page);
+  // A distinct tab writes the authoritative credential; merely replacing
+  // localStorage would be ignored by the A3 durable-token lineage safeguard.
+  const other=await a.context.newPage();
+  await other.goto('https://thiepn.dev/');
+  await expect(other.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await a.page.evaluate(()=>{
+   (window as any).__crossTabOwnerEvents=[];
+   window.addEventListener('hub:identity',(event:Event)=>{
+    const detail=(event as CustomEvent<{status:string;id?:string}>).detail;
+    (window as any).__crossTabOwnerEvents.push({status:detail.status,id:detail.id??null});
+   });
+  });
+  const draft='Draft owned by the first account';
+  await a.page.locator('[data-capture-draft]').fill(draft);
+  await other.evaluate(async token=>{
+   const key='thiepn:hub-sso:v1:tokens';
+   const value=JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',
+    expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'});
+   await new Promise<void>((resolve,reject)=>{
+    const request=indexedDB.open('thiepn-hub-account');
+    request.onsuccess=()=>{
+     const db=request.result,tx=db.transaction('session','readwrite');
+     tx.objectStore('session').put({value,legacy:value},key);
+     tx.oncomplete=()=>{db.close();resolve();};
+     tx.onabort=()=>reject(tx.error);
+    };
+    request.onerror=()=>reject(request.error);
+   });
+   // Native 'storage' event fires in the first tab; no fabricated event there.
+   localStorage.setItem(key,value);
+  },jwt(OTHER));
+  await expect.poll(()=>a.page.evaluate(()=>
+   ((window as any).__crossTabOwnerEvents as {status:string;id:string|null}[])
+     .some(event=>event.status==='signed-in'&&event.id==='22222222-2222-4222-8222-222222222222')
+  ),{timeout:20_000}).toBe(true);
+  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('',{timeout:10_000});
+  await sync(a.page);
+  const records=await a.page.evaluate(async ids=>{
+   const db=await new Promise<IDBDatabase>((resolve,reject)=>{
+    const request=indexedDB.open('thiepn-adaptive-workspace',1);
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error);
+   });
+   const values=await Promise.all(ids.map(id=>new Promise<any>((resolve,reject)=>{
+    const request=db.transaction('records','readonly').objectStore('records').get('user:'+id);
+    request.onsuccess=()=>resolve(request.result===undefined?null:JSON.parse(String(request.result)));
+    request.onerror=()=>reject(request.error);
+   })));
+   db.close();
+   return {
+    oldPreserved:values[0]?.captureDraft==='Draft owned by the first account',
+    newEmpty:!values[1]?.captureDraft,
+    activeEmpty:(document.querySelector('[data-capture-draft]') as HTMLTextAreaElement)?.value==='',
+   };
+  },[OWNER,OTHER]);
+  const leaked=api.writes.filter(write=>write.owner===OTHER&&write.state?.captureDraft===draft).length;
+  console.info('CROSS_TAB_OWNER_HANDOFF',JSON.stringify({
+   oldPreserved:records.oldPreserved,newEmpty:records.newEmpty,
+   activeEmpty:records.activeEmpty,leakedWrites:leaked,
+   otherOwnerWrites:api.writes.filter(write=>write.owner===OTHER).length,
+  }));
+  expect(records.oldPreserved).toBe(true);
+  expect(records.newEmpty).toBe(true);
+  expect(records.activeEmpty).toBe(true);
+  expect(leaked).toBe(0);
+ } finally { await a.context.close(); }
 });
 
 // Exercises the real shared shell and summary readers, not a standalone status fixture.
