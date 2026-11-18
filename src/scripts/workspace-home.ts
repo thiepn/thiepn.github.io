@@ -3420,8 +3420,36 @@ async function setup(root: HTMLElement) {
             catch {
                 recoveryDraft = null;
             }
-            if (!loaded)
-                await persist();
+            if (!loaded) {
+                // A4: Two cold guest tabs can both observe an absent record.
+                // The revision-checked initial write is intentionally not
+                // allowed to overwrite the winner. If it loses only this
+                // initialization race, adopt the committed record instead
+                // of stranding an otherwise untouched workspace as Unsaved.
+                const initialVersion = changeVersion;
+                const created = await persist();
+                if (created !== true && conflict && own === epoch &&
+                    store === nextStore && changeVersion === initialVersion) {
+                    try {
+                        const committed = await nextStore.load();
+                        if (committed && committed.revision > 0 &&
+                            own === epoch && store === nextStore &&
+                            changeVersion === initialVersion) {
+                            state = committed;
+                            privacyHeld = committed.preferences.hidden;
+                            selected = today();
+                            month = selected.slice(0, 7) + '-01';
+                            dirty = false;
+                            conflict = false;
+                            notice('');
+                            saved();
+                        }
+                    } catch {
+                        // A genuinely unreadable or unavailable stored record
+                        // must keep the existing Unsaved/export protection.
+                    }
+                }
+            }
         }
         if (own !== epoch)
             return;
