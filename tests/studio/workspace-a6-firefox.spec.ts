@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {parseState} from '../../src/lib/workspace/model';
 
 /** A6 read-only Firefox layout evidence, scoped to synthetic guest storage. */
 function logicalStyle(value:string|null){
@@ -54,6 +55,41 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
   notice:document.querySelector('[data-workspace-notice]')?.textContent??null,
   status:document.querySelector('[data-workspace-status]')?.textContent??null,
  }));
+ const candidateDiagnostic=await page.evaluate(async()=>{
+  const db=await new Promise<IDBDatabase>((resolve,reject)=>{
+   const request=indexedDB.open('thiepn-adaptive-workspace',1);
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>reject(request.error);
+  });
+  const tx=db.transaction(['records','drafts'],'readonly');
+  const rec=tx.objectStore('records').get('guest');
+  const dr=tx.objectStore('drafts').get('guest');
+  const rows=await new Promise<{record:string|null;draft:any|null}>((resolve,reject)=>{
+   tx.oncomplete=()=>resolve({record:rec.result??null,draft:dr.result??null});
+   tx.onabort=()=>reject(tx.error);
+  });
+  db.close();
+  return rows;
+ });
+ const storedState=candidateDiagnostic.record?JSON.parse(candidateDiagnostic.record):null;
+ const activeWorkspace=storedState?.workspaces.find((w:any)=>w.id===storedState.active);
+ const editDraft=candidateDiagnostic.draft;
+ let candidateError:string|null=null;
+ if(storedState&&editDraft){
+  try{
+   const candidate={...storedState,
+    workspaces:storedState.workspaces.map((w:any)=>w.id===editDraft.workspaceId?editDraft.workspace:w)};
+   parseState(JSON.stringify(candidate));
+  }catch(e){candidateError=e instanceof Error?e.message:'unknown validation error';}
+ }
+ const draftEvidence={
+  recordRevision:storedState?.revision??null,
+  activeWorkspaceRevision:activeWorkspace?.revision??null,
+  draftBaseRevision:editDraft?.baseRevision??null,
+  draftWorkspaceRevision:editDraft?.workspace?.revision??null,
+  draftWidgets:editDraft?.workspace?.widgets?.length??null,
+  candidateError,
+ };
  const committed=await snapshot(page,id!);
  await page.setViewportSize({width:390,height:844});
  const mobile=await snapshot(page,id!);
@@ -64,7 +100,7 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  const reloaded=await snapshot(page,id!);
  const indexes=[before.index,preview.index,committed.index,mobile.index,restored.index,reloaded.index];
  console.info('A6_FIREFOX_LAYOUT',JSON.stringify({
-  indexes,doneState,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
+  indexes,doneState,draftEvidence,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
   committed:logicalStyle(committed.styles),mobile:logicalStyle(mobile.styles),
   restored:logicalStyle(restored.styles),reloaded:logicalStyle(reloaded.styles),
   saveRevision:committed.revision,reloadRevision:reloaded.revision,
