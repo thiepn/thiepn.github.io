@@ -16,7 +16,7 @@ concurrency:
 jobs:
   a4-diagnostics:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,7 +27,19 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - run: npx playwright install --with-deps chromium webkit
+      # A4 runner timed out in --with-deps installation on the first attempt.
+      # Use a bounded browser-only install, with explicit binary validation.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-a4-playwright-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and WebKit (bounded)
+        id: a4_browsers
+        timeout-minutes: 10
+        run: |
+          npx playwright install chromium webkit
+          node -e "const fs=require('node:fs');const p=require('playwright');for(const n of ['chromium','webkit']){const path=p[n].executablePath();if(!fs.existsSync(path)){console.error('Missing '+n+' executable');process.exitCode=1;}else{console.log(n+' binary verified');}}"
+
       - name: Cold-init, warmed CAS, session fallback and reload (both engines)
         run: |
           npx playwright test -c playwright.studio.config.ts \
@@ -35,7 +47,7 @@ jobs:
             tests/studio/workspace-a4.spec.ts \
             --workers=1 --reporter=line
       - name: Preserve 36 Account authentication regressions (A1 A2 A3)
-        if: always()
+        if: ${{ !cancelled() && steps.a4_browsers.outcome == 'success' }}
         run: |
           npx playwright test -c playwright.studio.config.ts \
             --project=chromium --project=webkit \
