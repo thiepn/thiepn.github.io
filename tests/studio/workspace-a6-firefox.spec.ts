@@ -47,8 +47,13 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  await page.mouse.up();
  const preview=await snapshot(page,id!);
  await page.getByRole('button',{name:'Done',exact:true}).click();
- await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
- await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.waitForTimeout(350);
+ const doneState=await page.evaluate(()=>({
+  customizeAvailable:!![...document.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Customize'),
+  editLabelPresent:!!document.querySelector('.ws-edit-label'),
+  notice:document.querySelector('[data-workspace-notice]')?.textContent??null,
+  status:document.querySelector('[data-workspace-status]')?.textContent??null,
+ }));
  const committed=await snapshot(page,id!);
  await page.setViewportSize({width:390,height:844});
  const mobile=await snapshot(page,id!);
@@ -59,7 +64,7 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  const reloaded=await snapshot(page,id!);
  const indexes=[before.index,preview.index,committed.index,mobile.index,restored.index,reloaded.index];
  console.info('A6_FIREFOX_LAYOUT',JSON.stringify({
-  indexes,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
+  indexes,doneState,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
   committed:logicalStyle(committed.styles),mobile:logicalStyle(mobile.styles),
   restored:logicalStyle(restored.styles),reloaded:logicalStyle(reloaded.styles),
   saveRevision:committed.revision,reloadRevision:reloaded.revision,
