@@ -412,13 +412,18 @@ test('A3 foreign IndexedDB lease times out without rotating tokens or blocking d
 });
 function a3EnforceRestrictedAccountStorage(){
  Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
- // Test-only deterministic failure, independent of IDBFactory assignment
- // semantics on different WebKit versions. Other IndexedDB stores still work.
- const originalOpen=indexedDB.open.bind(indexedDB);
- Object.defineProperty(indexedDB,'open',{configurable:true,value:(name:string,version?:number)=>{
-  if(name==='thiepn-hub-account')throw new DOMException('A3 test-only Account IDB refusal','SecurityError');
-  return version===undefined?originalOpen(name):originalOpen(name,version);
- }});
+ // WebKit can ignore an own-property replacement of IDBFactory.open. Intercept
+ // the actual prototype method instead, without blocking workspace IndexedDB.
+ const proto=Object.getPrototypeOf(indexedDB) as IDBFactory;
+ const original=proto.open;
+ Object.defineProperty(proto,'open',{configurable:true,writable:true,
+  value:function(this:IDBFactory,name:string,version?:number){
+   if(name==='thiepn-hub-account')throw new DOMException('A3 test-only Account IDB refusal','SecurityError');
+   return version===undefined
+    ? Reflect.apply(original,this,[name])
+    : Reflect.apply(original,this,[name,version]);
+  }
+ });
 }
 test('A3 restricted-storage single-tab local task persists without Account refresh',async({browser})=>{
  test.setTimeout(65_000);
