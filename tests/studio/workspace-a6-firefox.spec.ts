@@ -1,5 +1,4 @@
 import {test,expect,type Page} from '@playwright/test';
-import {parseState} from '../../src/lib/workspace/model';
 
 /** A6 read-only Firefox layout evidence, scoped to synthetic guest storage. */
 function logicalStyle(value:string|null){
@@ -74,21 +73,19 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  const storedState=candidateDiagnostic.record?JSON.parse(candidateDiagnostic.record):null;
  const activeWorkspace=storedState?.workspaces.find((w:any)=>w.id===storedState.active);
  const editDraft=candidateDiagnostic.draft;
- let candidateError:string|null=null;
- if(storedState&&editDraft){
-  try{
-   const candidate={...storedState,
-    workspaces:storedState.workspaces.map((w:any)=>w.id===editDraft.workspaceId?editDraft.workspace:w)};
-   parseState(JSON.stringify(candidate));
-  }catch(e){candidateError=e instanceof Error?e.message:'unknown validation error';}
- }
+ const editedWidgets=editDraft?.workspace?.widgets as {desktop?:{x:number;y:number;w:number;h:number}}[]|undefined;
+ const rectangleViolations=(editedWidgets??[]).filter(widget=>{
+  const r=widget.desktop;
+  return !r||![r.x,r.y,r.w,r.h].every(Number.isSafeInteger)||
+   r.x<0||r.y<0||r.y>10000||r.w<1||r.x+r.w>12||r.h<8||r.h>120;
+ }).length;
  const draftEvidence={
   recordRevision:storedState?.revision??null,
   activeWorkspaceRevision:activeWorkspace?.revision??null,
   draftBaseRevision:editDraft?.baseRevision??null,
   draftWorkspaceRevision:editDraft?.workspace?.revision??null,
   draftWidgets:editDraft?.workspace?.widgets?.length??null,
-  candidateError,
+  rectangleViolations,
  };
  const committed=await snapshot(page,id!);
  await page.setViewportSize({width:390,height:844});
