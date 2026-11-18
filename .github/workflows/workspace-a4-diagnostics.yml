@@ -2,6 +2,10 @@ name: Workspace A4 isolated restricted-storage diagnostics
 on:
   push:
     branches: [diagnostic/workspace-restricted-a4]
+  pull_request:
+    paths:
+      - 'tests/studio/workspace-a4.spec.ts'
+      - '.github/workflows/workspace-a4-diagnostics.yml'
   workflow_dispatch:
 permissions:
   contents: read
