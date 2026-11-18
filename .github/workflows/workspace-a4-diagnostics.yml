@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'tests/studio/workspace-a4.spec.ts'
+      - 'src/scripts/workspace-home.ts'
       - '.github/workflows/workspace-a4-diagnostics.yml'
   workflow_dispatch:
 permissions:
@@ -33,6 +34,19 @@ jobs:
             --project=chromium --project=webkit \
             tests/studio/workspace-a4.spec.ts \
             --workers=1 --reporter=line
+      - name: Preserve 36 Account authentication regressions (A1 A2 A3)
+        if: always()
+        run: |
+          npx playwright test -c playwright.studio.config.ts \
+            --project=chromium --project=webkit \
+            tests/studio/hub-sync.spec.ts \
+            -g 'A1 restricted storage and no Web Locks|concurrent new tabs share one rotating refresh even without Web Locks|A2 ' \
+            --repeat-each=3 --workers=1 --reporter=line
+          npx playwright test -c playwright.studio.config.ts \
+            --project=chromium --project=webkit \
+            tests/studio/hub-sync.spec.ts \
+            -g 'A3 (SDK|legacy|foreign)' \
+            --repeat-each=2 --workers=1 --reporter=line
       - name: Preserve failed diagnostics
         if: always()
         uses: actions/upload-artifact@v4
