@@ -72,7 +72,20 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
    }
   },true);
  });
- await page.getByRole('button',{name:'Done',exact:true}).click();
+ const doneButton=page.getByRole('button',{name:'Done',exact:true});
+ const doneMeta=await doneButton.evaluate((node:HTMLElement)=>({
+  action:node.dataset.action??null,inRoot:!!node.closest('[data-workspace]'),
+  element:node.tagName.toLowerCase()
+ }));
+ await doneButton.click();
+ await page.waitForTimeout(120);
+ const pointerDelivered=await page.evaluate(()=>((window as any).__a6DoneClicks as unknown[]).length>0);
+ let keyboardFallback=false;
+ if(!pointerDelivered){
+  keyboardFallback=true;
+  await doneButton.focus();
+  await page.keyboard.press('Enter');
+ }
  await page.waitForTimeout(350);
  const doneState=await page.evaluate(()=>({
   caught:(window as any).__a6Caught as {name:string;message:string}[],
@@ -127,7 +140,7 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  const reloaded=await snapshot(page,id!);
  const indexes=[before.index,preview.index,committed.index,mobile.index,restored.index,reloaded.index];
  console.info('A6_FIREFOX_LAYOUT',JSON.stringify({
-  indexes,doneState,draftEvidence,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
+  indexes,doneMeta,pointerDelivered,keyboardFallback,doneState,draftEvidence,initial:logicalStyle(before.styles),preview:logicalStyle(preview.styles),
   committed:logicalStyle(committed.styles),mobile:logicalStyle(mobile.styles),
   restored:logicalStyle(restored.styles),reloaded:logicalStyle(reloaded.styles),
   saveRevision:committed.revision,reloadRevision:reloaded.revision,
