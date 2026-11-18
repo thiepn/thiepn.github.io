@@ -5,11 +5,13 @@ on:
     paths:
       - 'tests/studio/hub-sync.spec.ts'
       - 'tests/studio/workspace-a6-firefox.spec.ts'
+      - 'tests/studio/workspace.spec.ts'
       - '.github/workflows/quality-a6-targeted.yml'
   pull_request:
     paths:
       - 'tests/studio/hub-sync.spec.ts'
       - 'tests/studio/workspace-a6-firefox.spec.ts'
+      - 'tests/studio/workspace.spec.ts'
       - '.github/workflows/quality-a6-targeted.yml'
   workflow_dispatch:
 permissions:
