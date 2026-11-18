@@ -16,6 +16,7 @@ concurrency:
 jobs:
   a4-diagnostics:
     runs-on: ubuntu-24.04
+    container: mcr.microsoft.com/playwright:v1.61.1
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -27,22 +28,12 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      # A4 runner timed out in --with-deps installation on the first attempt.
-      # Use a bounded browser-only install, with explicit binary validation.
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ubuntu-24.04-a4-playwright-${{ hashFiles('package-lock.json') }}
-      - name: Install missing WebKit host libraries (bounded)
-        timeout-minutes: 12
-        run: npx playwright install-deps webkit
-      - name: Install Chromium and WebKit (bounded)
+      # Official pinned Playwright image contains the correct browser builds
+      # and system libraries; avoids runner apt dependency stalls.
+      - name: Verify pinned Chromium and WebKit launch
         id: a4_browsers
-        timeout-minutes: 10
         run: |
-          npx playwright install chromium webkit
           node --input-type=module -e "import{chromium,webkit}from'playwright';for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){const b=await type.launch({headless:true});await b.close();console.log(name+' launches');}"
-
       - name: Cold-init, warmed CAS, session fallback and reload (both engines)
         run: |
           npx playwright test -c playwright.studio.config.ts \
