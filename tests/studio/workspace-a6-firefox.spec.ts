@@ -33,6 +33,22 @@ async function snapshot(page:Page,id:string){
 test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',async({page,browserName})=>{
  test.skip(browserName!=='firefox','Firefox layout regression investigation only');
  test.setTimeout(90_000);
+ await page.addInitScript(()=>{
+  const original=Promise.prototype.catch;
+  (window as any).__a6Caught=[];
+  (window as any).__a6Capture=false;
+  (Promise.prototype as any).catch=function(handler:(error:unknown)=>unknown){
+   return original.call(this,(error:unknown)=>{
+    if((window as any).__a6Capture && (window as any).__a6Caught.length<12){
+     (window as any).__a6Caught.push({
+      name:error instanceof Error?error.name:typeof error,
+      message:error instanceof Error?error.message.slice(0,140):'non-Error rejection'
+     });
+    }
+    return handler(error);
+   });
+  };
+ });
  await page.goto('/');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.getByRole('button',{name:'Customize',exact:true}).click();
@@ -46,9 +62,11 @@ test('A6 Firefox stable widget ID survives pointer drop, reflow and reload',asyn
  await page.mouse.move(box!.x+8,box!.y+88,{steps:5});
  await page.mouse.up();
  const preview=await snapshot(page,id!);
+ await page.evaluate(()=>{(window as any).__a6Capture=true;});
  await page.getByRole('button',{name:'Done',exact:true}).click();
  await page.waitForTimeout(350);
  const doneState=await page.evaluate(()=>({
+  caught:(window as any).__a6Caught as {name:string;message:string}[],
   customizeAvailable:!![...document.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Customize'),
   editLabelPresent:!!document.querySelector('.ws-edit-label'),
   notice:document.querySelector('[data-workspace-notice]')?.textContent??null,
