@@ -620,3 +620,122 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
   }
  }finally{await a.context.close();}
 });
+
+
+/** A5 diagnostics: distinguish an obsolete localStorage token-mirror assertion
+ * from a real verified owner change. Synthetic identities only; never log
+ * token values or private draft strings. Original Quality test is untouched. */
+test('A5 unchanged durable token rejects another owner in the legacy compatibility mirror',async({browser})=>{
+ test.setTimeout(60_000);
+ const api=backend(),a=await api.device(browser);
+ try {
+  await sync(a.page);
+  await a.page.evaluate(()=>{
+   (window as any).__a5Published=[];
+   window.addEventListener('hub:identity',(event:Event)=>{
+    const identity=(event as CustomEvent<{status:string;id?:string}>).detail;
+    (window as any).__a5Published.push({status:identity.status,id:identity.id??null});
+   });
+  });
+  const draft='A5 original owner diagnostic draft';
+  await a.page.locator('[data-capture-draft]').fill(draft);
+  await a.page.evaluate(token=>{
+   localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({
+    accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,
+    scope:'openid email profile offline_access'
+   }));
+   window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));
+  },jwt(OTHER));
+  await a.page.waitForTimeout(1200);
+  const evidence=await a.page.evaluate(async()=>{
+   const open=indexedDB.open('thiepn-hub-account');
+   const record=await new Promise<any>((resolve,reject)=>{
+    open.onerror=()=>reject(open.error);
+    open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('session','readonly'),req=tx.objectStore('session').get('thiepn:hub-sso:v1:tokens');
+     tx.oncomplete=()=>{db.close();resolve(req.result);};
+     tx.onabort=()=>reject(tx.error);
+    };
+   });
+   const token=JSON.parse(record?.value??'null');
+   const subject=token?.accessToken?JSON.parse(atob(token.accessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub:null;
+   return {
+    durableSubject:subject,
+    published:(window as any).__a5Published as {status:string;id:string|null}[],
+    draftPresent:(document.querySelector('[data-capture-draft]') as HTMLTextAreaElement)?.value==='A5 original owner diagnostic draft',
+    accountStatus:document.querySelector('[data-storage-label]')?.textContent,
+   };
+  });
+  console.info('A5_LEGACY_MIRROR',JSON.stringify({
+   durableOwnerUnchanged:evidence.durableSubject===OWNER,
+   otherIdentityPublished:evidence.published.some(x=>x.id===OTHER),
+   originalDraftStillVisible:evidence.draftPresent,
+   otherAccountWrites:api.writes.filter(x=>x.owner===OTHER).length,
+  }));
+  expect(evidence.durableSubject).toBe(OWNER);
+  expect(evidence.published.some(x=>x.id===OTHER)).toBe(false);
+  expect(evidence.draftPresent).toBe(true);
+  expect(api.writes.filter(x=>x.owner===OTHER)).toHaveLength(0);
+ }finally{await a.context.close();}
+});
+
+test('A5 verified synthetic durable owner transition isolates draft and preserves old owner',async({browser})=>{
+ test.setTimeout(80_000);
+ const api=backend(),a=await api.device(browser);
+ try{
+  await sync(a.page);
+  await a.page.evaluate(()=>{
+   (window as any).__a5Published=[];
+   window.addEventListener('hub:identity',(event:Event)=>{
+    const identity=(event as CustomEvent<{status:string;id?:string}>).detail;
+    (window as any).__a5Published.push({status:identity.status,id:identity.id??null});
+   });
+  });
+  await a.page.locator('[data-capture-draft]').fill('A5 durable old owner draft');
+  // Test fixture models an externally verified durable credential handoff.
+  // Both legacy and authoritative IDB records are changed consistently.
+  await a.page.evaluate(async token=>{
+   const key='thiepn:hub-sso:v1:tokens';
+   const value=JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',
+    expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'});
+   await new Promise<void>((resolve,reject)=>{
+    const open=indexedDB.open('thiepn-hub-account');
+    open.onsuccess=()=>{
+     const db=open.result,tx=db.transaction('session','readwrite');
+     tx.objectStore('session').put({value,legacy:value},key);
+     tx.oncomplete=()=>{db.close();resolve();};
+     tx.onabort=()=>reject(tx.error);
+    };
+    open.onerror=()=>reject(open.error);
+   });
+   localStorage.setItem(key,value);
+   window.dispatchEvent(new StorageEvent('storage',{key}));
+   window.dispatchEvent(new Event('focus'));
+  },jwt(OTHER));
+  await expect.poll(()=>a.page.evaluate(()=>
+    ((window as any).__a5Published as {status:string;id?:string}[]).some(x=>x.status==='signed-in'&&x.id==='22222222-2222-4222-8222-222222222222')
+  ),{timeout:20_000}).toBe(true);
+  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('',{timeout:10_000});
+  const evidence=await a.page.evaluate(async owners=>{
+   const open=indexedDB.open('thiepn-adaptive-workspace',1);
+   const db=await new Promise<IDBDatabase>((resolve,reject)=>{open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);});
+   const results=await Promise.all(owners.map(owner=>new Promise<any>((resolve,reject)=>{
+    const req=db.transaction('records','readonly').objectStore('records').get('user:'+owner);
+    req.onsuccess=()=>resolve(req.result===undefined?null:JSON.parse(String(req.result)));
+    req.onerror=()=>reject(req.error);
+   }))); db.close();
+   return {
+    oldDraftPreserved:results[0]?.captureDraft==='A5 durable old owner draft',
+    newDraftEmpty:results[1]?.captureDraft===''||!results[1]?.captureDraft,
+    draftVisible:(document.querySelector('[data-capture-draft]') as HTMLTextAreaElement)?.value==='A5 durable old owner draft',
+    currentWorkspaceLabel:document.querySelector('[data-storage-label]')?.textContent,
+   };
+  },[OWNER,OTHER]);
+  const otherWrites=api.writes.filter(x=>x.owner===OTHER&&x.state?.captureDraft==='A5 durable old owner draft').length;
+  console.info('A5_DURABLE_OWNER_HANDOFF',JSON.stringify({...evidence,oldDraftUploadedToOther:otherWrites>0}));
+  expect(evidence.oldDraftPreserved).toBe(true);
+  expect(evidence.newDraftEmpty).toBe(true);
+  expect(evidence.draftVisible).toBe(false);
+  expect(otherWrites).toBe(0);
+ }finally{await a.context.close();}
+});
