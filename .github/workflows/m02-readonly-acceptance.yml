@@ -101,8 +101,12 @@ jobs:
                 await page.reload({waitUntil:'domcontentloaded',timeout:20000});
                 await page.locator(selector).waitFor({timeout:15000});
                 if(app==='vault'){
+                  const saved=page.getByRole('button',{name:'Note Offline Check.md'});
+                  await saved.waitFor({timeout:15000});
+                  await saved.click();
+                  await page.locator('#vault-editor .cm-content').waitFor({timeout:15000});
                   const text=await page.locator('#vault-editor .cm-line').allTextContents();
-                  assert(text.join('\n').includes('Synthetic M02 offline check'),'Vault local data lost on offline reload');
+                  assert(text.join('\n').includes('Synthetic M02 offline check'),'Vault local data missing after opening saved note offline');
                 }
                 await context.setOffline(false);
                 assert.equal(errors.length,0,app+' runtime errors: '+errors.join(';'));
