@@ -1,0 +1,42 @@
+name: M03 real same-version rollback verification
+on:
+  push:
+    branches: [release-standard/m03-readonly-acceptance-20261121]
+    paths: ['.github/workflows/m03-rollback-probe.yml']
+permissions:
+  contents: read
+jobs:
+  verify-previous:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Verify live previous Worker versions serve exact certified bytes
+        run: |
+          python - <<'PY'
+          import urllib.request,hashlib
+          fixtures={
+            'pdf':{
+              'header':'x-thiepn-pdf-release','value':'7.1.4',
+              'files':{
+                'index.html':(3127,'aa1ce8c3c0d6eac1636c8098d0f9956b30113bebaf2b0bc1a77012d8124372fc'),
+                'manifest.webmanifest':(1910,'86ed8a6feb603f24daf38f2bda5682215c364fd89b87d56e5d42cf2dc4f0a820'),
+                'sw.js':(12601,'de3e2843df05cc2a4b216a524d4ac0c748ad2b55e74a162825cb8927eac0bfc9')}},
+            'diet':{
+              'header':'x-thiepn-diet-source','value':'48498e9dc9a1c92e1ce4d141ed31ca434e5daac5',
+              'files':{
+                'index.html':(58021,'d87f317789d96fd8ec594ef90a79e25e10fce3888edcab1bb6c5a62c32afa7d5'),
+                'manifest.webmanifest':(1297,'1845c582c5c3bf749d552a324f98f8e3a367d6f3166ba975372bfa42d6f921a7'),
+                'sw.js':(2879,'a82921002bb5acd27d528846f9d538e82e6b42de12a0062b9ca8ea6c07cbf92a')}}
+          }
+          for app,c in fixtures.items():
+              base=f'https://thiepn.dev/{app}/'
+              for f,(size,digest) in c['files'].items():
+                  req=urllib.request.Request(base+f,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      b=r.read(size+1)
+                      assert r.status==200 and r.geturl() in ([base,base+f] if f=='index.html' else [base+f]),(app,f,r.geturl())
+                      assert len(b)==size and hashlib.sha256(b).hexdigest()==digest,(app,f,'hash differs')
+                      assert r.headers.get(c['header'])==c['value'],(app,f,'source differs')
+                      assert r.headers.get('x-thiepn-release-manifest') is None,(app,f,'prior pointer not restored')
+              print('PASS: old '+app+' Worker live with exact certified HTML, SW, manifest and no new release marker')
+          PY
