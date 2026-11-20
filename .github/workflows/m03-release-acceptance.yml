@@ -54,6 +54,7 @@ jobs:
                   if origin.startswith('https://thiepn.dev/'):
                       key='x-thiepn-pdf-release' if app=='pdf' else 'x-thiepn-diet-source'
                       assert h.get(key)==expected[app]['release'],('SOURCE_DRIFT',app,f['path'],h.get(key))
+                      assert h.get('x-thiepn-release-manifest')==expected[app]['manifest'],('POINTER_DRIFT',app,f['path'],h.get('x-thiepn-release-manifest'))
               return app+'/'+f['path']
           with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
               results=list(pool.map(check,entries))
