@@ -25,7 +25,7 @@ jobs:
               req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept-Encoding':'identity','Cache-Control':'no-cache'})
               with urllib.request.urlopen(req,timeout=25) as response:
                   body=response.read(expected_bytes+1)
-                  assert response.status==200 and response.geturl()==url,(app,path,response.status,response.geturl())
+                  assert response.status==200 and response.geturl() in ([url,f'https://thiepn.dev/{app}/'] if path=='index.html' else [url]),(app,path,response.status,response.geturl())
                   assert response.headers.get('x-thiepn-release-manifest')==pins[app],('wrong release pointer',app,response.headers.get('x-thiepn-release-manifest'))
                   assert len(body)==expected_bytes and hashlib.sha256(body).hexdigest()==expected_hash,(app,path,'bytes changed',len(body),hashlib.sha256(body).hexdigest())
               return f'PASS {app}/{path}'
