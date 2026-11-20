@@ -40,7 +40,14 @@ jobs:
                   target=origin+f['path']
                   status,final,h,b=get(target,f['bytes'])
                   assert status==200 and final in ([target,origin] if f['path']=='index.html' else [target]),(app,f['path'],status,final)
-                  assert len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256'],('HASH_MISMATCH',app,f['path'],origin,len(b))
+                  if not (len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256']):
+                      if f['path']=='index.html':
+                          import difflib
+                          original_base=expected[app]['origin']
+                          _,_,_,reference=get(original_base+f['path'],f['bytes']+1024)
+                          delta=list(difflib.unified_diff(reference.decode('utf-8','replace').splitlines(),b.decode('utf-8','replace').splitlines(),n=1))
+                          print('HTML DIFF',app,origin,'expected',f['bytes'],'actual',len(b),'reference',hashlib.sha256(reference).hexdigest(),'actualSHA',hashlib.sha256(b).hexdigest(),'DIFF',delta[:15])
+                      raise AssertionError(('HASH_MISMATCH',app,f['path'],origin,len(b)))
                   if origin.startswith('https://thiepn.dev/'):
                       key='x-thiepn-pdf-release' if app=='pdf' else 'x-thiepn-diet-source'
                       assert h.get(key)==expected[app]['release'],('SOURCE_DRIFT',app,f['path'],h.get(key))
