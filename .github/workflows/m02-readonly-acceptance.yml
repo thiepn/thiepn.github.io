@@ -1,0 +1,113 @@
+name: Verify Notes and Vault certified production URLs — no private content
+on:
+  push:
+    branches: [release-standard/m02-readonly-acceptance-20261120]
+    paths: ['.github/workflows/m02-readonly-acceptance.yml']
+permissions:
+  contents: read
+concurrency:
+  group: m02-public-origin-acceptance
+  cancel-in-progress: true
+jobs:
+  public-assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify existing publicly served runtime checksums and release headers
+        run: |
+          python - <<'PY'
+          import urllib.request,urllib.error,hashlib,concurrent.futures,json
+          checks={"notes":[[".well-known/thiepn-app.json",505,"8749660746bbc0ae0b1691d4e192a4c50904d4f4f491a5ba18b46ace78e8663f"],["assets/index-C38OVaiF.js",506275,"387fe2d8c8716f5145324d87c057a426985cdfc8e34ba0fe3f6c4c6e613452a7"],["index.html",1818,"d96858668b1dfb95236d8078ff8c754fe3f387e6fa6823c102de6d8951a43850"],["manifest.webmanifest",1908,"d455bffd19c182a947ba753f909d531dc241cc72711c63bc8c709ebb86571f95"],["share-target-sw.js",6355,"9ab90f7c42dbaeba8694b16e13a3ed40c31277e4ead9d1e769217118c291ce7f"],["sw.js",4423,"9cc3b7697d94d966501f32e6886dab05abc671c412910198e71020c94faf6d45"]],"vault":[["assets/index-Cril0QvW.js",2053395,"cc03f027a4ba50e35dd23cce1646a476027ae22ebf88d6e88a23add8ca262ffa"],["index.html",604,"870aeb477cb7d31db38da972999a197a51e9e80d3ebc4c3712d748713656b445"],["manifest.webmanifest",371,"55622a86fe13bbcdfbc6784e3489818f31361e42f5dddd19653299e540f15aaf"],["sw.js",20831,"4b90c9333fcf6e45bb397ca779e28670a86855c56ae4d7c7ddafcefe4548edb8"]]}
+          pins={'notes':'ca9caacba7ce0c8bf1f36dd908bb2d82e28653c54c8b445c3b56797c68b9008e','vault':'a04729177a8fb23012a8f4016ab2c250822cccf9ad88becb4088be5dfd0809b9'}
+          def fetch(app,item):
+              path,expected_bytes,expected_hash=item
+              url=f'https://thiepn.dev/{app}/'+path
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept-Encoding':'identity','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=25) as response:
+                  body=response.read(expected_bytes+1)
+                  assert response.status==200 and response.geturl()==url,(app,path,response.status,response.geturl())
+                  assert response.headers.get('x-thiepn-release-manifest')==pins[app],('wrong release pointer',app,response.headers.get('x-thiepn-release-manifest'))
+                  assert len(body)==expected_bytes and hashlib.sha256(body).hexdigest()==expected_hash,(app,path,'bytes changed',len(body),hashlib.sha256(body).hexdigest())
+              return f'PASS {app}/{path}'
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+              lines=list(pool.map(lambda pair:fetch(pair[0],pair[1]),[(app,x) for app,items in checks.items() for x in items]))
+          for line in lines:print(line)
+          for app in ['notes','vault']:
+              url=f'https://thiepn.dev/{app}'
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+              with urllib.request.urlopen(req,timeout=15) as response:
+                  assert response.geturl()==url+'/' and response.status==200,'unexpected canonical redirect'
+          req=urllib.request.Request('https://thiepn.dev/notes?auth=recovery',headers={'User-Agent':'Mozilla/5.0'})
+          with urllib.request.urlopen(req,timeout=15) as response:
+              assert response.geturl()=='https://thiepn.dev/notes/?auth=recovery'
+          for app in ['notes','vault']:
+              req=urllib.request.Request('https://thiepn.dev/'+app+'/',data=b'',method='POST',headers={'User-Agent':'Mozilla/5.0'})
+              try:
+                  urllib.request.urlopen(req,timeout=15)
+                  raise AssertionError('POST accepted for '+app)
+              except urllib.error.HTTPError as e:
+                  assert e.code in (403,405),(app,e.code)
+          print('PASS: 10 public runtime hashes, both release pins, redirects, method boundaries')
+          PY
+  disposable-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright package without repo dependencies
+        run: |
+          mkdir -p /tmp/m02-browser
+          npm install --prefix /tmp/m02-browser playwright@1.58.2 --ignore-scripts --no-package-lock --no-audit --no-fund
+          if command -v google-chrome >/dev/null; then
+            echo "BROWSER_CHANNEL=chrome" >> "$GITHUB_ENV"
+          else
+            npx --prefix /tmp/m02-browser playwright install --with-deps chromium
+          fi
+      - name: Verify Notes PWA, Vault IndexedDB, offline reload in disposable browsers
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from '/tmp/m02-browser/node_modules/playwright/index.mjs';
+          import assert from 'node:assert/strict';
+          const browser=await chromium.launch(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{});
+          const notes='https://thiepn.dev/notes/',vault='https://thiepn.dev/vault/';
+          try{
+            for(const [app,base,selector] of [['notes',notes,'.workspace-meta'],['vault',vault,'.stage']]){
+              const context=await browser.newContext({serviceWorkers:'allow'});
+              try{
+                const page=await context.newPage();
+                const errors=[];page.on('pageerror',e=>errors.push(String(e).slice(0,200)));
+                const r=await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
+                assert.equal(r.status(),200,app+' HTTP status');
+                await page.locator(selector).waitFor({timeout:20000});
+                if(app==='vault'){
+                  await page.locator('.empty-state [data-command="vault.create"]').click();
+                  const dialog=page.locator('.form-dialog');
+                  await dialog.waitFor();
+                  await dialog.locator('#vault-dialog-input').fill('M02 Synthetic');
+                  await dialog.locator('button[value="confirm"]').click();
+                  await page.locator('#vault-vault').waitFor();
+                  await page.locator('.sidebar [data-command="file.create"]').click();
+                  const d=page.locator('.form-dialog');await d.waitFor();await d.locator('#vault-dialog-input').fill('Offline Check');await d.locator('button[value="confirm"]').click();
+                  const editor=page.locator('#vault-editor .cm-content');await editor.waitFor();await editor.click();
+                  await page.keyboard.press('Control+A');await page.keyboard.insertText('# Synthetic M02 offline check');
+                  await page.locator('.save-status').filter({hasText:'Saved locally'}).waitFor({timeout:15000});
+                }
+                await page.evaluate(async()=>{await navigator.serviceWorker.ready;});
+                if(!(await page.evaluate(()=>navigator.serviceWorker.controller!==null)))await page.reload({waitUntil:'domcontentloaded'});
+                await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,{timeout:20000});
+                await context.setOffline(true);
+                await page.reload({waitUntil:'domcontentloaded',timeout:20000});
+                await page.locator(selector).waitFor({timeout:15000});
+                if(app==='vault'){
+                  const text=await page.locator('#vault-editor .cm-line').allTextContents();
+                  assert(text.join('\n').includes('Synthetic M02 offline check'),'Vault local data lost on offline reload');
+                }
+                await context.setOffline(false);
+                assert.equal(errors.length,0,app+' runtime errors: '+errors.join(';'));
+                console.log('PASS',app,'fresh disposable PWA, service-worker controlled offline reload',app==='vault'?'and IndexedDB note persistence':'');
+              }finally{await context.close()}
+            }
+          }finally{await browser.close()}
+          JS
