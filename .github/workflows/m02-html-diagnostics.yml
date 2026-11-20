@@ -1,0 +1,36 @@
+name: Diagnose Notes and Vault static HTML transformation
+on:
+  push:
+    branches: [release-standard/m02-readonly-acceptance-20261120]
+    paths: ['.github/workflows/m02-html-diagnostics.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Compare publicly served immutable and live document bytes
+        run: |
+          python - <<'PY'
+          import urllib.request,hashlib,json
+          urls=[
+              'https://thiepn.dev/notes/index.html',
+              'https://thiepn.dev/notes/',
+              'https://ac0fd69a.thiepn-notes-certified-recovery.pages.dev/notes/index.html',
+              'https://ac0fd69a.thiepn-notes-certified-recovery.pages.dev/notes/',
+              'https://thiepn-notes-certified-recovery.pages.dev/notes/index.html',
+              'https://thiepn-notes-certified-recovery.pages.dev/notes/',
+              'https://thiepn.dev/vault/index.html',
+              'https://thiepn.dev/vault/',
+              'https://29d25be8.thiepn-vault-certified-recovery.pages.dev/vault/index.html',
+              'https://29d25be8.thiepn-vault-certified-recovery.pages.dev/vault/',
+          ]
+          for url in urls:
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept-Encoding':'identity','Cache-Control':'no-cache'})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      data=r.read(262144)
+                      print(json.dumps({'requested':url,'final':r.geturl(),'status':r.status,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'prefix':repr(data[:50]),'suffix':repr(data[-80:]),'contentType':r.headers.get('Content-Type'),'releasePin':r.headers.get('x-thiepn-release-manifest')}))
+              except Exception as e:print(json.dumps({'requested':url,'error':str(e)}))
+          PY
