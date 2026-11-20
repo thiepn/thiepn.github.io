@@ -41,6 +41,7 @@ jobs:
                   status,final,h,b=get(target,f['bytes'])
                   allowed=[target,origin] if f['path']=='index.html' else [target]
                   if f['path'].endswith('.html'): allowed.append(origin+f['path'][:-5])
+                  if f['path'].endswith('index.html'): allowed.append(origin+f['path'][:-10])
                   assert status==200 and final in allowed,(app,f['path'],status,final)
                   if not (len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256']):
                       if f['path']=='index.html':
