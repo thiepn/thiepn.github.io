@@ -1,0 +1,138 @@
+name: M03 read-only PDF and Diet production acceptance
+on:
+  push:
+    branches: [release-standard/m03-readonly-acceptance-20261121]
+    paths: ['.github/workflows/m03-release-acceptance.yml']
+permissions:
+  contents: read
+concurrency:
+  group: release-standard-m03-readonly
+  cancel-in-progress: true
+jobs:
+  integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Verify certified 116+1 PDF and 52 Diet assets on production and immutable origins
+        run: |
+          set -euo pipefail
+          cat > /tmp/diet-runtime-manifest.json <<'CERTIFIED_MANIFEST'
+          {"source":"48498e9dc9a1c92e1ce4d141ed31ca434e5daac5","files":[{"path":".well-known/thiepn-account-release.json","bytes":386,"sha256":"08c2874628336cf7af9d456b65531da7ff8e3f693247696f27a626da50777e5c"},{"path":".well-known/thiepn-app.json","bytes":12588,"sha256":"26be0d8c926557cadc7add4732050d76a3b36d5de4f22866a95836dbd2b15384"},{"path":"diet-app.js","bytes":276839,"sha256":"6377dafbabe3f47572828a9a564e722444f211447627bf04ddfe55f325f3ba2a"},{"path":"diet.css","bytes":89909,"sha256":"8bfb6f8c2d12f320969b3f4ccabfc1fb94156c6f70fd9939bc21b337831c1e36"},{"path":"icon-192.png","bytes":6569,"sha256":"3319a854d5d9d4520d8ca3abee358628baba9572c58df6ae33644dfedf4173f1"},{"path":"icon-512.png","bytes":1553,"sha256":"4009edaa8dad82e92630fb5e1a16ef325f0b0bd89e1aa745372018d5ca8ed1ed"},{"path":"icon.svg","bytes":507,"sha256":"827ba603b85e4c10e856223f6003c26b9e32404096cf68f78138343b2d8bc8c5"},{"path":"index.html","bytes":58021,"sha256":"d87f317789d96fd8ec594ef90a79e25e10fce3888edcab1bb6c5a62c32afa7d5"},{"path":"legacy-v1-app.js","bytes":276849,"sha256":"341bf22b0699b1768bcbe094df9e14bb9d98b83d448a5a791a26ed83443ae1c2"},{"path":"legacy-v1.html","bytes":5597,"sha256":"7a3f7ea930a8b99599e74eafbd97005e4f15d43dcd7b0bf72db2b06a52f643af"},{"path":"manifest.webmanifest","bytes":1297,"sha256":"1845c582c5c3bf749d552a324f98f8e3a367d6f3166ba975372bfa42d6f921a7"},{"path":"native-auth-callback.html","bytes":2281,"sha256":"72baaa5927784c5d821ddb5f19040287a0a4f1e44a5479b38516703e44cf28bf"},{"path":"native-auth-start.html","bytes":2158,"sha256":"a4a0c21bf75c998d3d3fd5002aa23945266d7def0571b31bd964e0f9694e34a8"},{"path":"sw.js","bytes":2879,"sha256":"a82921002bb5acd27d528846f9d538e82e6b42de12a0062b9ca8ea6c07cbf92a"},{"path":"v2/auth-storage.mjs","bytes":5375,"sha256":"33f982d1c79f719476ead57d842f2f2828b26c98eef7838052b7024d09455860"},{"path":"v2/copilot.js","bytes":13400,"sha256":"7a00763d81568401ce8ff32150698efeb06b2a777e53a6272575771b3aaf5048"},{"path":"v2/data.js","bytes":52986,"sha256":"342c9c07a73321f8b890266a3d587d27da0ddb301977404041a675a495c7221a"},{"path":"v2/engine/adaptive-nutrition.mjs","bytes":18962,"sha256":"8c63c852dc49576c5f55900bf82a60ab174c79151f9f271dd32def779069eec3"},{"path":"v2/engine/copilot-context.mjs","bytes":24269,"sha256":"28b237fbe4e9d528708074aa54a1134e007ddce81b97dfb294d08b6c97c3f720"},{"path":"v2/engine/legacy-data-adapter.mjs","bytes":4280,"sha256":"95d0ddedbe575c0440c4e74c0e0574ef38eb823deb22048c0d94c9bb63931060"},{"path":"v2/engine/personal-intelligence.mjs","bytes":11864,"sha256":"231b0e35b17ff4b10a082a6a7ab2f3bd13410125be0fa00004a08b2ab4d2940a"},{"path":"v2/engine/release-guards.mjs","bytes":1301,"sha256":"b80b0481facd2911c1d4428775068ab872e014106e67187e1d8a203d0c8173ce"},{"path":"v2/engine/settings-data.mjs","bytes":2971,"sha256":"aedc9abab5fb661ed1b7ecb512b428a5af9ddfb365fe3c32fa38db8446f2d394"},{"path":"v2/engine/training-nutrition.mjs","bytes":9640,"sha256":"e83f546f8b587569090fb66dc435ffdb7e4ace6879d3ff70509a0aa307acf5ca"},{"path":"v2/food-management.js","bytes":16270,"sha256":"f8eb75f81f4b9f97b86d836deb94ff845bbd85eed66fd612e7678482114cc2dc"},{"path":"v2/food.js","bytes":21212,"sha256":"7c3d910c1c0bfd38f77fcad19b9af460f5be9e3e68fc5aa2ee7eaf7731adb135"},{"path":"v2/index.html","bytes":47845,"sha256":"cd9f1f004750e40f9e393d8368d5e9ef7f3a2d03b46debeeeff916254d3b599c"},{"path":"v2/manifest.webmanifest","bytes":928,"sha256":"62589a46cc40263fd0ac773a02bea614ae59d2fc4990eec03a9c991a709b8978"},{"path":"v2/meal-editor.js","bytes":7389,"sha256":"e422c1ce31561c47ed1a9b79add78ee45870a41bd320853b0f78b2eedbf1ed83"},{"path":"v2/onboarding.js","bytes":10251,"sha256":"b06aaf08d80cd690e4d163065d6cde16b0f25e16ae9d95019bf4d993c82a8fa5"},{"path":"v2/open-food-facts.mjs","bytes":4755,"sha256":"5fedd38cd1f946de3ced9a7cda1e9f2e497ae5b7c5d19eef5a9e8b36e742e83b"},{"path":"v2/p28-food-capture.mjs","bytes":3070,"sha256":"08ec39c9746f00d0b2928f58219a8af5befa3077d78e981719f100ca4b7f4ec8"},{"path":"v2/p29-food-memory.mjs","bytes":8879,"sha256":"f14893c8f35af06d5db4014252e809bad7b663962f0f1ff5bb9b23825950226d"},{"path":"v2/p30-onboarding.mjs","bytes":4674,"sha256":"5a2dc2fae7b65781703c64dd9230db9464de5c7792bdb16c735f07ef0cfe72d9"},{"path":"v2/p31-weekly-review.mjs","bytes":6882,"sha256":"01f431e4c8b3ff892d47d78522d3fffa44d10fae3dfd49bece3d148d4660c7bc"},{"path":"v2/p32-copilot-actions.mjs","bytes":4442,"sha256":"606338871ff8bef3f700a8a48abca3dca91f8efbff3ef9814f9c357fbfab3af0"},{"path":"v2/p33-progress-analytics.mjs","bytes":7303,"sha256":"028debaa26b6f96e6c77cb36004695524e803444de942303f634fc818b488c3e"},{"path":"v2/p37-hardening.js","bytes":2496,"sha256":"5e31dfe808e8e6334ead65a84584d0fce774fb4a2bf83fb0ddbc9ad5a5583647"},{"path":"v2/pwa.js","bytes":6943,"sha256":"59404ef5a53ef743b3272a62e66af4de24c836eb4e283721fb00423215975cb3"},{"path":"v2/read-model.mjs","bytes":17537,"sha256":"693c3dcec362b308e0b75982e09020bd6848322df4e5eade3a10f8b6058b947c"},{"path":"v2/server-runtime.mjs","bytes":99,"sha256":"608eeda42c339ea1bba6baae100661421c82040d434124f5df8811e24ec710c7"},{"path":"v2/settings.js","bytes":18027,"sha256":"021f745f2d7d4aaa64502d9e9702d409d703efd9fb12c548cd0e80be11dfb5ee"},{"path":"v2/shell.css","bytes":83524,"sha256":"5914a606598b62cee1f3b9d66315378e6d3005e543189c34eefa761bae858ef9"},{"path":"v2/shell.js","bytes":4710,"sha256":"3df3166988f9b9868a2062f0b78768bc7bc903f905dcb70f4b0392db7133db60"},{"path":"v2/strategy-actions.js","bytes":15839,"sha256":"4b446e3a0485a0231a79467658a68191e7d7e28a0adb6e616ff8fc1372c2a831"},{"path":"v2/sw.js","bytes":2672,"sha256":"ce0f12cf12a347e198c6dfb30a2ceb5a4ebac8ffda59a4ca2d89609e39bba1e8"},{"path":"v2/telemetry.mjs","bytes":5687,"sha256":"cf78c34c148c3a406417dba3273eb2ebde44063ca151ca691d8f6c65526e30fe"},{"path":"v2/training-actions.js","bytes":13412,"sha256":"e682684858d7a4dc155235b229df3bbdd0bce863ebe699606cca2d3ec1b52711"},{"path":"v2/write-api.mjs","bytes":14390,"sha256":"e56a506e062f02ac058546894e042001b2203411315003275084de78d1cb27e9"},{"path":"vendor/LICENSE.supabase","bytes":1065,"sha256":"334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936"},{"path":"vendor/supabase-2.116.0.js","bytes":218610,"sha256":"fbde52aab1700a3b308087ae78b41fb5192e7a952d81d5d08238763ce3245dd8"},{"path":"web-auth-callback.html","bytes":1815,"sha256":"2378cd88d11f5aab3b731845fbb6249818a9861100eff63ac656d43c704eff98"}]}
+          CERTIFIED_MANIFEST
+          python - <<'PY'
+          import urllib.request,urllib.error,hashlib,json,concurrent.futures
+          expected={'pdf':{'origin':'https://423ad834.thiepn-pdf-stable-recovery.pages.dev/pdf/','release':'7.1.4','manifest':'d1ea2dae17ea5fe0d4c56f2046acaded1841d0ef9c1dccde043ff73e6032b5f7'},'diet':{'origin':'https://85cb90d0.thiepn-diet-certified-recovery.pages.dev/diet/','release':'48498e9dc9a1c92e1ce4d141ed31ca434e5daac5','manifest':'5d7f10e980bcb610363482af8cf896115bbd1ebeea9c082e305d5ccf4825e2b4'}}
+          def get(url,limit=26000000):
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=28) as response:
+                  return response.status,response.geturl(),response.headers,response.read(limit+1)
+          status,url,headers,data=get('https://thiepn.dev/pdf/release-integrity.json',400000)
+          assert status==200 and hashlib.sha256(data).hexdigest()==expected['pdf']['manifest'],('PDF manifest digest',status)
+          pdf=json.loads(data)
+          assert pdf['fileCount']==116 and len(pdf['files'])==116 and pdf['totalBytes']==18939068
+          diet=json.load(open('/tmp/diet-runtime-manifest.json'))
+          assert diet['source']==expected['diet']['release'] and len(diet['files'])==52
+          assert sum(x['bytes'] for x in diet['files'])==1433207
+          entries=[('pdf',x) for x in pdf['files']]+[('diet',x) for x in diet['files']]
+          def check(item):
+              app,f=item
+              for origin in ['https://thiepn.dev/'+app+'/',expected[app]['origin']]:
+                  target=origin+f['path']
+                  status,final,h,b=get(target,f['bytes'])
+                  assert status==200 and final in ([target,origin] if f['path']=='index.html' else [target]),(app,f['path'],status,final)
+                  assert len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256'],('HASH_MISMATCH',app,f['path'],origin,len(b))
+                  if origin.startswith('https://thiepn.dev/'):
+                      key='x-thiepn-pdf-release' if app=='pdf' else 'x-thiepn-diet-source'
+                      assert h.get(key)==expected[app]['release'],('SOURCE_DRIFT',app,f['path'],h.get(key))
+              return app+'/'+f['path']
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              results=list(pool.map(check,entries))
+          assert len(results)==168
+          print('PASS: immutable + live PDF 116/116, Diet 52/52, exact release headers and independently pinned hashes')
+          # Ensure same-origin canonical paths and no unintended write routes.
+          for app in ['pdf','diet']:
+              _,final,_,_=get('https://thiepn.dev/'+app)
+              assert final=='https://thiepn.dev/'+app+'/',('REDIRECT_DRIFT',app,final)
+              try:
+                  get('https://thiepn.dev/'+app+'/api/copilot')
+              except urllib.error.HTTPError as e:
+                  if app=='diet': assert e.code in (403,404,405),e.code
+          print('PASS: original canonical routes retained')
+          PY
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Verify independent Vercel AI backend readiness and auth without provider requests
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error, json
+          base='https://thiepn-diet.vercel.app/api/'
+          def call(method,path,origin=None,body=None):
+              h={'User-Agent':'Mozilla/5.0','Accept':'application/json'}
+              if origin:h['Origin']=origin
+              if body is not None:h['Content-Type']='application/json'
+              req=urllib.request.Request(base+path,method=method,headers=h,data=body)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      return response.status,response.headers,response.read(3000)
+              except urllib.error.HTTPError as exc:
+                  return exc.code,exc.headers,exc.read(3000)
+          status,h,b=call('GET','health')
+          print('health status',status)
+          assert status==200,('Backend health not reachable',status)
+          v=json.loads(b)
+          print('backend ready',v.get('ready'),'service',v.get('service'),'runtime',v.get('runtime'))
+          assert v.get('ok') is True and v.get('runtime')=='vercel' and v.get('ready') is True,('Backend not ready',v)
+          status,h,b=call('OPTIONS','copilot',origin='https://thiepn.dev')
+          assert status==204 and h.get('Access-Control-Allow-Origin')=='https://thiepn.dev',('CORS failed',status,h.get('Access-Control-Allow-Origin'))
+          status,_,_=call('GET','copilot',origin='https://thiepn.dev')
+          assert status==405,('Unexpected method accepted',status)
+          status,_,b=call('POST','copilot',origin='https://thiepn.dev',body=b'{}')
+          assert status==401,('Missing authorization did not reject',status,b[:200])
+          status,_,_=call('POST','copilot',origin='https://example.invalid',body=b'{}')
+          assert status==403,('Foreign origin unexpectedly allowed',status)
+          print('PASS: backend independent health, origin CORS, methods, no-auth and foreign-origin gates; zero provider calls')
+          PY
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright, no application source or credentials
+        run: |
+          npm install --prefix /tmp/m03-browser --no-audit --no-fund --no-package-lock --ignore-scripts playwright@1.58.2
+          if command -v google-chrome >/dev/null; then
+            echo "BROWSER_CHANNEL=chrome" >> "$GITHUB_ENV"
+          else
+            npx --prefix /tmp/m03-browser playwright install --with-deps chromium
+          fi
+      - name: Disposable PWA offline and original URL acceptance
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from '/tmp/m03-browser/node_modules/playwright/index.mjs';
+          import assert from 'node:assert/strict';
+          const browser=await chromium.launch(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{});
+          try{
+            for(const [app,title] of [['pdf','PDF Studio'],['diet','Diet Copilot']]){
+              const context=await browser.newContext({serviceWorkers:'allow'});
+              try{
+                const page=await context.newPage();
+                const url='https://thiepn.dev/'+app+'/';
+                const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+                assert.equal(response.status(),200,app);
+                assert((await page.title()).includes(title),app+' title');
+                await page.evaluate(async()=>{await navigator.serviceWorker.ready});
+                if(!(await page.evaluate(()=>navigator.serviceWorker.controller!==null)))await page.reload({waitUntil:'domcontentloaded'});
+                await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,{timeout:25000});
+                await context.setOffline(true);
+                await page.reload({waitUntil:'domcontentloaded',timeout:25000});
+                assert((await page.title()).includes(title),app+' offline title');
+                await context.setOffline(false);
+                console.log('PASS',app,'canonical PWA SW controlled offline reload');
+              }finally{await context.close()}
+            }
+          }finally{await browser.close()}
+          JS
