@@ -1,4 +1,5 @@
 name: M03 read-only PDF and Diet production acceptance
+# Final production acceptance after actual provider rollbacks and same-version re-promotions.
 on:
   push:
     branches: [release-standard/m03-readonly-acceptance-20261121]
