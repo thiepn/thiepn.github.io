@@ -102,6 +102,24 @@ jobs:
           assert code==405,'Download POST unexpectedly accepted'
           print('PASS: stable URLs, private allowlist, no source leak, installer download headers, historical unsigned warning and landing previews')
           PY
+      - name: Diagnose exact Byte historic release HTML delivery and Cloudflare transformations
+        run: |
+          python - <<'PY'
+          import urllib.request,hashlib,json
+          targets=[
+            'https://thiepn.dev/byte/download/v0.1.0/',
+            'https://thiepn.dev/byte/download/v0.1.0/index.html',
+            'https://c2905f6f.thiepn-byte-v010-recovery.pages.dev/byte/download/v0.1.0/',
+            'https://c2905f6f.thiepn-byte-v010-recovery.pages.dev/byte/download/v0.1.0/index.html']
+          for url in targets:
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
+                  with urllib.request.urlopen(req,timeout=25) as response:
+                      b=response.read(100000)
+                      print(json.dumps({'requested':url,'final':response.geturl(),'status':response.status,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'releaseHeader':response.headers.get('X-THIEPN-Byte-Release'),'hasCloudflareBeacon':b'beacon.min.js' in b}))
+              except Exception as error:
+                  print(json.dumps({'requested':url,'exception':str(error)}))
+          PY
       - name: Cross-check all six canonical application URLs against pinned release content
         run: |
           python - <<'PY'
