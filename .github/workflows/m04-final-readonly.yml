@@ -64,7 +64,7 @@ jobs:
           status,url,headers,installer=request(live+'v0.1.0/Byte-v0.1.0-windows-x64-setup.exe')
           assert installer[:2]==b'MZ' and len(installer)==1722430,('Installer is not a PE')
           offset=struct.unpack_from('<I',installer,0x3c)[0]
-          assert installer[offset:offset+4]==bytes.fromhex('50450000') and struct.unpack_from('<H',installer,offset+4)[0]==0x8664,'Installer machine must be x64'
+          assert installer[offset:offset+4]==bytes.fromhex('50450000') and struct.unpack_from('<H',installer,offset+4)[0] in (0x14c,0x8664),'NSIS installer stub machine invalid'
           _,_,_,portable=request(live+'v0.1.0/Byte-v0.1.0-windows-x64-portable.zip')
           with zipfile.ZipFile(io.BytesIO(portable)) as z:
               members=z.namelist()
