@@ -1,0 +1,41 @@
+name: M04 Byte actual previous-worker rollback verification
+on:
+  push:
+    branches: [release-standard/m04-six-final-20261121]
+    paths: ['.github/workflows/m04-byte-rollback.yml']
+permissions:
+  contents: read
+jobs:
+  public-byte-rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify previous live Worker serves all ten historical release files unchanged
+        run: |
+          python - <<'PY'
+          import concurrent.futures,hashlib,urllib.error,urllib.request
+          files=[{"path":"v0.1.0/Byte-v0.1.0-windows-x64-setup.exe","bytes":1722430,"sha256":"effef85d352a283634433e22ecc80b7e5440e11a18e5e84002fb103bd5f0526e","originalGithubAssetId":589666354},{"path":"v0.1.0/Byte-v0.1.0-windows-x64-portable.zip","bytes":2338668,"sha256":"febfb550c44d9f40112e97c06b0921abd60a54ba881dda8ec995266510834386","originalGithubAssetId":589666358},{"path":"v0.1.0/release-manifest.json","bytes":385,"sha256":"eff52a11792c704bbeaaaaadd0aba1887af4cb68706ae38daf81ff5948fe9bd3","originalGithubAssetId":589666355},{"path":"v0.1.0/release-certification.json","bytes":1253,"sha256":"d110a21e22794faa9dff3c5ceae46ae4feefc060ea77a4f08485b6e7b1e352c3","originalGithubAssetId":589666357},{"path":"v0.1.0/SHA256SUMS.txt","bytes":388,"sha256":"b46fe6679b64048df2d762f005c2a74b9a9ca79e07bd29ed268d6b2c5accde90","originalGithubAssetId":589666356},{"path":"v0.1.0/index.html","bytes":1696,"sha256":"dbc908cdd6f4d5a28b9d534ff56672ae8f58934c8572795faaa23d859484f679"},{"path":"previews/byte/preview.png","bytes":616,"sha256":"37edce35826c63eab9b5880ed55aa243f34e729a3f26fcd93d5cf95e370e924c"},{"path":"previews/kiwi/preview.png","bytes":696,"sha256":"bd549031d6066ca1c526156d32f08394e935c201bd176b770fd70046481bf15c"},{"path":"previews/mochi/preview.png","bytes":743,"sha256":"46a07b753e0ac17f49a2424cd1f07f4dff78421747a67138b4ae1bd5cd8f8bca"},{"path":"previews/pip/preview.png","bytes":562,"sha256":"85f44f367cb8b2d5e909499ee8e6399dfcb8728c5e6394e96679b768c0876571"}]
+          base='https://thiepn.dev/byte/download/'
+          def verify(f):
+              rel=f['path']
+              url=base+('v0.1.0/' if rel=='v0.1.0/index.html' else rel)
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=28) as r:
+                  b=r.read(f['bytes']+1)
+                  assert r.status==200 and r.geturl()==url,('URL',rel,r.status,r.geturl())
+                  assert len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256'],('DIGEST',rel,len(b))
+                  assert r.headers.get('X-THIEPN-Byte-Release')=='0.1.0',('RELEASE',rel)
+                  assert r.headers.get('X-THIEPN-Release-Manifest') is None,('ROLLBACK_NOT_ACTIVE',rel)
+                  if rel.endswith(('.exe','.zip')):
+                      assert r.headers.get('Content-Disposition')=='attachment; filename="'+rel.rsplit('/',1)[-1]+'"',('DOWNLOAD',rel)
+              return rel
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              matched=list(pool.map(verify,files))
+          assert len(matched)==10
+          print('PASS: real previous Byte Worker restored; all ten original files byte-identical, no new pointer header')
+          for url in ['https://thiepn.dev/byte/','https://thiepn.dev/manuscript/','https://thiepn.dev/notes/','https://thiepn.dev/vault/','https://thiepn.dev/pdf/','https://thiepn.dev/diet/']:
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  assert r.status==200 and r.geturl()==url,(url,r.status,r.geturl())
+          print('PASS: Byte and all five other production URLs remain unchanged after rollback')
+          PY
