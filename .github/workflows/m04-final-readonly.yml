@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Verify original Byte v0.1.0 checksums, immutable mirror and security properties
         env:
-          REQUIRE_RELEASE_POINTER: '0'
+          REQUIRE_RELEASE_POINTER: '1'
         run: |
           python - <<'PY'
           import concurrent.futures,hashlib,io,json,os,struct,urllib.error,urllib.request,zipfile
@@ -116,7 +116,12 @@ jobs:
                   req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
                   with urllib.request.urlopen(req,timeout=25) as response:
                       b=response.read(100000)
-                      print(json.dumps({'requested':url,'final':response.geturl(),'status':response.status,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'releaseHeader':response.headers.get('X-THIEPN-Byte-Release'),'hasCloudflareBeacon':b'beacon.min.js' in b}))
+                      digest=hashlib.sha256(b).hexdigest()
+                      if url.endswith('/v0.1.0/'):
+                          assert len(b)==1696 and digest=='dbc908cdd6f4d5a28b9d534ff56672ae8f58934c8572795faaa23d859484f679',('UNVERIFIED_RELEASE_HTML',url,len(b),digest)
+                          if url.startswith('https://thiepn.dev/'):
+                              assert response.headers.get('X-THIEPN-Release-Manifest')=='eff52a11792c704bbeaaaaadd0aba1887af4cb68706ae38daf81ff5948fe9bd3',('UNVERIFIED_BYTE_POINTER',url)
+                      print(json.dumps({'requested':url,'final':response.geturl(),'status':response.status,'bytes':len(b),'sha256':digest,'releaseHeader':response.headers.get('X-THIEPN-Byte-Release'),'hasCloudflareBeacon':b'beacon.min.js' in b}))
               except Exception as error:
                   print(json.dumps({'requested':url,'exception':str(error)}))
           PY
