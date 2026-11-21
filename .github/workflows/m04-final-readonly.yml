@@ -1,4 +1,5 @@
 name: M04 final six-app and Byte immutable download verification
+# Final acceptance after actual Byte 100% Worker rollback and same-version re-promotion.
 on:
   push:
     branches: [release-standard/m04-six-final-20261121]
