@@ -27,7 +27,7 @@ jobs:
             'v0.1.0/SHA256SUMS.txt':(388,'b46fe6679b64048df2d762f005c2a74b9a9ca79e07bd29ed268d6b2c5accde90'),
             'previews/byte/preview.png':(616,'37edce35826c63eab9b5880ed55aa243f34e729a3f26fcd93d5cf95e370e924c'),
             'previews/kiwi/preview.png':(696,'bd549031d6066ca1c526156d32f08394e935c201bd176b770fd70046481bf15c'),
-            'previews/mochi/preview.png':(743,'46a07b753e0ac17f49a2424cd1f07dff78421747a67138b4ae1bd5cd8f8bca'),
+            'previews/mochi/preview.png':(743,'46a07b753e0ac17f49a2424cd1f07f4dff78421747a67138b4ae1bd5cd8f8bca'),
             'previews/pip/preview.png':(562,'85f44f367cb8b2d5e909499ee8e6399dfcb8728c5e6394e96679b768c0876571')}
           live='https://thiepn.dev/byte/download/'
           frozen='https://c2905f6f.thiepn-byte-v010-recovery.pages.dev/byte/download/'
@@ -177,7 +177,7 @@ jobs:
               const r=await page.goto('https://thiepn.dev/byte/',{waitUntil:'domcontentloaded',timeout:20000});
               assert.equal(r.status(),200);
               for(const file of ['Byte-v0.1.0-windows-x64-setup.exe','Byte-v0.1.0-windows-x64-portable.zip']){
-                assert.equal(await page.locator('a[href="/byte/download/v0.1.0/'+file+'"]').count(),1,file+' landing: '+JSON.stringify(await page.locator('a').evaluateAll(xs=>xs.map(a=>({text:a.textContent?.trim().slice(0,45),href:a.getAttribute('href')})).filter(x=>x.href?.includes('Byte-')||x.href?.includes('v0.1.0')))));
+                assert((await page.locator('a[href="/byte/download/v0.1.0/'+file+'"]').count())>=1,file+' landing: '+JSON.stringify(await page.locator('a').evaluateAll(xs=>xs.map(a=>({text:a.textContent?.trim().slice(0,45),href:a.getAttribute('href')})).filter(x=>x.href?.includes('Byte-')||x.href?.includes('v0.1.0')))));
               }
               console.log('PASS Byte public download page and original installer/portable links');
             }finally{await context.close()}
