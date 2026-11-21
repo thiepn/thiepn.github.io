@@ -43,7 +43,7 @@ jobs:
               for base in [live,frozen]:
                   status,url,h,b=request(base+path)
                   assert status==200 and url==base+path,(path,base,status,url)
-                  assert len(b)==size and hashlib.sha256(b).hexdigest()==checksum,('BYTE_HASH',path,base,len(b))
+                  assert len(b)==size and hashlib.sha256(b).hexdigest()==checksum,('BYTE_HASH',path,base,len(b),hashlib.sha256(b).hexdigest(),checksum, h.get('Content-Type'),h.get('CF-Cache-Status'))
                   if base==live:
                       assert h.get('X-THIEPN-Byte-Release')=='0.1.0',('Byte release',path)
                       assert h.get('X-Content-Type-Options')=='nosniff',('nosniff',path)
@@ -177,7 +177,7 @@ jobs:
               const r=await page.goto('https://thiepn.dev/byte/',{waitUntil:'domcontentloaded',timeout:20000});
               assert.equal(r.status(),200);
               for(const file of ['Byte-v0.1.0-windows-x64-setup.exe','Byte-v0.1.0-windows-x64-portable.zip']){
-                assert.equal(await page.locator('a[href="/byte/download/v0.1.0/'+file+'"]').count(),1,file+' landing');
+                assert.equal(await page.locator('a[href="/byte/download/v0.1.0/'+file+'"]').count(),1,file+' landing: '+JSON.stringify(await page.locator('a').evaluateAll(xs=>xs.map(a=>({text:a.textContent?.trim().slice(0,45),href:a.getAttribute('href')})).filter(x=>x.href?.includes('Byte-')||x.href?.includes('v0.1.0')))));
               }
               console.log('PASS Byte public download page and original installer/portable links');
             }finally{await context.close()}
