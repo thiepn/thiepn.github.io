@@ -7,6 +7,7 @@
  * GitHub repositories, private Core metadata, or draft deployments.
  */
 import type manifest from '../../generated/launch-manifest.json';
+import { HUB_VISIBLE_APP_IDS } from '../workspace/visible-apps';
 
 type Category = (typeof manifest.entries)[number]['category'];
 export interface ShortcutLaunch {
@@ -57,12 +58,7 @@ export const additionalShortcutLaunches: readonly ShortcutLaunch[] = [
 ];
 
 /** Prioritize actively used apps without altering old IDs or saved pins. */
-export const primaryShortcutIds: readonly string[] = [
-  'studyos', 'mdd', 'pdf-studio', 'thiepn-library', 'notes', 'tms60',
-  'tiny-tools', 'clearpage', 'languages', 'french-3000', 'chinese',
-  'japanese', 'korea', 'selah', 'ion', 'chess', 'karaoke', 'gomoku',
-  'ligoquiz', 'control', // Still selectable: personal Apps hiding is not a shortcut ban.
-];
+export const primaryShortcutIds: readonly string[] = HUB_VISIBLE_APP_IDS;
 
 /** Keep any already pinned apps at the top, then current options, then the rest. */
 export function partitionShortcutChoices<T extends { id: string }>(

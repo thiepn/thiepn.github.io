@@ -1,0 +1,3 @@
+# Hub visible apps — 24 November 2026
+
+Owner-approved 14-app presentation allowlist. The app catalogue, search, workspace shortcut choices, saved shortcut rendering and Connections table use the same canonical IDs. Hidden apps are not deleted or disconnected. The published launch registry, canonical links, project archive, existing storage and grants remain unchanged. New apps stay hidden by default. Existing saved pin IDs are not automatically rewritten. Native Hub tasks, calendar, trackers, Account and backup controls are retained. Home source cards and workflow guides that refer to excluded apps are suppressed. Existing local personal visibility fields are retained for backup compatibility but do not override this owner-selected catalogue.

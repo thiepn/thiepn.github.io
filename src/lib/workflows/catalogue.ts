@@ -1,3 +1,4 @@
+import { isHubVisibleApp } from '../workspace/visible-apps';
 export const WORKFLOW_APPS = {
   scan: { label: 'Scan', href: 'https://thiepn.dev/scan/', scope: 'device', accepts: ['application/pdf'], exports: ['application/pdf'], revision: '4fed03797cda8009a1df7d9fef2cd8cc03de6739' },
   pdf: { label: 'PDF Studio', href: 'https://thiepn.dev/pdf/', scope: 'device', accepts: ['application/pdf'], exports: ['application/pdf'], revision: '77a5af04fcee613ddf09d32d3e4aa9d70ea0a52a' },
@@ -22,6 +23,7 @@ export const WORKFLOWS: readonly { id: string; title: string; description: strin
     { owner: 'manuscript', title: 'Open the Markdown source', instruction: 'Open a Markdown file in Manuscript or combine the desired text in a new draft. Review the structure, then use Publish for output options.', check: 'Keep the Markdown source and any downloaded project backup. Changes in the draft do not update the original notes.', recovery: 'Reopen the saved draft or source after interruption. Hub cannot confirm publication or automatically reconstruct the export.' },
   ] },
 ];
+export const VISIBLE_WORKFLOWS = WORKFLOWS.filter(flow => flow.steps.every(step => isHubVisibleApp(step.owner === 'pdf' ? 'pdf-studio' : step.owner === 'library' ? 'thiepn-library' : step.owner)));
 export function workflowLocation(id: string, step = 0) {
   const workflow = WORKFLOWS.find(w => w.id === id); if (!workflow || !Number.isInteger(step) || step < 0 || step >= workflow.steps.length) return '/flows/';
   const params = new URLSearchParams({ flow: id, step: String(step + 1) }); return `/flows/?${params}`;

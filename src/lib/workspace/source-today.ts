@@ -1,3 +1,4 @@
+import { isHubVisibleApp } from './visible-apps';
 import type { NotesDeviceSummary } from './notes-device';
 import type { NotesDeviceStatus } from './notes-panel';
 import type { FolioDeviceSnapshot } from './folio-device';
@@ -56,8 +57,9 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
       'Not connected')+
       button('connect-notes-source',notes.status==='awaiting'?'Reopen Notes':'Share from Notes');
   }
+  const visibleLanguages=HUB_LANGUAGE_IDS.filter(isHubVisibleApp);
   const languageRows=languages.status==='signed-out'?info('Connect Account to view progress.'):
-    HUB_LANGUAGE_IDS.map(id=>{
+    visibleLanguages.map(id=>{
       const item=languages.cards.find(x=>x.appId===id),app=apps.find(x=>x.id===id);
       const title=item?.name??id[0]!.toUpperCase()+id.slice(1);
       const original=app?.url??HUB_LANGUAGE_OWNER_ROUTES[id];
@@ -73,11 +75,11 @@ export function renderSourceToday(sources:SourceTodayInputs):string{
     '<header><h2 id="source-today-heading">Continue across your apps</h2>'+
     '</header>'+
     '<div class="ws-source-today-grid">'+
-      '<section data-source-today-folio aria-label="Folio owner"><h3>Folio plans</h3><a href="/folio/">Go to Folio</a>'+
-      folioBody+'</section>'+
+      (isHubVisibleApp('folio') ? '<section data-source-today-folio aria-label="Folio owner"><h3>Folio plans</h3><a href="/folio/">Go to Folio</a>'+
+      folioBody+'</section>' : '')+
       '<section data-source-today-notes aria-label="Notes owner"><h3>Notes and reminders</h3><a href="/notes/">Go to Notes</a>'+
       notesBody+'</section>'+
-      '<section data-source-today-languages aria-label="Language owners"><h3>Language learning</h3>'+
+      (visibleLanguages.length ? '<section data-source-today-languages aria-label="Language owners"><h3>Language learning</h3>'+
       (languages.status==='signed-out'?languageRows:'<ul>'+languageRows+'</ul>')+
-      '</section></div></section>';
+      '</section>' : '')+'</div></section>';
 }

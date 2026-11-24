@@ -6,7 +6,7 @@ import PrivateLibrary from '../hub/PrivateLibrary.astro';
 import ReadingPilot from '../hub/ReadingPilot.astro';
 import ContinuationDesk from './ContinuationDesk.astro';
 import { getHubProjects } from '../../lib/hub';
-import { additionalShortcutLaunches } from '../../lib/launches/shortcut-directory';
+import { visibleHubApps, isHubVisibleApp } from '../../lib/workspace/visible-apps';
 import { PROPOSED_QUICK_SHORTCUT_IDS } from '../../lib/workspace/app-personalization';
 import { providerAction } from '../../lib/providers/registry';
 import { icon, appIcon } from '../../lib/workspace/icons';
@@ -35,17 +35,14 @@ const apps=entries.map(({project,hub})=>{
  const action=id==='notes'?{label:'New note',url:providerAction('notes','capture-text')!}:id==='thiepn-library'?{label:'Continue reading',url:providerAction('library','continue-in-app')!}:id==='tms60'?{label:'Study verses',url:providerAction('tms60','open')!}:null;
  return {id,title:project.data.title,url:project.data.liveUrl!,icon:appIcon(id),category:hub.category,...(action?{action}:{})};
 });
-const starterAppChoices = [
-  ...additionalShortcutLaunches.map(({id,title,url,category})=>({id,title,url,icon:appIcon(id),category})),
-  ...apps,
-];
+const starterAppChoices = visibleHubApps(apps);
 const starterShortcuts = PROPOSED_QUICK_SHORTCUT_IDS.slice(0,4).flatMap(id=>{
   const app=starterAppChoices.find(item=>item.id===id);
   return app ? [app] : [];
 });
 const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-four'],['tasks','Tasks','/home/tasks/','check-square'],['calendar','Calendar','/home/calendar/','calendar-blank'],['trackers','Trackers','/home/trackers/','chart-bar'],['documents','Documents','/home/documents/','notebook']];
 ---
-<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse ${apps.length} published apps and ${additionalShortcutLaunches.length} additional app shortcuts.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
+<BaseLayout title={view==='apps'?'Apps — THIEPN HUB':'Workspace — THIEPN HUB'} description={view==='apps'?`Browse ${starterAppChoices.length} selected apps.`:'Your personal apps, tasks, calendar and trackers in one adaptable workspace.'} noindex={view!=='apps'} workspace>
   <div class="ws" data-workspace data-view={view} data-rail="expanded" data-calendar-private="pending">
     <aside class="ws-navigation" aria-label="Workspace navigation">
       <div class="ws-brand"><a href="/" aria-label="THIEPN HUB Home"><img src="/favicon.svg" alt="" width="30" height="30"/><strong>THIEPN HUB</strong></a><button type="button" class="ws-icon-button" data-action="rail" aria-label="Collapse sidebar" aria-expanded="true" set:html={icon('sidebar-simple')}/></div>
@@ -57,7 +54,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
       <header class="ws-topbar"><button class="ws-search-trigger" type="button" data-action="search"><Fragment set:html={icon('magnifying-glass')}/><span>Search everything in Hub · actions</span><kbd>Ctrl K</kbd></button><div class="ws-topbar-actions"><button class="ws-primary ws-icon-button" type="button" data-action="capture" aria-label="Quick capture in Hub"><Fragment set:html={icon('plus')}/></button><button class="ws-icon-button" type="button" data-action="account" aria-label="Account"><Fragment set:html={icon('user-circle')}/></button></div></header>
       <div class="ws-columns">
         <section class="ws-main" aria-labelledby="ws-title">
-          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${apps.length} published · ${additionalShortcutLaunches.length} current`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
+          <header class="ws-page-heading"><div><h1 id="ws-title">{view==='apps'?'Apps':view==='documents'?'Documents':'Personal workspace'}</h1><p data-workspace-date>{view==='apps'?`${starterAppChoices.length} apps`: ''}</p></div><div class="ws-toolbar" data-toolbar>{view==='home' && <button class="ws-button" type="button" data-action="customize"><Fragment set:html={icon('sliders-horizontal')}/>Customize</button>}</div></header>
           <div class="ws-notice" data-workspace-notice role="status" hidden></div>
           <div data-workspace-recovery aria-live="polite" hidden></div>
           <div class="ws-handoff-return" data-handoff-return hidden aria-live="polite"></div>
@@ -79,7 +76,7 @@ const navigation=[['home','Home','/','house'],['apps','Apps','/apps/','squares-f
           {<section class="ws-widget ws-hub-calendar-c1" data-hub-calendar-c1 aria-label="Connected Google Calendar" hidden={view!=='home'&&view!=='calendar'}>
             <header><h2>Google Calendar</h2><div data-hub-calendar-actions></div></header>
             <div data-hub-calendar-content role="status">Connect your calendar to view events.</div>
-            <section data-hub-study-plan class="ws-hub-study-c3" aria-label="StudyOS study plan">
+            <section data-hub-study-plan class="ws-hub-study-c3" aria-label="StudyOS study plan" hidden={!isHubVisibleApp('studyos')} inert={!isHubVisibleApp('studyos')}>
               <header><h3>StudyOS weekly plan</h3><a href="https://study.thiepn.dev/week" target="_blank" rel="noopener noreferrer">Open weekly plan</a></header>
               <div data-hub-study-status role="status"></div>
               <div data-hub-study-content></div>

@@ -1,8 +1,10 @@
-import { parseWorkflowLocation, workflowLocation, WORKFLOWS } from '../lib/workflows/catalogue';
+import { parseWorkflowLocation, workflowLocation, VISIBLE_WORKFLOWS } from '../lib/workflows/catalogue';
 const root = document.querySelector<HTMLElement>('[data-portal-flows]');
 if (root) {
   function render(search = location.search, canonicalize = false) {
-    const position = parseWorkflowLocation(search), flow = WORKFLOWS.find(f => f.id === position.id)!;
+    const requested = parseWorkflowLocation(search);
+    const flow = VISIBLE_WORKFLOWS.find(f => f.id === requested.id) ?? VISIBLE_WORKFLOWS[0]!;
+    const position = flow.id === requested.id ? requested : {id:flow.id,step:0};
     root!.querySelectorAll<HTMLElement>('[data-flow-guide]').forEach(guide => {
       guide.hidden = guide.dataset.flowGuide !== position.id;
       guide.querySelectorAll<HTMLElement>('[data-flow-step]').forEach(step => { const active = !guide.hidden && Number(step.dataset.flowStep) === position.step; if (active) step.setAttribute('aria-current', 'step'); else step.removeAttribute('aria-current'); });

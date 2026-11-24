@@ -3,8 +3,8 @@
  * Never rewrite an existing widget's appIds during hydration or sign-in.
  */
 export const PROPOSED_QUICK_SHORTCUT_IDS = [
-  'studyos', 'mdd', 'pdf-studio', 'thiepn-library',
-  'notes', 'tms60', 'tiny-tools', 'clearpage',
+  'notes', 'canvas', 'tiny-tools', 'thiepn-library',
+  'manuscript', 'pdf-studio', 'wordstrike', 'the-bible-challenge',
 ] as const;
 
 /** A personal Apps filter, not an archival/public catalogue exclusion. */
