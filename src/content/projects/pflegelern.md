@@ -15,7 +15,7 @@ status: live
 visibility: listed
 summary: Study nursing with structured concepts, flashcards, adaptive review, exam practice, clinical cases, progress tracking, and offline access.
 repo: thiepn/pflegelern
-liveUrl: https://thiepn.dev/pflegelern/
+unavailable: true
 tags:
 - study
 - exam-prep
@@ -42,7 +42,7 @@ preview:
   provenance: static
 actions:
   primaryLabel: Start studying
-  source: true
+  source: false
 dateAdded: '2026-08-25'
 yearAdded: 2026
 dateUpdated: '2026-08-25'

@@ -18,6 +18,7 @@ const payload = {
     status: project.data.status,
     route: projectRoute(project),
     liveUrl: project.data.liveUrl ?? null,
+    ...(project.data.unavailable ? { unavailable: true } : {}),
     repo: project.data.repo ?? null,
     tags: project.data.tags ?? [],
     capabilityTags: project.data.capabilityTags ?? [],

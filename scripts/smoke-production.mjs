@@ -86,6 +86,12 @@ await check('catalogue.json', async()=>{
   const r=await fetchRetry(new URL('/catalogue.json',base)); const json=await r.json();
   const projects=json.projects ?? json;
   if(projects.length!==expectedProjects) throw new Error(`expected ${expectedProjects} projects, got ${projects.length}`);
+  for(const expected of catalogue.projects){
+    const actual=projects.find(p=>p.code===expected.code);
+    if(!actual || actual.slug!==expected.slug || actual.liveUrl!==expected.liveUrl ||
+       Boolean(actual.unavailable)!==Boolean(expected.unavailable))
+      throw new Error(`catalogue availability mismatch: ${expected.code}`);
+  }
 });
 await check('sitemap.xml', async()=>{
   const r=await fetchRetry(new URL('/sitemap.xml',base)); const text=await r.text();
@@ -94,7 +100,8 @@ await check('sitemap.xml', async()=>{
 });
 
 const routes = (manifest.routes ?? []).filter((route) => !route.startsWith('/dev/') && !route.endsWith('.json'));
-const launches = (catalogue.projects ?? []).filter((project) => project.liveUrl);
+const launches = (catalogue.projects ?? []).filter((project) => project.unavailable !== true);
+const unavailable = (catalogue.projects ?? []).filter(project => project.unavailable === true);
 console.log(`Production smoke fan-out: ${routes.length} routes / ${launches.length} launches / concurrency ${concurrency}.`);
 
 await forEachConcurrent(routes, concurrency, async (route) => {
@@ -102,8 +109,20 @@ await forEachConcurrent(routes, concurrency, async (route) => {
 });
 await forEachConcurrent(launches, concurrency, async (project) => {
   await check(`launch ${project.code}`, async()=>{
+    if(!project.liveUrl) throw new Error('Available project has no launch URL');
     const r=await fetchRetry(project.liveUrl);
     if(!r.ok) throw new Error(`unexpected final status ${r.status}`);
+  });
+});
+
+// An unavailable archive entry is not a successful application launch.
+ // Verify the explicit truthful availability notice on its public detail page.
+await forEachConcurrent(unavailable, concurrency, async project => {
+  await check(`unavailable archive ${project.code}`, async()=>{
+    if(project.liveUrl!==null) throw new Error('Unavailable project advertises a launch URL');
+    await fetchTextRetry(new URL(project.route,base), r=>r.ok,
+      text=>/data-project-unavailable=["']true["']/.test(text),
+      'Unavailable archive notice missing');
   });
 });
 
@@ -119,4 +138,4 @@ await check('custom 404', async()=>{
 if(failures.length){
   console.error(`Production smoke failed (${failures.length}):`); failures.forEach(f=>console.error(`- ${f}`)); process.exit(1);
 }
-console.log(`Production smoke passed: ${base.href} + ${expectedProjects} live catalogue projects.`);
+console.log(`Production smoke passed: ${base.href} + ${launches.length} available launches and ${unavailable.length} unavailable archive records.`);

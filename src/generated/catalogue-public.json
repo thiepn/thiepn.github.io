@@ -600,7 +600,8 @@
       "type": "study-system",
       "status": "live",
       "route": "/project/pflegelern/",
-      "liveUrl": "https://thiepn.dev/pflegelern/",
+      "liveUrl": null,
+      "unavailable": true,
       "repo": "thiepn/pflegelern",
       "tags": [
         "study",
