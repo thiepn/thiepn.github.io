@@ -111,6 +111,16 @@ for(const storageMode of ['normal','idb-blocked'] as const)test(`fresh tabs reus
 });
 test('concurrent new tabs share one rotating refresh even without Web Locks',async({browser})=>{
  const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
+ // Finish the initial device sync before deliberately expiring its credential.
+ // Closing a page during an unrelated refresh lease is a different scenario.
+ await sync(a.page);
+ await expect.poll(()=>a.page.evaluate(()=>new Promise<boolean>((resolve,reject)=>{
+  const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
+   const db=request.result,tx=db.transaction('session','readonly');
+   const read=tx.objectStore('session').get('thiepn:hub-account-storage:refresh-lease');
+   tx.oncomplete=()=>{db.close();resolve(Boolean(read.result));};tx.onabort=()=>{db.close();reject(tx.error);};
+  };request.onerror=()=>reject(request.error);
+ }))).toBe(false);
  await a.page.evaluate(()=>new Promise<void>((resolve,reject)=>{
   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
    const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session'),read=store.get('thiepn:hub-sso:v1:tokens');
@@ -119,15 +129,26 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
   };request.onerror=()=>reject(request.error);
  }));
  await a.page.close();
-  // Force the Safari/browser fallback on both new tabs; a single rotating
-  // refresh must still be shared without navigator.locks.
+  // Model two simultaneously visible windows sharing one storage partition.
+  // Headless browsers can otherwise mark all but the last created tab hidden;
+  // Hub intentionally defers discovery in a hidden document. Only visibility
+  // and Web Locks availability are simulated, never IndexedDB or OAuth.
   await a.context.addInitScript(()=>{
+    if(location.origin!=='https://thiepn.dev')return;
     Object.defineProperty(navigator,'locks',{configurable:true,value:undefined});
+    Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
+    Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});
   });
   const pages=await Promise.all([a.context.newPage(),a.context.newPage()]);
- await Promise.all(pages.map(async page=>{await page.goto('https://thiepn.dev/');await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');}));
- for(const page of pages)expect(await page.evaluate(()=>Boolean(navigator.locks))).toBe(false);
-  expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);await a.context.close();
+  try {
+   await Promise.all(pages.map(async page=>{
+    await page.goto('https://thiepn.dev/');
+    expect(await page.evaluate(()=>({hidden:document.hidden,locks:Boolean(navigator.locks)}))).toEqual({hidden:false,locks:false});
+    await expect(page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+    await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+   }));
+   expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);
+  } finally {await a.context.close();}
 });
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
@@ -193,6 +214,11 @@ test('Connections preserves last success, distinguishes revoked access and expor
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
  try {
   await a.page.goto('https://thiepn.dev/home/connections/');
+  await a.page.bringToFront();
+  await expect.poll(()=>a.page.evaluate(()=>document.visibilityState)).toBe('visible');
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(a.page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','false');
   const notes=a.page.locator('[data-source-status=notes]'),detail=a.page.locator('[data-source-detail=notes]');
   await expect(notes).toHaveText('Connected · fresh summary');await expect(detail).toContainText('Last successful read');
   api.failures.set('read_thiepn_hub_notes',403);
@@ -217,7 +243,11 @@ test('hidden language apps do not request or expose their summaries',async({brow
   const requests:string[]=[];
   a.context.on('request',request=>{if(request.url().includes('/v1/languages/dashboard'))requests.push(request.url());});
   await a.page.reload();
+  await a.page.bringToFront();
+  await expect.poll(()=>a.page.evaluate(()=>document.visibilityState)).toBe('visible');
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(a.page.locator('[data-native-overview]')).toContainText('Today at a glance');
   await expect(a.page.locator('[data-action=refresh-languages], .ws-brief-languages, [data-source-today-languages]')).toHaveCount(0);
   expect(requests).toEqual([]);
  }finally{await a.context.close();}
