@@ -351,3 +351,14 @@ test('Micro Arcade recording plays only on request and stops when changing proje
   await expect(video).toHaveJSProperty('paused', true);
   await expect(video).not.toBeVisible();
 });
+
+
+test('Unavailable archive records remain truthful without a broken public launch', async ({page})=>{
+  await page.goto('/project/pflegelern/');
+  await expect(page.locator('[data-project-unavailable=true]')).toHaveText('Public launch currently unavailable');
+  await expect(page.locator('a[href="/pflegelern/"], a[href="https://thiepn.dev/pflegelern/"]')).toHaveCount(0);
+  const response=await page.request.get('/catalogue.json');
+  expect(response.ok()).toBe(true);
+  const catalogue=await response.json();
+  expect(catalogue.projects.find((p:{code:string})=>p.code==='L-008')).toMatchObject({slug:'pflegelern',liveUrl:null,unavailable:true});
+});

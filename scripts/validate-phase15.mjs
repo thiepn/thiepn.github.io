@@ -43,8 +43,20 @@ for (const name of fs.readdirSync('src/content/projects')) {
 }
 if (fs.existsSync('src/generated/catalogue-public.json')) {
   const catalogue = JSON.parse(fs.readFileSync('src/generated/catalogue-public.json','utf8'));
+  const manifest = JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
+  const launchIds = new Set(manifest.entries.map(entry => entry.id));
   for (const project of catalogue.projects ?? []) {
-    if (!isProductionProjectUrl(project.liveUrl)) fail(`${project.code}: generated liveUrl is not production-domain canonical`);
+    if (project.unavailable === true) {
+      // Explicit availability is a catalogue data contract, not a waiver for
+      // any active Hub launch. An unavailable project must not advertise a URL.
+      if (project.liveUrl !== null || launchIds.has(project.slug))
+        fail(`${project.code}: unavailable archive record must have no launch URL and must not be an active Hub launch`);
+      const source = fs.readFileSync(path.join('src/content/projects',project.slug+'.md'),'utf8');
+      if (!/^unavailable:\s*true\s*$/m.test(source) || /^liveUrl:/m.test(source))
+        fail(`${project.code}: unavailable archive record does not match source`);
+    } else if (!isProductionProjectUrl(project.liveUrl)) {
+      fail(`${project.code}: generated liveUrl is not production-domain canonical`);
+    }
   }
 }
 if (failures.length) {
