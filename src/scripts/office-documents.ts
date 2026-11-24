@@ -802,7 +802,7 @@ if(root && shell){
   function discardBatchPreview(){
     batchPlan=null;batchResult.hidden=true;batchDocument.value='';batchSummary.textContent='';
   }
-  let epoch=0,dirty=false,busy=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
+  let epoch=0,dirty=false,busy=false,savingDraft=false,blocked=false,auto:ReturnType<typeof setTimeout>|undefined;
   // In-memory recovery across Hub privacy/identity rechecks; never written to another owner scope.
   let heldDraft:{scope:string;id:string;revision:number;title:string;body:string}|null=null;
   let importNonce=0,pendingImport:({scope:string}&MarkdownImport)|null=null;
@@ -826,7 +826,11 @@ if(root && shell){
   const message=(value:string)=>{status.textContent=value;};
   const enable=()=>{
     const editing=!!store && !!active && !blocked && allowed() && !busy;
-    title.disabled=body.disabled=!editing;
+    // An ordinary autosave snapshots text and commits with CAS. Keep the
+    // text editor and inline formatting usable during that write; destructive
+    // document/revision commands remain disabled until the commit completes.
+    const textEditing=!!store&&!!active&&!blocked&&allowed()&&(!busy||savingDraft);
+    title.disabled=body.disabled=!textEditing;
     // A concurrent-edit conflict must never prevent exporting the unsaved text.
     download.disabled=htmlButton.disabled=printButton.disabled=!active||!allowed();
     save.disabled=!editing||busy;
@@ -1054,7 +1058,7 @@ if(root && shell){
       structuralPlan.id!==active?.id||structuralPlan.revision!==active?.revision||
       structuralPlan.body!==body.value||structuralPlan.title!==title.value||
       String(structuralPlan.offset)!==sectionSelect.value;
-    for(const button of formatButtons)button.disabled=!editing||busy;
+    for(const button of formatButtons)button.disabled=!textEditing;
   };
   function clearComparison(){
     compared=null;comparePanel.hidden=true;compareSummary.textContent='';
@@ -1402,7 +1406,7 @@ if(root && shell){
   }
   async function persist(){
     if(!dirty||!active||!store||blocked||!allowed()||busy)return;
-    clearTimeout(auto);busy=true;enable();
+    clearTimeout(auto);busy=true;savingDraft=true;enable();
     const current=active,stamp=epoch,wantedTitle=title.value,wantedBody=body.value;
     try{
       const saved=await store.save(current,wantedTitle,wantedBody);
@@ -1416,8 +1420,10 @@ if(root && shell){
       if(stamp!==epoch)return;
       blocked=true;message((e instanceof Error?e.message:'Could not save')+' Export your current text before reloading.');
     }finally{
-      busy=false;enable();
-      if(dirty&&!blocked&&stamp===epoch)queueAutosave();
+      if(stamp===epoch){
+        savingDraft=false;busy=false;enable();
+        if(dirty&&!blocked)queueAutosave();
+      }
     }
   }
   function queueAutosave(){
@@ -1447,7 +1453,7 @@ if(root && shell){
   async function start(){
     const ticket=++epoch;
     if(dirty&&active&&store)heldDraft={scope:store.scope,id:active.id,revision:active.revision,title:title.value,body:body.value};
-    clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;
+    clearTimeout(auto);store?.close();store=null;blocked=false;busy=false;savingDraft=false;
     clearComparison();clearImport();clearMulti();clearRestore();selectedBundle.clear();
     findQuery.value='';replaceValue.value='';findCase.checked=false;matches=[];matchCursor=-1;
     bundleCount.textContent='0 documents selected';
@@ -3527,13 +3533,18 @@ if(root && shell){
       message('Markdown block inserted into the original document. Autosave pending.');
     }catch(error){message(error instanceof Error?error.message:'Block not inserted. Original source unchanged.');}
   });
-  for(const button of formatButtons)button.addEventListener('click',()=>{
-    if(button.disabled||!active||!allowed())return;
-    const action=button.dataset.officeFormat as FormatAction;
-    const result=formatSelection(body.value,body.selectionStart,body.selectionEnd,action);
-    body.value=result.value;body.focus();body.setSelectionRange(result.start,result.end);
-    body.dispatchEvent(new Event('input',{bubbles:true}));
-  });
+  for(const button of formatButtons){
+    // A pointer click must not move focus away from the textarea before its
+    // selection is consumed. Keyboard activation still works normally.
+    button.addEventListener('mousedown',event=>{if(event.button===0&&!button.disabled)event.preventDefault();});
+    button.addEventListener('click',()=>{
+      if(button.disabled||!active||!allowed())return;
+      const action=button.dataset.officeFormat as FormatAction;
+      const result=formatSelection(body.value,body.selectionStart,body.selectionEnd,action);
+      body.value=result.value;body.focus();body.setSelectionRange(result.start,result.end);
+      body.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+  }
   for(const button of layoutButtons)button.addEventListener('click',()=>{
     const mode=button.dataset.officeMode;
     if(mode!=='write'&&mode!=='split'&&mode!=='preview')return;

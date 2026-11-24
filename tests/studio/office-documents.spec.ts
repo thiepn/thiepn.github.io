@@ -85,6 +85,48 @@ test('O2 formatting actions update Markdown and escaped live preview without HTM
  await expect(page.locator('[data-office-preview] strong')).toHaveText('Bold');
 });
 
+test('Office inline formatting remains usable during an outstanding autosave',async({page})=>{
+ await page.goto('/home/documents/');
+ await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();
+ const body=page.locator('[data-office-body]'),heading=page.locator('[data-office-format=heading]');
+ await expect(body).toBeEnabled();
+ // Delay notification of the actual IndexedDB commit, not the transaction
+ // itself, so the editor is deterministically in its in-flight save state.
+ await page.evaluate(()=>{
+  const original=IDBDatabase.prototype.transaction;
+  const descriptor=Object.getOwnPropertyDescriptor(IDBTransaction.prototype,'oncomplete')!;
+  let delayed=false;
+  IDBDatabase.prototype.transaction=function(...args:Parameters<IDBDatabase['transaction']>){
+   const tx=original.apply(this,args);
+   if(this.name==='thiepn-hub-office-v1'&&args[1]==='readwrite'&&!delayed){
+    delayed=true;
+    Object.defineProperty(tx,'oncomplete',{configurable:true,set(handler:((event:Event)=>void)|null){
+     descriptor.set!.call(tx,handler&&function(event:Event){
+      (window as any).__finishOfficeSave=()=>handler.call(tx,event);
+     });
+    }});
+   }
+   return tx;
+  };
+ });
+ await body.fill('Research');
+ try{
+  await expect.poll(()=>page.evaluate(()=>typeof (window as any).__finishOfficeSave)).toBe('function');
+  await expect(heading).toBeEnabled();
+  await expect(body).toBeEnabled();
+  await body.evaluate((node:HTMLTextAreaElement)=>node.setSelectionRange(0,8));
+  await heading.click();
+  await expect(body).toHaveValue('# Research');
+  await expect(page.locator('[data-office-preview] h1')).toHaveText('Research');
+ }finally{
+  await page.evaluate(()=>{(window as any).__finishOfficeSave?.();});
+ }
+ await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.reload();
+ await expect(body).toHaveValue('# Research');
+});
+
 test('O3 search finds title/body, outline jumps to headings, and recovery backup keeps exact records',async({page})=>{
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
