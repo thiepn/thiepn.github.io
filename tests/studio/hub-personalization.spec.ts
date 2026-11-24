@@ -1,59 +1,35 @@
 import { expect, test } from '@playwright/test';
+import { HUB_VISIBLE_APP_IDS } from '../../src/lib/workspace/visible-apps';
+import { PROPOSED_QUICK_SHORTCUT_IDS } from '../../src/lib/workspace/app-personalization';
+import manifest from '../../src/generated/launch-manifest.json' with {type:'json'};
 
-test('personal Apps hides are reversible and account-owned without deleting public links', async ({page}) => {
+test('Apps, search and Connections use the same owner-approved list', async ({page}) => {
   await page.goto('/apps/');
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await expect(page.locator('[data-hub-item]')).toHaveCount(31);
-  const control=page.locator('[data-hub-current-app="control"]');
-  const ligo=page.locator('[data-hub-current-app="ligoquiz"]');
-  await expect(control).toBeHidden();
-  await expect(ligo).toBeHidden();
-  await page.locator('[data-show-hidden-apps]').check();
-  await expect(control).toBeVisible();
-  await expect(ligo).toBeVisible();
-  await control.locator('[data-action="toggle-app-visibility"]').click();
-  await expect(control.locator('[data-action="toggle-app-visibility"]')).toHaveText('Hide');
-  await page.locator('[data-show-hidden-apps]').uncheck();
-  await expect(control).toBeVisible();
-  await expect(ligo).toBeHidden();
-  await page.reload();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await expect(page.locator('[data-hub-current-app="control"]')).toBeVisible();
-  await expect(page.locator('[data-hub-current-app="ligoquiz"]')).toBeHidden();
-  // Canonical shortcut link is still in the public HTML, only the personal UI filters it.
-  await expect(page.locator('[data-hub-current-app="control"] a')).toHaveAttribute('href', 'https://control.thiepn.dev/');
+  expect(await page.locator('[data-hub-slug]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-hub-slug')))).toEqual([...HUB_VISIBLE_APP_IDS]);
+  await expect(page.locator('[data-show-hidden-apps], [data-hub-current-app], [data-hub-pending-app]')).toHaveCount(0);
+  await page.goto('/search/');
+  expect(await page.locator('[data-portal-search-slug]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-portal-search-slug')))).toEqual([...HUB_VISIBLE_APP_IDS]);
+  await page.locator('[data-portal-query]').fill('French vocabulary');
+  await expect(page.locator('[data-portal-search-slug="french-3000"]')).toHaveCount(0);
+  await page.goto('/home/connections/');
+  const titles=HUB_VISIBLE_APP_IDS.map(id=>manifest.entries.find(e=>e.id===id)!.title);
+  expect(await page.locator('.ws-connection-table tbody th').allTextContents()).toEqual(titles);
 });
-
-test('new Hub workspace uses selected eight in order and candidate Clearpage stays shortcut-only', async ({page}) => {
+test('new Hub workspace uses eight approved shortcuts in order', async ({page}) => {
   await page.goto('/home/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  const links=page.locator('[data-launch]');
-  await expect(links).toHaveCount(8);
-  expect(await links.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-launch')))).toEqual([
-    'studyos','mdd','pdf-studio','thiepn-library','notes','tms60','tiny-tools','clearpage'
-  ]);
-  await page.goto('/apps/');
-  await expect(page.locator('[data-hub-current-app="clearpage"] a')).toHaveAttribute('href','https://page.thiepn.dev/');
-  await expect(page.locator('[data-hub-pending-app]')).toHaveCount(4);
-  await expect(page.locator('[data-hub-pending-app] a')).toHaveCount(0);
-  await expect(page.locator('[data-hub-item]')).toHaveCount(31);
+  expect(await page.locator('[data-launch]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-launch')))).toEqual([...PROPOSED_QUICK_SHORTCUT_IDS]);
 });
-
-test('imported legacy shortcuts survive until explicit owner action',async({page})=>{
-  await page.addInitScript(()=>{
-    localStorage.setItem('thiepn:hub-preferences',JSON.stringify({
-      version:1,pins:['notes','canvas'],density:'comfortable'
-    }));
-  });
+test('legacy hidden shortcuts are suppressed without rewriting original preferences', async ({page}) => {
+  await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','studyos','canvas','bikes'],density:'comfortable'})));
   await page.goto('/home/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   expect(await page.locator('[data-launch]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-launch')))).toEqual(['notes','canvas']);
+  await page.reload();
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','studyos','canvas','bikes']);
   await page.goto('/apps/');
   await page.getByRole('button',{name:'Use my selected 8 shortcuts'}).click();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await page.goto('/home/');
-  expect(await page.locator('[data-launch]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-launch')))).toEqual([
-    'studyos','mdd','pdf-studio','thiepn-library','notes','tms60','tiny-tools','clearpage'
-  ]);
-  expect(JSON.parse(await page.evaluate(()=>localStorage.getItem('thiepn:hub-preferences')!)).pins).toEqual(['notes','canvas']);
+  expect(await page.locator('[data-launch]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-launch')))).toEqual([...PROPOSED_QUICK_SHORTCUT_IDS]);
 });

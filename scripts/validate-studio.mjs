@@ -42,7 +42,7 @@ assert.notEqual([...hub.projects].sort((a, b) => a.order - b.order)[0]?.slug, 's
 const hubCatalogue = fs.readFileSync('src/components/hub/HubCatalogue.astro', 'utf8');
 const hubCard = fs.readFileSync('src/components/hub/HubCard.astro', 'utf8');
 const hubFilters = fs.readFileSync('src/components/hub/HubFilters.astro', 'utf8');
-assert(hubCatalogue.includes('entries.map'), 'Hub catalogue must render all entries at build time');
+assert(hubCatalogue.includes('HUB_VISIBLE_APP_IDS') && hubCatalogue.includes('visible.map'), 'Hub catalogue must render the approved presentation allowlist at build time');
 assert(hubCatalogue.includes('HubFilters'), 'Hub catalogue must expose category controls');
 assert(hubCard.includes('Open app'), 'Hub cards must make launching the app a primary action');
 assert(hubCard.includes('Details'), 'Hub cards must retain project details as a secondary action');

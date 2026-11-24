@@ -1,11 +1,9 @@
 import {hubFixture} from './launch-fixture';
-import {additionalShortcutLaunches} from '../../src/lib/launches/shortcut-directory';
 import { test, expect } from '@playwright/test';
 
 const hub=hubFixture;
 const expectedCounts = hub.expectedCategoryCounts;
-const expectedBadgeCounts = Object.fromEntries(Object.entries(expectedCounts).map(([category, count]) =>
-  [category, count + additionalShortcutLaunches.filter(app => app.category === category).length]));
+const expectedBadgeCounts = expectedCounts;
 
 for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`Hub cards and filters stay readable ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -19,7 +17,7 @@ for (const width of [320, 375, 768, 1440]) for (const theme of ['light', 'dark']
     await expect(catalogue.locator('.hub-category')).toHaveCount(7);
     await expect(catalogue.locator('[data-hub-search]')).toHaveCount(0);
 
-    await expect(catalogue.locator('button[data-hub-category="all"] span')).toHaveText(String(hub.expectedCount + additionalShortcutLaunches.length));
+    await expect(catalogue.locator('button[data-hub-category="all"] span')).toHaveText(String(hub.expectedCount));
     for (const [category, count] of Object.entries(expectedBadgeCounts)) {
       const button = catalogue.locator(`button[data-hub-category="${category}"]`);
       await expect(button).toBeVisible();

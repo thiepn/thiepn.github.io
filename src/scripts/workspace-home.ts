@@ -747,7 +747,7 @@ async function setup(root: HTMLElement) {
             case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div>${dirty ? '<small class="ws-error">Draft not saved yet</small>' : ''}</form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
-            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
+            case 'recent-activity': { const visibleActivity=state!.activity.filter(a=>!a.kind.startsWith('launch:')||visibleShortcut(a.kind.slice(7))); return visibleActivity.length ? visibleActivity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', ''); }
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
     }

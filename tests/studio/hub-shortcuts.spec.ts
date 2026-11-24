@@ -1,97 +1,44 @@
 import { test, expect, type Page } from '@playwright/test';
 import manifest from '../../src/generated/launch-manifest.json' with { type: 'json' };
+import { HUB_VISIBLE_APP_IDS } from '../../src/lib/workspace/visible-apps';
 
 async function openEditor(page: Page) {
   await page.locator('[data-widget-type="app-shortcuts"] [data-action="configure-widget"]').click();
   const dialog = page.locator('[data-workspace-dialog]');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('#ws-dialog-title')).toHaveText('Choose app shortcuts');
   return dialog;
 }
-
-test('newer apps can be pinned, reordered with existing IDs preserved, and unpinned after reload', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  const published = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
-  expect(published.map(a => a.id)).toEqual(manifest.entries.map(e => e.id));
-
-  let dialog = await openEditor(page);
-  await expect(dialog.getByRole('checkbox', { name: 'Chinese', exact: true })).toBeVisible();
-  await expect(dialog.getByRole('checkbox', { name: 'Japanese', exact: true })).toBeVisible();
-  await expect(dialog.getByRole('checkbox', { name: 'My Daily Devotion', exact: true })).toBeVisible();
-  await dialog.getByRole('checkbox', { name: 'Chinese', exact: true }).check();
-  await dialog.getByRole('checkbox', { name: 'Japanese', exact: true }).check();
-  await dialog.getByRole('checkbox', { name: 'My Daily Devotion', exact: true }).check();
-
-  await dialog.locator('[data-pin-search]').fill('voidcut');
-  await expect(dialog.locator('[data-other-shortcuts]')).toHaveAttribute('open', '');
-  await expect(dialog.getByRole('checkbox', { name: 'VOIDCUT', exact: true })).toBeVisible();
-  await dialog.locator('[data-pin-search]').fill('');
-  await dialog.locator('[data-dialog-submit]').click();
-  await expect(dialog).not.toBeVisible();
-
-  const shortcuts = page.locator('[data-widget-type="app-shortcuts"] .ws-shortcuts');
-  await expect(shortcuts).toContainText('Chinese');
-  await expect(shortcuts).toContainText('Japanese');
-  await expect(shortcuts).toContainText('My Daily Devotion');
-  await expect(shortcuts).toContainText('Notes');
-
-  await page.reload();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await expect(shortcuts).toContainText('Chinese');
-  dialog = await openEditor(page);
-  await dialog.getByRole('checkbox', { name: 'Chinese', exact: true }).uncheck();
-  await dialog.locator('[data-dialog-submit]').click();
-  await expect(dialog).not.toBeVisible();
-  await expect(shortcuts).not.toContainText('Chinese');
-  await expect(shortcuts).toContainText('Japanese');
-  await expect(shortcuts).toContainText('Notes');
-});
-
-test('mobile shortcut editor keeps current and older apps searchable without overflow', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('shortcut picker offers exactly the fourteen curated apps and preserves selection after reload', async ({page}) => {
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   const dialog = await openEditor(page);
-  await expect(dialog.getByRole('checkbox', { name: 'ION', exact: true })).toBeVisible();
-  await dialog.locator('[data-pin-search]').fill('wordstrike');
-  await expect(dialog.getByRole('checkbox', { name: 'WORDSTRIKE', exact: true })).toBeVisible();
-  const width = await dialog.evaluate(element => element.getBoundingClientRect().width);
-  expect(width).toBeLessThanOrEqual(390);
-  await dialog.getByRole('checkbox', { name: 'WORDSTRIKE', exact: true }).check();
+  const ids = await dialog.locator('input[name="appIds"]').evaluateAll(nodes=>nodes.map(n=>(n as HTMLInputElement).value));
+  expect([...ids].sort()).toEqual([...HUB_VISIBLE_APP_IDS].sort());
+  await dialog.locator('[data-pin-search]').fill('Chinese');
+  await expect(dialog.locator('[data-app-choice]:visible')).toHaveCount(0);
+  await dialog.locator('[data-pin-search]').fill('voidcut');
+  await expect(dialog.getByRole('checkbox',{name:'VOIDCUT',exact:true})).toBeVisible();
+  await dialog.getByRole('checkbox',{name:'VOIDCUT',exact:true}).check();
   await dialog.locator('[data-dialog-submit]').click();
-  await expect(dialog).not.toBeVisible();
-  await expect(page.locator('[data-widget-type="app-shortcuts"] .ws-shortcuts')).toContainText('WORDSTRIKE');
+  await page.reload();
+  await expect(page.locator('[data-launch="voidcut"]')).toBeVisible();
 });
-
-
-test('Apps tab displays current independent apps while the published catalogue stays frozen', async ({ page }) => {
-  await page.goto('/apps/');
-  await expect(page.locator('[data-hub-current-app]')).toHaveCount(13);
-  await expect(page.locator('[data-hub-item]')).toHaveCount(manifest.entries.length);
-  for (const app of ['languages', 'chinese', 'japanese', 'korea', 'studyos', 'mdd', 'ion', 'chess', 'karaoke', 'ligoquiz', 'control', 'clearpage']) {
-    await expect(page.locator(`[data-hub-current-app="${app}"] a`)).toHaveAttribute('href', /https:\/\//);
-  }
-  await expect(page.locator('[data-hub-current-app="ligoquiz"]')).toBeHidden();
-  await expect(page.locator('[data-hub-current-app="control"]')).toBeHidden();
-  await expect(page.locator('[data-hub-current-app="clearpage"] a')).toHaveAttribute('href', 'https://page.thiepn.dev/');
-  const publiclyRegistered = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as { id: string }[];
-  expect(publiclyRegistered.map(app => app.id)).toEqual(manifest.entries.map(entry => entry.id));
-});
-
-test('Apps tab filters both current and published apps, with pin persistence on mobile', async ({ page }) => {
+test('Apps roster and category filters show only approved apps; registry is unchanged', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
   await page.goto('/apps/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  expect(await page.locator('[data-hub-slug]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-hub-slug')))).toEqual([...HUB_VISIBLE_APP_IDS]);
+  await expect(page.locator('[data-hub-current-app], [data-hub-pending-app]')).toHaveCount(0);
+  const registered = JSON.parse((await page.locator('[data-workspace-apps]').textContent()) ?? '[]') as {id:string}[];
+  expect(registered.map(app=>app.id)).toEqual(manifest.entries.map(app=>app.id));
   await page.locator('[data-hub-category="games"]').click();
-  await expect(page.locator('[data-hub-current-app="chess"]')).toBeVisible();
-  await expect(page.locator('[data-hub-current-app="japanese"]')).toBeHidden();
+  await expect(page.locator('[data-hub-slug="gomoku"]')).toBeVisible();
+  await expect(page.locator('[data-hub-slug="notes"]')).toBeHidden();
   await page.locator('[data-hub-category="all"]').click();
-  const pin = page.locator('[data-hub-current-app="chess"] [data-action="pin-app"]');
+  const pin=page.locator('[data-hub-slug="gomoku"] [data-action="pin-app"]');
   await pin.click();
   await expect(pin).toHaveAttribute('aria-pressed','true');
   await page.reload();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await expect(page.locator('[data-hub-current-app="chess"] [data-action="pin-app"]')).toHaveAttribute('aria-pressed','true');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect(pin).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

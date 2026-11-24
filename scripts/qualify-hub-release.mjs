@@ -1,3 +1,4 @@
+import { HUB_VISIBLE_APP_IDS } from '../src/lib/workspace/visible-apps.ts';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -88,7 +89,7 @@ assert(catalogue.includes('data-workspace') && catalogue.includes('data-view="ap
 assert(!catalogue.includes('class="site-header"') && !catalogue.includes('class="site-footer"'), 'Apps must not expose a second shell');
 assert(!catalogue.includes('name="robots" content="noindex'), 'Public catalogue must remain indexable');
 assert(sitemap.includes('<loc>https://thiepn.dev/apps/</loc>'), 'Public catalogue is missing from sitemap');
-assert.equal([...catalogue.matchAll(/\bdata-hub-slug=/g)].length, status.appCount, 'Apps catalogue roster does not match release count');
+assert.deepEqual([...catalogue.matchAll(/\bdata-hub-slug="([^"]+)"/g)].map(match => match[1]), [...HUB_VISIBLE_APP_IDS], 'Apps catalogue roster does not match approved presentation');
 assert.equal((await json('hub-search.json')).projects.length, status.appCount, 'Search roster does not match release count');
 const assets = [];
 for (const file of [...files].sort()) {
