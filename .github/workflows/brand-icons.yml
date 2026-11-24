@@ -10,7 +10,7 @@ on:
       - .github/workflows/brand-icons.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: thiepn-brand-icons
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -40,16 +41,19 @@ jobs:
       - name: Generate brand icon derivatives
         run: node scripts/generate-brand-icons.mjs
 
-      - name: Commit refreshed icon derivatives
+      - name: Prepare generated changes for PR review
+        id: review
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
           git add public/favicon-32x32.png public/apple-touch-icon.png public/icon-192.png public/icon-512.png
-          if git diff --cached --quiet; then
-            echo "Brand icon derivatives are already current."
-            exit 0
-          fi
-          git commit -m "Refresh THIEPN brand icon derivatives"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          node scripts/export-generated-review.mjs
+
+      - name: Upload generated review patch
+        if: steps.review.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-brand-icons
+          path: ${{ runner.temp }}/generated-review/
+          if-no-files-found: error
+          retention-days: 14

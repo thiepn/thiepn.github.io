@@ -10,7 +10,7 @@ on:
       - .github/workflows/og-assets.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: thiepn-og-assets-${{ github.ref }}
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -40,16 +41,19 @@ jobs:
       - name: Generate social-card derivatives
         run: node scripts/rasterize-og.mjs
 
-      - name: Commit refreshed social-card derivatives
+      - name: Prepare generated changes for PR review
+        id: review
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
           git add -A -- public/og src/generated/og-raster-manifest.json
-          if git diff --cached --quiet; then
-            echo "Social-card derivatives are already current."
-            exit 0
-          fi
-          git commit -m "Refresh THIEPN social card derivatives"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          node scripts/export-generated-review.mjs
+
+      - name: Upload generated review patch
+        if: steps.review.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-og-assets
+          path: ${{ runner.temp }}/generated-review/
+          if-no-files-found: error
+          retention-days: 14
