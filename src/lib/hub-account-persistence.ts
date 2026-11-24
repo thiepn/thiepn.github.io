@@ -86,37 +86,69 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
     },
   };
 
-  // Web Locks may be absent in Safari. This IndexedDB transaction provides a
-  // cross-tab lease before reading or rotating any Account credentials.
-  // The lease never contains tokens and is not exposed through SDK storage.
+  // All IDB-capable tabs use the same durable lease. When Web Locks are
+  // available, an additional unique lifetime lock proves that the lease owner
+  // is still alive. A reload/navigation can terminate JS before its finally
+  // handler runs; the browser releases that lifetime lock automatically.
+  // Tabs without Web Locks keep the existing expiry-based fallback.
   const leaseKey = 'thiepn:hub-account-storage:refresh-lease';
+  const lifetimeName = (owner: string) => leaseKey + ':owner:' + owner;
+  type Lease = {owner: string; expiresAt: number; webLock?: boolean};
+  type LeaseAttempt = {acquired: boolean; blocker?: Lease};
   async function withIdbLease<T>(operation: () => Promise<T>): Promise<T> {
-    if (!db) return operation(); // Preserve the restricted-storage fallback.
+    if (!db) return operation();
     const owner = crypto.randomUUID();
+    const locks = navigator.locks;
     const deadline = Date.now() + 20_000;
-    const transact = (mode:'acquire'|'release'):Promise<boolean>=>new Promise((resolve,reject)=>{
+    const transact = (mode:'acquire'|'release', abandoned?:string):Promise<LeaseAttempt>=>new Promise((resolve,reject)=>{
       const tx=db!.transaction('session','readwrite'),store=tx.objectStore('session');
       const request=store.get(leaseKey);
-      let acquired=false;
+      let result:LeaseAttempt={acquired:false};
       request.onsuccess=()=>{
-        const lease=request.result as {owner?:unknown;expiresAt?:unknown}|undefined;
+        const lease=request.result as Lease|undefined;
         if(mode==='release') {
           if(lease?.owner===owner)store.delete(leaseKey);
-        } else if(!lease||typeof lease.expiresAt!=='number'||lease.expiresAt<=Date.now()){
-          store.put({owner,expiresAt:Date.now()+45_000},leaseKey);
-          acquired=true;
+          return;
         }
+        const valid = !!lease && typeof lease.owner==='string' &&
+          typeof lease.expiresAt==='number' && Number.isFinite(lease.expiresAt);
+        // Compare owner again inside this transaction: a different tab may
+        // already have acquired the lease while the lifetime lock was probed.
+        const abandonedOwner = valid && lease.webLock===true && lease.owner===abandoned;
+        const canExpire = valid && lease.expiresAt<=Date.now() && (!lease.webLock||!locks);
+        if(!valid||abandonedOwner||canExpire){
+          store.put({owner,expiresAt:Date.now()+45_000,webLock:!!locks} satisfies Lease,leaseKey);
+          result={acquired:true};
+        }else result={acquired:false,blocker:lease};
       };
-      tx.oncomplete=()=>resolve(acquired);
+      tx.oncomplete=()=>resolve(result);
       tx.onabort=()=>reject(tx.error??new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE'));
       tx.onerror=()=>{};
     });
-    while(!(await transact('acquire'))){
-      if(Date.now()>=deadline)throw new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE');
-      await new Promise<void>(resolve=>setTimeout(resolve,100));
-    }
-    try { return await operation(); }
-    finally { await transact('release'); }
+    const perform = async () => {
+      let abandoned:string|undefined;
+      for(;;){
+        const result=await transact('acquire',abandoned);
+        if(result.acquired)break;
+        if(Date.now()>=deadline)throw new Error('ACCOUNT_STORAGE_LOCK_UNAVAILABLE');
+        abandoned=undefined;
+        if(locks && result.blocker?.webLock===true &&
+           /^[0-9a-f-]{36}$/i.test(result.blocker.owner)){
+          const blockedOwner=result.blocker.owner;
+          // A unique owner lock is never reused. A missing lock proves that
+          // the previous document's operation cannot still write locally.
+          const dead=await locks.request(lifetimeName(blockedOwner),{ifAvailable:true},
+            lock=>lock!==null);
+          if(dead){abandoned=blockedOwner;continue;}
+        }
+        await new Promise<void>(resolve=>setTimeout(resolve,100));
+      }
+      try { return await operation(); }
+      finally { await transact('release'); }
+    };
+    // Hold the lifetime lock BEFORE advertising the lease, until after the
+    // credential commit and lease release. No credentials enter lock names.
+    return locks ? locks.request(lifetimeName(owner),perform) : perform();
   }
   // Serializing entire SDK operations also protects rotating refresh tokens.
   // Locking just the IDB writes would let two tabs refresh the same old token.

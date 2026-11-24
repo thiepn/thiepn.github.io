@@ -150,6 +150,29 @@ test('concurrent new tabs share one rotating refresh even without Web Locks',asy
    expect(api.exchanges()).toBe(1);expect(api.refreshes()).toBe(1);
   } finally {await a.context.close();}
 });
+test('Account startup recovers an abandoned lifetime lease without waiting for expiry',async({browser})=>{
+ const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
+ try{
+  await sync(a.page);
+  // Firefox/Chromium/WebKit with Web Locks: simulate the exact persistent
+  // state left when an old document terminates before releasing its lease.
+  // Do not change token records or the browser's lock implementation.
+  expect(await a.page.evaluate(()=>!!navigator.locks)).toBe(true);
+  await expect.poll(()=>a.page.evaluate(()=>new Promise<boolean>((resolve,reject)=>{
+   const request=indexedDB.open('thiepn-hub-account');request.onsuccess=()=>{
+    const db=request.result,tx=db.transaction('session','readwrite'),store=tx.objectStore('session');
+    const key='thiepn:hub-account-storage:refresh-lease',read=store.get(key);
+    let seeded=false;
+    read.onsuccess=()=>{if(!read.result){store.put({owner:crypto.randomUUID(),expiresAt:Date.now()+45_000,webLock:true},key);seeded=true;}};
+    tx.oncomplete=()=>{db.close();resolve(seeded);};tx.onabort=()=>{db.close();reject(tx.error);};
+   };request.onerror=()=>reject(request.error);
+  }))).toBe(true);
+  await a.page.goto('https://thiepn.dev/home/connections/');
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(a.page.locator('[data-source-status=notes]')).toHaveText('Connected · fresh summary');
+  expect(api.exchanges()).toBe(0);expect(api.refreshes()).toBe(0);
+ }finally{await a.context.close();}
+});
 test('durable Account token cannot be downgraded by stale localStorage mirror',async({browser})=>{
   const api=backend({sharing:false,probeEligible:true}),a=await api.device(browser,null);
   expect(api.exchanges()).toBe(1);
