@@ -8,6 +8,7 @@ for(const width of [1440,390]){
    await expect(page.locator("[data-workspace-status]")).toHaveText("Workspace saved locally");
    const panel=page.locator("[data-hub-study-plan]");
    await expect(panel).toHaveCount(1);
+   await expect(panel).toBeHidden();
    await expect(panel.locator("h3")).toHaveText("StudyOS weekly plan");
    await expect(panel.locator("[data-hub-study-file]")).toBeDisabled();
    await expect(panel.locator("[data-hub-study-status]")).toContainText("Sign in");

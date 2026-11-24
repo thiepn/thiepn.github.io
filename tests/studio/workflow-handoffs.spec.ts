@@ -14,11 +14,12 @@ test('H6 guides support positions, history and recovery without claiming progres
   expect(await page.evaluate(() => JSON.stringify({...localStorage}))).not.toContain('fictional-secret');
   await page.goBack(); await expect(page.locator('[aria-current="step"] h3')).toHaveText('Export selected notes');
 });
-test('H6 reviewed app links carry no file payload and Scan remains an Android product page', async ({ page }) => {
+test('H6 reviewed app links carry no file payload and excluded Scan is not advertised', async ({ page }) => {
   const requests:string[]=[]; page.on('request',r=>requests.push(r.url())); await page.goto('/flows/');
-  const links=page.locator('[data-flow-guide="scan-read"] .portal-flow-actions a[target="_blank"]');
-  expect(await links.evaluateAll((nodes:HTMLAnchorElement[])=>nodes.map(n=>n.href))).toEqual(['https://thiepn.dev/scan/','https://thiepn.dev/pdf/','https://thiepn.dev/library/saved/']);
-  await expect(links.first()).toHaveAttribute('rel','noopener noreferrer'); await expect(links.first()).toContainText('product page');
+  await expect(page.locator('[data-flow-guide="scan-read"]')).toHaveCount(0);
+  const links=page.locator('[data-flow-guide="pdf-read"] .portal-flow-actions a[target="_blank"]');
+  expect(await links.evaluateAll((nodes:HTMLAnchorElement[])=>nodes.map(n=>n.href))).toEqual(['https://thiepn.dev/pdf/','https://thiepn.dev/library/saved/']);
+  await expect(links.first()).toHaveAttribute('rel','noopener noreferrer'); await expect(links.first()).toContainText('Open PDF Studio');
   expect(requests.some(url=>/rest\/v1|hub\/transfer|account\.thiepn|\/share-target/.test(url))).toBe(false);
   await expect(page.locator('[data-portal-flows] input[type="file"]')).toHaveCount(0);
 });
@@ -29,13 +30,13 @@ test('H6 Home and Actions discover workflow guides', async ({ page }) => {
 });
 test('H6 no-JavaScript guide links remain usable', async ({ browser }) => {
   const context=await browser.newContext({javaScriptEnabled:false}); const page=await context.newPage(); await page.goto('http://127.0.0.1:4321/flows/');
-  await expect(page.locator('[data-flow-guide]:visible')).toHaveCount(3); await expect(page.getByRole('link',{name:/Open Manuscript/})).toHaveAttribute('href','https://thiepn.dev/manuscript/'); await context.close();
+  await expect(page.locator('[data-flow-guide]:visible')).toHaveCount(2); await expect(page.getByRole('link',{name:/Open Manuscript/})).toHaveAttribute('href','https://thiepn.dev/manuscript/'); await context.close();
 });
 for(const [width,theme,zoom] of [[320,'light',false],[1440,'dark',false],[320,'dark',true]] as const)test(`H6 workflow accessibility ${width} ${theme} text200=${zoom}`,async({page})=>{
   await page.setViewportSize({width,height:900}); await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'}); await page.goto('/flows/');
   if(zoom) await page.addStyleTag({content:'html{font-size:200%!important}'});
   await page.addScriptTag({path:process.env.AXE_PATH||'/tmp/audit-tools/node_modules/axe-core/axe.min.js'});
-  for(const title of ['Scan, edit and read a PDF','Edit a PDF for Library','Turn notes into a manuscript']){
+  for(const title of ['Edit a PDF for Library','Turn notes into a manuscript']){
     await page.getByRole('link',{name:title,exact:true}).click();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(await page.evaluate(async()=>(await(window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map((v:any)=>({id:v.id,nodes:v.nodes.map((n:any)=>n.target)})))).toEqual([]);

@@ -23,10 +23,10 @@ describe('Hub shortcut directory', () => {
     }
   });
 
-  it('makes the newer language, StudyOS and game entrypoints selectable', () => {
+  it('retains hidden launch routes without prioritizing them in the Hub', () => {
     for (const id of ['languages', 'chinese', 'japanese', 'studyos', 'mdd', 'selah', 'ion', 'ligoquiz', 'control']) {
       expect(resolveLaunch(id)?.id).toBe(id);
-      expect(primaryShortcutIds).toContain(id);
+      expect(primaryShortcutIds).not.toContain(id);
     }
     expect(resolveLaunch('french-3000')?.url).toBe('https://french.thiepn.dev/');
     expect(resolveLaunch('folio/notes')?.id).toBe('notes');
@@ -39,8 +39,8 @@ describe('Hub shortcut directory', () => {
     ];
     const split = partitionShortcutChoices(choices, ['wordstrike', 'notes']);
     expect(split.pinned.map(a => a.id)).toEqual(['wordstrike', 'notes']);
-    expect(split.primary.map(a => a.id)).toEqual(['mdd', 'chinese', 'japanese']); // Owner-selected priority ranks MDD first.
-    expect(split.other.map(a => a.id)).toEqual(['voidcut']);
+    expect(split.primary.map(a => a.id)).toEqual(['voidcut']);
+    expect(split.other.map(a => a.id)).toEqual(['chinese', 'japanese', 'mdd']);
     expect([...split.pinned, ...split.primary, ...split.other]).toHaveLength(choices.length);
   });
 

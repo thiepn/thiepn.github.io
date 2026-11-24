@@ -9,7 +9,29 @@ concurrency:
   group: hub-notes-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-contract:
+    name: Notes public contract (private owner qualification not executed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: node --test tests/hub-account-ci-boundaries.test.mjs
+      - name: Verify public Notes and provider contracts
+        run: npx vitest run tests/unit/hub-notes-session.test.ts tests/unit/hub-providers.test.ts
+      - name: Report private owner qualification status
+        run: |
+          echo "::notice title=Private owner qualification blocked::Private Notes repository requires an independently controlled runner. Public contracts do not certify owner integration."
+          echo "Private Notes owner integration: NOT_EXECUTED (independent runner not configured)." >> "$GITHUB_STEP_SUMMARY"
   owner-contract:
+    # Preserve the pinned private suite; public CI cannot read this repository.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

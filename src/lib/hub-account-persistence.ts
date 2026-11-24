@@ -1,3 +1,4 @@
+import { shouldImportLegacyAccountToken } from './hub-account-token-mirror';
 /** The SDK has a synchronous Storage contract. Load its small credential cache
  * before each operation and commit it before releasing the cross-tab lock.
  * IndexedDB has a separate quota from localStorage used by the app catalogue. */
@@ -37,7 +38,8 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
   async function load() {
     if (!db) return;
     const values = await new Promise<(Record | undefined)[]>((resolve, reject) => {
-      const transaction = db!.transaction('session', 'readonly');
+      // A readwrite transaction joins the same queue as the refresh lease and token commits.
+      const transaction = db!.transaction('session', 'readwrite');
       const requests = keys.map(key => transaction.objectStore('session').get(key));
       transaction.oncomplete = () => resolve(requests.map(request => request.result));
       transaction.onabort = () => reject(transaction.error);
@@ -50,24 +52,11 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       // record, but never replace a durable credential with an unchanged stale
       // local record left behind by a quota failure.
       const changed = record !== undefined && currentLegacy !== undefined && currentLegacy !== record.legacy;
-      // A stale localStorage mirror must never roll back a freshly rotated
-      // refresh token from IndexedDB. This can otherwise trigger a SECOND
-      // OAuth refresh in another tab even after the cross-tab lease succeeded.
-      const tokenExpiry = (raw: string | null | undefined): number | null => {
-        if (typeof raw !== 'string') return null;
-        try {
-          const candidate: unknown = JSON.parse(raw);
-          if (!candidate || typeof candidate !== 'object' || !('expiresAt' in candidate)) return null;
-          const expiresAt = (candidate as {expiresAt?: unknown}).expiresAt;
-          return typeof expiresAt === 'number' && Number.isFinite(expiresAt) ? expiresAt : null;
-        } catch { return null; }
-      };
-      const durableExpiry = key.endsWith(':tokens') ? tokenExpiry(record?.value) : null;
-      const legacyExpiry = key.endsWith(':tokens') ? tokenExpiry(currentLegacy) : null;
+      // Durable tokens are authoritative for the same refresh-token lineage.
+      // WebKit can present a delayed localStorage mirror after an IDB commit.
+      // Never import a same-session mirror, or an older/equal-expiry token.
       const preventRollback = key.endsWith(':tokens') && record !== undefined &&
-        (record.value === null || durableExpiry !== null &&
-          durableExpiry > Date.now() + 30_000 &&
-          (legacyExpiry === null || legacyExpiry <= durableExpiry));
+        !shouldImportLegacyAccountToken(record.value, currentLegacy);
       const importLegacy = changed && !preventRollback;
       cache.set(key, importLegacy ? currentLegacy! : record === undefined ? fallback.getItem(key) : record.value);
       if (record === undefined || importLegacy) await write(key, cache.get(key)!, currentLegacy);
@@ -138,9 +127,11 @@ export async function persistHubAccountStorage(fallback: Storage, keys: readonly
       await load();
       try { return await operation(); } finally { await flush(); }
     };
-    const work = tail.then(() => navigator.locks
-      ? navigator.locks.request('thiepn:hub-account-storage', perform)
-      : withIdbLease(perform));
+    // All IDB-capable tabs must contend on the SAME lease, including tabs
+    // with Web Locks and tabs without them. Separate locks permit overlap.
+    const work = tail.then(() => db
+      ? withIdbLease(perform)
+      : navigator.locks ? navigator.locks.request('thiepn:hub-account-storage', perform) : perform());
     tail = work.then(() => {}, () => {});
     return work;
   }

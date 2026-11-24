@@ -1,7 +1,9 @@
+import { HUB_VISIBLE_APP_IDS, isHubVisibleApp } from '../../src/lib/workspace/visible-apps';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
-const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
+const visible = manifest.entries.filter((e:{id:string})=>isHubVisibleApp(e.id));
+const hub={excluded:manifest.excluded,projects:visible.map((e:{id:string})=>({slug:e.id})),expectedCount:HUB_VISIBLE_APP_IDS.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,visible.filter((e:{category:string})=>e.category===c.id).length]))};
 
 for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', 'dark'] as const) {
   test(`H1 Home and app search reflow ${width} ${theme}`, async ({ page }) => {
@@ -49,7 +51,7 @@ test('invalid legacy preferences recover and intentionally empty shortcuts survi
 
 test('Public task search is direct, reloadable, curated and network independent', async ({ page, request }) => {
   const payload = await (await request.get('/hub-search.json')).json();
-  expect(payload.projects.map((p: any) => p.slug)).toEqual(hub.projects.map((p: any) => p.slug));
+  expect(payload.projects.map((p: any) => p.slug)).toEqual(manifest.entries.map((e: any) => e.id)); // compatibility registry remains complete
   expect(payload.collections).toEqual([]);
   await page.goto('/search/?q=merge+PDF');
   await expect(page.locator('[data-portal-query]')).toHaveValue('merge PDF');

@@ -5,8 +5,8 @@ import {clearSourceStates} from '../lib/providers/connection-state';
 import {customLinks, setShortcuts, toggleShortcut, shortcutIds} from '../lib/workspace/commands';
 import {resolveLaunch, safeCustomUrl} from '../lib/launches/resolver';
 import { partitionShortcutChoices, additionalShortcutLaunches } from '../lib/launches/shortcut-directory';
-import { pendingHubApps } from '../lib/launches/requested-apps';
-import { PROPOSED_QUICK_SHORTCUT_IDS, personalHiddenAppIds, changeAppVisibility } from '../lib/workspace/app-personalization';
+import { PROPOSED_QUICK_SHORTCUT_IDS } from '../lib/workspace/app-personalization';
+import { isHubVisibleApp, visibleHubApps } from '../lib/workspace/visible-apps';
 import { meaningfulState, addGuestState } from '../lib/workspace/sync-merge';
 import { readConnectedApps, type ConnectedInsight } from './hub-connected-apps';
 import { WorkspaceCloudSync } from '../lib/workspace/cloud-sync';
@@ -14,7 +14,7 @@ import { managedAccountEnabled, hubCloudTransport } from './hub-account';
 import { setupHubCatalogue } from './hub-catalogue';
 import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity, readHubLanguageToken } from './portal-auth';
-import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
+import { HUB_LANGUAGE_IDS, fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
@@ -89,11 +89,12 @@ async function setup(root: HTMLElement) {
     } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const catalogueApps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
-    const apps: AppShortcut[] = [
+    const allApps: AppShortcut[] = [
         ...additionalShortcutLaunches.map(({id, title, url, category}) => ({id, title, url, icon: appIcon(id), category})),
         ...catalogueApps.map(app => app.id === 'french-3000' ? {...app, title: 'French'} : app),
     ];
-    const personalAppIds = [...apps.map(app => app.id), ...pendingHubApps.map(app => app.id)];
+    const apps = visibleHubApps(allApps);
+    const visibleShortcut = (id: string) => id.startsWith('custom:') || isHubVisibleApp(resolveLaunch(id)?.id ?? id);
     let state: WorkspaceState | null = null, store: WorkspaceStore | null = null, channel: BroadcastChannel | null = null;
     let editing: EditDraft | null = null, layoutUndo: Workspace[] = [], layoutRedo: Workspace[] = [];
     let recoveryDraft: EditDraft | null = null, storageReady = false, locked = false, dirty = false, epoch = 0, conflict = false;
@@ -265,6 +266,7 @@ async function setup(root: HTMLElement) {
         }
     }
     async function refreshLanguages(force = false) {
+        if (!HUB_LANGUAGE_IDS.some(isHubVisibleApp)) return;
         const owner = hubIdentity.status === 'signed-in' ? hubIdentity.id : null;
         if (view !== 'home' || !owner || owner !== languageOwner || !state ||
             privacyHeld || state.preferences.hidden || document.hidden || !navigator.onLine) {
@@ -731,7 +733,7 @@ async function setup(root: HTMLElement) {
         if (utility !== null) return utility;
         switch (w.type) {
             case 'app-shortcuts': {
-                const ids = selectedShortcuts(state!,w,insights.filter(i=>i.expiresAt>Date.now()).map(i=>i.appId));
+                const ids = selectedShortcuts(state!,w,insights.filter(i=>i.expiresAt>Date.now()).map(i=>i.appId)).filter(visibleShortcut);
                 const options:AppShortcut[]=[...apps,...customLinks(w).map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
                 const missing=ids.filter(id=>!options.some(a=>a.id===(resolveLaunch(String(id))?.id??id)));
                 const chosen = ids.map(id => options.find(a => a.id === (resolveLaunch(String(id))?.id??id))).filter((a): a is AppShortcut => !!a);
@@ -746,7 +748,7 @@ async function setup(root: HTMLElement) {
             case 'capture': return `<form class="ws-capture-form" data-capture-form>${captureFields(w.id,true)}<div class="ws-capture-bottom"><button class="ws-primary" type="submit">Capture</button></div>${dirty ? '<small class="ws-error">Draft not saved yet</small>' : ''}</form>`;
             case 'tracker-summary': return trackersHTML(w);
             case 'tracker-history': return historyHTML(w);
-            case 'recent-activity': return state!.activity.length ? state!.activity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', '');
+            case 'recent-activity': { const visibleActivity=state!.activity.filter(a=>!a.kind.startsWith('launch:')||visibleShortcut(a.kind.slice(7))); return visibleActivity.length ? visibleActivity.slice(0, w.view === 'detailed' ? 10 : 5).map(a => `<div class="ws-row">${icon('clock-counter-clockwise')}<div><strong>${esc(a.title)}</strong><small>${esc(new Date(a.at).toLocaleString())}</small></div></div>`).join('') : empty('No recent activity', ''); }
             default: return empty('Unavailable widget', 'Its configuration is preserved, so you can restore it in a supported version.');
         }
     }
@@ -874,14 +876,6 @@ async function setup(root: HTMLElement) {
                 $('[data-workspace-content]').innerHTML = fullContent();
         }
         root.querySelectorAll<HTMLButtonElement>('[data-action=pin-app]').forEach(b=>{const pinned=pins().includes(b.dataset.id!);b.setAttribute('aria-pressed',String(pinned));b.textContent=pinned?'Unpin shortcut':'Pin shortcut';});
-        const personalHiddenIds = personalHiddenAppIds(state.preferences);
-        root.querySelectorAll<HTMLButtonElement>('[data-action=toggle-app-visibility]').forEach(b=>{
-            const hidden = personalHiddenIds.includes(b.dataset.id!);
-            b.setAttribute('aria-pressed',String(hidden));
-            b.textContent = hidden ? 'Show' : 'Hide';
-            b.setAttribute('aria-label',`${hidden ? 'Show' : 'Hide'} ${b.dataset.id} in my Apps`);
-        });
-        window.dispatchEvent(new CustomEvent('hub:apps-visibility', {detail:{hiddenIds:personalHiddenIds}}));
         renderAttention();
         renderPlanner();
         // C2 read-only handoff from the ORIGINAL Hub calendar owner. Ephemeral and
@@ -1000,7 +994,7 @@ async function setup(root: HTMLElement) {
                 if (incoming) document.head.append(incoming.cloneNode(true));
             }
             $('[data-workspace-content]').innerHTML = next === 'apps' ? doc.querySelector('[data-workspace-content]')!.innerHTML : '';
-            $('[data-workspace-date]').textContent = next === 'apps' ? `${catalogueApps.length} published · ${additionalShortcutLaunches.length} current` : '';
+            $('[data-workspace-date]').textContent = next === 'apps' ? `${apps.length} apps` : '';
             if (state) {render();if(next==='home'){languageOwner=hubIdentity.status==='signed-in'?hubIdentity.id:null;void refreshLanguages();}}
             else { $('#ws-title').textContent = next === 'apps' ? 'Apps' : 'Personal workspace'; $('[data-toolbar]').replaceChildren(); if (next !== 'apps') $('[data-workspace-content]').textContent = 'Your personal workspace is unavailable. Use recovery or retry opening local storage.'; }
             committedUrl = location.pathname + location.search;
@@ -1556,20 +1550,20 @@ async function setup(root: HTMLElement) {
         if(other){if(direction<0)other.before(row);else other.after(row);control.focus();}
     });
     function editShortcuts(widget: Widget) {
-        const links=customLinks(widget), selected=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id);
+        const links=customLinks(widget), savedIds=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id), selected=savedIds.filter(visibleShortcut);
         const choices:AppShortcut[]=[...apps,...links.map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
         const parts=partitionShortcutChoices(choices,selected);
         const unavailable=selected.filter(id=>!choices.some(app=>app.id===id)).map(id=>({id,title:'Unavailable shortcut: '+id,icon:'warning',category:'external',url:''}));
         const row=(app:AppShortcut)=>`<div class="ws-shortcut-choice" data-app-choice="${esc((app.title+' '+app.id).toLocaleLowerCase())}"><label class="ws-choice"><input type="checkbox" name="appIds" value="${esc(app.id)}" ${selected.includes(app.id)?'checked':''}/>${esc(app.title)}</label><button type="button" class="ws-button" data-shortcut-move="-1" aria-label="Move ${esc(app.title)} earlier">↑</button><button type="button" class="ws-button" data-shortcut-move="1" aria-label="Move ${esc(app.title)} later">↓</button></div>`;
         const section=(title:string,items:readonly AppShortcut[])=>items.length?`<fieldset class="ws-shortcut-group"><legend>${esc(title)}</legend>${items.map(row).join('')}</fieldset>`:'';
-        const picker=section('Pinned', [...parts.pinned,...unavailable])+section('Current apps',parts.primary)+`<details data-other-shortcuts><summary>Other apps (${parts.other.length})</summary>${parts.other.map(row).join('')}</details>`;
+        const picker=section('Pinned', [...parts.pinned,...unavailable])+section('Current apps',parts.primary)+(parts.other.length?`<details data-other-shortcuts><summary>Other apps (${parts.other.length})</summary>${parts.other.map(row).join('')}</details>`:'');
         openForm('Choose app shortcuts', field('Widget title','title',String(widget.config.title??'App shortcuts'),'text','required maxlength="80"')+select('Show','shortcutSource',[['pinned','Pinned apps'],['recent','Recently opened apps'],['connected','Apps sharing fresh summaries']],String(widget.config.shortcutSource??'pinned'))+'<label class="ws-field">Find an app<input type="search" data-pin-search placeholder="Search apps"/></label><div data-shortcut-choices>'+picker+'</div><details><summary>Add an external shortcut</summary>'+field('Name','customTitle','','text','maxlength="80"')+field('HTTPS address','customUrl','','url','placeholder="https://…"')+'</details>',async data=>{
             const widgetTitle=String(data.get('title')??'').trim();if(!widgetTitle)throw new Error('Enter a widget title.');
             const ids=data.getAll('appIds').map(String), title=String(data.get('customTitle')??'').trim(), url=String(data.get('customUrl')??'').trim();
             const nextLinks=[...links];
             if(title||url){if(!title||!url)throw new Error('Enter a name and HTTPS address.');const link={id:'custom:'+uid(),title,url:safeCustomUrl(url)};nextLinks.push(link);ids.push(link.id);}
             if(ids.length>12)throw new Error('Choose at most 12 shortcuts.');
-            await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,ids,nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
+            await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,[...ids,...savedIds.filter(id=>!visibleShortcut(id)).slice(0,12-ids.length)],nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
         });
     }
     function configureWidget(id: string) {
@@ -1591,7 +1585,7 @@ async function setup(root: HTMLElement) {
             const groups=partitionShortcutChoices(apps,selectedIds);
             const row=(app:AppShortcut)=>`<label class="ws-choice" data-app-choice="${esc((app.title+' '+app.id).toLocaleLowerCase())}"><input type="checkbox" name="appIds" value="${esc(app.id)}" ${selectedIds.includes(app.id)?'checked':''}/>${icon(app.icon)} ${esc(app.title)}</label>`;
             const group=(name:string,items:readonly AppShortcut[])=>items.length?`<fieldset class="ws-shortcut-group"><legend>${esc(name)}</legend>${items.map(row).join('')}</fieldset>`:'';
-            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="Search apps"/></label>`+group('Pinned',groups.pinned)+group('Current apps',groups.primary)+`<details data-other-shortcuts><summary>Other apps (${groups.other.length})</summary>${groups.other.map(row).join('')}</details>`;
+            config = `<label class="ws-choice"><input type="checkbox" name="useActions" ${w.config.useActions !== false ? 'checked' : ''}/> Use direct app actions when available</label><label class="ws-field">Find an app to pin<input type="search" data-pin-search placeholder="Search apps"/></label>`+group('Pinned',groups.pinned)+group('Current apps',groups.primary)+(groups.other.length?`<details data-other-shortcuts><summary>Other apps (${groups.other.length})</summary>${groups.other.map(row).join('')}</details>`:'');
         }
         else if (w.type.startsWith('tracker')) {
             const ids = w.config.trackerIds;
@@ -1623,7 +1617,7 @@ async function setup(root: HTMLElement) {
                 item.config.title = String(data.get('title')).trim();
                 if (item.type === 'app-shortcuts') item.config.useActions = data.has('useActions');
                 if (item.type === 'app-shortcuts')
-                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id))];
+                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id)), ...shortcutIds(item).filter(id=>!visibleShortcut(id)).slice(0,12-ids.length)];
                 if (item.type.startsWith('tracker')) {
                     const trackers = data.getAll('trackerIds').map(String);
                     if (trackers.length)
@@ -2360,14 +2354,6 @@ async function setup(root: HTMLElement) {
             case 'refresh-connections':
                 void refreshInsights();
                 break;
-            case 'toggle-app-visibility':
-                void mutate(s=>{
-                    const hidden = personalHiddenAppIds(s.preferences);
-                    s.preferences.hiddenAppIds = changeAppVisibility(
-                        s.preferences, id, !hidden.includes(id), personalAppIds,
-                    );
-                }, 'Personal Apps visibility saved').catch(error=>toast(error.message));
-                break;
             case 'apply-suggested-shortcuts':
                 void mutate(s=>{
                     const ws = s.workspaces.find(w=>w.id===s.active)!;
@@ -2381,6 +2367,7 @@ async function setup(root: HTMLElement) {
                 }, 'Selected shortcuts saved').catch(error=>toast(error.message));
                 break;
             case 'pin-app':
+                if(!isHubVisibleApp(id)) break;
                 if(editing){toast('Finish or cancel layout editing first.');break;}
                 void mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;toggleShortcut(ws,id);ws.revision++;ws.updatedAt=stamp();},'Shortcuts updated').catch(error=>toast(error.message));
                 break;
@@ -3020,7 +3007,7 @@ async function setup(root: HTMLElement) {
         }
         if (own !== epoch)
             return;
-        state = loaded ?? initialState(apps.map(a => a.id), legacy);
+        state = loaded ?? initialState(allApps.map(a => a.id), legacy);
         privacyHeld = state.preferences.hidden;
         if (privacyHeld) { resetFolio(); clearNotesSource(); }
         selected = view==='calendar' && initialCalendarRestorePending && initialCalendarDate ? initialCalendarDate : today();

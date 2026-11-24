@@ -1,3 +1,4 @@
+import { isHubVisibleApp } from './visible-apps';
 import { integratedLocalDay } from './integrated-overview';
 import { renderFolioDevice, type FolioDeviceStatus } from './folio-panel';
 import { renderNotesDevice, type NotesDeviceStatus } from './notes-panel';
@@ -62,7 +63,8 @@ export function renderIntegratedHome(
     : status === 'loading' ? 'Checking your published language progress…'
     : status === 'unavailable' ? (cards.length ? 'Source is unreachable. Last result from this tab is shown below.' : 'Language source unavailable. No progress is assumed.')
     : !cards.length ? 'No visible language snapshots have been published to Core for this account.' : '';
-  const languageRows = status === 'signed-out' ? '' : HUB_LANGUAGE_IDS.map(id => {
+  const visibleLanguages = HUB_LANGUAGE_IDS.filter(isHubVisibleApp);
+  const languageRows = status === 'signed-out' ? '' : visibleLanguages.map(id => {
     const card = cards.find(value => value.appId === id);
     const app = apps.find(value => value.id === id);
     const title = id[0]!.toUpperCase() + id.slice(1);
@@ -85,7 +87,7 @@ export function renderIntegratedHome(
   }).join('');
   return '<section class="ws-daily-brief" aria-label="Daily information without opening other apps">' +
     '<header class="ws-brief-heading"><div><h2>Today at a glance</h2></div>' +
-    (status === 'signed-out' ? '' :
+    (!visibleLanguages.length || status === 'signed-out' ? '' :
       '<button type="button" class="ws-text-button" data-action="refresh-languages">Refresh languages</button>') +
     '</header><div class="ws-brief-grid">' +
     '<section class="ws-brief-card"><header><h3>Tasks</h3>' + '</header>' +
@@ -105,13 +107,13 @@ export function renderIntegratedHome(
     '<section class="ws-brief-card"><header><h3>Habits &amp; trackers</h3>' + '</header>' +
     (trackers || '<p class="ws-muted">No trackers yet.</p>') +
     '<div class="ws-brief-actions"><a href="/home/trackers/">All trackers</a></div>' +'</section>' +
-    renderFolioDevice(folio.status, folio.snapshot) +
+    (isHubVisibleApp('folio') ? renderFolioDevice(folio.status, folio.snapshot) : '') +
     renderNotesDevice(notesSource.status, notesSource.snapshot) +
-    '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
+    (visibleLanguages.length ? '<section class="ws-brief-card ws-brief-languages"><header><h3>Language learning</h3>' +
     '</header>' +
     (languageMessage ? '<p class="ws-muted" role="status">' + esc(languageMessage) + '</p>' : '') +
     languageRows + (checkedAt && status !== 'signed-out' ?
     '<small class="ws-muted">Last checked this tab: ' + esc(new Date(checkedAt).toLocaleTimeString()) +
     '</small>' : '') +
-    '</section></div></section>';
+    '</section>' : '') + '</div></section>';
 }

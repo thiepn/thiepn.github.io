@@ -6,7 +6,8 @@ reminders:[{id:'r',noteId:'n',title:'Remember <text>',dueAt:'2026-10-17T08:00:00
 it('offers source-only consent when no owner-approved snapshots exist',()=>{
   const html=renderSourceToday({folio:{status:'disconnected',snapshot:null},notes:{status:'disconnected',snapshot:null},
     languages:{status:'signed-out',cards:[]},apps:[]});
-  expect(html).toContain('Share from Folio');
+  expect(html).not.toContain('Share from Folio');
+  expect(html).not.toContain('Language learning');
   expect(html).toContain('Share from Notes');
   expect(html).not.toContain('ws-source-today-stat');
   expect(html).not.toContain('Notes < confidential >');

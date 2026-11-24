@@ -39,6 +39,7 @@ test("calendar selected day remains circular at desktop and narrow widths",async
 test("StudyOS native week is primary and the JSON import is optional",async({page})=>{
   await page.goto("/home/calendar/");
   const panel=page.locator("[data-hub-study-plan]");
-  await expect(panel.getByRole("link",{name:"Open weekly plan"})).toHaveAttribute("href","https://study.thiepn.dev/week");
+  await expect(panel).toBeHidden();
+  await expect(panel.getByRole("link",{name:"Open weekly plan",includeHidden:true})).toHaveAttribute("href","https://study.thiepn.dev/week");
   await expect(panel.locator("[data-hub-study-import]")).not.toHaveAttribute("open","");
 });
