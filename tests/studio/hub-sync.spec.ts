@@ -164,7 +164,7 @@ test('Try again restarts Account initialization after session storage recovers',
 test('visitors get an introduction and can choose their local workspace without signing in',async({browser})=>{
  const api=backend(),a=await api.device(browser,null);
  await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();await expect(a.page.getByRole('heading',{level:1})).toHaveText('THIEPN Hub');await expect(a.page.locator('[data-visitor-welcome] a[href="/apps/"]')).toBeVisible();
- await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(31);
+ await a.page.getByRole('link',{name:'Explore apps',exact:false}).click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await expect(a.page.locator('[data-hub-item]')).toHaveCount(14);
  await a.page.goto('https://thiepn.dev/');await a.page.getByRole('button',{name:'Use this workspace',exact:true}).click();await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();expect(api.exchanges()).toBe(0);await a.context.close();
 });
@@ -211,12 +211,15 @@ test('Connections preserves last success, distinguishes revoked access and expor
  }finally{await a.context.close();}
 });
 
-test('the shared verified Account session also supplies the existing language summary read',async({browser})=>{
+test('hidden language apps do not request or expose their summaries',async({browser})=>{
  const api=backend(),a=await api.device(browser);
  try{
-  const response=a.page.waitForResponse('https://thiepn-core-gateway.thiepn.workers.dev/v1/languages/dashboard');
-  await a.page.locator('[data-action=refresh-languages]').click();await response;
-  await expect(a.page.locator('[data-native-overview]')).toContainText('No visible language snapshots have been published');
+  const requests:string[]=[];
+  a.context.on('request',request=>{if(request.url().includes('/v1/languages/dashboard'))requests.push(request.url());});
+  await a.page.reload();
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(a.page.locator('[data-action=refresh-languages], .ws-brief-languages, [data-source-today-languages]')).toHaveCount(0);
+  expect(requests).toEqual([]);
  }finally{await a.context.close();}
 });
 

@@ -1,7 +1,9 @@
+import { isHubVisibleApp } from '../../src/lib/workspace/visible-apps';
 import {test,expect,type Page} from '@playwright/test';
 import fs from 'node:fs';
 const manifest=JSON.parse(fs.readFileSync('src/generated/launch-manifest.json','utf8'));
-const hub={excluded:manifest.excluded,projects:manifest.entries.map((e:{id:string})=>({slug:e.id})),expectedCount:manifest.entries.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,manifest.entries.filter((e:{category:string})=>e.category===c.id).length]))};
+const visible=manifest.entries.filter((e:{id:string})=>isHubVisibleApp(e.id));
+const hub={excluded:manifest.excluded,projects:visible.map((e:{id:string})=>({slug:e.id})),expectedCount:visible.length,expectedCategoryCounts:Object.fromEntries(manifest.categories.map((c:{id:string})=>[c.id,visible.filter((e:{category:string})=>e.category===c.id).length]))};
 async function ready(page:Page,route='/'){await page.goto(route);await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function task(page:Page,title:string){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');}
 async function shell(page:Page){return page.evaluate(()=>{const style=getComputedStyle(document.body);return {font:style.fontFamily,background:style.backgroundColor,color:style.color,rail:document.querySelector('.ws-navigation')!.getBoundingClientRect().width,topbar:document.querySelector('.ws-topbar')!.getBoundingClientRect().height,planner:document.querySelector('.ws-planner')!.getBoundingClientRect().width,title:getComputedStyle(document.querySelector('#ws-title')!).fontSize};});}

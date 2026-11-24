@@ -73,3 +73,16 @@ test('Quality enforces this boundary before browser suites', () => {
   assert.ok(runs.indexOf('node --test tests/hub-account-ci-boundaries.test.mjs') >= 0);
   assert.ok(runs.indexOf('node --test tests/hub-account-ci-boundaries.test.mjs') < runs.indexOf('npm run audit:studio'));
 });
+
+test('private Notes owner source remains inert in public CI, without claiming qualification',()=>{
+  const w=parse('hub-notes-integration.yml');
+  assert.deepEqual(w.permissions,{contents:'read'});
+  assert.equal(w.jobs['owner-contract'].if,'${{ false }}');
+  assert.ok(w.jobs['owner-contract'].steps.some(s=>s.with?.repository==='thiepn/notes' && /^[a-f0-9]{40}$/.test(s.with.ref) && !s.with.token));
+  assert.ok(w.jobs['owner-contract'].steps.some(s=>s.run?.includes('test:hub-owner')));
+  const p=w.jobs['public-contract'];
+  assert.ok(p.steps.some(s=>s.run?.includes('tests/unit/hub-notes-session.test.ts')));
+  assert.ok(p.steps.some(s=>s.run?.includes('NOT_EXECUTED')));
+  assert.doesNotMatch(JSON.stringify(p),/secrets\.|thiepn\/notes/);
+  assert.equal(p['continue-on-error'],undefined);
+});

@@ -14,7 +14,7 @@ import { managedAccountEnabled, hubCloudTransport } from './hub-account';
 import { setupHubCatalogue } from './hub-catalogue';
 import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity, readHubLanguageToken } from './portal-auth';
-import { fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
+import { HUB_LANGUAGE_IDS, fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
 import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
@@ -266,6 +266,7 @@ async function setup(root: HTMLElement) {
         }
     }
     async function refreshLanguages(force = false) {
+        if (!HUB_LANGUAGE_IDS.some(isHubVisibleApp)) return;
         const owner = hubIdentity.status === 'signed-in' ? hubIdentity.id : null;
         if (view !== 'home' || !owner || owner !== languageOwner || !state ||
             privacyHeld || state.preferences.hidden || document.hidden || !navigator.onLine) {
@@ -1549,7 +1550,7 @@ async function setup(root: HTMLElement) {
         if(other){if(direction<0)other.before(row);else other.after(row);control.focus();}
     });
     function editShortcuts(widget: Widget) {
-        const links=customLinks(widget), selected=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id).filter(visibleShortcut);
+        const links=customLinks(widget), savedIds=shortcutIds(widget).map(id=>resolveLaunch(id)?.id??id), selected=savedIds.filter(visibleShortcut);
         const choices:AppShortcut[]=[...apps,...links.map(link=>({...link,icon:'arrow-up-right',category:'external'}))];
         const parts=partitionShortcutChoices(choices,selected);
         const unavailable=selected.filter(id=>!choices.some(app=>app.id===id)).map(id=>({id,title:'Unavailable shortcut: '+id,icon:'warning',category:'external',url:''}));
@@ -1562,7 +1563,7 @@ async function setup(root: HTMLElement) {
             const nextLinks=[...links];
             if(title||url){if(!title||!url)throw new Error('Enter a name and HTTPS address.');const link={id:'custom:'+uid(),title,url:safeCustomUrl(url)};nextLinks.push(link);ids.push(link.id);}
             if(ids.length>12)throw new Error('Choose at most 12 shortcuts.');
-            await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,ids,nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
+            await mutate(s=>{const ws=s.workspaces.find(w=>w.id===s.active)!;setShortcuts(ws,widget.id,[...ids,...savedIds.filter(id=>!visibleShortcut(id)).slice(0,12-ids.length)],nextLinks.filter(l=>ids.includes(l.id)));ws.widgets.find(w=>w.id===widget.id)!.config.title=widgetTitle;ws.widgets.find(w=>w.id===widget.id)!.config.shortcutSource=String(data.get('shortcutSource'));ws.revision++;ws.updatedAt=stamp();},'Shortcuts saved');
         });
     }
     function configureWidget(id: string) {
@@ -1616,7 +1617,7 @@ async function setup(root: HTMLElement) {
                 item.config.title = String(data.get('title')).trim();
                 if (item.type === 'app-shortcuts') item.config.useActions = data.has('useActions');
                 if (item.type === 'app-shortcuts')
-                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id))];
+                    item.config.appIds = [...(Array.isArray(item.config.appIds) ? item.config.appIds.filter(id => ids.includes(String(id))) : []), ...ids.filter(id => !Array.isArray(item.config.appIds) || !item.config.appIds.includes(id)), ...shortcutIds(item).filter(id=>!visibleShortcut(id)).slice(0,12-ids.length)];
                 if (item.type.startsWith('tracker')) {
                     const trackers = data.getAll('trackerIds').map(String);
                     if (trackers.length)
