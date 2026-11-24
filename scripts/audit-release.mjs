@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readFrontmatterDirectory, computeStats } from './lib/catalogue-files.mjs';
+import { auditProjectLaunchAvailability } from './lib/audit-project-availability.mjs';
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const failures = [];
@@ -20,6 +21,8 @@ const curation = readJson('src/data/curation.json');
 const ogRasterManifest = readJson('src/generated/og-raster-manifest.json');
 const sourceProjectFiles = await readFrontmatterDirectory(path.resolve('src/content/projects'));
 const sourceStats = computeStats(sourceProjectFiles.map(({ data }) => data));
+const sourceBySlug = new Map(sourceProjectFiles.map(({ data }) => [data.slug, data]));
+const activeLaunchIds = new Set(readJson('src/generated/launch-manifest.json').entries.map(entry => entry.id));
 
 const siteSource = fs.readFileSync('src/data/site.ts', 'utf8');
 const baseLayout = fs.readFileSync('src/layouts/BaseLayout.astro', 'utf8');
@@ -51,14 +54,14 @@ for (const [label, values] of [
   ['project codes', projects.map((p) => p.code)],
   ['project slugs', projects.map((p) => p.slug)],
   ['project routes', projects.map((p) => p.route)],
-  ['live URLs', projects.map((p) => p.liveUrl)],
+  ['live URLs', projects.filter(p => p.unavailable !== true).map(p => p.liveUrl)],
 ]) if (!unique(values)) fail(`duplicate ${label}`);
 
 const routes = new Set(routeManifest.routes ?? []);
 for (const route of rc.requiredPublicRoutes) if (!routes.has(route)) fail(`missing required route ${route}`);
 for (const project of projects) {
   if (!routes.has(project.route)) fail(`${project.code}: missing record route ${project.route}`);
-  if (!/^https:\/\//.test(project.liveUrl ?? '')) fail(`${project.code}: live URL must use HTTPS`);
+  for (const error of auditProjectLaunchAvailability(project, sourceBySlug.get(project.slug), activeLaunchIds)) fail(`${project.code}: ${error}`);
   if (!/^thiepn\/[A-Za-z0-9._-]+$/.test(project.repo ?? '')) fail(`${project.code}: invalid repository identifier`);
   const indexed = searchIndex.projects?.find((item) => item.slug === project.slug);
   if (!indexed) { fail(`${project.code}: missing from search index`); continue; }
@@ -135,4 +138,4 @@ if (failures.length) {
   failures.forEach((message) => console.error(`- ${message}`));
   process.exit(1);
 }
-console.log(`Release-candidate source audit passed: ${sourceStats.totalRegistered} registered / ${projects.length} launchable projects, ${collections.length} collections, ${routes.size} generated routes, zero source-level critical/high blockers.`);
+console.log(`Release-candidate source audit passed: ${sourceStats.totalRegistered} registered / ${projects.filter(p => p.unavailable !== true).length} launchable projects / ${projects.filter(p => p.unavailable === true).length} unavailable archive records, ${collections.length} collections, ${routes.size} generated routes, zero source-level critical/high blockers.`);
