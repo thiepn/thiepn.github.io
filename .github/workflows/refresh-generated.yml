@@ -13,7 +13,7 @@ on:
       - 'scripts/lib/catalogue-files.mjs'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: refresh-generated-catalogue
@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -46,16 +47,19 @@ jobs:
           node scripts/rasterize-og.mjs
           npm run catalogue:refresh
 
-      - name: Commit refreshed generated artifacts
+      - name: Prepare generated changes for PR review
+        id: review
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
           git add src/generated public/og
-          if git diff --cached --quiet; then
-            echo "Generated catalogue artifacts are already current."
-            exit 0
-          fi
-          git commit -m "Refresh generated catalogue artifacts"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          node scripts/export-generated-review.mjs
+
+      - name: Upload generated review patch
+        if: steps.review.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-refresh-generated
+          path: ${{ runner.temp }}/generated-review/
+          if-no-files-found: error
+          retention-days: 14

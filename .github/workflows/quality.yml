@@ -23,6 +23,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Owner-approved release gate regression tests (no publishing)
         run: node --test tests/hub-owner-release-gate.test.mjs
+      - name: Generated update review boundary
+        run: node --test tests/generated-review-boundary.test.mjs
       # Verify release source before spending time on the full browser matrix.
       # The existing post-audit release qualification remains mandatory.
       - name: Release source availability preflight

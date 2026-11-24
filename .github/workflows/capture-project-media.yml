@@ -14,7 +14,7 @@ on:
       - 'src/content/projects/voidcut.md'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: capture-project-media
@@ -29,6 +29,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -78,16 +79,19 @@ jobs:
       - name: Refresh generated catalogue outputs
         run: npm run catalogue:refresh
 
-      - name: Commit canonical media and generated outputs
+      - name: Prepare generated changes for PR review
+        id: review
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -euo pipefail
           git add public/projects/the-bible-challenge public/projects/pdf-studio public/projects/wordstrike public/projects/micro-arcade public/projects/voidcut src/generated
-          if git diff --cached --quiet; then
-            echo "Canonical media and generated outputs are unchanged."
-            exit 0
-          fi
-          git commit -m "Refresh featured project media and catalogue"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          node scripts/export-generated-review.mjs
+
+      - name: Upload generated review patch
+        if: steps.review.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-capture-project-media
+          path: ${{ runner.temp }}/generated-review/
+          if-no-files-found: error
+          retention-days: 14
