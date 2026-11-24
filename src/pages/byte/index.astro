@@ -6,35 +6,36 @@ const releaseUrl = 'https://github.com/thiepn/byte/releases/tag/v0.1.0';
 const installerUrl = 'https://github.com/thiepn/byte/releases/download/v0.1.0/Byte-v0.1.0-windows-x64-setup.exe';
 const portableUrl = 'https://github.com/thiepn/byte/releases/download/v0.1.0/Byte-v0.1.0-windows-x64-portable.zip';
 const sourceUrl = 'https://github.com/thiepn/byte';
-const characterRoot = 'https://raw.githubusercontent.com/thiepn/byte/v0.1.0/public/assets/characters';
+// The release source is private. Public pages must not depend on authenticated raw GitHub assets.
+const characterRoot = '/media/byte-preview';
 
 const characters = [
   {
     id: 'byte',
     name: 'Byte',
     note: 'The original compact robot. Calm, expressive, and built for tiny desktop spaces.',
-    image: characterRoot + '/byte/preview.png',
+    image: characterRoot + '/byte/preview.svg',
     className: 'byte'
   },
   {
     id: 'mochi',
     name: 'Mochi',
     note: 'A round cat-like companion with big paws, bouncy reactions, and Bongo-Cat energy.',
-    image: characterRoot + '/mochi/preview.png',
+    image: characterRoot + '/mochi/preview.svg',
     className: 'mochi'
   },
   {
     id: 'pip',
     name: 'Pip',
     note: 'A soft blob companion with simple expressions and playful squash-and-stretch motion.',
-    image: characterRoot + '/pip/preview.png',
+    image: characterRoot + '/pip/preview.svg',
     className: 'pip'
   },
   {
     id: 'kiwi',
     name: 'Kiwi',
     note: 'A lively bird companion with pecking typing reactions and energetic movement.',
-    image: characterRoot + '/kiwi/preview.png',
+    image: characterRoot + '/kiwi/preview.svg',
     className: 'kiwi'
   }
 ];
@@ -130,7 +131,7 @@ const modes = [
           <div class="window-card window-card--main" aria-hidden="true">
             <div class="window-titlebar">
               <span class="window-appmark">
-                <img src={characterRoot + '/byte/preview.png'} alt="" />
+                <img src={characterRoot + '/byte/preview.svg'} alt="" />
               </span>
               <strong>Byte</strong>
               <span class="window-dots"><i></i><i></i><i></i></span>
@@ -163,7 +164,7 @@ const modes = [
             <span class="habitat-hill hill-b"></span>
             <span class="habitat-flower flower-a"></span>
             <span class="habitat-flower flower-b"></span>
-            <img src={characterRoot + '/byte/preview.png'} alt="" />
+            <img src={characterRoot + '/byte/preview.svg'} alt="" />
             <span class="habitat-label">Habitat mode</span>
           </div>
 
@@ -221,7 +222,7 @@ const modes = [
               <span class="demo-building building-a"></span>
               <span class="demo-building building-b"></span>
               <span class="demo-building building-c"></span>
-              <img src={characterRoot + '/byte/preview.png'} alt="" />
+              <img src={characterRoot + '/byte/preview.svg'} alt="" />
               <span class="demo-speech">all calm</span>
             </div>
             <div class="mode-strip">
@@ -240,7 +241,7 @@ const modes = [
           </div>
           <div class="panel-demo" aria-hidden="true">
             <div class="panel-demo__top">
-              <span class="panel-avatar"><img src={characterRoot + '/byte/preview.png'} alt="" /></span>
+              <span class="panel-avatar"><img src={characterRoot + '/byte/preview.svg'} alt="" /></span>
               <div><small>CURRENT STATE</small><strong><span></span> Calm</strong></div>
             </div>
             <div class="panel-demo__message">
@@ -266,7 +267,7 @@ const modes = [
           </div>
           <div class="app-demo" aria-hidden="true">
             <div class="app-demo__sidebar">
-              <span class="app-brand"><img src={characterRoot + '/byte/preview.png'} alt="" /><b>Byte</b></span>
+              <span class="app-brand"><img src={characterRoot + '/byte/preview.svg'} alt="" /><b>Byte</b></span>
               <span class="nav-row active"><i></i>Overview</span>
               <span class="nav-row"><i></i>Activity</span>
               <span class="nav-row"><i></i>Apps</span>
@@ -297,7 +298,7 @@ const modes = [
             <h2 id="characters-title">Four characters. Very different energy.</h2>
           </div>
           <p>
-            They share the same system intelligence, but not the same personality on screen. Every character has its own authored poses, reactions, rare idles and palettes.
+            They share the same system intelligence, but not the same personality on screen. Every character has its own authored poses, reactions, rare idles and palettes. Actual character previews are currently unavailable; the badges below are placeholders.
           </p>
         </div>
 
@@ -306,7 +307,7 @@ const modes = [
             <article class:list={['character-card', 'character-card--' + character.className]}>
               <div class="character-card__stage">
                 <span class="pixel-grid" aria-hidden="true"></span>
-                <img src={character.image} alt={character.name + ' character preview'} loading="lazy" />
+                <img src={character.image} alt={character.name + ' — preview unavailable'} loading="lazy" />
               </div>
               <div class="character-card__copy">
                 <h3>{character.name}</h3>
@@ -560,7 +561,7 @@ const modes = [
 
     <section class="closing-cta">
       <div class="page-shell closing-cta__inner">
-        <img src={characterRoot + '/byte/preview.png'} alt="" aria-hidden="true" />
+        <img src={characterRoot + '/byte/preview.svg'} alt="" aria-hidden="true" />
         <div>
           <p class="byte-kicker">Ready?</p>
           <h2>Byte is waiting on the desktop.</h2>

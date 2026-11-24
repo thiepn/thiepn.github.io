@@ -193,6 +193,11 @@ test('Connections preserves last success, distinguishes revoked access and expor
  const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
  try {
   await a.page.goto('https://thiepn.dev/home/connections/');
+  await a.page.bringToFront();
+  await expect.poll(()=>a.page.evaluate(()=>document.visibilityState)).toBe('visible');
+  await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
+  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(a.page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','false');
   const notes=a.page.locator('[data-source-status=notes]'),detail=a.page.locator('[data-source-detail=notes]');
   await expect(notes).toHaveText('Connected · fresh summary');await expect(detail).toContainText('Last successful read');
   api.failures.set('read_thiepn_hub_notes',403);

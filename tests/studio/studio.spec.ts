@@ -23,7 +23,7 @@ for (const width of [320, 375, 768, 1440, 1920]) for (const theme of ['light', '
     await expect(page.locator('[data-project="micro-arcade"]')).toHaveCount(0);
     await expect(page.locator('#tiny-tools')).toHaveCount(0);
 
-    const firstCard = page.locator('[data-hub-current-app]').first();
+    const firstCard = page.locator('[data-hub-item]').first();
     await expect(firstCard).toBeVisible();
     const firstRect = await firstCard.boundingBox();
     expect(firstRect).not.toBeNull();
@@ -47,10 +47,12 @@ test('Hub renders the locked app membership, order, direct launch and details li
   expect(titles[0]).toBe('Notes');
   expect(titles[1]).toBe('Canvas');
   expect(titles[2]).toBe('Tiny Tools');
-  expect(titles[7]).toBe('Scan');
-  expect(titles[8]).toBe('Signal Earth');
-  expect(titles[26]).toBe('Skyspire');
-  expect(titles.at(-1)).toBe(hub.projects.at(-1)!.title);
+  expect(titles).toEqual(orderedHub.map(entry=>entry.title));
+  expect(await cards.evaluateAll(elements=>elements.map(element=>element.getAttribute('data-hub-slug')))).toEqual(orderedHub.map(entry=>entry.slug));
+  expect(titles[7]).toBe('The Bible Challenge');
+  expect(titles).not.toContain('Scan');
+  expect(titles).not.toContain('Signal Earth');
+  expect(titles).not.toContain('Skyspire');
 
   for (const entry of orderedHub) {
     const card = cards.nth(entry.order - 1);

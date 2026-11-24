@@ -5,7 +5,10 @@ test('daily Hub summary uses original local planner commands and preserves layou
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-native-overview]')).toBeVisible();
-  await expect(page.locator('[data-native-overview]')).toContainText('Sign in to Hub');
+  await expect(page.locator('[data-native-overview]')).toContainText('Today at a glance');
+  await expect(page.locator('[data-native-overview]')).toContainText('Notes app');
+  await expect(page.locator('[data-native-overview] [data-action=refresh-languages]')).toHaveCount(0);
+  await expect(page.locator('[data-native-overview]')).not.toContainText('Sign in to Hub');
   await expect(page.locator('[data-native-overview] [data-task-toggle]')).toHaveCount(0);
 
   await page.locator('[data-native-overview] [data-action="brief-new-task"]').click();
