@@ -38,7 +38,7 @@ import { reviewedEventMove, overlapsForEvent, type AgendaMode, type MoveEventReq
 import { renderPlanningReview, renderPlannerReviewSummary } from '../lib/workspace/planning-view';
 import { eligibleWeekTasks, prepareWeeklyShift, applyWeeklyShift, taskSnapshot, MAX_WEEK_BATCH, MAX_WEEK_ROWS, WEEK_FILTERS, type WeekTaskFilter, type TaskBeforeMove } from '../lib/workspace/weekly-followthrough';
 import { renderFocusPanel, focusTasks, focusClock, type FocusPresentation, type FocusDuration, type FocusLimit, type FocusQueue } from '../lib/workspace/daily-focus';
-import { renderUnifiedJourneyNav, renderUnifiedToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
+import { renderUnifiedJourneyNav, renderMinimalToday, HOME_JOURNEY_MODES, type HomeJourneyMode, type JourneyStatus } from '../lib/workspace/unified-journey';
 import { preset, PRESETS } from '../lib/workspace/presets';
 import { place, ordered } from '../lib/workspace/layout';
 import { uid, stamp, clone, type WorkspaceState, type Workspace, type Widget, type EditDraft, type AppShortcut, type Task, type CalendarEvent, type Note, type Tracker } from '../lib/workspace/types';
@@ -77,7 +77,7 @@ async function setup(root: HTMLElement) {
         if (category && (category === 'all' || HUB_CATEGORIES.some(value => value === category))) url.searchParams.set('category', category);
         history.replaceState(null, '', url.pathname + url.search);
     } else if(view==='home') {
-        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:null;
+        const mode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'||homeModeFromUrl==='workspace'?homeModeFromUrl:null;
         history.replaceState(null,'',location.pathname+(mode?'?mode='+mode:''));
     } else if (view === 'calendar') {
         // Only public navigation date/mode may survive reload; never source IDs, record text, or provider state.
@@ -88,6 +88,13 @@ async function setup(root: HTMLElement) {
         history.replaceState(null,'',location.pathname+(query.size?'?'+query.toString():''));
     } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
+    const plannerToggle=root.querySelector<HTMLButtonElement>('[data-v31-planner-toggle]');
+    plannerToggle?.addEventListener('click',()=>{
+        const open=root.dataset.v31Planner!=='open';
+        root.dataset.v31Planner=open?'open':'closed';
+        plannerToggle.setAttribute('aria-expanded',String(open));
+        plannerToggle.setAttribute('aria-label',open?'Hide planner':'Show planner');
+    });
     const catalogueApps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
     const allApps: AppShortcut[] = [
         ...additionalShortcutLaunches.map(({id, title, url, category}) => ({id, title, url, icon: appIcon(id), category})),
@@ -111,7 +118,7 @@ async function setup(root: HTMLElement) {
     // Focus selection, quiet mode and clock are deliberately session-only UI state.
     let focus: FocusPresentation = {queue:'due',limit:5,duration:25,quiet:false,selectedId:null,remainingMs:25*60000,running:false,elapsed:false};
     let focusEndsAt=0, focusTick:ReturnType<typeof setInterval>|undefined;
-    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace'; // Presentation only, no new record store.
+    let homeMode:HomeJourneyMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today'; // Presentation only, no new record store.
     let activeUnifiedReview:{task:TaskBeforeMove;epoch:number}|null=null;
     let contentUndo: { before: WorkspaceState; after: WorkspaceState } | null = null, searchQuery = '', searchScope: PaletteScope = 'all', rawRecovery = '';
     // Private Core snapshots and tokens are never written to IndexedDB, backups or DOM attributes.
@@ -316,14 +323,16 @@ async function setup(root: HTMLElement) {
     let cloudConflict=false;
     let insights: ConnectedInsight[] = [], insightController: AbortController | null = null;
     const inputFocused = () => document.activeElement instanceof Element && !!document.activeElement.closest('input,textarea,select,[contenteditable=true]');
-    function connectedHTML() {
-        return insights.filter(item => item.expiresAt > Date.now()).slice(0,8).map(item => {
+    function connectedHTML(limit=8) {
+        return insights.filter(item => item.expiresAt > Date.now() && apps.some(app=>app.id===item.appId)).slice(0,limit).map(item => {
             const app=apps.find(app=>app.id===item.appId);
-            return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(item.resumeUrl??app.url)}" rel="noreferrer">${item.resumeUrl?'Resume':'Open'} ${esc(app.title)}</a></div>` : '';
+            return app ? `<div class="ws-row" data-connected-insight data-expires="${item.expiresAt}"><span class="ws-app-icon">${icon(app.icon)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div><a class="ws-button" href="${esc(item.resumeUrl??app.url)}" rel="noreferrer">Open ${esc(app.title)}</a></div>` : '';
         }).join('');
     }
     function pruneInsights(all=false) {
-        root.querySelectorAll<HTMLElement>('[data-connected-insight]').forEach(row=>{if(all || Number(row.dataset.expires)<=Date.now())row.remove();});
+        let changed=false;
+        root.querySelectorAll<HTMLElement>('[data-connected-insight]').forEach(row=>{if(all || Number(row.dataset.expires)<=Date.now()){row.remove();changed=true;}});
+        if(changed)window.dispatchEvent(new Event('hub:v31-continuation-layout'));
     }
     setInterval(()=>pruneInsights(),1000);
     async function refreshInsights() {
@@ -335,6 +344,13 @@ async function setup(root: HTMLElement) {
             const next=await readConnectedApps(identity.id,controller.signal);
             if (own!==epoch || controller.signal.aborted || !state || privacyHeld || state.preferences.hidden || document.hidden) return;
             insights=next;
+            if (!editing && !inputFocused()) {
+                const host=root.querySelector<HTMLElement>('[data-v31-account-continue]');
+                if(host && !host.contains(document.activeElement)) {
+                    host.innerHTML=connectedHTML(2);
+                    window.dispatchEvent(new Event('hub:v31-continuation-layout'));
+                }
+            }
             if (!editing && !inputFocused()) root.querySelectorAll<HTMLElement>('[data-widget-type=continue] .ws-widget-body').forEach(body=> { if (!body.contains(document.activeElement)) { const w=current().widgets.find(w=>w.id===body.closest<HTMLElement>('[data-widget-id]')?.dataset.widgetId);if(w)body.innerHTML=widgetBody(w); } });
         } catch { if(own===epoch)pruneInsights(true); /* Keep locally owned notes and tasks. */ }
     }
@@ -754,6 +770,23 @@ async function setup(root: HTMLElement) {
     }
     function renderGrid() { const workspace = editing?.workspace ?? current(); return `<div class="ws-grid ${editing ? 'ws-editing' : ''}" data-grid>${ordered(workspace.widgets).map(w => { const spec = specification(w.type); const title = typeof w.config.title === 'string' ? w.config.title : spec?.title ?? w.type; return `<section class="ws-cell" data-widget-id="${esc(w.id)}" data-widget-type="${esc(w.type)}" style="--col:${w.desktop.x + 1};--span:${w.desktop.w};--row:${w.desktop.y + 1};--height:${w.desktop.h}"><div class="ws-widget"><header><div>${editing ? `<button class="ws-icon-button ws-drag-handle" type="button" data-drag="${esc(w.id)}" aria-label="Move ${esc(title)}">${icon('dots-six-vertical')}</button>` : icon(spec?.icon ?? 'squares-four')}<h2>${esc(title)}</h2></div><div class="ws-widget-controls">${w.type === 'app-shortcuts' ? '<a class="ws-text-button" href="/apps/">All apps</a>' : ''}${button('configure-widget', icon('dots-three'), w.id, 'ws-icon-button')}</div></header><div class="ws-widget-body" tabindex="0" role="group" aria-label="${esc(title)} content">${widgetBody(w)}</div></div>${editing ? `<button type="button" class="ws-resize-handle" data-resize="${esc(w.id)}" aria-label="Resize ${esc(title)}">${icon('sliders-horizontal')}</button>` : ''}</section>`; }).join('')}</div>${!workspace.widgets.length ? empty('No widgets', '', 'add-widget', 'Add widget') : ''}`; }
     function settingsHTML() { return `<section class="ws-surface"><header><h2>Appearance and privacy</h2></header><div class="ws-setting"><div><strong>Theme</strong></div><select data-preference="theme" aria-label="Theme">${['system', 'light', 'dark'].map(v => `<option value="${v}" ${document.documentElement.dataset.themePreference === v ? 'selected' : ''}>${v[0]!.toUpperCase() + v.slice(1)}</option>`).join('')}</select></div><div class="ws-setting"><div><strong>Density</strong></div><select data-preference="density" aria-label="Density"><option value="compact" ${state!.preferences.density === 'compact' ? 'selected' : ''}>Compact</option><option value="comfortable" ${state!.preferences.density === 'comfortable' ? 'selected' : ''}>Comfortable</option></select></div><div class="ws-setting"><div><strong>Planner timezone</strong></div>${button('timezone', esc(state!.preferences.timezone))}</div><div class="ws-setting"><div><strong>Hide personal content</strong></div>${button('privacy', (privacyHeld || state!.preferences.hidden) ? 'Show content' : 'Hide content')}</div></section><section class="ws-surface"><header><h2>Saved workspaces</h2>${button('new-workspace', 'New workspace')}</header>${state!.workspaces.map(w => `<div class="ws-workspace-manage"><strong>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</strong>${button('rename-workspace', 'Rename', w.id)}${button('duplicate-workspace', 'Duplicate', w.id)}${button('delete-workspace', 'Delete', w.id)}</div>`).join('')}</section><section class="ws-surface"><header><h2>Recent apps</h2></header>${button('toggle-recents',state!.preferences.recordRecentLaunches===false?'Enable recent apps':'Pause recent apps')}${button('clear-recents','Clear recent apps')}</section><section class="ws-surface"><header><h2>Backup and recovery</h2></header><div class="ws-content-toolbar">${button('export', 'Export backup')}${button('import', 'Import backup')}${button('restore', 'Restore last replacement backup')}${button('retry', 'Retry saving')}</div><a class="ws-text-button" href="/home/connections/">Existing app connections</a></section>`; }
+    function minimalHome(): string {
+        const workspace=current();
+        const w=workspace.widgets.find(item=>item.type==='app-shortcuts');
+        const options:AppShortcut[]=w?[...apps,...customLinks(w).map(link=>({...link,icon:'arrow-up-right',category:'external'}))]:[];
+        const ids=w?selectedShortcuts(state!,w,insights.filter(i=>i.expiresAt>Date.now()).map(i=>i.appId)).filter(visibleShortcut):[];
+        const chosen=ids.map(id=>options.find(a=>a.id===(resolveLaunch(String(id))?.id??id))).filter((a):a is AppShortcut=>!!a).slice(0,8);
+        const recent=[...state!.notes].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
+        return renderMinimalToday(state!,today(),journeyStatus())+
+            '<section class="ws-widget ws-v31-section" data-v31-continue><header><h2>Continue</h2><a href="/home/connections/">Connections</a></header>'+
+            (recent?'<div class="ws-row" data-v31-local-continue><span class="ws-app-icon">'+icon('notebook')+'</span><div><strong>'+esc(recent.title||'Untitled note')+'</strong><small>Hub local note · '+esc(new Date(recent.updatedAt).toLocaleDateString())+'</small></div>'+button('edit-note','Open',recent.id)+'</div>':'')+
+            '<div data-v31-account-continue>'+connectedHTML(2)+'</div><div data-v31-owner-continue></div>'+
+            '<p class="ws-v31-continue-empty">No currently available continuation items. Connect an app or open your workspace.</p></section>'+
+            '<section class="ws-widget ws-v31-section" data-v31-launch><header><h2>Quick launch</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts" data-variant="compact">'+
+            chosen.map(a=>'<a href="'+esc(w?.config.useActions===false?a.url:a.action?.url??a.url)+'" rel="noreferrer" class="ws-app" data-launch="'+esc(a.id)+'"><span class="ws-app-icon">'+icon(a.icon)+'</span><strong>'+esc(a.title)+'</strong></a>').join('')+
+            '</div>'+(!chosen.length?'<p class="ws-muted">No shortcuts in this layout. Configure them in Workspace.</p>':'')+'</section>'+
+            '<section class="ws-widget ws-v31-section" data-v31-capture><header><h2>Capture</h2></header><div class="ws-content-toolbar">'+button('capture-task','Add task')+button('capture',state!.captureDraft.trim()?'Resume draft':'Capture note')+'</div></section>';
+    }
     function fullContent() {
         if (view === 'settings')
             return settingsHTML();
@@ -782,12 +815,7 @@ async function setup(root: HTMLElement) {
         if(view==='home') {
             const mode=editing?'workspace':homeMode;
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
-            if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
-                renderSourceToday({
-                    folio: {status: folioStatus, snapshot: folioSnapshot},
-                    notes: {status: notesSourceStatus, snapshot: notesSource},
-                    languages: {status: languageStatus, cards: languageCards}, apps
-                });
+            if(mode==='today')return menu+minimalHome();
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
             return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
@@ -850,7 +878,7 @@ async function setup(root: HTMLElement) {
         if (view==='calendar') updateCalendarNavigation();
         if (view==='home') {
             const mode=editing?'workspace':homeMode;
-            const url=location.pathname+(mode==='workspace'?'':'?mode='+mode);
+            const url=location.pathname+(mode==='today'?'':'?mode='+mode);
             if(location.pathname+location.search!==url)history.replaceState(null,'',url);
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
@@ -861,13 +889,13 @@ async function setup(root: HTMLElement) {
         if (!staticView()) $('[data-workspace-date]').textContent = dateLabel(today(), true);
         $('#ws-title').textContent = staticView() ? ({apps:'Apps',connections:'Connections',search:'Search',inbox:'Inbox',flows:'Workflow guides',documents:'Documents'}[view]??'Hub') : (privacyHeld || state.preferences.hidden) ? 'Personal workspace' : view === 'home' ? (editing?.workspace.title ?? current().title) : view[0]!.toUpperCase() + view.slice(1);
         const welcome=$<HTMLElement>('[data-visitor-welcome]');
-        welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode!=='workspace'||privacyHeld||state.preferences.hidden;
+        welcome.hidden=view!=='home'||hubIdentity.status!=='signed-out'||welcomeDismissed||meaningfulState(state)||!!editing||homeMode==='focus'||privacyHeld||state.preferences.hidden;
         if(!welcome.hidden) {
             $('#ws-title').textContent='THIEPN Hub';
             $('[data-workspace-date]').textContent='';
         }
         $('[data-workspace-list]').innerHTML = state.workspaces.map(w => `<button type="button" data-workspace-id="${esc(w.id)}" class="${w.id === state!.active ? 'active' : ''}" title="${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}">${icon('folder-simple')}<span>${(privacyHeld || state!.preferences.hidden) ? 'Workspace' : esc(w.title)}</span></button>`).join('');
-        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + button('presets', 'Layouts')}${button('customize', icon('sliders-horizontal') + ' Customize')}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
+        $('[data-toolbar]').innerHTML = view === 'home' ? (editing ? `<span class="ws-edit-label">Editing layout</span>${button('undo-layout', 'Undo')}${button('redo-layout', 'Redo')}${button('add-widget', '+ Add widget')}${button('cancel-layout', 'Cancel')}${button('done-layout', 'Done', '', 'ws-primary')}` : `${button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') + '<details class="ws-v31-customize"><summary class="ws-button">Customize</summary><div>'+button('customize','Edit layout')+button('presets','Layouts')+'</div></details>'}`) : (view === 'apps' ? button('switch-workspace', icon('folder-simple') + ' Workspaces', '', 'ws-button ws-workspace-switch') : '');
         // Static catalogue nodes keep their category state while the shared planner rerenders.
         if (!staticView()) {
             if ((privacyHeld || state.preferences.hidden) && view !== 'settings')
@@ -948,12 +976,14 @@ async function setup(root: HTMLElement) {
     let navigationTicket = 0;
     let committedUrl = location.pathname + location.search;
     function updateNavigation() {
-        root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link').forEach(link => {
-            const active = (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
+        root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link,[data-v31-planner-tabs] a').forEach(link => {
+            const group=link.dataset.primaryNav==='planner';
+            const active = group ? ['tasks','calendar','trackers'].includes(view) : (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
             link.classList.toggle('active', active);
-            if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+            if (active) link.setAttribute('aria-current', group?'location':'page'); else link.removeAttribute('aria-current');
         });
-        if (['calendar','trackers','settings','connections','inbox'].includes(view)) moreTrigger.setAttribute('aria-current','page');
+        $('[data-v31-planner-tabs]').hidden=!['tasks','calendar','trackers'].includes(view);
+        if (['settings','connections','inbox','flows'].includes(view)) moreTrigger.setAttribute('aria-current','page');
         else moreTrigger.removeAttribute('aria-current');
     }
     async function navigateWorkspace(url: URL, pop = false) {
@@ -2918,9 +2948,9 @@ async function setup(root: HTMLElement) {
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
         if(homeModeRestorePending) {
-            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='today'?homeModeFromUrl:'workspace';
+            homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='workspace';
+        } else homeMode='today';
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
