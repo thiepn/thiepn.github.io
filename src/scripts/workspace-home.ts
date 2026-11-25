@@ -1520,13 +1520,14 @@ async function setup(root: HTMLElement) {
     async function finishEdit() {
         if (!editing || !state)
             return;
+        const own = epoch;
         const draft = clone(editing);
         if (current().id !== draft.workspaceId || current().revision !== draft.baseRevision || conflict) {
             notice('The saved layout changed. Your edit draft is kept. Reload saved data, then resume it or save it as another workspace.', button('save-draft-as', 'Save as new workspace') + button('reload', 'Reload saved data'));
             return;
         }
         await mutate(s => { const index = s.workspaces.findIndex(w => w.id === draft.workspaceId); draft.workspace.revision++; draft.workspace.updatedAt = stamp(); s.workspaces[index] = draft.workspace; }, 'Layout saved', false);
-        if (current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
+        if (own === epoch && state && current().id === draft.workspaceId && current().revision === draft.baseRevision + 1 && (!dirty || !storageReady)) {
             editing = null;
             recoveryDraft = null;
             await store?.draft(null);
@@ -2509,10 +2510,10 @@ async function setup(root: HTMLElement) {
                 break;
             case 'reload':
                 if (dirty || editing) {
-                    openForm('Reload saved data?', '<p>Unsaved content in this tab will be replaced. Export it first. Layout edit drafts remain available.</p>' + button('export', 'Export current changes'), () => reloadSaved(), 'Reload saved data');
+                    openForm('Reload saved data?', '<p>Unsaved content in this tab will be replaced. Export it first. Layout edit drafts remain available.</p>' + button('export', 'Export current changes'), () => reloadSaved(true), 'Reload saved data');
                 }
                 else
-                    void reloadSaved();
+                    void reloadSaved(true);
                 break;
             case 'return-focus':
                 if (view==='home' && !privacyHeld && !state.preferences.hidden) {
@@ -2600,7 +2601,7 @@ async function setup(root: HTMLElement) {
                     w.widgets.forEach(x => x.id = uid());
                     editing = null;
                     conflict = false;
-                    void reloadSaved().then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
+                    void reloadSaved(true).then(() => mutate(s => { s.workspaces.push(w); s.active = w.id; }, 'Recovered edit saved as another workspace')).then(() => store?.draft(null)).catch(e=>toast(e instanceof Error ? e.message : 'Could not recover this layout.'));
                 }
                 break;
             case 'search-task':
@@ -2876,35 +2877,43 @@ async function setup(root: HTMLElement) {
         document.addEventListener('pointerup', end);
         document.addEventListener('pointercancel', cancel);
     });
-    async function readDraft(source: WorkspaceStore): Promise<EditDraft|null> {
+    async function readDraft(source: WorkspaceStore, base = state): Promise<EditDraft|null> {
         const value = await source.draft();
-        if (!value || !state) return null;
+        if (!value || !base) return null;
         try {
             if (!Number.isSafeInteger(value.baseRevision) || value.baseRevision < 0 || !value.workspace || value.workspace.id !== value.workspaceId) return null;
-            const candidate=clone(state), index=candidate.workspaces.findIndex(w=>w.id===value.workspaceId);
+            const candidate=clone(base), index=candidate.workspaces.findIndex(w=>w.id===value.workspaceId);
             if(index<0)return null;
             candidate.workspaces[index]=value.workspace;
             parseState(JSON.stringify(candidate));
             return value;
         } catch { return null; } // Preserve the original draft; committed records are still usable.
     }
-    async function reloadSaved() {
+    async function reloadSaved(explicit = false) {
         const own = epoch, source = store;
         await queue;
+        await persistence;
         if (own !== epoch || !source || source !== store) return;
+        const previous = state, version = changeVersion;
+        // An automatic focus/pageshow/cloud refresh may begin before a layout
+        // edit or save and finish afterwards. Never replace the intervening work.
+        const canApply = () => own === epoch && source === store && state === previous &&
+            changeVersion === version && (explicit || (!dirty && !editing));
+        if (!canApply()) return;
         const latest = await source.load();
-        if (own !== epoch || source !== store) return;
-        if (latest) {
-            clearContentUndo();
-            privacyHeld ||= latest.preferences.hidden;
-            state = latest;
-            dirty = false;
-            conflict = false;
-            editing = null;
-            recoveryDraft = await readDraft(store!);
-            notice('');
-            render();
-        }
+        if (!canApply() || !latest) return;
+        if (!explicit && latest.revision === previous?.revision) return;
+        const nextDraft = await readDraft(source, latest);
+        if (!canApply()) return;
+        clearContentUndo();
+        privacyHeld ||= latest.preferences.hidden;
+        state = latest;
+        dirty = false;
+        conflict = false;
+        editing = null;
+        recoveryDraft = nextDraft;
+        notice('');
+        render();
     }
     async function loadIdentity(identity: HubIdentity) {
         clearFocusIdentity();
