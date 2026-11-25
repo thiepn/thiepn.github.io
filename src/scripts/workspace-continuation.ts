@@ -251,4 +251,4 @@ function start(desks:HTMLElement[]) {
 }
 
 // Initialize after the rendering helpers and source metadata are defined.
-if (desks.length) start(desks);
+if (desks.length || document.querySelector('[data-workspace]')) start(desks);
