@@ -130,15 +130,16 @@ async function preparePdfStudio(page, state) {
   await page.locator('.editor-app .editor-stage').first().waitFor({ state: 'visible', timeout: 30_000 });
   if (state !== 'pages') return;
 
-  const pagesControl = page.getByRole('button', { name: 'Pages', exact: true }).filter({ visible: true }).first();
-  if (await pagesControl.isVisible()) {
-    await pagesControl.click();
-  } else {
-    const actions = page.getByRole('button', { name: 'Document actions', exact: true });
-    await actions.waitFor({ state: 'visible', timeout: 15_000 });
-    await actions.click();
-    await page.getByRole('dialog', { name: 'Document actions' }).getByRole('button', { name: 'Arrange pages', exact: true }).click();
-  }
+  // The editor's Pages button can open its thumbnail sidebar, not the
+  // organizer. Use the public router's documented mode for this same sample
+  // project (appRouter.ts / taskCatalog.ts in PDF source 9f90a223).
+  const editorHash = await page.evaluate(() => location.hash);
+  const route = /^#\/workspace\/([^/]+)(?:\/editor)?\/?$/.exec(editorHash);
+  if (!route) throw new Error('Expected sample editor route before opening organizer: ' + editorHash);
+  const organizerHash = '#/workspace/' + route[1] + '/organizer';
+  await page.evaluate(hash => { location.hash = hash; }, organizerHash);
+  await page.waitForFunction(hash => location.hash === hash, organizerHash, { timeout: 15_000 });
+  await page.locator('.organizer-toolbar__file').getByText(/northstar.*\.pdf/i).first().waitFor({ state: 'visible', timeout: 30_000 });
   await page.locator('.organizer-app--r3').first().waitFor({ state: 'visible', timeout: 30_000 });
   await page.getByText('No page changes yet', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 });
   await page.locator('main.organizer-grid').first().waitFor({ state: 'visible', timeout: 20_000 });
