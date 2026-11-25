@@ -65,7 +65,18 @@ function backend(options={sharing:false,probeEligible:false}) {
   }catch(error){const state=await page.evaluate(()=>({path:location.pathname,visible:!document.hidden,hasAppToken:Boolean(localStorage.getItem('thiepn:hub-sso:v1:tokens'))}));throw new Error('Account bootstrap incomplete: '+JSON.stringify({probeRequests,exchanges,...state}),{cause:error});}await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');if(owner===null&&!options.probeEligible){await expect.poll(()=>probeRequests).toBeGreaterThan(0);await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0);}return {page,context};
  }};
 }
-async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
+async function requestSync(page:Page,expected:'success'|'failure'='success'){
+ const account=page.locator('[data-account-dialog]');
+ const wasOpen=await account.isVisible();
+ if(!wasOpen)await page.locator('.ws-topbar [data-action=account]:visible').click();
+ await expect(account).toBeVisible();
+ await account.locator('[data-action=cloud-retry]').click();
+ const status=account.locator('[data-cloud-status]');
+ if(expected==='success')await expect(status).toHaveText('Synced with your account');
+ else {await expect(status).not.toHaveText('Checking account sync…');await expect(status).not.toHaveText('Synced with your account');}
+ if(!wasOpen)await account.locator('[data-action=close-account]').click();
+}
+async function sync(page:Page){await requestSync(page);}
 async function workspaceView(page:Page){const mode=page.locator('[data-action=unified-mode][data-id=workspace]');await expect(mode).toBeVisible();if(await mode.getAttribute('aria-pressed')!=='true')await mode.click();await expect(page.locator('[data-grid]')).toBeVisible();}
 async function task(page:Page,title:string){const compact=page.locator('[data-v31-capture] [data-action=new-task]');if(await compact.isVisible())await compact.click();else{const panel=page.locator('[data-planner] [data-action=new-task]').first();if(!(await panel.isVisible()))await page.getByRole('button',{name:'Show planner',exact:true}).click();await panel.click();}await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();}
 test('two independent devices sync tasks, offline changes and app navigation without sharing another account',async({browser})=>{
@@ -75,7 +86,7 @@ test('two independent devices sync tasks, offline changes and app navigation wit
  const api=backend(),a=await api.device(browser);await sync(a.page);await task(a.page,'First device task');await sync(a.page);
  const b=await api.device(browser);await sync(b.page);await expect(b.page.locator('.ws-task-title')).toHaveText('First device task');
  await task(b.page,'Second device task');await sync(b.page);await sync(a.page);await expect(a.page.locator('.ws-task-title')).toHaveText(['First device task','Second device task']);
- api.offline(true);await task(a.page,'Offline task');await a.page.locator('[data-action=cloud-retry]').first().click();await expect(a.page.locator('[data-cloud-status]').first()).not.toHaveText('Synced with your account');
+ api.offline(true);await task(a.page,'Offline task');await requestSync(a.page,'failure');
  api.offline(false);await sync(a.page);await sync(b.page);await expect(b.page.locator('.ws-task-title')).toHaveCount(3);
  await a.page.locator('a[href="/apps/"]').first().click();await expect(a.page).toHaveURL('https://thiepn.dev/apps/');await a.page.locator('a[href="/"]').first().click();await expect(a.page.locator('.ws-task-title')).toHaveCount(3);
  const other=await api.device(browser,OTHER);await sync(other.page);await expect(other.page.locator('.ws-task-title')).toHaveCount(0);expect(api.heads.get(OTHER)?.state).not.toEqual(api.heads.get(OWNER)?.state);
@@ -88,7 +99,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  const api=backend(),a=await api.device(browser);await sync(a.page);const b=await api.device(browser);await sync(b.page);
  await workspaceView(a.page);
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
- await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
+ await sync(a.page); // Opening Account finishes focus; edit text must still be preserved.
  await expect(capture).toHaveValue('Still typing');await sync(a.page);await expect(capture).toHaveValue('Still typing');
  await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-auth-logout]').click();await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');await expect(a.page.locator('.ws-task-title')).toHaveCount(0);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
  await Promise.all([a.context.close(),b.context.close()]);
