@@ -4,6 +4,11 @@ on:
     workflows: [Deploy to GitHub Pages]
     types: [completed]
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/hub-live/**'
+      - 'playwright.hub-live.config.ts'
+      - '.github/workflows/hub-live.yml'
 permissions:
   contents: read
   actions: read
@@ -14,6 +19,7 @@ jobs:
   public-rollout:
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -21,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

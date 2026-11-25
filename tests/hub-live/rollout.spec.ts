@@ -1,36 +1,105 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { validateHubReleaseStatus } from '../../src/lib/hub-release-policy';
+import { HUB_VISIBLE_APP_IDS } from '../../src/lib/workspace/visible-apps';
+
 const issuer = 'https://hycegznamzjhwinegaai.supabase.co';
 const account = 'https://account.thiepn.dev';
+const registry = JSON.parse(readFileSync('src/generated/launch-manifest.json', 'utf8')).entries as { id: string }[];
+const visibleIds = [...HUB_VISIBLE_APP_IDS];
+
 // Fresh browser contexts only. No real credentials, private app reads or OAuth continuation.
-test('served profile, local customization, Search and manual workflow handoffs', async ({ page, request }) => {
-  const response = await request.get('/hub-release.json'); expect(response.ok()).toBe(true);
-  expect(validateHubReleaseStatus(await response.json()).appCount).toBe(27);
+async function publicProbe(page: Page) {
   const privateRequests: string[] = []; const errors: string[] = [];
   page.on('request', r => { if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) privateRequests.push(new URL(r.url()).pathname); });
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
+  return () => { expect(privateRequests).toEqual([]); expect(errors).toEqual([]); };
+}
+
+test('live release registry and exact ordered visible app catalogue', async ({ page, request }) => {
+  const finish = await publicProbe(page);
+  const response = await request.get('/hub-release.json'); expect(response.ok()).toBe(true);
+  const release = validateHubReleaseStatus(await response.json());
+  // Registered launch contracts are not the visible presentation roster.
+  expect(release.appCount).toBe(registry.length);
+  expect(visibleIds).toHaveLength(14);
+  expect(new Set(visibleIds).size).toBe(14);
+  expect(visibleIds.every(id => registry.some(app => app.id === id))).toBe(true);
+  const search = await request.get('/hub-search.json'); expect(search.ok()).toBe(true);
+  expect((await search.json()).projects).toHaveLength(registry.length);
+  await page.goto('/apps/');
+  const cards = page.locator('[data-hub-item]');
+  await expect(cards).toHaveCount(14);
+  expect(await cards.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-hub-slug')))).toEqual(visibleIds);
+  for (const card of await cards.all()) {
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
+  }
+  finish();
+});
+
+test('live local customization persists only approved shortcuts', async ({ page }) => {
+  const finish = await publicProbe(page);
   await page.goto('/');
   await expect(page.locator('[data-auth-login]')).toBeHidden();
   await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  const original = await page.locator('[data-launch]').count();
+  const shortcuts = page.locator('[data-widget-type=app-shortcuts] [data-launch]');
+  const getIds = () => shortcuts.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-launch')));
+  const original = await getIds();
+  expect(original.length).toBeGreaterThan(1);
+  expect(original.every(id => visibleIds.includes(id as typeof visibleIds[number]))).toBe(true);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
-  await page.locator('input[name=appIds]:checked').first().uncheck();
+  const choices = page.locator('input[name=appIds]');
+  await expect(choices).toHaveCount(14);
+  expect(await choices.evaluateAll(nodes => nodes.map(node => (node as HTMLInputElement).value))).toEqual(visibleIds);
+  const checked = page.locator('input[name=appIds]:checked').first();
+  const removed = await checked.inputValue();
+  expect(original).toContain(removed);
+  await checked.uncheck();
   await page.locator('[data-dialog-submit]').click();
   await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Customize', exact: true })).toBeVisible();
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  const expected = original.filter(id => id !== removed);
+  await expect.poll(getIds).toEqual(expected);
   await page.reload();
-  await expect(page.locator('[data-launch]')).toHaveCount(original - 1);
+  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect.poll(getIds).toEqual(expected);
+  finish();
+});
+
+test('live Search respects visible apps and private-resource boundaries', async ({ page }) => {
+  const finish = await publicProbe(page);
   await page.goto('/search/?q=merge+PDF');
   await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'pdf-studio');
   await page.getByRole('tab', { name: 'My resources', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Private resource search is not connected yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connected search', exact: true })).toBeVisible();
+  await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
+  await expect(page.locator('[data-portal-query]')).toBeHidden();
+  await expect(page.locator('[data-portal-query]')).toHaveValue('');
+  await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
+  await page.goto('/search/');
+  const rows = page.locator('[data-portal-search-slug]:visible');
+  await expect(rows).toHaveCount(14);
+  expect(new Set(await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-portal-search-slug'))))).toEqual(new Set(visibleIds));
+  finish();
+});
+
+test('live manual workflow handoffs exclude hidden apps and claim no transfer', async ({ page }) => {
+  const finish = await publicProbe(page);
   await page.goto('/flows/?flow=pdf-read&step=2');
   await expect(page.locator('[aria-current="step"] h3')).toHaveText('Choose the reading copy');
   await expect(page.locator('[data-flow-status]')).toContainText('no file transfer or app outcome confirmed');
+  await expect(page.locator('[data-flow-guide="scan-read"]')).toHaveCount(0);
+  const links = page.locator('[data-flow-guide="pdf-read"] .portal-flow-actions a[target="_blank"]');
+  expect(await links.evaluateAll(nodes => nodes.map(node => (node as HTMLAnchorElement).href))).toEqual(['https://thiepn.dev/pdf/', 'https://thiepn.dev/library/saved/']);
+  await expect(links.first()).toHaveAttribute('rel', 'noopener noreferrer');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  expect(privateRequests).toEqual([]); expect(errors).toEqual([]);
+  finish();
 });
+
 test('live Account validates tokenless entry and rejects alternate destinations', async ({ page, request }) => {
   const release = await request.get(account + '/release.json'); expect(release.ok()).toBe(true);
   const metadata = await release.json(); expect(metadata.product).toBe('THIEPN Account');
