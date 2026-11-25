@@ -11,6 +11,7 @@ async function openEditor(page: Page) {
 test('shortcut picker offers exactly the fourteen curated apps and preserves selection after reload', async ({page}) => {
   await page.goto('/');
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.locator('[data-action=unified-mode][data-id=workspace]').click();
   const dialog = await openEditor(page);
   const ids = await dialog.locator('input[name="appIds"]').evaluateAll(nodes=>nodes.map(n=>(n as HTMLInputElement).value));
   expect([...ids].sort()).toEqual([...HUB_VISIBLE_APP_IDS].sort());
