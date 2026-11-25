@@ -26,7 +26,61 @@ test('the rail, presets and named workspaces are independent from shared content
  await page.getByRole('button',{name:'Layouts',exact:true}).click();await page.getByLabel('Layout',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('#ws-title')).toHaveText('Focus console');const shortcut=(await page.locator('.ws-app').first().boundingBox())!,shortcutBody=(await page.locator('[data-widget-type=app-shortcuts] .ws-widget-body').boundingBox())!;expect(shortcut.y+shortcut.height).toBeLessThanOrEqual(shortcutBody.y+shortcutBody.height);await expect(page.locator('.ws-task-title')).toHaveText('Shared task');await expect(page.locator('[data-widget-type=tracker-history]')).toHaveCount(1);await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();await page.locator('[data-workspace-id]').first().click();await expect(page.locator('#ws-title')).toHaveText('Personal workspace');
 });
 test('pointer drag and resize commit logical placement that survives reflow',async({page})=>{
- await ready(page);await page.getByRole('button',{name:'Customize',exact:true}).click();const handle=page.locator('[data-drag]').nth(1),cell=page.locator('[data-widget-id]').nth(1),before=await cell.getAttribute('style');const box=(await handle.boundingBox())!;await page.mouse.move(box.x+8,box.y+8);await page.mouse.down();await page.mouse.move(box.x+8,box.y+88,{steps:5});await page.mouse.up();await expect(cell).not.toHaveAttribute('style',before!);const after=await cell.getAttribute('style');await page.getByRole('button',{name:'Done',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.setViewportSize({width:1440,height:1024});await expect(cell).toHaveAttribute('style',after!);await page.reload();await expect(page.locator('[data-widget-id]').nth(1)).toHaveAttribute('style',after!);
+ await page.setViewportSize({width:1440,height:1024});await ready(page);
+ await page.getByRole('button',{name:'Customize',exact:true}).click();
+ const handle=page.locator('[data-drag]').nth(1),id=(await handle.getAttribute('data-drag'))!;
+ const cell=page.locator('[data-widget-id="'+id+'"]');
+ const placement=()=>cell.evaluate(el=>['--col','--span','--row','--height'].map(key=>(el as HTMLElement).style.getPropertyValue(key).trim()));
+ const before=await placement();
+ await handle.scrollIntoViewIfNeeded();const box=(await handle.boundingBox())!;
+ await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2,box.y+box.height/2+80,{steps:5});await page.mouse.up();
+ await expect(page.locator('.ws-dragging')).toHaveCount(0);
+ await expect.poll(placement).not.toEqual(before);
+ const dragged=await placement();
+ const resize=cell.locator('[data-resize]');await resize.scrollIntoViewIfNeeded();const rb=(await resize.boundingBox())!;
+ await page.mouse.move(rb.x+rb.width/2,rb.y+rb.height/2);await page.mouse.down();await page.mouse.move(rb.x+rb.width/2,rb.y+rb.height/2+32,{steps:4});await page.mouse.up();
+ await expect(page.locator('.ws-dragging')).toHaveCount(0);
+ await expect.poll(placement).not.toEqual(dragged);
+ const after=await placement();await page.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.setViewportSize({width:390,height:844});await page.setViewportSize({width:1440,height:1024});
+ await expect.poll(placement).toEqual(after);await page.reload();
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await expect.poll(placement).toEqual(after);
+});
+test('a delayed automatic reload cannot replace a new layout edit',async({page})=>{
+ await page.setViewportSize({width:1440,height:1024});
+ await page.addInitScript(()=>{
+  const get=IDBObjectStore.prototype.get;
+  IDBObjectStore.prototype.get=function(...args:Parameters<IDBObjectStore['get']>){
+   const request=get.apply(this,args);
+   const control=window as any;
+   if(control.__holdWorkspaceRead&&this.name==='records'&&this.transaction.mode==='readonly'&&args[0]==='guest'){
+    control.__holdWorkspaceRead=false;
+    // Let the native read finish but hold the success callback, as a delayed
+    // background reload could do while the user begins editing.
+    const descriptor=Object.getOwnPropertyDescriptor(IDBRequest.prototype,'onsuccess')!;
+    Object.defineProperty(request,'onsuccess',{configurable:true,set(handler){
+     descriptor.set!.call(request,(event:Event)=>{control.__releaseWorkspaceRead=()=>handler.call(request,event);});
+    }});
+   }
+   return request;
+  };
+ });
+ await ready(page);
+ await page.evaluate(()=>{(window as any).__holdWorkspaceRead=true;window.dispatchEvent(new Event('focus'));});
+ await expect.poll(()=>page.evaluate(()=>typeof (window as any).__releaseWorkspaceRead)).toBe('function');
+ await page.getByRole('button',{name:'Customize',exact:true}).click();
+ const cell=page.locator('[data-widget-id]').first(),before=await cell.getAttribute('style');
+ await cell.locator('[data-resize]').focus();await page.keyboard.press('ArrowDown');
+ await expect(cell).not.toHaveAttribute('style',before!);
+ const after=await cell.getAttribute('style');
+ await page.evaluate(()=>{(window as any).__releaseWorkspaceRead();});
+ await page.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
+ await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+ await page.reload();await expect(page.locator('[data-widget-id]').first()).toHaveAttribute('style',after!);
 });
 test('another tab cannot silently overwrite an active layout edit',async({page,context})=>{
  await ready(page);const other=await context.newPage();await other.goto('/');await expect(other.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await page.getByRole('button',{name:'Customize',exact:true}).click();await page.locator('[data-resize]').first().focus();await page.keyboard.press('ArrowDown');await task(other,'From another tab');await expect(page.locator('[data-workspace-notice]')).toContainText('Another tab changed');await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByText('Editing layout',{exact:true})).toBeVisible();await expect(page.locator('[data-workspace-notice]')).toContainText('saved layout changed');await other.reload();await expect(other.locator('.ws-task-title')).toHaveText('From another tab');await other.close();

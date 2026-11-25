@@ -116,30 +116,36 @@ async function prepareWordstrike(page) {
 }
 
 async function preparePdfStudio(page, state) {
-  const app = page.locator('#root').first();
-  await app.waitFor({ state: 'visible', timeout: 12_000 });
-
-  const openPdf = page.getByRole('button', { name: 'Open PDF' }).first();
-  const sampleControl = page.getByRole('button', { name: 'Open sample' }).first();
-  await openPdf.waitFor({ state: 'visible', timeout: 12_000 });
-  await sampleControl.waitFor({ state: 'visible', timeout: 12_000 });
+  await page.locator('#root').first().waitFor({ state: 'visible', timeout: 15_000 });
+  // Current product home (PDF source 9f90a2235ef37a0b4081a0c0703cc971ab12529a)
+  // renamed the sample and file controls. Keep the older public version
+  // supported during rollout, without substituting a fake document.
+  const openPdf = page.getByRole('button', { name: /^(Choose files|Open PDF)$/i }).filter({ visible: true }).first();
+  const sampleControl = page.getByRole('button', { name: /^(Try an example|Open sample)$/i }).filter({ visible: true }).first();
+  await openPdf.waitFor({ state: 'visible', timeout: 20_000 });
+  await sampleControl.waitFor({ state: 'visible', timeout: 20_000 });
   if (state === 'home') return;
-
   await sampleControl.click();
-  await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 15_000 });
-  await page.waitForTimeout(2_000);
-  const hash = await page.evaluate(() => window.location.hash);
-  if (!hash.startsWith('#/workspace/')) throw new Error(`PDF Studio sample did not reach a workspace. Current hash: ${hash || '(empty)'}`);
+  await page.waitForFunction(() => window.location.hash.startsWith('#/workspace/'), null, { timeout: 30_000 });
+  await page.locator('.editor-app .editor-stage').first().waitFor({ state: 'visible', timeout: 30_000 });
   if (state !== 'pages') return;
 
-  const pagesControl = page.getByRole('button', { name: 'Pages', exact: true }).first();
-  await pagesControl.waitFor({ state: 'visible', timeout: 10_000 });
-  await pagesControl.click();
-  const organizer = page.locator('.organizer-app--r3').first();
-  await organizer.waitFor({ state: 'visible', timeout: 15_000 });
-  await page.getByText('No page changes yet', { exact: true }).waitFor({ state: 'visible', timeout: 12_000 });
-  await page.locator('main.organizer-grid').first().waitFor({ state: 'visible', timeout: 12_000 });
-  await page.waitForTimeout(1_000);
+  // The editor's Pages button can open its thumbnail sidebar, not the
+  // organizer. Use the public router's documented mode for this same sample
+  // project (appRouter.ts / taskCatalog.ts in PDF source 9f90a223).
+  const editorHash = await page.evaluate(() => location.hash);
+  const route = /^#\/workspace\/([^/]+)(?:\/editor)?\/?$/.exec(editorHash);
+  if (!route) throw new Error('Expected sample editor route before opening organizer: ' + editorHash);
+  const organizerHash = '#/workspace/' + route[1] + '/organizer';
+  await page.evaluate(hash => { location.hash = hash; }, organizerHash);
+  await page.waitForFunction(hash => location.hash === hash, organizerHash, { timeout: 15_000 });
+  // v7.1.4 projectRepository strips the .pdf suffix from display names.
+  // Its own workspace e2e test expects "northstar-launch-review".
+  await page.locator('.organizer-toolbar__file').getByText(/^northstar-launch-review(?:\.pdf)?$/i).first().waitFor({ state: 'visible', timeout: 30_000 });
+  await page.locator('.organizer-app--r3').first().waitFor({ state: 'visible', timeout: 30_000 });
+  await page.getByText('No page changes yet', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 });
+  await page.locator('main.organizer-grid').first().waitFor({ state: 'visible', timeout: 20_000 });
+  await page.waitForTimeout(1000);
 }
 
 async function prepareMicroArcade(page, state) {
@@ -204,8 +210,22 @@ try {
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
     await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
     await page.waitForTimeout(1_200);
-    await prepareCanonicalState(page, capture.state);
-    await page.screenshot({ path: path.join(outputDir, capture.name), type: 'png', fullPage: false, animations: 'disabled' });
+    try {
+      await prepareCanonicalState(page, capture.state);
+      await page.screenshot({ path: path.join(outputDir, capture.name), type: 'png', fullPage: false, animations: 'disabled' });
+      console.log('Verified capture: ' + slug + ' / ' + capture.state + ' / ' + capture.name);
+    } catch (error) {
+      if (slug === 'pdf-studio') {
+        const diagnostic = await page.evaluate(() => ({
+          hash: location.hash,
+          heading: document.querySelector('#workspace-document-title')?.textContent,
+          organizer: !!document.querySelector('.organizer-app--r3'),
+          status: [...document.querySelectorAll('[role="status"],[role="alert"],.viewer-loading,.organizer-toolbar__file')].map(el => el.textContent?.trim()).filter(Boolean).slice(0, 12)
+        })).catch(() => null);
+        console.error('PDF Studio capture failure in ' + capture.state + ': ' + JSON.stringify(diagnostic));
+      }
+      throw error;
+    }
     await context.close();
   }
 } finally {
