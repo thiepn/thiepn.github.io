@@ -1,0 +1,81 @@
+name: Folio + Hub paired task-detail and source-consistency acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/lib/workspace/folio-device.ts'
+      - 'src/lib/workspace/folio-task-read.ts'
+      - 'src/lib/workspace/folio-task-ux.ts'
+      - 'src/lib/workspace/folio-task-query.ts'
+      - 'src/lib/workspace/folio-task-channel.ts'
+      - 'src/lib/workspace/folio-task-actions.ts'
+      - 'src/lib/workspace/folio-panel.ts'
+      - 'src/scripts/workspace-home.ts'
+      - 'src/styles/workspace.css'
+      - 'tests/studio/hub-folio-paired-stage1a.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1b.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1c.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1d.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1e.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1f.spec.ts'
+      - 'tests/studio/hub-folio-paired-stage1g.spec.ts'
+      - 'tests/unit/folio-task-ux.test.ts'
+      - 'tests/unit/folio-task-query.test.ts'
+      - 'playwright.folio-stage1a.config.ts'
+      - '.github/workflows/folio-stage1a-paired.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: folio-stage1a-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paired-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Hub draft
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build real Hub
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Focused Stage 1A and 1B unit tests
+        run: npx vitest run tests/unit/folio-device.test.ts tests/unit/folio-task-preview.test.ts tests/unit/folio-task-read.test.ts tests/unit/folio-task-actions.test.ts tests/unit/folio-task-ux.test.ts tests/unit/folio-task-query.test.ts
+      - name: Checkout pinned Folio companion draft
+        uses: actions/checkout@v4
+        with:
+          repository: thiepn/folio
+          ref: 7a20be9dbbfd6e4074d76072233ff6a8e26aa8bb
+          path: folio-owner
+          persist-credentials: false
+      - name: Build real Folio and compose read-only local site
+        run: |
+          npm ci --prefix folio-owner --ignore-scripts --no-audit --no-fund
+          npm run build --prefix folio-owner
+          mkdir -p dist/folio
+          cp -a folio-owner/dist/. dist/folio/
+          test -s dist/folio/index.html
+          test -s dist/home/tasks/index.html
+      - name: Install Chromium Firefox and WebKit
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Real cross-app desktop and mobile acceptance
+        run: npx playwright test -c playwright.folio-stage1a.config.ts
+      - name: Upload failure evidence and test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-stage1g-paired-evidence
+          path: |
+            playwright-report/folio-paired/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore

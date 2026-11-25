@@ -16,11 +16,15 @@ import { HUB_CATEGORIES } from '../data/taxonomy';
 import { hubIdentity, readHubLanguageToken } from './portal-auth';
 import { HUB_LANGUAGE_IDS, fetchHubLanguages, type HubLanguageCard } from '../lib/workspace/language-read';
 import { renderIntegratedHome, type LanguageLoadStatus } from '../lib/workspace/home-panel';
-import { FOLIO_DEVICE_MESSAGE, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
+import { FOLIO_DEVICE_MESSAGE, FOLIO_DEVICE_FRESH_MS, freshFolioDeviceSnapshot, safeFolioBridgeReply, type FolioDeviceSnapshot } from '../lib/workspace/folio-device';
 import { acceptNotesReply, type NotesDeviceSummary } from '../lib/workspace/notes-device';
 import { renderSourceToday } from '../lib/workspace/source-today';
 import type { NotesDeviceStatus } from '../lib/workspace/notes-panel';
-import type { FolioDeviceStatus } from '../lib/workspace/folio-panel';
+import { renderFolioTaskPreview, type FolioDeviceStatus } from '../lib/workspace/folio-panel';
+import { FolioTaskChannel } from '../lib/workspace/folio-task-channel';
+import { freshFolioTaskRead, type FolioTaskFilter } from '../lib/workspace/folio-task-read';
+import { DEFAULT_FOLIO_TASK_VIEW, type FolioTaskView } from '../lib/workspace/folio-task-ux';
+import { FOLIO_TASK_ACTION_MESSAGE, type FolioTaskAction } from '../lib/workspace/folio-task-actions';
 import { preferenceKey, validAccountId, type HubIdentity } from '../lib/hub-auth';
 import { icon, appIcon } from '../lib/workspace/icons';
 import { initialState, parseState, activity, dayKey, addDays, weekDays, validDate, trackerTotal, zonedInstant, MAX_EXPORT_BYTES, formatTrackerValue } from '../lib/workspace/model';
@@ -180,17 +184,156 @@ async function setup(root: HTMLElement) {
     let folioNonce: string | null = null;
     let folioPopup: Window | null = null;
     let folioTimeout: ReturnType<typeof setTimeout> | null = null;
+    let folioExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+    let folioWriteNonce:string|null=null;
+    let folioWritePopup:Window|null=null;
+    let folioTaskFilter:FolioTaskFilter='today';
+    let folioTaskView:FolioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
+    let folioPageIndex=0;
+    let folioPageRevision:string|null=null;
+    let folioSearchTimer:ReturnType<typeof setTimeout>|null=null;
+    let folioSearchPending=false;
+    let legacyTasksOpen=false;
+    const folioLive = new FolioTaskChannel(
+        () => {
+            const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+                hubIdentity.status === 'signed-out' ? 'guest' : null;
+            return view === 'tasks' && !!state && !locked && !privacyHeld &&
+                !state.preferences.hidden && scope !== null && scope === folioOwner;
+        },
+        () => updateFolioViews(),
+    );
+    function folioProjection() {
+        const scope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
+            hubIdentity.status === 'signed-out' ? 'guest' : null;
+        const allowed = scope !== null && scope === folioOwner && !privacyHeld && !state?.preferences.hidden;
+        const snapshot = allowed && freshFolioDeviceSnapshot(folioSnapshot) ? folioSnapshot : null;
+        return { status: !allowed ? 'disconnected' as const :
+            folioSnapshot && !snapshot ? 'unavailable' as const : folioStatus, snapshot };
+    }
+    function updateFolioViews(force=false) {
+        if (view !== 'tasks') { repaintOverview(); return; }
+        const source=folioLive.snapshot;
+        const needed=folioLive.status==='ready' && !!source &&
+            (source.truncated||folioTaskFilter==='completed'||
+             folioTaskView.search.trim().length>0||folioTaskView.projectId!=='all'||folioPageIndex>0);
+        if(needed && !folioSearchPending){
+            folioLive.queryPage({filter:folioTaskFilter,search:folioTaskView.search.trim(),
+                projectId:folioTaskView.projectId,page:folioPageIndex,
+                ...(folioPageRevision?{expectedRevision:folioPageRevision}:{})});
+        }else if(!needed && folioLive.pageQuery)folioLive.clearPage();
+        // Preserve the native task editor and a user's in-progress Folio form.
+        const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
+        if (!panel || !state || privacyHeld || state.preferences.hidden) {
+            if (state) render();
+            return;
+        }
+        const active=document.activeElement as HTMLElement|null;
+        // Empty quick capture after an acknowledged Enter submission is safe
+        // to redraw. Nonempty drafts, date edits and IME compositions are not.
+        const emptyCapture=active instanceof HTMLInputElement &&
+            active.matches('[data-folio-create-form] input[name=title]') && !active.value;
+        if(!force && active && panel.contains(active) && active.matches('input,select,textarea') &&
+           !emptyCapture && !active.matches('[data-folio-search]'))return;
+        const searchFocused=active instanceof HTMLInputElement && active.matches('[data-folio-search]');
+        const cursor=searchFocused?{start:(active as HTMLInputElement).selectionStart,end:(active as HTMLInputElement).selectionEnd}:null;
+        const optionsOpen=panel.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced')?.open??false;
+        const detailFocused=active instanceof HTMLAnchorElement &&
+            active.matches('[data-folio-detail-link]')?
+            active.closest<HTMLElement>('[data-folio-source-task]')?.dataset.folioSourceTask:null;
+        const action=active && panel.contains(active) ? active.dataset.action : null;
+        const id=action ? active?.dataset.id : null;
+        const savedForm=panel.querySelector<HTMLFormElement>('[data-folio-create-form]');
+        const fields=savedForm?Object.fromEntries(
+            [...new FormData(savedForm).entries()].map(([key,value])=>[key,String(value)])):null;
+        const projection=folioProjection();
+        panel.outerHTML=renderFolioTaskPreview(projection.status,projection.snapshot,Date.now(),{
+            status:folioLive.status,snapshot:folioLive.snapshot,filter:folioTaskFilter,view:folioTaskView,
+            paging:{active:needed&&!folioSearchPending,loading:folioLive.pageLoading,
+                error:folioLive.pageError,changed:folioLive.pageChanged,result:folioLive.page},
+            write:{
+                enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
+                message:folioLive.actionMessage,failed:folioLive.actionFailed,
+                undoId:folioLive.lastUndoId,
+            },
+        });
+        const newDetails=root.querySelector<HTMLDetailsElement>('.ws-folio-create-advanced');
+        if(newDetails)newDetails.open=optionsOpen;
+        if(fields){
+            const form=root.querySelector<HTMLFormElement>('[data-folio-create-form]');
+            if(form)for(const [key,value]of Object.entries(fields)){
+                const field=form.elements.namedItem(key);
+                if(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)field.value=value;
+            }
+        }
+        if(searchFocused){
+            const next=root.querySelector<HTMLInputElement>('[data-folio-search]');
+            if(next){
+                next.focus({preventScroll:true});
+                if(cursor?.start!==null&&cursor?.start!==undefined)
+                    next.setSelectionRange(cursor.start,cursor.end??cursor.start);
+            }
+        }else if(detailFocused){
+            const link=root.querySelector<HTMLAnchorElement>('[data-folio-source-task="'+
+                CSS.escape(detailFocused)+'"] [data-folio-detail-link]');
+            (link??root.querySelector<HTMLButtonElement>('[data-action=folio-page-restart]'))?.focus({preventScroll:true});
+        }else if(emptyCapture){
+            root.querySelector<HTMLInputElement>('[data-folio-create-form] input[name=title]')?.focus({preventScroll:true});
+        }else if(action)root.querySelector<HTMLElement>('[data-folio-task-preview] [data-action="'+action+'"]'+
+            (id?'[data-id="'+id+'"]':''))?.focus({preventScroll:true});
+    }
+    root.addEventListener('toggle',event=>{
+        const drawer=event.target as HTMLDetailsElement;
+        if(drawer.matches?.('[data-legacy-hub-tasks]'))legacyTasksOpen=drawer.open;
+    },true);
     function resetFolio() {
+        folioWriteNonce=null;
+        folioWritePopup=null;
+        folioLive.close();
+        folioTaskFilter='today';
+        folioTaskView={...DEFAULT_FOLIO_TASK_VIEW};
+        folioPageIndex=0;
+        folioPageRevision=null;
+        if(folioSearchTimer)clearTimeout(folioSearchTimer);
+        folioSearchTimer=null;folioSearchPending=false;
         folioNonce = null;
         folioPopup = null;
         if (folioTimeout) clearTimeout(folioTimeout);
         folioTimeout = null;
+        if (folioExpiryTimer) clearTimeout(folioExpiryTimer);
+        folioExpiryTimer = null;
         folioSnapshot = null;
         folioStatus = 'disconnected';
         folioOwner = null;
     }
+    function requestFolioWrite() {
+        if(view!=='tasks'||!state||locked||privacyHeld||state.preferences.hidden||
+           !folioLive.readGrant||folioLive.actionsEnabled||folioLive.status!=='ready')return;
+        folioWriteNonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),
+            byte=>byte.toString(16).padStart(2,'0')).join('');
+        const target=new URL('/folio/',location.origin);
+        target.searchParams.set('hubTaskWrite',folioWriteNonce);
+        folioWritePopup=window.open(target.href,'_blank');
+        if(!folioWritePopup){
+            folioWriteNonce=null;
+            toast('Allow the Folio consent popup and try again.');
+        }
+    }
+    window.addEventListener('message',event=>{
+        const message=event.data;
+        if(!folioWriteNonce||!folioWritePopup||event.origin!==location.origin||
+           event.source!==folioWritePopup||message?.type!==FOLIO_TASK_ACTION_MESSAGE+':consent'||
+           message.nonce!==folioWriteNonce||message.readGrant!==folioLive.readGrant||
+           privacyHeld||!state||state.preferences.hidden||locked)return;
+        folioWriteNonce=null;
+        folioWritePopup=null;
+        if(!folioLive.enableActions(message.writeGrant))
+            toast('Folio task authorization failed. Reopen Folio and review permissions.');
+        updateFolioViews();
+    });
     function openFolioBridge() {
         if (!state || locked || editing || privacyHeld || state.preferences.hidden) return;
+        folioLive.close();
         if (folioTimeout) clearTimeout(folioTimeout);
         folioOwner = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id : 'guest';
         folioNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
@@ -208,11 +351,11 @@ async function setup(root: HTMLElement) {
                     folioNonce = null;
                     folioPopup = null;
                     folioStatus = 'unavailable';
-                    repaintOverview();
+                    updateFolioViews();
                 }
             }, 3 * 60_000);
         }
-        repaintOverview();
+        updateFolioViews();
     }
     window.addEventListener('message', event => {
         const currentScope = hubIdentity.status === 'signed-in' ? 'user:' + hubIdentity.id :
@@ -224,15 +367,32 @@ async function setup(root: HTMLElement) {
             const snapshot = safeFolioBridgeReply(event.data, folioNonce);
             folioSnapshot = snapshot;
             folioStatus = 'ready';
+            if (folioExpiryTimer) clearTimeout(folioExpiryTimer);
+            folioExpiryTimer = setTimeout(() => {
+                if (folioSnapshot !== snapshot) return;
+                if (!freshFolioDeviceSnapshot(folioSnapshot)) {
+                    // Expire the old v1 card without revoking a separately approved
+                    // live task session (which has its own source freshness gate).
+                    folioSnapshot = null;
+                    folioStatus = 'unavailable';
+                    updateFolioViews();
+                }
+            }, Math.max(1, Date.parse(snapshot.generatedAt) + FOLIO_DEVICE_FRESH_MS - Date.now() + 25));
             folioNonce = null;
             folioPopup = null;
             if (folioTimeout) clearTimeout(folioTimeout);
             folioTimeout = null;
+            // An explicit, separate Folio Share click authorizes auto-refresh
+            // only in this Tasks tab. A normal one-time share remains unchanged.
+            if (view === 'tasks' && event.data?.liveTasks === true &&
+                typeof event.data?.liveGrant === 'string' &&
+                /^[0-9a-f]{32}$/.test(event.data.liveGrant))
+                folioLive.start(event.data.liveGrant);
         } catch {
             // Ignore unrelated messages: no echo, fallback data or weakened validation.
             return;
         }
-        repaintOverview();
+        updateFolioViews();
     });
     let languageOwner: string | null = null;
     let languageCards: readonly HubLanguageCard[] = [];
@@ -250,16 +410,17 @@ async function setup(root: HTMLElement) {
         languageOwner = null;
     }
     function repaintOverview() {
+        const folio = folioProjection();
         const panel = root.querySelector<HTMLElement>('[data-native-overview]');
         if (panel && state && !privacyHeld && !state.preferences.hidden) {
             panel.innerHTML = renderIntegratedHome(state, languageStatus, languageCards, languageCheckedAt, apps, {
-                status: folioStatus, snapshot: folioSnapshot,
+                status: folio.status, snapshot: folio.snapshot,
             }, {status: notesSourceStatus, snapshot: notesSource});
         }
         const todayPanel = root.querySelector<HTMLElement>('[data-source-today]');
         if (todayPanel && state && !privacyHeld && !state.preferences.hidden) {
             todayPanel.outerHTML = renderSourceToday({
-                folio: {status: folioStatus, snapshot: folioSnapshot},
+                folio,
                 notes: {status: notesSourceStatus, snapshot: notesSource},
                 languages: {status: languageStatus, cards: languageCards}, apps
             });
@@ -764,7 +925,18 @@ async function setup(root: HTMLElement) {
                   || (a.due || '9999-12-31').localeCompare(b.due || '9999-12-31')
                   || ({high:0,medium:1,low:2,none:3}[a.priority] - {high:0,medium:1,low:2,none:3}[b.priority])
                   || a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
-            return `<section class="ws-task-center" aria-label="Task views">
+            return `${renderFolioTaskPreview(folioProjection().status, folioProjection().snapshot, Date.now(), {
+                status: folioLive.status, snapshot: folioLive.snapshot, filter: folioTaskFilter,view:folioTaskView,
+                paging:{active:folioLive.pageQuery!==null,loading:folioLive.pageLoading,
+                    error:folioLive.pageError,changed:folioLive.pageChanged,result:folioLive.page},
+                write:{enabled:folioLive.actionsEnabled,pending:folioLive.actionPending,
+                    message:folioLive.actionMessage,failed:folioLive.actionFailed,
+                    undoId:folioLive.lastUndoId},
+            })}
+            <details class="ws-legacy-task-drawer" data-legacy-hub-tasks${legacyTasksOpen?' open':''}>
+              <summary>Legacy Hub tasks <span>${state!.tasks.length} stored · separate local task system</span></summary>
+              <p class="ws-muted ws-legacy-task-note">These tasks are preserved in Hub. They are not Folio tasks and have not been migrated.</p>
+              <section class="ws-task-center" aria-label="Legacy Hub task views">
               <nav class="ws-unified-task-links" aria-label="Related Hub workflows"><a href="/">Today</a><a href="/?mode=focus">Focus</a><a href="/home/calendar/?mode=week">Week plan</a></nav>
               <div class="ws-task-filter-list" role="group" aria-label="Task views">
                 ${TASK_FILTERS.map(f => `<button type="button" class="ws-task-filter-button ${taskFilter === f ? 'active' : ''}" aria-pressed="${taskFilter===f}" data-action="task-filter-set" data-id="${f}">${f==='today'?'Today + overdue':f==='inbox'?'Inbox':f==='upcoming'?'Upcoming':f==='completed'?'Completed':'All'} <strong>${f==='all'?state!.tasks.length:counts[f]}</strong></button>`).join('')}
@@ -773,7 +945,7 @@ async function setup(root: HTMLElement) {
             <section class="ws-surface ws-task-results" aria-label="Tasks in this view">
               <div class="ws-content-toolbar">${button('new-task', '+ Add task')}${taskFilter!=='inbox'?button('task-show-inbox', 'Process inbox ('+counts.inbox+')') : button('capture-task', '+ Capture to inbox')}</div>
               ${tasks.length ? taskRows(tasks) : empty(taskFilter==='inbox'?'Inbox is clear':'No tasks in this view', '', 'capture', 'Quick capture')}
-            </section>`;
+            </section></details>`;
         }
         if (view === 'calendar')
             return `${renderPlanningReview(state!,selected,agendaMode,today(),weekSelection,weekFilter,weekReturnDate)}<section class="ws-surface ws-plan-month">${calendarHTML()}</section>`;
@@ -784,12 +956,12 @@ async function setup(root: HTMLElement) {
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+renderUnifiedToday(state!,today(),journeyStatus())+
                 renderSourceToday({
-                    folio: {status: folioStatus, snapshot: folioSnapshot},
+                    folio: folioProjection(),
                     notes: {status: notesSourceStatus, snapshot: notesSource},
                     languages: {status: languageStatus, cards: languageCards}, apps
                 });
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
-            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
+            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,folioProjection(),{status:notesSourceStatus,snapshot:notesSource})+'</div>');
         }
         return renderGrid();
 
@@ -1920,14 +2092,126 @@ async function setup(root: HTMLElement) {
             repaintOverview();
             return;
         }
+        if (action === 'folio-write-request') {
+            requestFolioWrite();
+            return;
+        }
+        if (action === 'folio-action-undo') {
+            if (folioLive.actionsEnabled && !folioLive.actionPending && id)
+                void folioLive.executeAction({kind:'undo',undoId:id});
+            return;
+        }
+        if (['folio-action-complete','folio-action-reopen','folio-action-reschedule',
+            'folio-action-today','folio-action-tomorrow'].includes(action)) {
+            const snapshot=folioLive.snapshot;
+            if(!folioLive.actionsEnabled||!freshFolioTaskRead(snapshot)||folioLive.actionPending){
+                toast('Folio actions are unavailable. Refresh and review the source task.');
+                return;
+            }
+            const version=target.dataset.version;
+            const completed=snapshot.recentCompleted??[];
+            const sourcePage=folioLive.page;
+            const sourceRow=sourcePage&&Date.now()-Date.parse(sourcePage.generatedAt)<90_000?
+                sourcePage.rows.find(task=>task.id===id&&task.updatedAt===version):undefined;
+            const item=sourceRow??(action==='folio-action-reopen'?
+                completed.find(task=>task.id===id&&task.updatedAt===version):
+                snapshot.tasks.find(task=>task.id===id&&task.updatedAt===version));
+            if(!item||!version) {
+                toast('This Folio task has changed. Refresh before applying the action.');
+                return;
+            }
+            if(action==='folio-action-complete'&&'bucket' in item&&
+               (item.recurring||item.hasSubtasks)){
+                const warning=[item.recurring?'Completing this recurring task may create a next occurrence.':'',
+                    item.hasSubtasks?'Completing this parent task also completes its subtasks.':'',
+                    'Undo may be unavailable; review the full task in Folio if necessary.'
+                ].filter(Boolean).join(' ');
+                if(!window.confirm(warning))return;
+            }
+            let command:FolioTaskAction;
+            if(action==='folio-action-reschedule'||action==='folio-action-today'||action==='folio-action-tomorrow'){
+                const day=action==='folio-action-today'?today():
+                    action==='folio-action-tomorrow'?addDays(today(),1):
+                    root.querySelector<HTMLInputElement>('[data-folio-plan-id="'+CSS.escape(id)+'"]')?.value ?? '';
+                if(day && !safeNavigationDay(day)){toast('Choose a valid planned date.');return;}
+                command={kind:'reschedule',taskId:id,expectedUpdatedAt:version,plannedDate:day||null};
+            }else{
+                command={kind:action==='folio-action-reopen'?'reopen':'complete',
+                    taskId:id,expectedUpdatedAt:version};
+            }
+            void folioLive.executeAction(command).then(result=>{
+                if(!result.ok && result.code==='conflict')folioLive.refresh();
+            });
+            return;
+        }
+        if (action === 'folio-project-context') {
+            const project=folioLive.snapshot?.availableProjects?.find(p=>p.id===id) ||
+                (folioLive.page?.rows.some(t=>t.projectId===id)?{id}:undefined);
+            if(project){
+                folioTaskFilter='all';
+                folioTaskView.projectId=id;
+                folioTaskView.search='';
+                folioTaskView.group='project';
+                folioPageIndex=0;
+                folioPageRevision=null;
+                if(folioSearchTimer)clearTimeout(folioSearchTimer);
+                folioSearchPending=false;
+                updateFolioViews(true);
+            }
+            return;
+        }
+        if (action === 'folio-read-filter') {
+            if (['today','inbox','upcoming','later','completed','all'].includes(target.dataset.id ?? '')) {
+                folioTaskFilter=target.dataset.id as FolioTaskFilter;
+                folioPageIndex=0;
+                folioPageRevision=null;
+                updateFolioViews();
+            }
+            return;
+        }
+        if (action === 'folio-page-previous'||action==='folio-page-next'||
+            action==='folio-page-retry'||action==='folio-page-restart'){
+            if(action==='folio-page-restart'){
+                folioPageIndex=0;
+                folioPageRevision=null;
+                folioLive.clearPage();
+                updateFolioViews(true);
+                return;
+            }
+            if(action==='folio-page-retry'){
+                const source=folioLive.snapshot;
+                if(source&&folioLive.status==='ready')folioLive.queryPage({
+                    filter:folioTaskFilter,search:folioTaskView.search.trim(),
+                    projectId:folioTaskView.projectId,page:folioPageIndex,
+                    ...(folioPageRevision?{expectedRevision:folioPageRevision}:{}),
+                },true);
+                return;
+            }
+            const p=folioLive.page;
+            if(!p||folioLive.pageLoading)return;
+            folioPageRevision=p.revision;
+            if(action==='folio-page-next'&&p.hasMore)folioPageIndex++;
+            else if(action==='folio-page-previous'&&folioPageIndex>0)folioPageIndex--;
+            else return;
+            updateFolioViews(true);
+            return;
+        }
+        if (action === 'folio-read-refresh') {
+            folioLive.refresh();
+            return;
+        }
+        if (action === 'folio-read-disconnect') {
+            resetFolio();
+            updateFolioViews();
+            return;
+        }
         if (action === 'connect-folio') {
             openFolioBridge();
             return;
         }
         if (action === 'disconnect-folio') {
             resetFolio();
-            repaintOverview();
-
+            updateFolioViews();
             return;
         }
         if (!state || locked) {
@@ -2618,6 +2902,23 @@ async function setup(root: HTMLElement) {
         const el = event.target as HTMLInputElement;
         if (!state || locked)
             return;
+        if(view==='tasks'&&folioLive.status==='ready'&&el.matches('[data-folio-project]')){
+            const value=el.value;
+            if(value==='all'||value==='none'||folioLive.snapshot?.availableProjects?.some(p=>p.id===value)){
+                folioTaskView.projectId=value;
+                folioPageIndex=0;
+                folioPageRevision=null;
+                updateFolioViews(true);
+            }
+            return;
+        }
+        if(view==='tasks'&&folioLive.status==='ready'&&el.matches('[data-folio-group]')){
+            if(['bucket','project','none'].includes(el.value)){
+                folioTaskView.group=el.value as FolioTaskView['group'];
+                updateFolioViews(true);
+            }
+            return;
+        }
         if (el.closest('[data-task-calendar-review]')) {
             const source=handoffOrigin?.kind==='task'&&handoffOrigin.epoch===epoch
                 ? state.tasks.find(t=>t.id===handoffOrigin!.id):undefined;
@@ -2715,6 +3016,20 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('input', event => {
         const el = event.target as HTMLInputElement;
+        if(view==='tasks'&&el.matches('[data-folio-search]')&&folioLive.status==='ready'){
+            folioTaskView.search=el.value.slice(0,100);
+            folioPageIndex=0;
+            folioPageRevision=null;
+            if(folioSearchTimer)clearTimeout(folioSearchTimer);
+            folioSearchPending=true;
+            folioLive.clearPage();
+            updateFolioViews(true);
+            folioSearchTimer=setTimeout(()=>{
+                folioSearchPending=false;
+                updateFolioViews(true);
+            },180);
+            return;
+        }
         if (el.hasAttribute('data-pin-search')) { const query = el.value.trim().toLocaleLowerCase(); root.querySelectorAll<HTMLElement>('[data-app-choice]').forEach(row => row.hidden = !row.dataset.appChoice!.includes(query)); const other = root.querySelector<HTMLDetailsElement>('[data-other-shortcuts]'); if (other && query) other.open = true; }
         if (el.id === 'workspace-search') {
             searchQuery = el.value.slice(0,100);
@@ -2737,6 +3052,42 @@ async function setup(root: HTMLElement) {
         }
     });
     root.addEventListener('submit', event => {
+        const sourceForm=(event.target as HTMLElement).closest<HTMLFormElement>('[data-folio-create-form]');
+        if(sourceForm){
+            event.preventDefault();
+            if(!folioLive.actionsEnabled||folioLive.actionPending){
+                toast('Approve Folio task actions before creating tasks.');
+                return;
+            }
+            const data=new FormData(sourceForm);
+            const title=String(data.get('title')??'').trim();
+            const trigger=event.submitter as HTMLElement|null;
+            const status=trigger?.dataset.folioSubmit==='inbox'||data.get('status')==='inbox'?'inbox':'todo';
+            const priority=['high','critical'].includes(String(data.get('priority'))) ?
+                String(data.get('priority')) as 'high'|'critical':'normal';
+            const plannedDate=String(data.get('plannedDate')??'');
+            const projectId=String(data.get('projectId')??'');
+            const listId=String(data.get('listId')??'');
+            if(!title||title.length>160||status==='todo'&&plannedDate&&!safeNavigationDay(plannedDate)){
+                toast('Check the Folio task title and planned date.');
+                return;
+            }
+            const snapshot=folioLive.snapshot;
+            if(projectId && !snapshot?.availableProjects?.some(p=>p.id===projectId)||
+               listId && !snapshot?.availableLists?.some(l=>l.id===listId)){
+                toast('Project or list changed in Folio. Refresh before creating.');return;
+            }
+            const command:FolioTaskAction={kind:'create',title,status,priority,
+                ...(status==='todo'&&plannedDate?{plannedDate}:{}),
+                ...(projectId?{projectId}:{}),...(listId?{listId}:{})};
+            void folioLive.executeAction(command).then(result=>{
+                if(result.ok){
+                    root.querySelector<HTMLFormElement>('[data-folio-create-form]')?.reset();
+                    updateFolioViews();
+                }
+            });
+            return;
+        }
         const capture = (event.target as HTMLElement).closest<HTMLFormElement>('[data-capture-form]');
         if (!capture || !state)
             return;
@@ -2748,6 +3099,22 @@ async function setup(root: HTMLElement) {
     });
     root.addEventListener('keydown', event => {
         const target = event.target as HTMLElement;
+        if(target.matches('[data-folio-detail-link]')&&!event.altKey&&!event.metaKey&&
+           !event.ctrlKey&&!event.shiftKey&&!event.isComposing&&
+           ['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+            const panel=target.closest<HTMLElement>('[data-folio-task-preview]');
+            const links=panel?[...panel.querySelectorAll<HTMLAnchorElement>('[data-folio-detail-link]')]
+                .filter(link=>link.getClientRects().length>0):[];
+            const idx=links.indexOf(target as HTMLAnchorElement);
+            if(idx>=0&&links.length){
+                event.preventDefault();
+                const next=event.key==='Home'?0:event.key==='End'?links.length-1:
+                    Math.max(0,Math.min(links.length-1,idx+(event.key==='ArrowDown'?1:-1)));
+                links[next]?.focus({preventScroll:true});
+                links[next]?.scrollIntoView({block:'nearest',inline:'nearest'});
+            }
+            return;
+        }
         if (target.matches('[data-capture-draft]') && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             event.preventDefault();
             target.closest<HTMLFormElement>('form')?.requestSubmit();
@@ -2785,6 +3152,15 @@ async function setup(root: HTMLElement) {
 
     });
     window.addEventListener('keydown', event => {
+        // Row arrow/Home/End navigation is handled once on the Task Center root.
+        if(event.altKey && event.shiftKey && event.key.toLowerCase()==='n' &&
+           !event.repeat && !dialog.open && !searchDialog.open && !account.open &&
+           view==='tasks' && folioLive.actionsEnabled && !privacyHeld && !locked &&
+           !(event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')){
+            const input=root.querySelector<HTMLInputElement>('[data-folio-create-form] input[name=title]');
+            if(input){event.preventDefault();input.focus();input.scrollIntoView({block:'nearest',behavior:'smooth'});}
+            return;
+        }
         if (event.altKey && event.shiftKey && !event.repeat &&
             !dialog.open && !searchDialog.open && !account.open && view==='calendar' &&
             state && !locked && !privacyHeld && !state.preferences.hidden &&
@@ -2943,6 +3319,12 @@ async function setup(root: HTMLElement) {
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && folioOwner !== null && verifyingScope !== folioOwner))
             resetFolio();
+        else if (identity.status === 'checking' && folioLive.status !== 'disconnected') {
+            // Read projection may resume after owner verification; permission to
+            // mutate must require a fresh, separate Folio consent.
+            folioLive.revokeActions();
+            folioLive.pause();
+        }
         if (identity.status === 'unavailable' ||
             (verifyingScope !== null && notesSourceOwner !== null && verifyingScope !== notesSourceOwner))
             clearNotesSource();
@@ -3057,6 +3439,7 @@ async function setup(root: HTMLElement) {
         }
         languageOwner = owner;
         render();
+        if (folioLive.status === 'paused' && !document.hidden) folioLive.resume();
         if (managedAccountEnabled && identity.status === 'signed-in' && storageReady) {
             const ownStore = nextStore;
             cloud = new WorkspaceCloudSync({
@@ -3098,7 +3481,14 @@ async function setup(root: HTMLElement) {
         if (!pendingCloudRender || own!==epoch || dirty || editing || dialog.open || searchDialog.open || inputFocused()) return;
         pendingCloudRender=false; await reloadSaved();if(state?.preferences.theme)applyTheme(state.preferences.theme);
     }
-    root.addEventListener('focusout',()=>{setTimeout(()=>{void refreshCloudView();cloud?.schedule();},0);});
+    root.addEventListener('focusout',event=>{
+        if((event.target as Element).closest?.('[data-folio-task-preview]'))
+            setTimeout(()=>{
+                const panel=root.querySelector<HTMLElement>('[data-folio-task-preview]');
+                if(panel && !panel.contains(document.activeElement))updateFolioViews();
+            },0);
+        setTimeout(()=>{void refreshCloudView();cloud?.schedule();},0);
+    });
     window.addEventListener('online', () => {cloud?.schedule(0);void refreshInsights();});
     document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud?.schedule(0);void refreshInsights(); });
     setInterval(()=>void refreshInsights(),30000);
@@ -3142,6 +3532,7 @@ async function setup(root: HTMLElement) {
     window.addEventListener('pagehide', () => { void flushCaptureDraft(); });
     window.addEventListener('focus', () => {
         if (state && !dirty && !editing) void reloadSaved();
+        if (folioLive.status !== 'disconnected' && !document.hidden) folioLive.resume();
         void refreshLanguages();
     });
     window.addEventListener('online', () => void refreshLanguages(true));
@@ -3158,11 +3549,18 @@ async function setup(root: HTMLElement) {
     window.addEventListener('pagehide', resetFolio);
     window.addEventListener('pagehide', clearNotesSource);
     document.addEventListener('visibilitychange', () => {
-        // A pending consent window may hide the Hub until its user-approved reply.
-        // Completed snapshots are one-tab-only and cleared on later backgrounding.
-        if (document.hidden && folioStatus === 'ready') {
+        // Hide source titles on backgrounding. Live authorization remains only
+        // in this tab's memory, and reads resume when the same owner returns.
+        if (document.hidden && folioLive.status !== 'disconnected') {
+            folioLive.pause();
+            folioSnapshot = null;
+            folioStatus = 'unavailable';
+            updateFolioViews();
+        } else if (document.hidden && folioStatus === 'ready') {
             resetFolio();
-            repaintOverview();
+            updateFolioViews();
+        } else if (!document.hidden && folioLive.status === 'paused') {
+            folioLive.resume();
         }
         if (document.hidden && notesSourceStatus === 'ready') {
             clearNotesSource();
