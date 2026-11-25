@@ -351,15 +351,17 @@ async function setup(root: HTMLElement) {
             const next=await readConnectedApps(identity.id,controller.signal);
             if (own!==epoch || controller.signal.aborted || !state || privacyHeld || state.preferences.hidden || document.hidden) return;
             insights=next;
-            if (!editing && !inputFocused()) {
-                const host=root.querySelector<HTMLElement>('[data-v31-account-continue]');
-                if(host && !host.contains(document.activeElement)) {
-                    host.innerHTML=connectedHTML(2);
-                    window.dispatchEvent(new Event('hub:v31-continuation-layout'));
-                }
+            const host=root.querySelector<HTMLElement>('[data-v31-account-continue]');
+            if(host) {
+                // Revoked or omitted rows must not remain visible while a link is focused.
+                const focused=host.contains(document.activeElement)?document.activeElement as HTMLAnchorElement:null;
+                const previous=focused?.href;
+                host.innerHTML=connectedHTML(3);
+                if(previous)[...host.querySelectorAll('a')].find(link=>link.href===previous)?.focus();
+                window.dispatchEvent(new Event('hub:v31-continuation-layout'));
             }
             if (!editing && !inputFocused()) root.querySelectorAll<HTMLElement>('[data-widget-type=continue] .ws-widget-body').forEach(body=> { if (!body.contains(document.activeElement)) { const w=current().widgets.find(w=>w.id===body.closest<HTMLElement>('[data-widget-id]')?.dataset.widgetId);if(w)body.innerHTML=widgetBody(w); } });
-        } catch { if(own===epoch)pruneInsights(true); /* Keep locally owned notes and tasks. */ }
+        } catch { if(own===epoch && !controller.signal.aborted){insights=[];pruneInsights(true);} /* Keep locally owned notes and tasks. */ }
     }
     const dialog = $<HTMLDialogElement>('[data-workspace-dialog]');
     const form = $<HTMLFormElement>('[data-workspace-form]');
@@ -787,7 +789,7 @@ async function setup(root: HTMLElement) {
         return renderMinimalToday(state!,today(),journeyStatus())+
             '<section class="ws-widget ws-v31-section" data-v31-continue><header><h2>Continue</h2><a href="/home/connections/">Connections</a></header>'+
             (recent?'<div class="ws-row" data-v31-local-continue><span class="ws-app-icon">'+icon('notebook')+'</span><div><strong>'+esc(recent.title||'Untitled note')+'</strong><small>Hub local note · '+esc(new Date(recent.updatedAt).toLocaleDateString())+'</small></div>'+button('edit-note','Open',recent.id)+'</div>':'')+
-            '<div data-v31-account-continue>'+connectedHTML(2)+'</div><div data-v31-owner-continue></div>'+
+            '<div data-v31-account-continue>'+connectedHTML(3)+'</div><div data-v31-owner-continue></div>'+
             '<p class="ws-v31-continue-empty">No currently available continuation items. Connect an app or open your workspace.</p></section>'+
             '<section class="ws-widget ws-v31-section" data-v31-launch><header><h2>Quick launch</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts" data-variant="compact">'+
             chosen.map(a=>'<a href="'+esc(w?.config.useActions===false?a.url:a.action?.url??a.url)+'" rel="noreferrer" class="ws-app" data-launch="'+esc(a.id)+'"><span class="ws-app-icon">'+icon(a.icon)+'</span><strong>'+esc(a.title)+'</strong></a>').join('')+
@@ -3175,7 +3177,7 @@ async function setup(root: HTMLElement) {
         if(document.hidden)pauseFocusSession();
         else if(state && !dirty && !editing && !dialog.open && !searchDialog.open && !inputFocused() && !privacyHeld && !state.preferences.hidden && view==='home')render();
     });
-    window.addEventListener('pagehide',()=>{pauseFocusSession();});
+    window.addEventListener('pagehide',()=>{pauseFocusSession();insightController?.abort();insights=[];pruneInsights(true);clearSourceStates();});
     window.addEventListener('pageshow', event => {
         if (state && !dirty && !editing) void reloadSaved();
         if (event.persisted) void refreshLanguages(true);
