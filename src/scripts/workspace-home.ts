@@ -89,11 +89,18 @@ async function setup(root: HTMLElement) {
     } else if (!staticView() && (location.search || location.hash)) history.replaceState(null,'',location.pathname);
     const $ = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     const plannerToggle=root.querySelector<HTMLButtonElement>('[data-v31-planner-toggle]');
-    plannerToggle?.addEventListener('click',()=>{
-        const open=root.dataset.v31Planner!=='open';
+    // A custom workspace retains the original desktop planner by default.
+    // A user's explicit panel choice is presentation-only and never persisted.
+    let plannerChoice:boolean|null=null;
+    const updatePlannerPanel=()=>{
+        const open=view!=='documents'&&(plannerChoice??(view==='home'&&root.dataset.homeMode==='workspace'));
         root.dataset.v31Planner=open?'open':'closed';
-        plannerToggle.setAttribute('aria-expanded',String(open));
-        plannerToggle.setAttribute('aria-label',open?'Hide planner':'Show planner');
+        plannerToggle?.setAttribute('aria-expanded',String(open));
+        plannerToggle?.setAttribute('aria-label',open?'Hide planner':'Show planner');
+    };
+    plannerToggle?.addEventListener('click',()=>{
+        plannerChoice=root.dataset.v31Planner!=='open';
+        updatePlannerPanel();
     });
     const catalogueApps = JSON.parse($('[data-workspace-apps]').textContent ?? '[]') as AppShortcut[];
     const allApps: AppShortcut[] = [
@@ -785,7 +792,7 @@ async function setup(root: HTMLElement) {
             '<section class="ws-widget ws-v31-section" data-v31-launch><header><h2>Quick launch</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts" data-variant="compact">'+
             chosen.map(a=>'<a href="'+esc(w?.config.useActions===false?a.url:a.action?.url??a.url)+'" rel="noreferrer" class="ws-app" data-launch="'+esc(a.id)+'"><span class="ws-app-icon">'+icon(a.icon)+'</span><strong>'+esc(a.title)+'</strong></a>').join('')+
             '</div>'+(!chosen.length?'<p class="ws-muted">No shortcuts in this layout. Configure them in Workspace.</p>':'')+'</section>'+
-            '<section class="ws-widget ws-v31-section" data-v31-capture><header><h2>Capture</h2></header><div class="ws-content-toolbar">'+button('capture-task','Add task')+button('capture',state!.captureDraft.trim()?'Resume draft':'Capture note')+'</div></section>';
+            '<section class="ws-widget ws-v31-section" data-v31-capture><header><h2>Capture</h2></header><div class="ws-content-toolbar">'+button('new-task','Add task')+button('capture-task','Inbox task')+button('new-event','Add event')+button('capture',state!.captureDraft.trim()?'Resume draft':'Capture note')+'</div></section>';
     }
     function fullContent() {
         if (view === 'settings')
@@ -883,6 +890,7 @@ async function setup(root: HTMLElement) {
         }
         root.dataset.focusQuiet = view==='home' && (editing?'workspace':homeMode)==='focus' && focus.quiet && !privacyHeld && !state.preferences.hidden ? 'true':'false';
         root.dataset.homeMode = view==='home' ? (editing?'workspace':homeMode) : '';
+        updatePlannerPanel();
         const rail = $('[data-action=rail]');
         rail.setAttribute('aria-expanded', String(state.preferences.rail));
         rail.setAttribute('aria-label', state.preferences.rail ? 'Collapse sidebar' : 'Expand sidebar');
@@ -1014,6 +1022,7 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
+            plannerChoice=null;
             if(next==='home') { const mode=url.searchParams.get('mode'); homeMode=mode==='workspace'||mode==='focus'?mode:'today'; }
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
@@ -2952,7 +2961,7 @@ async function setup(root: HTMLElement) {
         if(homeModeRestorePending) {
             homeMode=homeModeFromUrl==='focus'||homeModeFromUrl==='workspace'?homeModeFromUrl:'today';
             homeModeRestorePending=false;
-        } else homeMode='today';
+        } else if(homeMode==='focus') homeMode='today';
         activeUnifiedReview=null;
         handoffOrigin=null;
         weekSelection.clear();
