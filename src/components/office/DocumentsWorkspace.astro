@@ -2,20 +2,20 @@
 import '../../styles/office-documents.css';
 ---
 <section class="office-root ws-surface" data-office data-office-mode="split" aria-labelledby="office-heading">
-  <header class="office-intro"><div><h2 id="office-heading">Documents</h2><p>Local Markdown drafts · no cloud sync or import from Manuscript</p></div><div class="office-create"><label for="office-template">Starting layout</label><select id="office-template" data-office-template disabled><option value="blank">Blank document</option><option value="meeting">Meeting notes</option><option value="brief">Project brief</option><option value="report">Structured report</option><option value="study">Study notes</option></select><button type="button" class="ws-button" data-office-new disabled>New document</button></div></header>
+  <header class="office-intro"><div><h2 id="office-heading">Documents</h2><p>Write, organize and export documents · saved on this device</p></div><div class="office-create"><label for="office-template">Starting layout</label><select id="office-template" data-office-template disabled><option value="blank">Blank document</option><option value="meeting">Meeting notes</option><option value="brief">Project brief</option><option value="report">Structured report</option><option value="study">Study notes</option></select><button type="button" class="ws-button" data-office-new disabled>New document</button></div></header>
   <div class="office-grid">
     <nav class="office-list" aria-label="Your documents">
       <label for="office-search">Find documents</label>
       <input id="office-search" type="search" data-office-search maxlength="120" placeholder="Search titles and contents" autocomplete="off" disabled/>
       <div class="office-library-tools"><label for="office-sort">Order</label><select id="office-sort" data-office-sort disabled><option value="recent">Recently edited</option><option value="title">Title A–Z</option></select></div>
       <p class="ws-muted" data-office-count aria-live="polite">Documents on this device</p>
+      <div data-office-list></div>
       <div class="office-bundle-controls">
         <p class="ws-muted" data-office-bundle-count aria-live="polite">0 documents selected</p>
         <div class="office-bundle-shortcuts"><button type="button" data-office-select-visible disabled>Select visible</button><button type="button" data-office-clear-selection disabled>Clear selection</button></div>
         <button type="button" class="ws-button" data-office-bundle disabled>Export selected Markdown (.zip)</button>
         <p class="ws-muted">Exports saved Markdown only. For document history use the separate JSON backup; unsaved work is excluded.</p>
       </div>
-      <div data-office-list></div>
       <div class="office-import-picker"><label for="office-import-file">Import a Markdown file</label><input id="office-import-file" type="file" accept=".md,.markdown,text/markdown" data-office-import-file disabled/><p class="ws-muted">Local .md/.markdown only · maximum 256 KB</p></div>
 <div class="office-multi-picker"><label for="office-multi-files">Import multiple Markdown documents</label><input id="office-multi-files" data-office-multi-files type="file" accept=".md,.markdown,text/markdown" multiple disabled/><p class="ws-muted">Select up to 20 files; each 256 KB maximum, 4 MB combined. All files must pass validation before importing any.</p></div>
       <button type="button" class="ws-button office-backup-button" data-office-backup disabled>Backup saved documents (.json)</button>
@@ -45,8 +45,69 @@ import '../../styles/office-documents.css';
         <div class="office-import-render office-preview" data-office-import-render></div>
         <div class="office-import-actions"><button type="button" class="ws-button" data-office-import-confirm disabled>Import as new document</button><button type="button" class="ws-button" data-office-import-cancel disabled>Cancel</button></div>
       </section>
+      <div class="office-writing-desk" id="office-writing-desk">
+      <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
+      <div class="office-format" role="toolbar" aria-label="Markdown formatting">
+        <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>
+      </div>
       <div class="office-actions"><button type="button" class="ws-button" data-office-save disabled>Save</button><button type="button" class="ws-button" data-office-export disabled>Export .md</button><button type="button" class="ws-button" data-office-html disabled>Export .html</button><button type="button" class="ws-button" data-office-print disabled>Print / PDF</button><label for="office-history">Revision</label><select id="office-history" data-office-history disabled><option value="">History</option></select><button type="button" class="ws-button" data-office-restore disabled>Restore selected</button><button type="button" class="ws-button" data-office-compare disabled>Compare selected revision</button></div>
-      <section class="office-timeline" aria-label="Office revision timeline" data-office-timeline>
+  <p data-office-status role="status" aria-live="polite">Checking Hub privacy and local storage…</p>
+      <div class="office-modes" role="group" aria-label="Editor layout"><button type="button" data-office-mode="write" aria-pressed="false">Write</button><button type="button" data-office-mode="split" aria-pressed="true">Split</button><button type="button" data-office-mode="preview" aria-pressed="false">Preview</button></div>
+      <div class="office-compose"><div class="office-source"><label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea></div><section class="office-preview-panel" aria-label="Markdown preview"><h3>Preview</h3><div data-office-preview class="office-preview" aria-live="off"></div></section></div>
+      </div>
+      <nav class="office-tool-index" aria-label="Document tools">
+        <span>Document tools</span>
+        <a href="#office-find-tools">Find &amp; replace</a>
+        <a href="#office-outline-tools">Outline</a>
+        <a href="#office-authoring-tools">Authoring</a>
+        <a href="#office-reference-tools">References</a>
+        <a href="#office-table-tools">Tables</a>
+        <a href="#office-history-tools">History</a>
+        <a href="#office-writing-desk">Back to editor</a>
+      </nav>
+      <section class="office-find" id="office-find-tools" aria-label="Find and replace in document">
+        <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
+        <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>
+        <div class="office-find-row"><label for="office-replace-value">Replace with</label><input id="office-replace-value" data-office-replace-value type="text" maxlength="120" autocomplete="off" disabled/><button type="button" data-office-replace-all disabled>Replace all…</button></div>
+      </section>
+      <aside class="office-outline" id="office-outline-tools" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav>
+        <div class="office-section-controls" aria-label="Section actions">
+          <label for="office-section-select">Edit a heading section</label><select id="office-section-select" data-office-section-select disabled><option value="">Choose heading</option></select>
+          <div class="office-section-buttons"><button type="button" data-office-section-focus disabled>Select full section</button><button type="button" data-office-section-up disabled>Move earlier</button><button type="button" data-office-section-down disabled>Move later</button></div>
+          <div class="office-section-create" aria-label="Insert an original Markdown section">
+            <label for="office-section-title">New section title</label><input id="office-section-title" data-office-section-title maxlength="100" disabled autocomplete="off" placeholder="e.g. Key findings"/>
+            <div class="office-section-buttons">
+              <button type="button" data-office-section-add-sibling disabled>Insert following section</button>
+              <button type="button" data-office-section-add-child disabled>Insert nested subsection</button>
+            </div>
+            <p class="ws-muted">Choose a heading above or place your cursor in a section. Ctrl/⌘ + Shift + Enter inserts a following section using this title.</p>
+          </div>
+          <section class="office-section-transform" aria-label="Restructure complete Markdown sections">
+            <h4>Restructure a saved section</h4>
+            <p class="ws-muted">Choose an original heading above. Make a whole-section copy or adjust every genuine nested heading level together. Save current edits first.</p>
+            <div class="office-section-buttons">
+              <button type="button" data-office-transform-duplicate disabled>Preview duplicate</button>
+              <button type="button" data-office-transform-promote disabled>Preview promote</button>
+              <button type="button" data-office-transform-demote disabled>Preview demote</button>
+            </div>
+            <section class="office-transform-review" data-office-transform-review hidden aria-label="Review source section transformation">
+              <p class="ws-muted" data-office-transform-summary></p>
+              <label for="office-transform-source">Resulting Markdown — read-only before confirmation</label>
+              <textarea id="office-transform-source" data-office-transform-source readonly rows="10" spellcheck="false"></textarea>
+              <div class="office-section-buttons">
+                <button type="button" data-office-transform-confirm disabled>Confirm one revision…</button>
+                <button type="button" data-office-transform-cancel>Cancel preview</button>
+              </div>
+            </section>
+          </section>
+          <div class="office-section-navigation" aria-label="Document heading navigation">
+            <button type="button" data-office-heading-previous disabled>Previous heading</button>
+            <button type="button" data-office-heading-next disabled>Next heading</button>
+            <p class="ws-muted">In the editor, Ctrl/⌘ + Alt + ↑ or ↓ navigates genuine headings (fenced-code headings are ignored).</p>
+          </div>
+          <p class="ws-muted">Moves the complete heading and its nested subsections. Changes are saved through the normal revision history.</p>
+        </div></aside>
+      <section class="office-timeline" id="office-history-tools" aria-label="Office revision timeline" data-office-timeline>
         <div class="office-timeline-heading"><h3>Document history</h3><p data-office-timeline-note class="ws-muted">Create or open a document to inspect saved revisions.</p></div>
         <div class="office-history-search">
           <label for="office-history-search">Search retained history</label>
@@ -112,11 +173,7 @@ import '../../styles/office-documents.css';
           <button type="button" class="ws-button" data-office-compare-close disabled>Close comparison</button>
         </div>
       </section>
-      <label for="office-title">Title</label><input id="office-title" maxlength="120" data-office-title disabled placeholder="Document title" autocomplete="off"/>
-      <div class="office-format" role="toolbar" aria-label="Markdown formatting">
-        <button type="button" data-office-format="heading" disabled>Heading</button><button type="button" data-office-format="bold" disabled><strong>Bold</strong></button><button type="button" data-office-format="italic" disabled><em>Italic</em></button><button type="button" data-office-format="bullet" disabled>Bullets</button><button type="button" data-office-format="number" disabled>Numbers</button><button type="button" data-office-format="quote" disabled>Quote</button><button type="button" data-office-format="code" disabled>Code</button><button type="button" data-office-format="link" disabled>Link</button><button type="button" data-office-format="table" disabled>Table</button>
-      </div>
-      <section class="office-writing-tools" aria-label="Long document writing tools">
+      <section class="office-writing-tools" id="office-authoring-tools" aria-label="Long document writing tools">
         <div class="office-writing-stats" data-office-writing-stats role="status" aria-live="polite">Open a document for writing statistics.</div>
         <div class="office-writing-controls">
           <label for="office-writing-line">Go to line</label><input id="office-writing-line" data-office-writing-line type="number" min="1" step="1" disabled placeholder="1"/>
@@ -149,7 +206,7 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
-      <section class="office-footnotes" aria-label="Source footnotes and reference validation">
+      <section class="office-footnotes" id="office-reference-tools" aria-label="Source footnotes and reference validation">
         <h3>Footnotes and reference check</h3>
         <p class="ws-muted">Insert a footnote or inspect missing, duplicate and unused footnotes and broken heading links. For a missing footnote, enter text above and use its Define action; to repair a broken link, select a genuine heading above and use Retarget. All changes use original revision-safe autosave, without a separate index.</p>
         <div class="office-footnote-controls">
@@ -519,7 +576,7 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
-      <section class="office-tables" aria-label="Edit existing Markdown tables">
+      <section class="office-tables" id="office-table-tools" aria-label="Edit existing Markdown tables">
         <h3>Markdown tables</h3>
         <button type="button" data-office-table-review disabled>Review tables</button>
         <p data-office-table-summary role="status" aria-live="polite">No table review.</p>
@@ -561,54 +618,24 @@ import '../../styles/office-documents.css';
           </div>
         </section>
       </section>
-      <section class="office-find" aria-label="Find and replace in document">
-        <div class="office-find-row"><label for="office-find-query">Find in document</label><input id="office-find-query" data-office-find-query type="search" maxlength="120" autocomplete="off" disabled placeholder="Find exact text"/><label class="office-find-case"><input type="checkbox" data-office-find-case disabled/> Match case</label></div>
-        <div class="office-find-row"><p data-office-find-count role="status" aria-live="polite">No search</p><button type="button" data-office-find-previous disabled>Previous</button><button type="button" data-office-find-next disabled>Next</button></div>
-        <div class="office-find-row"><label for="office-replace-value">Replace with</label><input id="office-replace-value" data-office-replace-value type="text" maxlength="120" autocomplete="off" disabled/><button type="button" data-office-replace-all disabled>Replace all…</button></div>
-      </section>
-      <div class="office-modes" role="group" aria-label="Editor layout"><button type="button" data-office-mode="write" aria-pressed="false">Write</button><button type="button" data-office-mode="split" aria-pressed="true">Split</button><button type="button" data-office-mode="preview" aria-pressed="false">Preview</button></div>
-      <div class="office-compose"><div class="office-source"><label for="office-body">Document (Markdown)</label><textarea id="office-body" data-office-body disabled spellcheck="true" placeholder="Start writing…"></textarea></div><section class="office-preview-panel" aria-label="Markdown preview"><h3>Preview</h3><div data-office-preview class="office-preview" aria-live="off"></div></section></div>
-      <aside class="office-outline" aria-labelledby="office-outline-heading"><h3 id="office-outline-heading">Document outline</h3><p class="ws-muted" data-office-outline-empty>No headings yet. Add # or ## to navigate a long document.</p><nav data-office-outline aria-label="Document headings"></nav>
-        <div class="office-section-controls" aria-label="Section actions">
-          <label for="office-section-select">Edit a heading section</label><select id="office-section-select" data-office-section-select disabled><option value="">Choose heading</option></select>
-          <div class="office-section-buttons"><button type="button" data-office-section-focus disabled>Select full section</button><button type="button" data-office-section-up disabled>Move earlier</button><button type="button" data-office-section-down disabled>Move later</button></div>
-          <div class="office-section-create" aria-label="Insert an original Markdown section">
-            <label for="office-section-title">New section title</label><input id="office-section-title" data-office-section-title maxlength="100" disabled autocomplete="off" placeholder="e.g. Key findings"/>
-            <div class="office-section-buttons">
-              <button type="button" data-office-section-add-sibling disabled>Insert following section</button>
-              <button type="button" data-office-section-add-child disabled>Insert nested subsection</button>
-            </div>
-            <p class="ws-muted">Choose a heading above or place your cursor in a section. Ctrl/⌘ + Shift + Enter inserts a following section using this title.</p>
-          </div>
-          <section class="office-section-transform" aria-label="Restructure complete Markdown sections">
-            <h4>Restructure a saved section</h4>
-            <p class="ws-muted">Choose an original heading above. Make a whole-section copy or adjust every genuine nested heading level together. Save current edits first.</p>
-            <div class="office-section-buttons">
-              <button type="button" data-office-transform-duplicate disabled>Preview duplicate</button>
-              <button type="button" data-office-transform-promote disabled>Preview promote</button>
-              <button type="button" data-office-transform-demote disabled>Preview demote</button>
-            </div>
-            <section class="office-transform-review" data-office-transform-review hidden aria-label="Review source section transformation">
-              <p class="ws-muted" data-office-transform-summary></p>
-              <label for="office-transform-source">Resulting Markdown — read-only before confirmation</label>
-              <textarea id="office-transform-source" data-office-transform-source readonly rows="10" spellcheck="false"></textarea>
-              <div class="office-section-buttons">
-                <button type="button" data-office-transform-confirm disabled>Confirm one revision…</button>
-                <button type="button" data-office-transform-cancel>Cancel preview</button>
-              </div>
-            </section>
-          </section>
-          <div class="office-section-navigation" aria-label="Document heading navigation">
-            <button type="button" data-office-heading-previous disabled>Previous heading</button>
-            <button type="button" data-office-heading-next disabled>Next heading</button>
-            <p class="ws-muted">In the editor, Ctrl/⌘ + Alt + ↑ or ↓ navigates genuine headings (fenced-code headings are ignored).</p>
-          </div>
-          <p class="ws-muted">Moves the complete heading and its nested subsections. Changes are saved through the normal revision history.</p>
-        </div></aside>
       <p class="ws-muted">Plain Markdown source, not a rich-text or DOCX editor. Saved locally in an isolated Office database.</p>
     </section>
   </div>
   <div class="office-print-sheet" data-office-print-sheet aria-hidden="true"></div>
-  <p data-office-status role="status" aria-live="polite">Checking Hub privacy and local storage…</p>
 </section>
 <script>import '../../scripts/office-documents';</script>
+
+<style>
+  .office-writing-desk { display:grid; gap:10px; min-width:0; scroll-margin-top:24px; }
+  .office-writing-desk [data-office-title] { box-sizing:border-box; width:100%; min-width:0; font-size:clamp(18px,2vw,25px); font-weight:650; padding:10px 12px; }
+  .office-writing-desk .office-actions { margin:0; }
+  .office-writing-desk [data-office-status] { margin:0; border:0; padding:0; overflow-wrap:anywhere; }
+  .office-writing-desk [data-office-body] { box-sizing:border-box; width:100%; min-height:max(360px,52vh); padding:16px; line-height:1.75; }
+  .office-writing-desk .office-preview-panel { min-height:300px; padding:clamp(14px,2vw,26px); }
+  .office-tool-index { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:16px 0 4px; padding-block:12px; border-block:1px solid var(--ws-line); }
+  .office-tool-index span { font-weight:650; margin-right:4px; }
+  .office-tool-index a { color:inherit; text-decoration:underline; text-underline-offset:3px; padding:7px 9px; }
+  .office-tool-index a:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+  [id$="-tools"] { scroll-margin-top:24px; }
+  @media(max-width:720px) { .office-writing-desk [data-office-body] { min-height:48vh; padding:12px; } }
+</style>
