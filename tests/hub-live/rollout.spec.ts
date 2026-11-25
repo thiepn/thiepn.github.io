@@ -21,13 +21,18 @@ test('live release registry and exact ordered visible app catalogue', async ({ p
   const finish = await publicProbe(page);
   const response = await request.get('/hub-release.json'); expect(response.ok()).toBe(true);
   const release = validateHubReleaseStatus(await response.json());
+  expect(release.profile).toBe('account-sync');
+  expect(release.releaseId).toBe('H24-account-sync-v1');
+  expect(release.features).toEqual({ hubSignIn: true, privateReads: true, inlineWrites: false, inboxReads: false, automatedTransfers: false });
   // Registered launch contracts are not the visible presentation roster.
   expect(release.appCount).toBe(registry.length);
   expect(visibleIds).toHaveLength(14);
   expect(new Set(visibleIds).size).toBe(14);
   expect(visibleIds.every(id => registry.some(app => app.id === id))).toBe(true);
   const search = await request.get('/hub-search.json'); expect(search.ok()).toBe(true);
-  expect((await search.json()).projects).toHaveLength(registry.length);
+  const searchProjects = (await search.json()).projects as { slug: string }[];
+  expect(searchProjects).toHaveLength(registry.length);
+  expect(new Set(searchProjects.map(project => project.slug))).toEqual(new Set(registry.map(app => app.id)));
   await page.goto('/apps/');
   const cards = page.locator('[data-hub-item]');
   await expect(cards).toHaveCount(14);
@@ -59,7 +64,8 @@ test('live local customization persists only approved shortcuts', async ({ page 
   expect(original).toContain(removed);
   await checked.uncheck();
   await page.locator('[data-dialog-submit]').click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  // The dedicated shortcut dialog saves directly, without opening layout edit mode.
+  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Customize', exact: true })).toBeVisible();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   const expected = original.filter(id => id !== removed);
@@ -78,8 +84,16 @@ test('live Search respects visible apps and private-resource boundaries', async 
   await expect(page.getByRole('heading', { name: 'Connected search', exact: true })).toBeVisible();
   await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
   await expect(page.locator('[data-portal-query]')).toBeHidden();
-  await expect(page.locator('[data-portal-query]')).toHaveValue('');
+  // The public query is retained in memory when switching tabs, but never
+  // appears in the resources URL or triggers private requests. A direct load
+  // of the resources URL starts with an empty public query.
   await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
+  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(0);
+  await expect(page.locator('[data-portal-query]')).toHaveValue('merge PDF');
+  await page.reload();
+  await expect(page.locator('[data-portal-query]')).toBeHidden();
+  await expect(page.locator('[data-portal-query]')).toHaveValue('');
+  await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
   await page.goto('/search/');
   const rows = page.locator('[data-portal-search-slug]:visible');
   await expect(rows).toHaveCount(14);
