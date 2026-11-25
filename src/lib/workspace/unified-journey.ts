@@ -91,3 +91,20 @@ export function renderUnifiedToday(state:WorkspaceState,today:string,status:Jour
         <a href="/home/calendar/?mode=week">Weekly review →</a></div></footer>
   </section>`;
 }
+
+// Read-only projection of the native planner, with a bounded daily preview.
+export function renderMinimalToday(state:WorkspaceState,today:string,status:JourneyStatus) {
+  const plan=reviewDay(state,today);
+  const tasks=focusTasks(state,today,'due');
+  const events=[...plan.timed,...plan.allDay];
+  const eventLimit=Math.min(events.length,Math.max(2,5-tasks.length));
+  const taskLimit=Math.min(tasks.length,5-eventLimit);
+  const counts=taskCounts(state.tasks,today);
+  const rows=[...events.slice(0,eventLimit).map(e=>eventRow(e,state.preferences.timezone)),...tasks.slice(0,taskLimit).map(t=>taskRow(t,today))];
+  return '<section class="ws-unified-today ws-v31-section" id="ws-unified-today" data-unified-today aria-labelledby="ws-unified-title">'+
+    '<header class="ws-unified-heading"><div><h2 id="ws-unified-title">Today</h2><p>Hub-local tasks and events · '+esc(humanDate(today))+'</p></div><a href="/home/calendar/">Planner</a></header>'+
+    (status.hasLayoutDraft?'<div class="ws-unified-draft"><strong>Interrupted layout draft</strong>'+textButton('review-return','Review recovery')+'</div>':'')+
+    (rows.length?'<ul class="ws-v31-today-rows">'+rows.join('')+'</ul>':'<p class="ws-unified-empty">No local tasks due or local events today.</p>')+
+    (plan.overlaps.length?'<p class="ws-unified-overlap">Possible local timed overlaps · <a href="/home/calendar/">Review event times</a></p>':'')+
+    '<footer><a href="/home/tasks/?filter=today">All due tasks ('+counts.today+')</a> · <a href="/home/tasks/?filter=inbox">Inbox ('+counts.inbox+')</a> · <a href="/home/calendar/?mode=week">Weekly review</a></footer></section>';
+}
