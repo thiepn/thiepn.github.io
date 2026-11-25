@@ -110,7 +110,7 @@ function start(desks:HTMLElement[]) {
           :id==='tms60' ? `${item.dimension??'recall'} · owner translation`
           :'Synced title only · no qualified note deep link';
         content.append(node('small',undefined,description+' · '+new Date(item.updatedAt).toLocaleDateString()));
-        anchor.append(content,node('span','ws-owner-item-action',destination.exact?'Resume ↗':'Open app ↗'));
+        anchor.append(content,node('span','ws-owner-item-action',destination.exact?(id==='tms60'?'Practice ↗':'Continue reading ↗'):'Open app ↗'));
         const li=node('li');li.append(anchor);list.append(li);
       }
       section.append(list);
@@ -121,7 +121,45 @@ function start(desks:HTMLElement[]) {
     section.append(node('small','ws-owner-context','Read-only metadata · valid until '+new Date(envelope.expiresAt).toLocaleTimeString()));
     return section;
   }
+  function renderTodayOwners() {
+    for(const host of document.querySelectorAll<HTMLElement>('[data-v31-owner-continue]')) {
+      const parent=host.closest('[data-v31-continue]');
+      if(!parent)continue;
+      const prior=parent.querySelectorAll('[data-v31-local-continue],[data-connected-insight]').length;
+      const limit=Math.max(0,4-prior);
+      const focused=host.contains(document.activeElement)?(document.activeElement as HTMLAnchorElement).href:null;
+      host.replaceChildren();
+      if(!privateOK() || !limit)continue;
+      const candidates=sources.flatMap(id=>{
+        const row=current.get(id);
+        const envelope=row?.envelope;
+        if(!selected.has(id)||!envelope||Date.parse(envelope.expiresAt)<=Date.now())return [];
+        return (envelope.data?.items??[]).map(item=>({id,item,envelope,destination:ownerURL(id,item)}));
+      }).sort((a,b)=>Number(b.destination.exact)-Number(a.destination.exact)||
+        b.item.updatedAt.localeCompare(a.item.updatedAt)||a.id.localeCompare(b.id)||a.item.resourceId.localeCompare(b.item.resourceId));
+      const seen=new Set<string>();
+      for(const candidate of candidates) {
+        const {id,item,envelope,destination}=candidate;
+        const context=envelope.context;
+        const key=JSON.stringify([id,context,item.resourceId,item.edition,item.releaseVersion]);
+        if(seen.has(key))continue;
+        seen.add(key);
+        if(id==='notes' && context.scope==='account' && context.accountId===identity &&
+            [...parent.querySelectorAll<HTMLAnchorElement>('[data-connected-insight] a')].some(link=>link.href==='https://thiepn.dev/notes/?note='+encodeURIComponent(item.resourceId)))continue;
+        const row=node('div','ws-row');
+        row.dataset.v31OwnerExpiry=String(Date.parse(envelope.expiresAt));
+        const detail=node('div');
+        detail.append(node('strong',undefined,item.title),node('small',undefined,id==='library'?'Library · This browser':id==='tms60'?'TMS60 · Selected translation':'Notes · Synced title'));
+        const link=node('a','ws-button',id==='tms60'&&destination.exact?'Practice':id==='library'&&destination.exact?'Continue reading':'Open '+names[id]);
+        link.href=destination.url;link.rel='noreferrer';
+        row.append(detail,link);host.append(row);
+        if(host.childElementCount>=limit)break;
+      }
+      if(focused)[...host.querySelectorAll('a')].find(link=>link.href===focused)?.focus();
+    }
+  }
   function renderWidgets() {
+    renderTodayOwners();
     // Reuse this H11 desk's existing current owner envelopes; no second cache or transport.
     for (const host of document.querySelectorAll<HTMLElement>('[data-owner-widget-live]')) {
       host.replaceChildren();
@@ -193,6 +231,7 @@ function start(desks:HTMLElement[]) {
     });
   }
   listenOwnerContinue(onOwner);
+  window.addEventListener('hub:v31-continuation-layout',renderTodayOwners);
   window.addEventListener('hub:identity',event=>{
     const detail=(event as CustomEvent).detail;
     identity=detail?.status==='signed-in'?detail.id:null;
