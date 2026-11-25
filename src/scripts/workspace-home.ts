@@ -817,7 +817,7 @@ async function setup(root: HTMLElement) {
             const menu=renderUnifiedJourneyNav(mode,state!,today(),journeyStatus());
             if(mode==='today')return menu+minimalHome();
             if(mode==='focus')return menu+renderFocusPanel(state!,today(),focus);
-            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div>');
+            return menu+renderGrid()+(editing?'':'<div data-native-overview>'+renderIntegratedHome(state!,languageStatus,languageCards,languageCheckedAt,apps,{status:folioStatus,snapshot:folioSnapshot},{status:notesSourceStatus,snapshot:notesSource})+'</div><details class="ws-v31-source-details"><summary>Source-specific daily summaries</summary>'+renderSourceToday({folio:{status:folioStatus,snapshot:folioSnapshot},notes:{status:notesSourceStatus,snapshot:notesSource},languages:{status:languageStatus,cards:languageCards},apps})+'</details>');
         }
         return renderGrid();
 
@@ -978,7 +978,7 @@ async function setup(root: HTMLElement) {
     function updateNavigation() {
         root.querySelectorAll<HTMLAnchorElement>('.ws-nav a,.ws-nav-bottom a,.ws-mobile-nav a,.ws-more-link,[data-v31-planner-tabs] a').forEach(link => {
             const group=link.dataset.primaryNav==='planner';
-            const active = group ? ['tasks','calendar','trackers'].includes(view) : (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows'} as Record<string,string>)[new URL(link.href).pathname]) === view;
+            const active = group ? ['tasks','calendar','trackers'].includes(view) : (routes[new URL(link.href).pathname] ?? ({'/search/':'search','/inbox/':'inbox','/home/connections/':'connections','/flows/':'flows','/home/documents/':'documents'} as Record<string,string>)[new URL(link.href).pathname]) === view;
             link.classList.toggle('active', active);
             if (active) link.setAttribute('aria-current', group?'location':'page'); else link.removeAttribute('aria-current');
         });
@@ -1014,6 +1014,7 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
+            if(next==='home') { const mode=url.searchParams.get('mode'); homeMode=mode==='workspace'||mode==='focus'?mode:'today'; }
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
             dialog.close(); searchDialog.close(); account.close();
@@ -1517,6 +1518,7 @@ async function setup(root: HTMLElement) {
     function beginEdit() {
         if (editing)
             return;
+        homeMode='workspace';
         editing = { workspaceId: current().id, baseRevision: current().revision, workspace: clone(current()) };
         layoutUndo = [];
         layoutRedo = [];
