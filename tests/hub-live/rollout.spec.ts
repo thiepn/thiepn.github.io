@@ -13,39 +13,46 @@ const visibleIds = [...HUB_VISIBLE_APP_IDS];
 // read-only registration lookup. The Account SQL contract grants it to anon;
 // no user token, private record read or write is allowed by this exception.
 const hubClientId = 'a4c1fca4-d8d1-410d-908c-7462db6e60df';
-async function isAnonymousRegistrationProbe(r: Request): Promise<boolean> {
+const probeUrl = issuer + '/rest/v1/rpc/resolve_thiepn_first_party_sso_probe';
+function isPublicCredential(key: string): boolean {
+  if (/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) return true;
   try {
-    if (r.url() !== issuer + '/rest/v1/rpc/resolve_thiepn_first_party_sso_probe' || r.method() !== 'POST') return false;
-    const frame = r.frame();
-    const location = new URL(frame.url());
-    if (location.origin !== account || location.pathname !== '/sso/probe' ||
-        location.search !== '?client_id=' + hubClientId || location.hash ||
-        !frame.parentFrame() || new URL(frame.parentFrame()!.url()).origin !== 'https://thiepn.dev') return false;
-    const body = r.postDataJSON();
-    if (!body || Object.keys(body).length !== 1 || body.p_client_id !== hubClientId) return false;
-    const headers = await r.allHeaders();
-    const key = headers.apikey ?? '';
-    // The publishable key or legacy anonymous JWT is not an authenticated user token.
-    let publicKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(key);
-    if (!publicKey) {
-      const parts = key.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8'));
-        publicKey = payload.role === 'anon' && !payload.sub;
-      }
+    const parts = key.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8'));
+    return payload.role === 'anon' && !payload.sub;
+  } catch { return false; }
+}
+// Validate network metadata rather than a mutable iframe URL: the SDK removes
+// its probe iframe on completion, before Playwright may finish reading headers.
+// Origin is an immutable browser-supplied CORS header. Never log credential values.
+async function registrationProbeViolation(r: Request): Promise<string | null> {
+  try {
+    if (r.url() !== probeUrl) return 'unexpected endpoint';
+    const headers = { ...r.headers(), ...await r.allHeaders() };
+    if (headers.origin !== account) return 'unexpected origin';
+    if (headers.cookie) return 'cookie present';
+    if (r.method() === 'OPTIONS') {
+      if (headers.authorization || headers.apikey ||
+          headers['access-control-request-method']?.toUpperCase() !== 'POST' || r.postData()) return 'invalid preflight';
+      return null;
     }
-    return publicKey && (!headers.authorization || headers.authorization === 'Bearer ' + key) && !headers.cookie;
-  } catch {
-    return false;
-  }
+    if (r.method() !== 'POST') return 'unexpected method';
+    const body = r.postDataJSON();
+    if (!body || Object.keys(body).length !== 1 || body.p_client_id !== hubClientId) return 'unexpected request body';
+    if (!isPublicCredential(headers.apikey ?? '')) return 'non-public API key';
+    const authorization = headers.authorization;
+    if (authorization && (!authorization.startsWith('Bearer ') || !isPublicCredential(authorization.slice(7)))) return 'non-anonymous authorization';
+    return null;
+  } catch { return 'request metadata unavailable'; }
 }
 async function publicProbe(page: Page) {
   const privateRequests: string[] = []; const errors: string[] = [];
   const checks: Promise<void>[] = [];
   page.on('request', r => {
     if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) {
-      checks.push(isAnonymousRegistrationProbe(r).then(allowed => {
-        if (!allowed) privateRequests.push(new URL(r.url()).pathname);
+      checks.push(registrationProbeViolation(r).then(reason => {
+        if (reason) privateRequests.push(new URL(r.url()).pathname + ' (' + reason + ')');
       }));
     }
   });
