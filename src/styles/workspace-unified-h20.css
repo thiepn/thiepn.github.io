@@ -69,11 +69,8 @@
 .ws[data-view=home][data-home-mode=focus] [data-owner-continue],
 .ws[data-view=home][data-home-mode=focus] [data-external-calendar],
 .ws[data-view=home][data-home-mode=today] [data-workspace-today],
-.ws[data-view=home][data-home-mode=focus] [data-workspace-today],
-.ws[data-view=home][data-home-mode=today] .ws-planner,
-.ws[data-view=home][data-home-mode=focus] .ws-planner{display:none!important;}
-.ws[data-view=home][data-home-mode=today] .ws-columns,
-.ws[data-view=home][data-home-mode=focus] .ws-columns{grid-template-columns:minmax(0,1fr);}
+.ws[data-view=home][data-home-mode=focus] [data-workspace-today]{display:none!important;}
+/* Planner visibility and column geometry are now controlled by data-v31-planner in workspace.css. Explicit focus quiet mode remains governed by H15. */
 @media(max-width:900px){.ws-unified-columns{grid-template-columns:minmax(0,1fr);}}
 @media(max-width:767px){
  .ws-unified-nav{padding:12px;gap:10px;margin-bottom:12px;}

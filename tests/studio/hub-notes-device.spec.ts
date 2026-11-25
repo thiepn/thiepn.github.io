@@ -9,7 +9,7 @@ test('native Notes owner-consent summary is private, source-bound and mobile rea
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   // Home preserves legacy Workspace as the initial mode in existing sessions.
   // Enter the native H20 Today view explicitly rather than assuming its mode.
-  await page.locator('[data-action=unified-mode][data-id=today]').click();
+  await page.locator('[data-action=unified-mode][data-id=today]').click();await page.locator('.ws-v31-source-details summary').click();
   await expect(page.locator('[data-unified-today]')).toBeVisible();
   await expect(page.locator('[data-source-today-notes]')).toContainText('Share from Notes');
   const opening=page.waitForEvent('popup');
@@ -23,7 +23,7 @@ test('native Notes owner-consent summary is private, source-bound and mobile rea
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   // H20 intentionally resets its volatile presentation mode after an identity cycle.
   // The approved source nonce stays bound to the same verified device identity.
-  await page.locator('[data-action=unified-mode][data-id=today]').click();
+  await page.locator('[data-action=unified-mode][data-id=today]').click();await page.locator('.ws-v31-source-details summary').click();
   await expect(page.locator('[data-source-today-notes]')).toContainText('Confirm the one-time share');
   await popup.getByRole('button',{name:'Share Notes overview once'}).click();
   await expect(page.locator('[data-source-today-notes]')).toContainText('Notes-owned <lecture>');

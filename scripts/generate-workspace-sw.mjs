@@ -22,7 +22,8 @@ self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
  if(request.method!=='GET'||url.origin!==self.location.origin)return;
  const catalogueFilter=url.pathname==='/apps/'&&url.searchParams.size===1&&url.searchParams.has('category')&&FILTERS.has(url.searchParams.get('category'));
- if(url.search&&!catalogueFilter)return;
+ const homeMode=(url.pathname==='/'||url.pathname==='/home/')&&url.searchParams.size===1&&url.searchParams.has('mode')&&['workspace','today','focus'].includes(url.searchParams.get('mode'));
+ if(url.search&&!catalogueFilter&&!homeMode)return;
  if((request.mode==='navigate'||request.headers.get('X-Hub-Navigation')==='1')&&PAGES.has(url.pathname)){
   event.respondWith(fetch(request).then(response=>{if(response.ok){const copy=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(url.pathname,copy)));}return response;}).catch(()=>caches.open(CACHE).then(cache=>cache.match(url.pathname)).then(hit=>hit||Response.error())));return;
  }

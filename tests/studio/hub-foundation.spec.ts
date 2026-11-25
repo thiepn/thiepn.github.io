@@ -29,7 +29,7 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const theme of ['light', '
 
 test('legacy pins migrate once, customization persists and the Apps catalogue stays separate', async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem('notes:sentinel','keep');localStorage.setItem('thiepn:hub-preferences',JSON.stringify({version:1,pins:['notes','canvas'],density:'comfortable'})); });
-  await page.goto('/home/');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await page.goto('/home/?mode=workspace');await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect(page.locator('[data-workspace]')).toHaveAttribute('data-density','comfortable');
   await expect(page.locator('[data-launch]')).toHaveCount(2);await expect(page.locator('[data-hub-item]')).toHaveCount(0);
   await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
@@ -41,7 +41,7 @@ test('legacy pins migrate once, customization persists and the Apps catalogue st
   await page.goto('/apps/');await expect(page.locator('[data-hub-item]')).toHaveCount(hub.expectedCount);
 });
 test('invalid legacy preferences recover and intentionally empty shortcuts survive reload',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/');
+ await page.addInitScript(()=>localStorage.setItem('thiepn:hub-preferences','{invalid'));await page.goto('/home/?mode=workspace');
  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
  while(await page.locator('input[name=appIds]:checked').count())await page.locator('input[name=appIds]:checked').first().uncheck();
@@ -88,7 +88,7 @@ for (const route of ['/home/', '/search/']) for (const theme of ['light', 'dark'
     const audit = async () => page.evaluate(async () => (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
     expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     if (route === '/home/') {
-      await page.getByRole('button', { name: 'Customize', exact: true }).click();
+      await page.locator('.ws-v31-customize summary').click();await page.getByRole('button',{name:'Edit layout',exact:true}).click();
       expect((await audit()).violations.map((v: any) => ({ id: v.id, nodes: v.nodes.map((n: any) => n.target) }))).toEqual([]);
     }
   });
