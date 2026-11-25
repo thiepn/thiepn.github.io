@@ -66,7 +66,8 @@ function backend(options={sharing:false,probeEligible:false}) {
  }};
 }
 async function sync(page:Page){await page.locator('[data-action=cloud-retry]:visible').first().click();await expect(page.locator('[data-cloud-status]:visible').first()).toHaveText('Synced with your account');}
-async function task(page:Page,title:string){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();}
+async function workspaceView(page:Page){const mode=page.locator('[data-action=unified-mode][data-id=workspace]');await expect(mode).toBeVisible();if(await mode.getAttribute('aria-pressed')!=='true')await mode.click();await expect(page.locator('[data-grid]')).toBeVisible();}
+async function task(page:Page,title:string){const compact=page.locator('[data-v31-capture] [data-action=new-task]');if(await compact.isVisible())await compact.click();else{const panel=page.locator('[data-planner] [data-action=new-task]').first();if(!(await panel.isVisible()))await page.getByRole('button',{name:'Show planner',exact:true}).click();await panel.click();}await page.getByLabel('Task',{exact:true}).fill(title);await page.locator('[data-dialog-submit]').click();await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();}
 test('two independent devices sync tasks, offline changes and app navigation without sharing another account',async({browser})=>{
  // This journey opens three independent devices and performs several sync cycles.
  // Preserve per-action/assertion deadlines; allow the complete journey to finish on WebKit.
@@ -85,6 +86,7 @@ test('remote updates preserve an active capture draft and signing out clears acc
  // Individual action/assertion deadlines remain unchanged.
  test.setTimeout(60_000);
  const api=backend(),a=await api.device(browser);await sync(a.page);const b=await api.device(browser);await sync(b.page);
+ await workspaceView(a.page);
  const capture=a.page.locator('[data-capture-draft]');await capture.fill('Still typing');await task(b.page,'Remote task');await sync(b.page);
  await a.page.locator('[data-action=cloud-retry]').first().click(); // Clicking finishes focus; edit text must still be preserved.
  await expect(capture).toHaveValue('Still typing');await sync(a.page);await expect(capture).toHaveValue('Still typing');
@@ -215,17 +217,17 @@ test('visitors get an introduction and can choose their local workspace without 
 test('Account initialization failure leaves local tasks usable and persistent',async({browser})=>{
  const api=backend(),a=await api.device(browser,null,undefined,false,'session-blocked');
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).toBeVisible();
- await a.page.locator('[data-planner] [data-action=new-task]').first().click();await a.page.getByLabel('Task',{exact:true}).fill('Works without Account');await a.page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();
+ await a.page.locator('[data-v31-capture] [data-action=new-task]').click();await a.page.getByLabel('Task',{exact:true}).fill('Works without Account');await a.page.locator('[data-workspace-dialog]').getByRole('button',{name:'Save',exact:true}).click();
  await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');await expect(a.page.locator('[data-visitor-welcome]')).not.toBeVisible();
  await a.page.reload();await expect(a.page.locator('.ws-task-title')).toContainText('Works without Account');await expect(a.page.locator('[data-storage-label]')).toHaveText('This device');
  await a.page.locator('.ws-topbar [data-action=account]').click();await expect(a.page.locator('[data-auth-status]')).toContainText('session storage is blocked');expect(api.exchanges()).toBe(0);expect(api.writes).toHaveLength(0);await a.context.close();
 });
 test('consented Notes, Library and TMS60 insights appear together and clear with privacy',async({browser})=>{
- const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
+ const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);await workspaceView(a.page);const widget=a.page.locator('[data-widget-type=continue]');await expect(widget).toContainText('Connected Notes title');await expect(widget).toContainText('Connected Library book');await expect(widget).toContainText('50% read');await expect(widget).toContainText('2 reviews due');await a.page.locator('.ws-topbar [data-action=account]').click();await a.page.locator('[data-action=privacy]').first().click();await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');await a.context.close();
 });
 
 test('an account change from another tab saves pending capture to the old owner without uploading it to the new owner',async({browser})=>{
- const api=backend(),a=await api.device(browser);await sync(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
+ const api=backend(),a=await api.device(browser);await sync(a.page);await workspaceView(a.page);await a.page.locator('[data-capture-draft]').fill('Draft owned by the first account');
  await a.page.evaluate(token=>{localStorage.setItem('thiepn:hub-sso:v1:tokens',JSON.stringify({accessToken:token,refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000,scope:'openid email profile offline_access'}));window.dispatchEvent(new StorageEvent('storage',{key:'thiepn:hub-sso:v1:tokens'}));},jwt(OTHER));
  await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');await sync(a.page);
  const old=await a.page.evaluate(owner=>new Promise<string>((resolve,reject)=>{const request=indexedDB.open('thiepn-adaptive-workspace',1);request.onsuccess=()=>{const db=request.result,read=db.transaction('records').objectStore('records').get('user:'+owner);read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};request.onerror=()=>reject(request.error);}),OWNER);
@@ -270,6 +272,8 @@ test('hidden language apps do not request or expose their summaries',async({brow
   await expect.poll(()=>a.page.evaluate(()=>document.visibilityState)).toBe('visible');
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account');
   await expect(a.page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+  await expect(a.page.locator('[data-v31-continue]')).toBeVisible();
+  await workspaceView(a.page);
   await expect(a.page.locator('[data-native-overview]')).toContainText('Today at a glance');
   await expect(a.page.locator('[data-action=refresh-languages], .ws-brief-languages, [data-source-today-languages]')).toHaveCount(0);
   expect(requests).toEqual([]);
@@ -284,18 +288,37 @@ for(const trigger of ['focus','periodic'] as const)test(`Account sign-in is disc
   if(trigger==='focus'){
    api.delayProbe(3000);
    await a.page.evaluate(()=>{let attempts=0;window.addEventListener('hub:before-account-navigation',event=>{if(++attempts===2)(event as CustomEvent<{wait(work:Promise<void>):void}>).detail.wait(new Promise<void>(resolve=>(window as any).__continueAccountNavigation=resolve));});});
+   await workspaceView(a.page);
    await a.page.locator('[data-capture-draft]').fill('Guest draft stays on its device');
    await a.page.evaluate(()=>window.dispatchEvent(new Event('focus')));
    await expect(a.page.locator('iframe[src*="/sso/probe"]')).toHaveCount(1);
    await a.page.locator('[data-capture-draft]').fill('Latest guest draft written during discovery');
    await expect.poll(()=>a.page.evaluate(()=>typeof (window as any).__continueAccountNavigation)).toBe('function');
-   await expect(a.page).toHaveURL('https://thiepn.dev/');
+   await expect(a.page).toHaveURL('https://thiepn.dev/?mode=workspace');
    await a.page.evaluate(()=>(window as any).__continueAccountNavigation());
   }
   await expect(a.page.locator('[data-storage-label]')).toHaveText('THIEPN Account',{timeout:10_000});expect(api.exchanges()).toBe(1);
   if(trigger==='focus'){
    const guest=await a.page.evaluate(()=>new Promise<string>((resolve,reject)=>{const open=indexedDB.open('thiepn-adaptive-workspace',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('records').objectStore('records').get('guest');read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};}));
-   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
+   expect(JSON.parse(guest).captureDraft).toBe('Latest guest draft written during discovery');await workspaceView(a.page);await expect(a.page.locator('[data-capture-draft]')).toHaveValue('');
   }
+ }finally{await a.context.close();}
+});
+
+// Compact Home uses the existing verified account reader, not a new grant or store.
+test('V3.1 compact continuation clears consented account metadata with privacy',async({browser})=>{
+ const api=backend({sharing:true,probeEligible:false}),a=await api.device(browser);
+ try{
+  const panel=a.page.locator('[data-v31-continue]');
+  await expect(panel).toContainText('Connected Notes title');
+  await expect(panel).toContainText('Connected Library book');
+  await expect(panel).toContainText('2 reviews due');
+  expect(await panel.locator('[data-connected-insight]').count()).toBeLessThanOrEqual(4);
+  await a.page.locator('.ws-topbar [data-action=account]').click();
+  await a.page.locator('[data-account-dialog] [data-connection-privacy]').click();
+  await expect(a.page.locator('[data-workspace]')).toHaveAttribute('data-calendar-private','true');
+  await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Notes title');
+  await expect(a.page.locator('[data-workspace-content]')).not.toContainText('Connected Library book');
+  await expect(a.page.locator('[data-connected-insight]')).toHaveCount(0);
  }finally{await a.context.close();}
 });
