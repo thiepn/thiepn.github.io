@@ -139,7 +139,9 @@ async function preparePdfStudio(page, state) {
   const organizerHash = '#/workspace/' + route[1] + '/organizer';
   await page.evaluate(hash => { location.hash = hash; }, organizerHash);
   await page.waitForFunction(hash => location.hash === hash, organizerHash, { timeout: 15_000 });
-  await page.locator('.organizer-toolbar__file').getByText(/northstar.*\.pdf/i).first().waitFor({ state: 'visible', timeout: 30_000 });
+  // v7.1.4 projectRepository strips the .pdf suffix from display names.
+  // Its own workspace e2e test expects "northstar-launch-review".
+  await page.locator('.organizer-toolbar__file').getByText(/^northstar-launch-review(?:\.pdf)?$/i).first().waitFor({ state: 'visible', timeout: 30_000 });
   await page.locator('.organizer-app--r3').first().waitFor({ state: 'visible', timeout: 30_000 });
   await page.getByText('No page changes yet', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 });
   await page.locator('main.organizer-grid').first().waitFor({ state: 'visible', timeout: 20_000 });
@@ -208,8 +210,22 @@ try {
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
     await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
     await page.waitForTimeout(1_200);
-    await prepareCanonicalState(page, capture.state);
-    await page.screenshot({ path: path.join(outputDir, capture.name), type: 'png', fullPage: false, animations: 'disabled' });
+    try {
+      await prepareCanonicalState(page, capture.state);
+      await page.screenshot({ path: path.join(outputDir, capture.name), type: 'png', fullPage: false, animations: 'disabled' });
+      console.log('Verified capture: ' + slug + ' / ' + capture.state + ' / ' + capture.name);
+    } catch (error) {
+      if (slug === 'pdf-studio') {
+        const diagnostic = await page.evaluate(() => ({
+          hash: location.hash,
+          heading: document.querySelector('#workspace-document-title')?.textContent,
+          organizer: !!document.querySelector('.organizer-app--r3'),
+          status: [...document.querySelectorAll('[role="status"],[role="alert"],.viewer-loading,.organizer-toolbar__file')].map(el => el.textContent?.trim()).filter(Boolean).slice(0, 12)
+        })).catch(() => null);
+        console.error('PDF Studio capture failure in ' + capture.state + ': ' + JSON.stringify(diagnostic));
+      }
+      throw error;
+    }
     await context.close();
   }
 } finally {
