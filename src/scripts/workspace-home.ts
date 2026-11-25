@@ -790,7 +790,8 @@ async function setup(root: HTMLElement) {
             '<section class="ws-widget ws-v31-section" data-v31-continue><header><h2>Continue</h2><a href="/home/connections/">Connections</a></header>'+
             (recent?'<div class="ws-row" data-v31-local-continue><span class="ws-app-icon">'+icon('notebook')+'</span><div><strong>'+esc(recent.title||'Untitled note')+'</strong><small>Hub local note · '+esc(new Date(recent.updatedAt).toLocaleDateString())+'</small></div>'+button('edit-note','Open',recent.id)+'</div>':'')+
             '<div data-v31-account-continue>'+connectedHTML(3)+'</div><div data-v31-owner-continue></div>'+
-            '<p class="ws-v31-continue-empty">No currently available continuation items. Connect an app or open your workspace.</p></section>'+
+            '<p class="ws-v31-continue-empty">No currently available continuation items. Connect an app or open your workspace.</p>'+
+            '<details class="ws-v31-source-details"><summary>Source-specific daily summaries</summary>'+renderSourceToday({folio:{status:folioStatus,snapshot:folioSnapshot},notes:{status:notesSourceStatus,snapshot:notesSource},languages:{status:languageStatus,cards:languageCards},apps})+'</details></section>'+
             '<section class="ws-widget ws-v31-section" data-v31-launch><header><h2>Quick launch</h2><a href="/apps/">All apps</a></header><div class="ws-shortcuts" data-variant="compact">'+
             chosen.map(a=>'<a href="'+esc(w?.config.useActions===false?a.url:a.action?.url??a.url)+'" rel="noreferrer" class="ws-app" data-launch="'+esc(a.id)+'"><span class="ws-app-icon">'+icon(a.icon)+'</span><strong>'+esc(a.title)+'</strong></a>').join('')+
             '</div>'+(!chosen.length?'<p class="ws-muted">No shortcuts in this layout. Configure them in Workspace.</p>':'')+'</section>'+
@@ -1024,7 +1025,6 @@ async function setup(root: HTMLElement) {
             }
             if (!pop) history.pushState(null, '', url.pathname + url.search);
             view = next; root.dataset.view = next;
-            plannerChoice=null;
             if(next==='home') { const mode=url.searchParams.get('mode'); homeMode=mode==='workspace'||mode==='focus'?mode:'today'; }
             if(next!=='home')resetLanguages();
             if (more.open) { moreNavigation = true; more.close(); }
@@ -2614,6 +2614,7 @@ async function setup(root: HTMLElement) {
             }
             case 'resume-draft':
                 if (recoveryDraft) {
+                    homeMode='workspace';
                     const draft = clone(recoveryDraft);
                     const draftEpoch=epoch;
                     const savedLayout=state.workspaces.find(w=>w.id===draft.workspaceId);
