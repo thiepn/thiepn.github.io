@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { validateHubReleaseStatus } from '../../src/lib/hub-release-policy';
 import { HUB_VISIBLE_APP_IDS } from '../../src/lib/workspace/visible-apps';
@@ -9,12 +9,49 @@ const registry = JSON.parse(readFileSync('src/generated/launch-manifest.json', '
 const visibleIds = [...HUB_VISIBLE_APP_IDS];
 
 // Fresh browser contexts only. No real credentials, private app reads or OAuth continuation.
+// Account's first-party discovery iframe may perform exactly this anonymous,
+// read-only registration lookup. The Account SQL contract grants it to anon;
+// no user token, private record read or write is allowed by this exception.
+const hubClientId = 'a4c1fca4-d8d1-410d-908c-7462db6e60df';
+async function isAnonymousRegistrationProbe(r: Request): Promise<boolean> {
+  try {
+    if (r.url() !== issuer + '/rest/v1/rpc/resolve_thiepn_first_party_sso_probe' || r.method() !== 'POST') return false;
+    const frame = r.frame();
+    const location = new URL(frame.url());
+    if (location.origin !== account || location.pathname !== '/sso/probe' ||
+        location.search !== '?client_id=' + hubClientId || location.hash ||
+        !frame.parentFrame() || new URL(frame.parentFrame()!.url()).origin !== 'https://thiepn.dev') return false;
+    const body = r.postDataJSON();
+    if (!body || Object.keys(body).length !== 1 || body.p_client_id !== hubClientId) return false;
+    const headers = await r.allHeaders();
+    const key = headers.apikey ?? '';
+    // The publishable key or legacy anonymous JWT is not an authenticated user token.
+    let publicKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(key);
+    if (!publicKey) {
+      const parts = key.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8'));
+        publicKey = payload.role === 'anon' && !payload.sub;
+      }
+    }
+    return publicKey && (!headers.authorization || headers.authorization === 'Bearer ' + key) && !headers.cookie;
+  } catch {
+    return false;
+  }
+}
 async function publicProbe(page: Page) {
   const privateRequests: string[] = []; const errors: string[] = [];
-  page.on('request', r => { if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) privateRequests.push(new URL(r.url()).pathname); });
+  const checks: Promise<void>[] = [];
+  page.on('request', r => {
+    if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) {
+      checks.push(isAnonymousRegistrationProbe(r).then(allowed => {
+        if (!allowed) privateRequests.push(new URL(r.url()).pathname);
+      }));
+    }
+  });
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
-  return () => { expect(privateRequests).toEqual([]); expect(errors).toEqual([]); };
+  return async () => { await Promise.all(checks); expect(privateRequests).toEqual([]); expect(errors).toEqual([]); };
 }
 
 test('live release registry and exact ordered visible app catalogue', async ({ page, request }) => {
@@ -41,7 +78,7 @@ test('live release registry and exact ordered visible app catalogue', async ({ p
     await expect(card).toBeVisible();
     await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
   }
-  finish();
+  await finish();
 });
 
 test('live local customization persists only approved shortcuts', async ({ page }) => {
@@ -73,10 +110,11 @@ test('live local customization persists only approved shortcuts', async ({ page 
   await page.reload();
   await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
   await expect.poll(getIds).toEqual(expected);
-  finish();
+  await finish();
 });
 
 test('live Search respects visible apps and private-resource boundaries', async ({ page }) => {
+  test.setTimeout(60_000); // Multiple real production navigations, including Firefox.
   const finish = await publicProbe(page);
   await page.goto('/search/?q=merge+PDF');
   await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'pdf-studio');
@@ -94,11 +132,15 @@ test('live Search respects visible apps and private-resource boundaries', async 
   await expect(page.locator('[data-portal-query]')).toBeHidden();
   await expect(page.locator('[data-portal-query]')).toHaveValue('');
   await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
-  await page.goto('/search/');
+  const allApps = await page.goto('/search/', { waitUntil: 'domcontentloaded' });
+  expect(allApps?.ok()).toBe(true);
+  await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('tab', { name: 'Apps', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-portal-search-status]')).toHaveText('14 apps', { timeout: 15_000 });
   const rows = page.locator('[data-portal-search-slug]:visible');
-  await expect(rows).toHaveCount(14);
+  await expect(rows).toHaveCount(14, { timeout: 15_000 });
   expect(new Set(await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-portal-search-slug'))))).toEqual(new Set(visibleIds));
-  finish();
+  await finish();
 });
 
 test('live manual workflow handoffs exclude hidden apps and claim no transfer', async ({ page }) => {
@@ -111,7 +153,7 @@ test('live manual workflow handoffs exclude hidden apps and claim no transfer', 
   expect(await links.evaluateAll(nodes => nodes.map(node => (node as HTMLAnchorElement).href))).toEqual(['https://thiepn.dev/pdf/', 'https://thiepn.dev/library/saved/']);
   await expect(links.first()).toHaveAttribute('rel', 'noopener noreferrer');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  finish();
+  await finish();
 });
 
 test('live Account validates tokenless entry and rejects alternate destinations', async ({ page, request }) => {
