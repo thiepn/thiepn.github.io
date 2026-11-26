@@ -17,9 +17,10 @@ export interface PersonalAppVisibility {
 export function personalHiddenAppIds(preferences: PersonalAppVisibility): string[] {
   // Older saved workspace records have no field. Do not change their other
   // preferences or persist a migration until the owner makes a change.
-  return preferences.hiddenAppIds === undefined
-    ? [...DEFAULT_HIDDEN_APP_IDS]
-    : [...preferences.hiddenAppIds];
+  const hiddenIds = preferences.hiddenAppIds === undefined
+    ? DEFAULT_HIDDEN_APP_IDS
+    : preferences.hiddenAppIds;
+  return [...hiddenIds];
 }
 
 export function changeAppVisibility(
