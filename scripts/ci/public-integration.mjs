@@ -18,6 +18,10 @@ const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
 const blob=bytes=>createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
 const sha256=path=>createHash('sha256').update(readFileSync(path)).digest('hex');
 const marker='NOT_EXECUTED';
+// Pinned Account it.each has four inputs without a title placeholder (artifact 15113588680).
+const repeatedFile='tests/unit/hub-account.test.ts';
+const repeatedName='H10 code callback boundary rejects invalid codes';
+const repeatedCount=4;
 const suiteIds=['account','notes-owner','managed-notes','inbox','capture','tms60','cross-app'];
 
 export function validateManifest(m){
@@ -77,13 +81,18 @@ export function verifyReport(report,m,checkoutRoot){
     need(suite.status==='passed'&&Array.isArray(suite.assertionResults),'Unsuccessful suite: '+rel);
     const name=rel.slice('tests/unit/'.length,-'.test.ts'.length);
     need(suite.assertionResults.length===m.expectedCounts[name],'Wrong assertion count: '+rel);
-    const seen=new Set();
+    const seen=new Map(),identities=[];
     for(const test of suite.assertionResults){
-      need(typeof test.fullName==='string'&&test.fullName.length>0&&!seen.has(test.fullName),'Missing or duplicate assertion identity: '+rel);
-      seen.add(test.fullName);
+      need(typeof test.fullName==='string'&&test.fullName.length>0,'Missing assertion identity: '+rel);
+      const count=(seen.get(test.fullName)??0)+1;
+      const allowed=rel===repeatedFile&&test.fullName===repeatedName?repeatedCount:1;
+      need(count<=allowed,'Unexpected duplicate assertion identity: '+rel+' '+test.fullName);
+      seen.set(test.fullName,count);
       need(test.status==='passed','Unexpected assertion outcome: '+rel+' '+test.fullName);
+      identities.push({fullName:test.fullName,occurrence:count});
     }
-    byFile.set(rel,{file:rel,count:seen.size,identities:[...seen].sort()});
+    if(rel===repeatedFile)need(seen.get(repeatedName)===repeatedCount,'Known parameterized assertion multiplicity mismatch: '+rel);
+    byFile.set(rel,{file:rel,count:identities.length,identities:identities.sort((a,b)=>a.fullName<b.fullName?-1:a.fullName>b.fullName?1:a.occurrence-b.occurrence)});
   }
   need(equal([...byFile.keys()].sort(),files),'Incomplete suite inventory');
   return {scope:m.scope,releaseEvidence:false,uniqueFiles:files.length,uniqueTests:total,files:files.map(f=>byFile.get(f)),contracts:m.contracts.map(c=>({id:c.id,workflow:c.workflow,publicStatus:'PASSED',privateStatus:marker,files:c.files.map(unit),passed:c.files.reduce((n,f)=>n+m.expectedCounts[f],0)}))};

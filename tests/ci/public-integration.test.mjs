@@ -15,7 +15,7 @@ const fixture=()=>{
   const total=Object.values(m.expectedCounts).reduce((n,v)=>n+v,0);
   return {success:true,numTotalTests:total,numPassedTests:total,numFailedTests:0,numPendingTests:0,numTodoTests:0,testResults:files.map(file=>{
     const count=m.expectedCounts[file.slice('tests/unit/'.length,-'.test.ts'.length)];
-    return {name:root+'/'+file,status:'passed',assertionResults:Array.from({length:count},(_,i)=>({fullName:file+' assertion '+i,status:'passed'}))};
+    return {name:root+'/'+file,status:'passed',assertionResults:Array.from({length:count},(_,i)=>({fullName:file==='tests/unit/hub-account.test.ts'&&i<4?'H10 code callback boundary rejects invalid codes':file+' assertion '+i,status:'passed'}))};
   })};
 };
 test('seven original public contracts reduce to exactly eight distinct files and 128 observed tests',()=>{
@@ -64,7 +64,7 @@ test('reject missing, duplicate, or unexpected report suites and assertion ident
   let r=fixture();r.testResults.pop();assert.throws(()=>verifyReport(r,m,root),/Incomplete suite/);
   r=fixture();r.testResults.push(r.testResults[0]);assert.throws(()=>verifyReport(r,m,root),/duplicate suite/);
   r=fixture();r.testResults[0].name='/untrusted/tests/unit/hub-account.test.ts';assert.throws(()=>verifyReport(r,m,root),/Unexpected or duplicate suite/);
-  r=fixture();r.testResults[0].assertionResults[0].fullName=r.testResults[0].assertionResults[1].fullName;assert.throws(()=>verifyReport(r,m,root),/duplicate assertion/);
+  r=fixture();r.testResults[0].assertionResults[4].fullName=r.testResults[0].assertionResults[5].fullName;assert.throws(()=>verifyReport(r,m,root),/duplicate assertion/);
   r=fixture();r.testResults[0].assertionResults.pop();assert.throws(()=>verifyReport(r,m,root),/assertion count/);
 });
 test('reject failed, skipped, todo, or incomplete executions despite successful file selection',()=>{
@@ -94,4 +94,15 @@ test('consolidated workflow has only the unprivileged public job and explicit no
   assert.equal(cmds.filter(s=>s.startsWith('node scripts/ci/public-integration.mjs run ')).length,1);
   assert.doesNotMatch(raw,/secrets\.|pages:\s*write|id-token:\s*write|deploy-pages|pull_request_target|continue-on-error|git push|repository:\s*thiepn\//);
   assert(raw.includes('NOT_EXECUTED'));
+});
+
+test('preserve exactly four known parameterized Account cases with repeated display names',()=>{
+  const name='H10 code callback boundary rejects invalid codes';
+  const file='tests/unit/hub-account.test.ts';
+  const result=verifyReport(fixture(),m,root).files.find(f=>f.file===file);
+  assert.deepEqual(result.identities.filter(x=>x.fullName===name).map(x=>x.occurrence),[1,2,3,4]);
+  const fewer=fixture();fewer.testResults[0].assertionResults[0].fullName='different unique name';
+  assert.throws(()=>verifyReport(fewer,m,root),/multiplicity mismatch/);
+  const more=fixture();more.testResults[0].assertionResults[4].fullName=name;
+  assert.throws(()=>verifyReport(more,m,root),/duplicate assertion/);
 });
