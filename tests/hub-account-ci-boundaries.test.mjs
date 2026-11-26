@@ -18,7 +18,7 @@ const parse = name => YAML.parse(readFileSync(new URL(name, root), 'utf8'));
 // Keep original pinned suites inert until moved to an independently trusted runner.
 function validate(workflow) {
   assert.deepEqual(workflow.permissions, { contents: 'read' });
-  assert.ok(Object.hasOwn(workflow.on, 'pull_request'));
+  assert.deepEqual(workflow.on, { workflow_dispatch: null }, 'Legacy public suites are manual recovery only');
   assert.ok(!Object.hasOwn(workflow.on, 'pull_request_target'));
   assert.doesNotMatch(JSON.stringify(workflow.env ?? {}), /secrets\./);
   const publicJob = workflow.jobs['public-contract'];
@@ -76,6 +76,7 @@ test('Quality enforces this boundary before browser suites', () => {
 
 test('private Notes owner source remains inert in public CI, without claiming qualification',()=>{
   const w=parse('hub-notes-integration.yml');
+  assert.deepEqual(w.on,{workflow_dispatch:null});
   assert.deepEqual(w.permissions,{contents:'read'});
   assert.equal(w.jobs['owner-contract'].if,'${{ false }}');
   assert.ok(w.jobs['owner-contract'].steps.some(s=>s.with?.repository==='thiepn/notes' && /^[a-f0-9]{40}$/.test(s.with.ref) && !s.with.token));
