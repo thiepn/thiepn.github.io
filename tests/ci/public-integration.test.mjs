@@ -4,10 +4,11 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {parse} from 'yaml';
 import {validateManifest,inspectOriginal,verifyReport} from '../../scripts/ci/public-integration.mjs';
+import {historicalSource,verifyCutoverSources} from '../../scripts/ci/cutover-source.mjs';
 const load=p=>readFileSync(new URL('../../'+p,import.meta.url));
 const m=JSON.parse(load('config/ci/public-integration-v1.json'));
 const baseline=JSON.parse(load('config/ci/baseline-v1.json'));
-const original=c=>parse(load('.github/workflows/'+c.workflow).toString());
+const original=c=>parse(historicalSource('.github/workflows/'+c.workflow).toString());
 const clone=structuredClone;
 const root='/checkout';
 const fixture=()=>{
@@ -27,11 +28,12 @@ test('seven original public contracts reduce to exactly eight distinct files and
   const invalid=clone(m);invalid.contracts.pop();assert.throws(()=>validateManifest(invalid),/Missing or reordered/);
   const extra=clone(m);extra.expectedCounts.extra=1;assert.throws(()=>validateManifest(extra),/Unexpected unique/);
 });
-test('all original workflow and contract-source pins remain exact',()=>{
+test('all original workflow and contract-source pins remain exact after reviewed routing projection',()=>{
+  verifyCutoverSources(baseline);
   const paths=[...baseline.sourceFiles.filter(f=>f.path.startsWith('.github/workflows/')).map(f=>f.path),...validateManifest(m),'tests/hub-account-ci-boundaries.test.mjs','package.json','package-lock.json'];
   assert.equal(paths.length,38);
   for(const path of paths){
-    const bytes=load(path),actual=createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
+    const bytes=historicalSource(path),actual=createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
     assert.equal(actual,baseline.sourceFiles.find(f=>f.path===path)?.blob,path);
   }
 });
@@ -80,7 +82,8 @@ test('reject failed, skipped, todo, or incomplete executions despite successful 
 test('consolidated workflow has only the unprivileged public job and explicit non-release status',()=>{
   const raw=load('.github/workflows/hub-public-integration-shadow.yml').toString(),y=parse(raw);
   assert.deepEqual(y.permissions,{contents:'read'});
-  assert.deepEqual(Object.keys(y.on).sort(),['pull_request','workflow_dispatch']);
+  assert.deepEqual(Object.keys(y.on).sort(),['pull_request','push','workflow_dispatch']);
+  assert.deepEqual(y.on.push,{branches:['main']});
   assert.deepEqual(Object.keys(y.jobs),['public-contracts']);
   const job=y.jobs['public-contracts'];
   assert.equal(job.if,undefined);assert.equal(job.permissions,undefined);

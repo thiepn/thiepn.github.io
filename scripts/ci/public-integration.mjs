@@ -6,6 +6,7 @@ import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse} from 'yaml';
 import {validateBaseline} from './baseline.mjs';
+import {historicalSource, verifyCutoverSources} from './cutover-source.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const read=p=>JSON.parse(readFileSync(p,'utf8'));
 const need=(ok,m)=>{if(!ok)throw Error(m);};
@@ -100,10 +101,11 @@ export function verifyReport(report,m,checkoutRoot){
 function inspect(m,b){
   const files=validateManifest(m);
   const pins=new Map(b.sourceFiles.map(f=>[f.path,f.blob]));
-  // Preserve every original workflow and the eight historical contract sources.
+  // Verify the exact reviewed routing migration and reconstruct historical bytes.
+  verifyCutoverSources(b);
   const paths=[...b.sourceFiles.filter(f=>f.path.startsWith('.github/workflows/')).map(f=>f.path),...files,'tests/hub-account-ci-boundaries.test.mjs','package-lock.json','package.json'];
-  for(const path of paths)need(pins.has(path)&&blob(readFileSync(join(root,path)))===pins.get(path),'Reviewed source pin drift: '+path);
-  const actual=m.contracts.map(c=>inspectOriginal(c,parse(readFileSync(join(root,'.github/workflows',c.workflow),'utf8'))));
+  for(const path of paths)need(pins.has(path)&&blob(historicalSource(path))===pins.get(path),'Reviewed source pin drift: '+path);
+  const actual=m.contracts.map(c=>inspectOriginal(c,parse(historicalSource('.github/workflows/'+c.workflow).toString('utf8'))));
   return {scope:m.scope,originalWorkflowPins:paths.filter(p=>p.startsWith('.github/workflows/')).length,sourcePins:paths.length,contracts:actual,independent:m.independent.map(path=>({path,status:'UNCHANGED_INDEPENDENT_WORKFLOW',blob:pins.get('.github/workflows/'+path)})),releaseEvidence:false};
 }
 function main(){
@@ -125,7 +127,7 @@ function main(){
   need(result.status===0,'Public contract execution failed');
   const verified=verifyReport(read(reportPath),m,root);
   inspect(m,b);
-  const evidence={...verified,testedSha:git('rev-parse','HEAD'),treeSha:git('rev-parse','HEAD^{tree}'),runId:process.env.GITHUB_RUN_ID,attempt:process.env.GITHUB_RUN_ATTEMPT,node:process.version,lockSha256:sha256(join(root,'package-lock.json')),reportSha256:sha256(reportPath),status:'PUBLIC_CONTRACTS_PASSED_PRIVATE_NOT_EXECUTED_EXISTING_WORKFLOWS_REQUIRED'};
+  const evidence={...verified,testedSha:git('rev-parse','HEAD'),treeSha:git('rev-parse','HEAD^{tree}'),runId:process.env.GITHUB_RUN_ID,attempt:process.env.GITHUB_RUN_ATTEMPT,node:process.version,lockSha256:sha256(join(root,'package-lock.json')),reportSha256:sha256(reportPath),status:'PUBLIC_CONTRACTS_PASSED_PRIVATE_NOT_EXECUTED_NOT_RELEASE_EVIDENCE'};
   writeFileSync(join(out,'qualification.json'),JSON.stringify(evidence,null,2)+'\n');
   for(const c of evidence.contracts)console.log(c.id+': '+c.passed+' public tests PASSED; private '+c.privateStatus);
   console.log(evidence.status+'; '+evidence.uniqueTests+' unique public tests in '+evidence.uniqueFiles+' files');

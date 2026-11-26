@@ -92,6 +92,48 @@
           "after": "on:\n  push:\n    branches: [main]\n  # Fallback for a missing push event; production authorization still requires\n  # a SUCCESSFUL exact-SHA push Quality run, not workflow_dispatch.\n  workflow_dispatch:\n"
         }
       ]
+    },
+    {
+      "path": "tests/hub-account-ci-boundaries.test.mjs",
+      "originalBlob": "1d5e5d2b4a9ce3a3e6e7fe8813d40a144a3a64a3",
+      "patches": [
+        {
+          "before": "  assert.ok(Object.hasOwn(workflow.on, 'pull_request'));",
+          "after": "  assert.deepEqual(workflow.on, { workflow_dispatch: null }, 'Legacy public suites are manual recovery only');"
+        },
+        {
+          "before": "  const w=parse('hub-notes-integration.yml');\n  assert.deepEqual(w.permissions,{contents:'read'});",
+          "after": "  const w=parse('hub-notes-integration.yml');\n  assert.deepEqual(w.on,{workflow_dispatch:null});\n  assert.deepEqual(w.permissions,{contents:'read'});"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-public-integration-shadow.yml",
+      "originalBlob": "9f23b6e644dd031a77947d4db8b0b0f6f91b2319",
+      "patches": [
+        {
+          "before": "  workflow_dispatch:\n\npermissions:",
+          "after": "  push:\n    branches: [main]\n  workflow_dispatch:\n\npermissions:"
+        },
+        {
+          "before": "Original integration workflows, independent Library and reading-pilot suites, Quality and release authorization remain unchanged.",
+          "after": "Legacy integration workflows are manual recovery only; independent Library and reading-pilot suites and exact-main release authorization remain unchanged."
+        }
+      ]
+    }
+  ],
+  "unchangedParentPins": [
+    {
+      "path": ".github/workflows/quality-parallel-shadow.yml",
+      "blob": "afe28ffa5c9dcc7331216acf5636525d6e426801"
+    },
+    {
+      "path": ".github/workflows/ci-fast.yml",
+      "blob": "cb396e6cd534abd5b40fd3249345f0726e408d67"
+    },
+    {
+      "path": "scripts/authorize-pages-release.mjs",
+      "blob": "ed770d5f08cfc900a8f9c1538a267e08cf455280"
     }
   ]
 }
