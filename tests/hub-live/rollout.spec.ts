@@ -120,34 +120,80 @@ test('live local customization persists only approved shortcuts', async ({ page 
   await finish();
 });
 
-test('live Search respects visible apps and private-resource boundaries', async ({ page }) => {
-  test.setTimeout(60_000); // Multiple real production navigations, including Firefox.
+// Record only public route paths and lifecycle metadata: no URL queries,
+// request bodies, headers, cookies, credentials or application records.
+function searchNavigationTimeline(page: Page) {
+  const started = Date.now();
+  const events: Record<string, unknown>[] = [];
+  const record = (kind: string, detail: Record<string, unknown> = {}) => {
+    if (events.length < 800) events.push({ ms: Date.now() - started, kind, ...detail });
+  };
+  const safeUrl = (raw: string) => {
+    try { const url = new URL(raw); return url.origin + url.pathname; }
+    catch { return '(non-HTTP document)'; }
+  };
+  const requestDetails = (request: Request) => {
+    let frame = 'unknown';
+    try { frame = request.frame() === page.mainFrame() ? 'main' : 'child'; } catch {}
+    return { url: safeUrl(request.url()), method: request.method(), resourceType: request.resourceType(), navigation: request.isNavigationRequest(), frame };
+  };
+  page.on('request', request => record('request', requestDetails(request)));
+  page.on('response', response => record('response', { ...requestDetails(response.request()), status: response.status(), fromServiceWorker: response.fromServiceWorker() }));
+  page.on('requestfinished', request => record('requestfinished', requestDetails(request)));
+  page.on('requestfailed', request => record('requestfailed', requestDetails(request)));
+  page.on('framenavigated', frame => record('framenavigated', { frame: frame === page.mainFrame() ? 'main' : 'child', url: safeUrl(frame.url()) }));
+  page.on('domcontentloaded', () => record('domcontentloaded', { url: safeUrl(page.url()) }));
+  page.on('load', () => record('load', { url: safeUrl(page.url()) }));
+  page.on('pageerror', () => record('pageerror'));
+  page.on('crash', () => record('crash'));
+  return { record, snapshot: () => JSON.stringify({ finalPath: safeUrl(page.url()), events }, null, 2) };
+}
+
+test('live Search respects visible apps and private-resource boundaries', async ({ page }, testInfo) => {
+  test.setTimeout(75_000); // Keep individual navigation deadlines bounded and reserve time for diagnostics.
+  const timeline = searchNavigationTimeline(page);
   const finish = await publicProbe(page);
-  await page.goto('/search/?q=merge+PDF');
-  await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'pdf-studio');
-  await page.getByRole('tab', { name: 'My resources', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Connected search', exact: true })).toBeVisible();
-  await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
-  await expect(page.locator('[data-portal-query]')).toBeHidden();
-  // The public query is retained in memory when switching tabs, but never
-  // appears in the resources URL or triggers private requests. A direct load
-  // of the resources URL starts with an empty public query.
-  await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
-  await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(0);
-  await expect(page.locator('[data-portal-query]')).toHaveValue('merge PDF');
-  await page.reload();
-  await expect(page.locator('[data-portal-query]')).toBeHidden();
-  await expect(page.locator('[data-portal-query]')).toHaveValue('');
-  await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
-  const allApps = await page.goto('/search/', { waitUntil: 'domcontentloaded' });
-  expect(allApps?.ok()).toBe(true);
-  await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('tab', { name: 'Apps', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('[data-portal-search-status]')).toHaveText('14 apps', { timeout: 15_000 });
-  const rows = page.locator('[data-portal-search-slug]:visible');
-  await expect(rows).toHaveCount(14, { timeout: 15_000 });
-  expect(new Set(await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-portal-search-slug'))))).toEqual(new Set(visibleIds));
-  await finish();
+  try {
+    timeline.record('initial-query-navigation');
+    const initial = await page.goto('/search/?q=merge+PDF', { waitUntil: 'commit', timeout: 15_000 });
+    expect(initial?.ok()).toBe(true);
+    await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-portal-search-slug]:visible').first()).toHaveAttribute('data-portal-search-slug', 'pdf-studio');
+    await page.getByRole('tab', { name: 'My resources', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Connected search', exact: true })).toBeVisible();
+    await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
+    await expect(page.locator('[data-portal-query]')).toBeHidden();
+    // The public query is retained in memory when switching tabs, but never
+    // appears in the resources URL or triggers private requests. A direct load
+    // of the resources URL starts with an empty public query.
+    await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
+    await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(0);
+    await expect(page.locator('[data-portal-query]')).toHaveValue('merge PDF');
+    timeline.record('resource-reload');
+    const reload = await page.reload({ waitUntil: 'commit', timeout: 15_000 });
+    expect(reload?.ok()).toBe(true);
+    await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-portal-query]')).toBeHidden();
+    await expect(page.locator('[data-portal-query]')).toHaveValue('');
+    await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
+    timeline.record('final-direct-navigation', await page.evaluate(() => ({ readyState: document.readyState, serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller) })));
+    // Do not wait for an unrelated lifecycle event or subframe. Require actual
+    // document commitment, HTTP success and the initialized application below.
+    const allApps = await page.goto('/search/', { waitUntil: 'commit', timeout: 15_000 });
+    timeline.record('final-document-committed');
+    await expect(page).toHaveURL('https://thiepn.dev/search/');
+    expect(allApps?.ok()).toBe(true);
+    await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('tab', { name: 'Apps', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-portal-search-status]')).toHaveText('14 apps', { timeout: 15_000 });
+    const rows = page.locator('[data-portal-search-slug]:visible');
+    await expect(rows).toHaveCount(14, { timeout: 15_000 });
+    expect(new Set(await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-portal-search-slug'))))).toEqual(new Set(visibleIds));
+    await finish();
+    timeline.record('all-assertions-passed');
+  } finally {
+    await testInfo.attach('search-navigation-timeline', { body: timeline.snapshot(), contentType: 'application/json' });
+  }
 });
 
 test('live manual workflow handoffs exclude hidden apps and claim no transfer', async ({ page }) => {
