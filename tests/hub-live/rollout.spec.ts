@@ -146,7 +146,22 @@ function searchNavigationTimeline(page: Page) {
   page.on('load', () => record('load', { url: safeUrl(page.url()) }));
   page.on('pageerror', () => record('pageerror'));
   page.on('crash', () => record('crash'));
-  return { record, snapshot: () => JSON.stringify({ finalPath: safeUrl(page.url()), events }, null, 2) };
+  return {
+    record,
+    probeStarts: () => events.filter(event => event.kind === 'request' && event.frame === 'child' && event.navigation === true && event.url === account + '/sso/probe').length,
+    snapshot: () => JSON.stringify({ finalPath: safeUrl(page.url()), events }, null, 2),
+  };
+}
+
+// Account discovery is asynchronous and guest-first. In the captured Firefox
+// failure the old cross-origin probe was cancelled during the final navigation,
+// although the new document returned 200 and emitted both lifecycle events.
+// Complete the already-expected cold guest discovery before another document
+// transition. Neither the browser's SSO nor its service worker is disabled.
+async function settleGuestDiscovery(page: Page, timeline: ReturnType<typeof searchNavigationTimeline>, previousStarts: number) {
+  await expect.poll(timeline.probeStarts, { timeout: 12_000, message: 'Cold guest Account discovery has started' }).toBeGreaterThan(previousStarts);
+  await expect(page.locator('iframe[src*="/sso/probe"]')).toHaveCount(0, { timeout: 12_000 });
+  timeline.record('guest-discovery-settled');
 }
 
 test('live Search respects visible apps and private-resource boundaries', async ({ page }, testInfo) => {
@@ -169,6 +184,8 @@ test('live Search respects visible apps and private-resource boundaries', async 
     await expect(page).toHaveURL(/\/search\/\?scope=resources$/);
     await expect(page.locator('[data-portal-search-slug]:visible')).toHaveCount(0);
     await expect(page.locator('[data-portal-query]')).toHaveValue('merge PDF');
+    await settleGuestDiscovery(page, timeline, 0);
+    const beforeReload = timeline.probeStarts();
     timeline.record('resource-reload');
     const reload = await page.reload({ waitUntil: 'commit', timeout: 15_000 });
     expect(reload?.ok()).toBe(true);
@@ -176,19 +193,24 @@ test('live Search respects visible apps and private-resource boundaries', async 
     await expect(page.locator('[data-portal-query]')).toBeHidden();
     await expect(page.locator('[data-portal-query]')).toHaveValue('');
     await expect(page.locator('[data-portal-search-status]')).toHaveText('No connected sources.');
+    await settleGuestDiscovery(page, timeline, beforeReload);
+    const beforeFinal = timeline.probeStarts();
     timeline.record('final-direct-navigation', await page.evaluate(() => ({ readyState: document.readyState, serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller) })));
     // Do not wait for an unrelated lifecycle event or subframe. Require actual
     // document commitment, HTTP success and the initialized application below.
     const allApps = await page.goto('/search/', { waitUntil: 'commit', timeout: 15_000 });
     timeline.record('final-document-committed');
-    await expect(page).toHaveURL('https://thiepn.dev/search/');
     expect(allApps?.ok()).toBe(true);
+    expect(allApps?.url()).toBe('https://thiepn.dev/search/');
+    await expect.poll(() => page.url(), { timeout: 5_000 }).toBe('https://thiepn.dev/search/');
     await expect(page.locator('[data-search-scopes]')).toBeVisible({ timeout: 15_000 });
+    expect(await page.evaluate(() => location.href)).toBe('https://thiepn.dev/search/');
     await expect(page.getByRole('tab', { name: 'Apps', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-portal-search-status]')).toHaveText('14 apps', { timeout: 15_000 });
     const rows = page.locator('[data-portal-search-slug]:visible');
     await expect(rows).toHaveCount(14, { timeout: 15_000 });
     expect(new Set(await rows.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-portal-search-slug'))))).toEqual(new Set(visibleIds));
+    await settleGuestDiscovery(page, timeline, beforeFinal);
     await finish();
     timeline.record('all-assertions-passed');
   } finally {
