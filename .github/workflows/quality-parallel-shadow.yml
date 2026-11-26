@@ -1,0 +1,224 @@
+name: Quality Parallel (shadow)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-parallel-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Source gates and shared build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Existing security and source gates plus CI tooling
+        run: |
+          node --test tests/ci/*.test.mjs
+          node --test tests/hub-owner-release-gate.test.mjs
+          node --test tests/generated-review-boundary.test.mjs
+          node --test tests/release-project-availability.test.mjs
+          npm run release:source
+          node --test tests/hub-account-ci-boundaries.test.mjs
+          node scripts/validate-product-registry-v2.mjs
+          node scripts/validate-folio-p9.mjs
+          node scripts/validate-family-p10.mjs
+          node scripts/validate-runtime-p11.mjs
+      - name: Existing studio source, type, unit and build gates
+        run: |
+          npm run generated:check
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run build
+          npm run perf:budget
+      - name: Install original browser prerequisites
+        run: |
+          npm install --prefix /tmp/audit-tools axe-core@4.13.0
+          npx playwright install --with-deps chromium firefox webkit
+          mkdir -p "$RUNNER_TEMP/ci03-build"
+      - name: Original Chromium calendar smoke
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-calendar-c1.spec.ts tests/studio/hub-calendar-composition-c2.spec.ts -g 'calendar selected day remains circular|C2 original local event flows through ephemeral native calendar projection' --reporter=json > "$RUNNER_TEMP/ci03-build/calendar-smoke.json"
+          node scripts/ci/baseline.mjs compare calendar-smoke execution "$RUNNER_TEMP/ci03-build/calendar-smoke.json"
+      - name: Original Account cross-tab and durable-token smoke
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts --project=chromium --project=firefox --project=webkit tests/studio/hub-sync.spec.ts -g 'concurrent new tabs share one rotating refresh even without Web Locks|durable Account token cannot be downgraded|Account startup recovers an abandoned lifetime lease' --reporter=json > "$RUNNER_TEMP/ci03-build/account-smoke.json"
+          node scripts/ci/baseline.mjs compare account-smoke execution "$RUNNER_TEMP/ci03-build/account-smoke.json"
+      - name: Original curated Hub and public preview smoke
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts tests/studio/studio.spec.ts tests/studio/hub-integrated-home.spec.ts tests/studio/hub-sync.spec.ts tests/studio/office-documents.spec.ts -g 'Hub hierarchy and layout|Hub renders the locked app membership|public route content and metadata /byte/|daily Hub summary uses original local planner commands|Connections preserves last success|hidden language apps do not request|O2 formatting actions update Markdown|Office inline formatting remains usable' --reporter=json > "$RUNNER_TEMP/ci03-build/curated-smoke.json"
+          node scripts/ci/baseline.mjs compare curated-smoke execution "$RUNNER_TEMP/ci03-build/curated-smoke.json"
+      - name: Original committed layout and async reload smoke
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts --project=chromium --project=firefox --project=webkit tests/studio/workspace.spec.ts -g 'pointer drag and resize commit logical placement|a delayed automatic reload cannot replace' --reporter=json > "$RUNNER_TEMP/ci03-build/layout-smoke.json"
+          node scripts/ci/baseline.mjs compare layout-smoke execution "$RUNNER_TEMP/ci03-build/layout-smoke.json"
+      - name: Discover entire suite and seal one shared build
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts --list --reporter=json > "$RUNNER_TEMP/ci03-build/full-discovery.json"
+          tar -czf "$RUNNER_TEMP/ci03-build/dist.tar.gz" dist
+          node scripts/ci/parallel-qualification.mjs prepare "$RUNNER_TEMP/ci03-build"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci03-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci03-build/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ci03-prepare-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ci03-build/*.json
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  browser:
+    name: Browser ${{ matrix.id }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: chromium-1
+            project: chromium
+            shard: '1/1'
+          - id: firefox-1
+            project: firefox
+            shard: '1/1'
+          - id: webkit-1
+            project: webkit
+            shard: '1/2'
+          - id: webkit-2
+            project: webkit
+            shard: '2/2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci03-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci03-build/
+      - name: Verify and restore same-run build
+        run: |
+          node scripts/ci/parallel-qualification.mjs verify-build "$RUNNER_TEMP/ci03-build"
+          test ! -e dist
+          tar --no-same-owner -xzf "$RUNNER_TEMP/ci03-build/dist.tar.gz"
+          node scripts/ci/parallel-qualification.mjs verify-dist "$RUNNER_TEMP/ci03-build"
+      - name: Install matrix browser
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          npm install --prefix /tmp/audit-tools axe-core@4.13.0
+          npx playwright install --with-deps "$PROJECT"
+      - name: Discover and execute exact shard with original studio configuration
+        env:
+          PROJECT: ${{ matrix.project }}
+          SHARD: ${{ matrix.shard }}
+          SLOT: ${{ matrix.id }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci03-shard"
+          npx --no-install playwright test -c playwright.studio.config.ts --project="$PROJECT" --shard="$SHARD" --list --reporter=json > "$RUNNER_TEMP/ci03-shard/discovery.json"
+          npx --no-install playwright test -c playwright.studio.config.ts --project="$PROJECT" --shard="$SHARD" --reporter=json > "$RUNNER_TEMP/ci03-shard/execution.json"
+          node scripts/ci/parallel-qualification.mjs seal "$RUNNER_TEMP/ci03-build" "$SLOT" "$RUNNER_TEMP/ci03-shard"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci03-shard-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.id }}
+          path: ${{ runner.temp }}/ci03-shard/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ci03-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.id }}
+          path: |
+            ${{ runner.temp }}/ci03-shard/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  qualification:
+    name: Aggregate parallel evidence (not release authorization)
+    needs: [prepare, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require every upstream job to succeed
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          MATRIX_RESULT: ${{ needs.browser.result }}
+        run: |
+          test "$PREPARE_RESULT" = success
+          test "$MATRIX_RESULT" = success
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci03-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci03-build/
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ci03-shard-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/ci03-download/
+          merge-multiple: false
+      - name: Verify restored build and complete matrix coverage
+        run: |
+          node scripts/ci/parallel-qualification.mjs verify-build "$RUNNER_TEMP/ci03-build"
+          test ! -e dist
+          tar --no-same-owner -xzf "$RUNNER_TEMP/ci03-build/dist.tar.gz"
+          mkdir -p "$RUNNER_TEMP/ci03-shards" "$RUNNER_TEMP/ci03-final"
+          prefix="ci03-shard-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-"
+          for slot in chromium-1 firefox-1 webkit-1 webkit-2; do
+            mv "$RUNNER_TEMP/ci03-download/$prefix$slot" "$RUNNER_TEMP/ci03-shards/$slot"
+          done
+          test -z "$(ls -A "$RUNNER_TEMP/ci03-download")"
+          node scripts/ci/parallel-qualification.mjs aggregate "$RUNNER_TEMP/ci03-build" "$RUNNER_TEMP/ci03-shards" "$RUNNER_TEMP/ci03-final/qualification.json"
+      - name: Existing Hub public release profile gate
+        run: npm run release:source && npm run hub:qualify && npm run test:hub-release && npm run test:hub-smoke
+      - name: Existing retained scale and automation checks
+        run: npm run perf:scale && npm run test:hub-scale && npm run test:automation
+      - name: Record successful parallel shadow verdict
+        run: |
+          node scripts/ci/parallel-qualification.mjs verify-dist "$RUNNER_TEMP/ci03-build"
+          node -e 'const fs=require("node:fs"), p=process.argv[1], x=JSON.parse(fs.readFileSync(p,"utf8")); x.status="PARALLEL_SHADOW_PASSED_EXISTING_QUALITY_STILL_REQUIRED"; fs.writeFileSync(p,JSON.stringify(x,null,2)+"\n"); console.log(x.status+"; "+x.passed+" passed, "+x.skipped+" documented skips");' "$RUNNER_TEMP/ci03-final/qualification.json"
+          cp .cache/hub-release-qualification.json "$RUNNER_TEMP/ci03-final/"
+          echo 'Parallel shadow qualification passed. Existing exact-main push Quality and owner-authorized deployment remain mandatory.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci03-final-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci03-final/
+          if-no-files-found: warn
+          retention-days: 7
