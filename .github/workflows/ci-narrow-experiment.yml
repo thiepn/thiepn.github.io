@@ -1,0 +1,62 @@
+name: CI Narrow Change Experiment (non-release)
+on:
+  pull_request:
+    branches: [ci/ci-05-controlled-cutover-20261126]
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: ci-narrow-experiment-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  benchmark:
+    name: Actual narrow source change (full Quality still required)
+    if: ${{ github.head_ref == 'ci/narrow-change-qualification-20261126' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Retain complete CI and security source gates
+        run: |
+          node --test tests/ci/*.test.mjs
+          node --test tests/hub-owner-release-gate.test.mjs
+          node --test tests/generated-review-boundary.test.mjs
+          node --test tests/release-project-availability.test.mjs
+          npm run release:source
+          node --test tests/hub-account-ci-boundaries.test.mjs
+          node scripts/validate-product-registry-v2.mjs
+          node scripts/validate-folio-p9.mjs
+          node scripts/validate-family-p10.mjs
+          node scripts/validate-runtime-p11.mjs
+      - name: Full unit, validation and build gates
+        run: |
+          npm run generated:check
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run build
+          npm run perf:budget
+      - name: Install original browser prerequisites
+        run: |
+          npm install --prefix /tmp/audit-tools axe-core@4.13.0
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Execute real narrow-change selector and compare discovery and outcomes
+        run: node scripts/ci/narrow-experiment.mjs "$RUNNER_TEMP/ci-narrow"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-narrow-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ci-narrow/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7

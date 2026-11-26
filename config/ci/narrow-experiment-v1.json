@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scope": "NARROW_CHANGE_EXPERIMENT_ONLY",
+  "base": "33f5aa3f0602c63987e9a3e2c5bd4bc8a521e0b2",
+  "baseTree": "f49ef245193c3e9a562727704566927ec2115a7f",
+  "source": "src/lib/workspace/app-personalization.ts",
+  "sourceBlob": "2a98deebdd672cb3ae665cbd13d904394129be47",
+  "before": "  return preferences.hiddenAppIds === undefined\n    ? [...DEFAULT_HIDDEN_APP_IDS]\n    : [...preferences.hiddenAppIds];",
+  "after": "  const hiddenIds = preferences.hiddenAppIds === undefined\n    ? DEFAULT_HIDDEN_APP_IDS\n    : preferences.hiddenAppIds;\n  return [...hiddenIds];",
+  "toolingAdditions": [
+    ".github/workflows/ci-narrow-experiment.yml",
+    "config/ci/narrow-experiment-v1.json",
+    "scripts/ci/narrow-experiment.mjs",
+    "tests/ci/narrow-experiment.test.mjs",
+    "docs/ci/CI-narrow-experiment.md"
+  ],
+  "expectedDomain": "launch",
+  "expectedSelectedCases": 141,
+  "expectedFullCases": 1206,
+  "activation": false,
+  "releaseEvidence": false
+}
