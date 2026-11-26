@@ -52,7 +52,7 @@ export function treeDigest(dir){
 function baseline(){return validateBaseline(read(join(root,'config/ci/baseline-v1.json'))).quality.stages.at(-1).cases;}
 function assertParity(expected,actual,mode,label){
   const parity=compareCases(expected,actual,mode);
-  need(parity.ok,label+' parity failed: '+JSON.stringify(parity));
+  need(parity.ok,label+' '+mode+' parity failed: '+JSON.stringify(parity));
   return parity;
 }
 export function checkBuildManifest(manifest,expectedContext){
