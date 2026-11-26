@@ -1,8 +1,6 @@
 name: Hub Notes Inbox browsers
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

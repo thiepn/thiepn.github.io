@@ -1,24 +1,5 @@
 name: Hub cross-app workflow browsers
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/hub-workflows-browser.yml'
-      - 'src/lib/workflows/**'
-      - 'src/lib/providers/**'
-      - 'src/lib/hub-*.ts'
-      - 'src/scripts/portal-*.ts'
-      - 'src/components/hub/**'
-      - 'src/pages/home/**'
-      - 'src/pages/hub-release.json.ts'
-      - 'src/data/hub-providers.json'
-      - 'tests/hub-workflows/**'
-      - 'tests/unit/integrated-workflows.test.ts'
-      - 'playwright.hub-workflows.config.ts'
-      - 'scripts/h20-release-gate.mjs'
-      - 'tests/unit/h20-release-gate.test.ts'
-      - 'evidence/h20/**'
-      - 'package*.json'
-      - 'tests/hub-account-ci-boundaries.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read

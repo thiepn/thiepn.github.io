@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "scope": "REVIEWABLE_CUTOVER_CANDIDATE",
+  "parent": "e4daf3f1ee23f3b46ac35da06507247356444550",
+  "activationAuthorized": false,
+  "routing": {
+    "pr": "FULL_PARALLEL",
+    "main": "SEQUENTIAL_QUALITY",
+    "manual": "SEQUENTIAL_QUALITY_AVAILABLE",
+    "publicContracts": "CONSOLIDATED_ALL_SEVEN",
+    "legacyPublic": "MANUAL_ONLY",
+    "fast": "SHADOW_ONLY",
+    "privateStatus": "NOT_EXECUTED"
+  },
+  "edits": [
+    {
+      "path": ".github/workflows/hub-integration.yml",
+      "originalBlob": "69a07ffc79575ecfd627b1f20093264b8e19a465",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-notes-integration.yml",
+      "originalBlob": "63c1d52b5d2a0dcb8c1131490f84c90f4b724d16",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-notes-browser.yml",
+      "originalBlob": "34004283d76543281d6b75d4596bf9eae00b6048",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-inbox-browser.yml",
+      "originalBlob": "6c6a94d2be3a5949422a3bf86b110e5048811db7",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-capture-browser.yml",
+      "originalBlob": "20e5b8ec1f05490b5bebf8b1ea2bf7f0c1d3d12e",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-tms60-browser.yml",
+      "originalBlob": "e3441806c2823dd7b2ed92c704c971cf8073c42b",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/hub-workflows-browser.yml",
+      "originalBlob": "1c058f9ced8b01d6bf28003a32330092ffceab21",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n    paths:\n      - '.github/workflows/hub-workflows-browser.yml'\n      - 'src/lib/workflows/**'\n      - 'src/lib/providers/**'\n      - 'src/lib/hub-*.ts'\n      - 'src/scripts/portal-*.ts'\n      - 'src/components/hub/**'\n      - 'src/pages/home/**'\n      - 'src/pages/hub-release.json.ts'\n      - 'src/data/hub-providers.json'\n      - 'tests/hub-workflows/**'\n      - 'tests/unit/integrated-workflows.test.ts'\n      - 'playwright.hub-workflows.config.ts'\n      - 'scripts/h20-release-gate.mjs'\n      - 'tests/unit/h20-release-gate.test.ts'\n      - 'evidence/h20/**'\n      - 'package*.json'\n      - 'tests/hub-account-ci-boundaries.test.mjs'\n  workflow_dispatch:\n",
+          "after": "on:\n  workflow_dispatch:\n"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/quality.yml",
+      "originalBlob": "f4548e1807a36949d869265610bd9be1db614d55",
+      "patches": [
+        {
+          "before": "on:\n  pull_request:\n  push:\n    branches: [main]\n  # Fallback for a missing push event; production authorization still requires\n  # a SUCCESSFUL exact-SHA push Quality run, not workflow_dispatch.\n  workflow_dispatch:\n",
+          "after": "on:\n  push:\n    branches: [main]\n  # Fallback for a missing push event; production authorization still requires\n  # a SUCCESSFUL exact-SHA push Quality run, not workflow_dispatch.\n  workflow_dispatch:\n"
+        }
+      ]
+    }
+  ]
+}
