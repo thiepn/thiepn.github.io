@@ -26,7 +26,7 @@ export function validateManifest(m){
   need(equal(m.independent,['hub-library-browser.yml','hub-reading-pilot-browser.yml']),'Independent paired scope changed');
   need(new Set(m.contracts.map(c=>c.workflow)).size===7,'Duplicate contract workflow');
   for(const c of m.contracts){
-    need(/^hub-[a-z-]+\.yml$/.test(c.workflow)&&['paired','owner-contract','staged-paired'].includes(c.disabledJob),'Invalid workflow identity');
+    need(/^hub-[a-z0-9-]+\.yml$/.test(c.workflow)&&['paired','owner-contract','staged-paired'].includes(c.disabledJob),'Invalid workflow identity');
     need(Array.isArray(c.files)&&c.files.length>0&&new Set(c.files).size===c.files.length,'Invalid contract files');
     need(c.originalTrigger===(c.id==='cross-app'?'path-filtered-pr-and-dispatch':'regular'),'Changed original trigger classification');
     for(const f of c.files)need(/^[a-z0-9-]+$/.test(f)&&Number.isInteger(m.expectedCounts[f])&&m.expectedCounts[f]>0,'Invalid expected test inventory');
