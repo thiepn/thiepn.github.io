@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "scope": "PUBLIC_CONTRACTS_SHADOW_ONLY",
+  "parent": "d9eeb3b325cec153b204af4cd75ced1fdc7e1375",
+  "nodeMajor": 24,
+  "baseline": {
+    "sequentialRun": 45780580121,
+    "parallelRun": 45780580289,
+    "tree": "109435107aa871f137bc30f0af107dd7efec0041",
+    "sequentialSeconds": 3430,
+    "parallelElapsedSeconds": 1292,
+    "parallelRunnerSeconds": 3215
+  },
+  "contracts": [
+    {
+      "id": "account",
+      "workflow": "hub-integration.yml",
+      "disabledJob": "paired",
+      "files": [
+        "hub-account"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780580119,
+      "runnerSeconds": 15
+    },
+    {
+      "id": "notes-owner",
+      "workflow": "hub-notes-integration.yml",
+      "disabledJob": "owner-contract",
+      "files": [
+        "hub-notes-session",
+        "hub-providers"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780579813,
+      "runnerSeconds": 23
+    },
+    {
+      "id": "managed-notes",
+      "workflow": "hub-notes-browser.yml",
+      "disabledJob": "staged-paired",
+      "files": [
+        "hub-notes-session"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780580068,
+      "runnerSeconds": 24
+    },
+    {
+      "id": "inbox",
+      "workflow": "hub-inbox-browser.yml",
+      "disabledJob": "staged-paired",
+      "files": [
+        "hub-inbox-runtime",
+        "hub-inbox-session"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780579925,
+      "runnerSeconds": 14
+    },
+    {
+      "id": "capture",
+      "workflow": "hub-capture-browser.yml",
+      "disabledJob": "staged-paired",
+      "files": [
+        "notes-capture"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780579872,
+      "runnerSeconds": 15
+    },
+    {
+      "id": "tms60",
+      "workflow": "hub-tms60-browser.yml",
+      "disabledJob": "staged-paired",
+      "files": [
+        "hub-notes-session",
+        "hub-providers"
+      ],
+      "originalTrigger": "regular",
+      "runId": 45780580009,
+      "runnerSeconds": 14
+    },
+    {
+      "id": "cross-app",
+      "workflow": "hub-workflows-browser.yml",
+      "disabledJob": "staged-paired",
+      "files": [
+        "integrated-workflows",
+        "hub-workflows"
+      ],
+      "originalTrigger": "path-filtered-pr-and-dispatch",
+      "runId": null,
+      "runnerSeconds": null
+    }
+  ],
+  "expectedCounts": {
+    "hub-account": 21,
+    "hub-notes-session": 30,
+    "hub-providers": 29,
+    "hub-inbox-runtime": 15,
+    "hub-inbox-session": 4,
+    "notes-capture": 9,
+    "integrated-workflows": 9,
+    "hub-workflows": 11
+  },
+  "expectedCountEvidence": "Six original Node 24 public contract job logs at CI-03 revision; cross-app counts from the full Node 22 sequential unit suite, to be verified under Node 24 in shadow.",
+  "independent": [
+    "hub-library-browser.yml",
+    "hub-reading-pilot-browser.yml"
+  ],
+  "privateStatus": "NOT_EXECUTED",
+  "releaseEvidence": false
+}
