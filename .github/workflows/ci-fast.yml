@@ -1,0 +1,124 @@
+name: CI Fast (shadow)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Full ancestor SHA for explicit shadow comparison (not release authorization)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify-ci01:
+    name: Qualify immutable CI-01
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c90669fc81d27639124652834392fc57b6de4061
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify exact parent and source pins
+        run: |
+          test "$(git rev-parse HEAD)" = c90669fc81d27639124652834392fc57b6de4061
+          node scripts/ci/baseline.mjs verify
+      - run: npm ci --no-audit --no-fund
+      - name: Run native baseline tests and inventory
+        run: |
+          node --test tests/ci/baseline.test.mjs
+          mkdir -p "$RUNNER_TEMP/ci01"
+          node scripts/ci/baseline.mjs inventory > "$RUNNER_TEMP/ci01/inventory.json"
+          node scripts/ci/baseline.mjs timings > "$RUNNER_TEMP/ci01/timings.json"
+      - name: Verify real Playwright discovery against historical identities
+        run: |
+          npx --no-install playwright test -c playwright.studio.config.ts --list --reporter=json > "$RUNNER_TEMP/ci01/discovery.json"
+          node scripts/ci/baseline.mjs compare studio discovery "$RUNNER_TEMP/ci01/discovery.json" > "$RUNNER_TEMP/ci01/discovery-parity.json"
+      - name: Qualify native execution report on original calendar smoke
+        run: |
+          npm run build
+          npx playwright install --with-deps chromium
+          npx --no-install playwright test -c playwright.studio.config.ts --project=chromium tests/studio/hub-calendar-c1.spec.ts tests/studio/hub-calendar-composition-c2.spec.ts -g 'calendar selected day remains circular|C2 original local event flows through ephemeral native calendar projection' --reporter=json > "$RUNNER_TEMP/ci01/execution.json"
+          node scripts/ci/baseline.mjs compare calendar-smoke execution "$RUNNER_TEMP/ci01/execution.json" > "$RUNNER_TEMP/ci01/execution-parity.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci01-native-evidence
+          path: ${{ runner.temp }}/ci01/
+          if-no-files-found: warn
+          retention-days: 7
+
+  fast-shadow:
+    name: Fast shadow validation (not qualification)
+    needs: qualify-ci01
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify selector and existing security/source contracts
+        run: |
+          node --test tests/ci/*.test.mjs
+          node --test tests/hub-owner-release-gate.test.mjs
+          node --test tests/generated-review-boundary.test.mjs
+          node --test tests/release-project-availability.test.mjs
+          npm run release:source
+          node --test tests/hub-account-ci-boundaries.test.mjs
+          node scripts/validate-product-registry-v2.mjs
+          node scripts/validate-folio-p9.mjs
+          node scripts/validate-family-p10.mjs
+          node scripts/validate-runtime-p11.mjs
+      - name: Retain complete unit, source, type and build validation
+        run: |
+          npm run generated:check
+          npm run validate
+          npm run typecheck
+          npm test
+          npm run build
+          npm run perf:budget
+      - name: Install studio browser prerequisites
+        run: |
+          npm install --prefix /tmp/audit-tools axe-core@4.13.0
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Execute deterministic shadow selection
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
+          TESTED_SHA: ${{ github.sha }}
+        run: node scripts/ci/fast-shadow.mjs "$BASE_SHA" "$TESTED_SHA" "$RUNNER_TEMP/ci-fast"
+      - name: Publish explicit non-release status
+        if: always()
+        run: |
+          echo '## CI Fast — shadow only' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Existing full Quality and integration workflows remain mandatory. This workflow cannot qualify a merge or deployment.' >> "$GITHUB_STEP_SUMMARY"
+          if test -f "$RUNNER_TEMP/ci-fast/plan.json"; then
+            node -e 'const p=require(process.argv[1]); console.log("- Mode: "+p.mode+"\n- Status: "+p.status+"\n- Selected cases: "+(p.selectedCases??"unverified")+" / "+p.fullDiscoveredCases)' "$RUNNER_TEMP/ci-fast/plan.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-fast-shadow-evidence
+          path: |
+            ${{ runner.temp }}/ci-fast/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
