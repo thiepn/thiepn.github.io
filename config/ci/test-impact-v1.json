@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "policy": "shadow-only; unknown, shared or structurally changed input requires existing full Quality; never release evidence",
+  "domains": {
+    "shell": {
+      "paths": [
+        "src/styles/workspace-unified-h20.css",
+        "src/styles/workspace-focus-h15.css",
+        "src/styles/workspace-widgets-h13.css",
+        "src/styles/workspace-palette-h14.css",
+        "src/styles/workspace-return-h16.css",
+        "src/styles/workspace-planning-h18.css",
+        "src/styles/workspace-weekly-h19.css",
+        "src/styles/workspace.css"
+      ],
+      "dependsOn": [
+        "planner",
+        "launch",
+        "account",
+        "continuation",
+        "office-shell"
+      ],
+      "specs": [
+        "hub-continuity",
+        "workspace",
+        "daily-home",
+        "hub-foundation",
+        "hub-integrated-home",
+        "studio"
+      ]
+    },
+    "planner": {
+      "paths": [
+        "src/lib/workspace/google-calendar-c1.ts",
+        "src/lib/workspace/calendar-composition-c2.ts",
+        "src/lib/workspace/calendar-snapshot.ts",
+        "src/scripts/workspace-calendar.ts",
+        "src/scripts/hub-calendar-c1.ts",
+        "src/styles/hub-calendar-c1.css",
+        "src/lib/workspace/commands/trackers.ts"
+      ],
+      "dependsOn": [
+        "account"
+      ],
+      "specs": [
+        "hub-calendar-c1",
+        "hub-calendar-composition-c2",
+        "tracker-history",
+        "daily-home",
+        "workspace",
+        "hub-continuity",
+        "hub-study-roadmap-c3"
+      ]
+    },
+    "launch": {
+      "paths": [
+        "src/lib/workspace/app-personalization.ts",
+        "src/lib/launches/shortcut-directory.ts",
+        "src/scripts/hub-catalogue.ts"
+      ],
+      "dependsOn": [
+        "continuation"
+      ],
+      "specs": [
+        "hub-personalization",
+        "hub-shortcuts",
+        "hub-approved-source-search",
+        "search-inbox",
+        "connected-hub",
+        "hub-release",
+        "hub-scale"
+      ]
+    },
+    "account": {
+      "paths": [],
+      "dependsOn": [],
+      "specs": [
+        "hub-sync",
+        "connected-hub",
+        "hub-providers"
+      ]
+    },
+    "continuation": {
+      "paths": [],
+      "dependsOn": [],
+      "specs": [
+        "hub-notes-device",
+        "hub-folio-device",
+        "hub-providers",
+        "workflow-handoffs",
+        "hub-approved-source-search"
+      ]
+    },
+    "office-shell": {
+      "paths": [],
+      "dependsOn": [],
+      "specs": [
+        "office-writing-first"
+      ]
+    },
+    "office": {
+      "prefixes": [
+        "src/lib/office/"
+      ],
+      "paths": [
+        "src/components/office/DocumentsWorkspace.astro",
+        "src/scripts/office-documents.ts",
+        "src/styles/office-documents.css"
+      ],
+      "dependsOn": [
+        "office-shell",
+        "account"
+      ],
+      "specs": [
+        "office-documents",
+        "hub-continuity"
+      ]
+    },
+    "showcase": {
+      "paths": [
+        "src/scripts/gallery-controller.ts",
+        "src/scripts/media-deck.ts",
+        "src/components/studio/MediaDeck.astro",
+        "src/styles/showcase.css"
+      ],
+      "dependsOn": [],
+      "specs": [
+        "showcase-semantics",
+        "studio",
+        "toolbox-overview",
+        "scan-product"
+      ]
+    }
+  },
+  "alwaysSpecs": [
+    "hub-continuity",
+    "hub-release"
+  ],
+  "notes": "Explicit reviewed domains; all paths must exist in pinned source tree. Shared authentication, runtime, layout, provider, registry, generated content, workflow, dependency, fixtures and unknown/new/deleted/renamed paths fall back. All unit tests and source/security checks execute regardless of browser selection. Full Quality remains unchanged."
+}
