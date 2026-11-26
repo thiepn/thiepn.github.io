@@ -23,15 +23,27 @@ function isPublicCredential(key: string): boolean {
     return payload.role === 'anon' && !payload.sub;
   } catch { return false; }
 }
-// Validate network metadata rather than a mutable iframe URL: the SDK removes
-// its probe iframe on completion, before Playwright may finish reading headers.
-// Origin is an immutable browser-supplied CORS header. Never log credential values.
-async function registrationProbeViolation(r: Request): Promise<string | null> {
+// Capture the initiating frame synchronously before Account can remove it.
+// A missing Origin in Playwright's request metadata is not equivalent to an
+// incorrect Origin. Only exact, independently verified iframe provenance can
+// substitute for a missing header; explicit foreign or opaque origins fail.
+function fromHubDiscoveryFrame(r: Request, page: Page): boolean {
+  try {
+    const frame = r.frame();
+    const url = new URL(frame.url());
+    const parent = frame.parentFrame();
+    return parent === page.mainFrame() && new URL(parent.url()).origin === 'https://thiepn.dev' &&
+      url.origin === account && url.pathname === '/sso/probe' &&
+      url.search === '?client_id=' + hubClientId && !url.hash;
+  } catch { return false; }
+}
+async function registrationProbeViolation(r: Request, verifiedFrame: boolean): Promise<string | null> {
   try {
     if (r.url() !== probeUrl) return 'unexpected endpoint';
     const headers = { ...r.headers(), ...await r.allHeaders() };
-    if (headers.origin !== account) return 'unexpected origin';
-    if (headers.cookie) return 'cookie present';
+    if (headers.origin !== undefined && headers.origin !== account) return 'unexpected explicit origin';
+    if (headers.origin === undefined && !verifiedFrame) return 'missing origin without verified probe frame';
+    if (headers.cookie !== undefined && headers.cookie !== '') return 'cookie present';
     if (r.method() === 'OPTIONS') {
       if (headers.authorization || headers.apikey ||
           headers['access-control-request-method']?.toUpperCase() !== 'POST' || r.postData()) return 'invalid preflight';
@@ -51,17 +63,24 @@ async function publicProbe(page: Page) {
   const checks: Promise<void>[] = [];
   page.on('request', r => {
     if (/\/auth\/v1|\/rest\/v1|\/functions\/v1|\/hub\/(summary|search|inbox|transfer)/.test(r.url())) {
-      checks.push(registrationProbeViolation(r).then(reason => {
+      const verifiedFrame = fromHubDiscoveryFrame(r, page);
+      checks.push(registrationProbeViolation(r, verifiedFrame).then(reason => {
         if (reason) privateRequests.push(new URL(r.url()).pathname + ' (' + reason + ')');
       }));
     }
   });
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
-  return async () => { await Promise.all(checks); expect(privateRequests).toEqual([]); expect(errors).toEqual([]); };
+  return async () => {
+    // Include checks registered while earlier asynchronous header reads settle.
+    let checked = 0;
+    while (checked < checks.length) { const batch = checks.slice(checked); checked += batch.length; await Promise.all(batch); }
+    expect(privateRequests).toEqual([]); expect(errors).toEqual([]);
+  };
 }
 
 test('live release registry and exact ordered visible app catalogue', async ({ page, request }) => {
+  const timeline = searchNavigationTimeline(page);
   const finish = await publicProbe(page);
   const response = await request.get('/hub-release.json'); expect(response.ok()).toBe(true);
   const release = validateHubReleaseStatus(await response.json());
@@ -85,39 +104,52 @@ test('live release registry and exact ordered visible app catalogue', async ({ p
     await expect(card).toBeVisible();
     await expect(card.getByRole('link', { name: 'Open app', exact: false })).toBeVisible();
   }
+  await settleGuestDiscovery(page, timeline, 0);
   await finish();
 });
 
-test('live local customization persists only approved shortcuts', async ({ page }) => {
+test('live local customization persists only approved shortcuts', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  const timeline = searchNavigationTimeline(page);
   const finish = await publicProbe(page);
-  await page.goto('/');
-  await expect(page.locator('[data-auth-login]')).toBeHidden();
-  await expect(page.locator('[data-hub-item]')).toHaveCount(0);
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  const shortcuts = page.locator('[data-widget-type=app-shortcuts] [data-launch]');
-  const getIds = () => shortcuts.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-launch')));
-  const original = await getIds();
-  expect(original.length).toBeGreaterThan(1);
-  expect(original.every(id => visibleIds.includes(id as typeof visibleIds[number]))).toBe(true);
-  await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
-  const choices = page.locator('input[name=appIds]');
-  await expect(choices).toHaveCount(14);
-  expect(await choices.evaluateAll(nodes => nodes.map(node => (node as HTMLInputElement).value))).toEqual(visibleIds);
-  const checked = page.locator('input[name=appIds]:checked').first();
-  const removed = await checked.inputValue();
-  expect(original).toContain(removed);
-  await checked.uncheck();
-  await page.locator('[data-dialog-submit]').click();
-  // The dedicated shortcut dialog saves directly, without opening layout edit mode.
-  await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'Customize', exact: true })).toBeVisible();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  const expected = original.filter(id => id !== removed);
-  await expect.poll(getIds).toEqual(expected);
-  await page.reload();
-  await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
-  await expect.poll(getIds).toEqual(expected);
-  await finish();
+  try {
+    await page.goto('/');
+    await expect(page.locator('[data-auth-login]')).toBeHidden();
+    await expect(page.locator('[data-hub-item]')).toHaveCount(0);
+    await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+    const shortcuts = page.locator('[data-widget-type=app-shortcuts] [data-launch]');
+    const getIds = () => shortcuts.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-launch')));
+    const original = await getIds();
+    expect(original.length).toBeGreaterThan(1);
+    expect(original.every(id => visibleIds.includes(id as typeof visibleIds[number]))).toBe(true);
+    await page.locator('[data-widget-type=app-shortcuts] header [data-action=configure-widget]').click();
+    const choices = page.locator('input[name=appIds]');
+    await expect(choices).toHaveCount(14);
+    expect(await choices.evaluateAll(nodes => nodes.map(node => (node as HTMLInputElement).value))).toEqual(visibleIds);
+    const checked = page.locator('input[name=appIds]:checked').first();
+    const removed = await checked.inputValue();
+    expect(original).toContain(removed);
+    await checked.uncheck();
+    await page.locator('[data-dialog-submit]').click();
+    // The dedicated shortcut dialog saves directly, without opening layout edit mode.
+    await expect(page.locator('[data-workspace-dialog]')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Customize', exact: true })).toBeVisible();
+    await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+    const expected = original.filter(id => id !== removed);
+    await expect.poll(getIds).toEqual(expected);
+    await settleGuestDiscovery(page, timeline, 0);
+    const beforeReload = timeline.probeStarts();
+    timeline.record('shortcut-reload');
+    const reload = await page.reload({ waitUntil: 'commit', timeout: 15_000 });
+    expect(reload?.ok()).toBe(true);
+    await expect(page.locator('[data-workspace-status]')).toHaveText('Workspace saved locally');
+    await expect.poll(getIds).toEqual(expected);
+    await settleGuestDiscovery(page, timeline, beforeReload);
+    await finish();
+    timeline.record('all-assertions-passed');
+  } finally {
+    await testInfo.attach('shortcut-navigation-timeline', { body: timeline.snapshot(), contentType: 'application/json' });
+  }
 });
 
 // Record only public route paths and lifecycle metadata: no URL queries,
@@ -219,6 +251,7 @@ test('live Search respects visible apps and private-resource boundaries', async 
 });
 
 test('live manual workflow handoffs exclude hidden apps and claim no transfer', async ({ page }) => {
+  const timeline = searchNavigationTimeline(page);
   const finish = await publicProbe(page);
   await page.goto('/flows/?flow=pdf-read&step=2');
   await expect(page.locator('[aria-current="step"] h3')).toHaveText('Choose the reading copy');
@@ -228,6 +261,7 @@ test('live manual workflow handoffs exclude hidden apps and claim no transfer', 
   expect(await links.evaluateAll(nodes => nodes.map(node => (node as HTMLAnchorElement).href))).toEqual(['https://thiepn.dev/pdf/', 'https://thiepn.dev/library/saved/']);
   await expect(links.first()).toHaveAttribute('rel', 'noopener noreferrer');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await settleGuestDiscovery(page, timeline, 0);
   await finish();
 });
 
