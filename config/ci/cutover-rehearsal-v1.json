@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "scope": "CUTOVER_REHEARSAL_ONLY",
+  "repository": "thiepn/thiepn.github.io",
+  "parent": {
+    "pr": 209,
+    "head": "9816526e21cf512f3bd85c18bf17f460a9a34aea",
+    "base": "d9eeb3b325cec153b204af4cd75ced1fdc7e1375",
+    "branch": "ci/ci-04-integration-consolidation-20261126"
+  },
+  "runs": [
+    {
+      "path": "quality.yml",
+      "id": 45854572091,
+      "jobs": [
+        "quality"
+      ]
+    },
+    {
+      "path": "quality-parallel-shadow.yml",
+      "id": 45854571964,
+      "jobs": [
+        "Source gates and shared build",
+        "Browser chromium-1",
+        "Browser firefox-1",
+        "Browser webkit-1",
+        "Browser webkit-2",
+        "Aggregate parallel evidence (not release authorization)"
+      ]
+    },
+    {
+      "path": "ci-fast.yml",
+      "id": 45854572065,
+      "jobs": [
+        "Qualify immutable CI-01",
+        "Fast shadow validation (not qualification)"
+      ]
+    },
+    {
+      "path": "hub-public-integration-shadow.yml",
+      "id": 45854572655,
+      "jobs": [
+        "Consolidated public contracts (private suites NOT_EXECUTED)"
+      ]
+    },
+    {
+      "path": "hub-library-browser.yml",
+      "id": 45854572081,
+      "jobs": [
+        "staged-paired"
+      ]
+    },
+    {
+      "path": "hub-integration.yml",
+      "id": 45854572398,
+      "jobs": [
+        "Public contracts (private paired tests not executed)"
+      ],
+      "privateSkipped": [
+        "paired"
+      ]
+    },
+    {
+      "path": "hub-notes-integration.yml",
+      "id": 45854571984,
+      "jobs": [
+        "Notes public contract (private owner qualification not executed)"
+      ],
+      "privateSkipped": [
+        "owner-contract"
+      ]
+    },
+    {
+      "path": "hub-notes-browser.yml",
+      "id": 45854572066,
+      "jobs": [
+        "Public contracts (private paired tests not executed)"
+      ],
+      "privateSkipped": [
+        "staged-paired"
+      ]
+    },
+    {
+      "path": "hub-inbox-browser.yml",
+      "id": 45854571995,
+      "jobs": [
+        "Public contracts (private paired tests not executed)"
+      ],
+      "privateSkipped": [
+        "staged-paired"
+      ]
+    },
+    {
+      "path": "hub-capture-browser.yml",
+      "id": 45854572087,
+      "jobs": [
+        "Public contracts (private paired tests not executed)"
+      ],
+      "privateSkipped": [
+        "staged-paired"
+      ]
+    },
+    {
+      "path": "hub-tms60-browser.yml",
+      "id": 45854571895,
+      "jobs": [
+        "Public contracts (private paired tests not executed)"
+      ],
+      "privateSkipped": [
+        "staged-paired"
+      ]
+    }
+  ],
+  "measurements": {
+    "sequentialQualitySeconds": 3430,
+    "parallelElapsedSeconds": 1292,
+    "parallelRunnerSeconds": 3215,
+    "originalSixPublicRunnerSeconds": 96,
+    "consolidatedPublicRunnerSeconds": 20,
+    "publicTests": 128,
+    "studioCases": 1206,
+    "studioPasses": 1202,
+    "documentedSkips": 4
+  },
+  "blockers": [
+    "independent-repaired-revision-regressions",
+    "real-narrow-change-parity-and-timing",
+    "reviewed-successor-baseline-and-trigger-guard-migration",
+    "owner-approval-of-exact-cutover-diff-and-required-checks"
+  ],
+  "activation": false,
+  "releaseEvidence": false
+}

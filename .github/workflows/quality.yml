@@ -1,6 +1,5 @@
 name: Quality
 on:
-  pull_request:
   push:
     branches: [main]
   # Fallback for a missing push event; production authorization still requires

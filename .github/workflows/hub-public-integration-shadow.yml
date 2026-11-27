@@ -1,0 +1,50 @@
+name: Hub Public Integration (shadow)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hub-public-integration-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-contracts:
+    name: Consolidated public contracts (private suites NOT_EXECUTED)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Validate original workflow pins and integration inventory
+        run: |
+          node --test tests/ci/public-integration.test.mjs
+          node scripts/ci/public-integration.mjs inspect "$RUNNER_TEMP/ci04-public"
+      - name: Verify Account CI boundaries once
+        run: node --test tests/hub-account-ci-boundaries.test.mjs
+      - name: Execute and verify the unique public contract union
+        run: node scripts/ci/public-integration.mjs run "$RUNNER_TEMP/ci04-public"
+      - name: Report explicit public-only evidence
+        run: |
+          echo '## Consolidated public contracts — shadow only' >> "$GITHUB_STEP_SUMMARY"
+          node -e 'const x=require(process.argv[1]); for(const c of x.contracts) console.log("- "+c.id+": "+c.passed+" public tests PASSED; private "+c.privateStatus); console.log("Unique public tests: "+x.uniqueTests+" in "+x.uniqueFiles+" files.");' "$RUNNER_TEMP/ci04-public/qualification.json" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Private qualification NOT_EXECUTED. Legacy integration workflows are manual recovery only; independent Library and reading-pilot suites and exact-main release authorization remain unchanged.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci04-public-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci04-public/
+          if-no-files-found: warn
+          retention-days: 7
