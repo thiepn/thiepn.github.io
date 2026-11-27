@@ -1773,7 +1773,7 @@ async function setup(root: HTMLElement) {
     function paletteEntry(item: PaletteResult): string {
         const content = `${paletteIcon(item)}<span class="ws-palette-label"><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></span><span class="ws-palette-enter" aria-hidden="true">↵</span>`;
         const main = item.href
-            ? `<a href="${esc(item.href)}" class="ws-search-result ws-palette-primary" data-palette-primary>${content}</a>`
+            ? `<a href="${esc(item.href)}"${item.group === 'apps' ? ' target="_blank" rel="noopener noreferrer"' : ''} class="ws-search-result ws-palette-primary" data-palette-primary>${content}</a>`
             : `<button type="button" class="ws-search-result ws-palette-primary" data-palette-primary data-action="palette-execute" data-command="${esc(item.command ?? '')}" data-id="${esc(item.resourceId ?? '')}">${content}</button>`;
         const extras = item.extra?.length ? `<div class="ws-palette-quick" aria-label="Quick actions for ${esc(item.title)}">${item.extra.map(extra => `<button type="button" class="ws-palette-quick-action" data-action="palette-execute" data-command="${esc(extra.command)}" data-id="${esc(extra.id ?? '')}" aria-label="${esc(extra.label)}: ${esc(item.title)}">${esc(extra.label)}</button>`).join('')}</div>` : '';
         return `<div class="ws-palette-item">${main}${extras}</div>`;

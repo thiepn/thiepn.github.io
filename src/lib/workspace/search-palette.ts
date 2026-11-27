@@ -154,7 +154,7 @@ export function findPalette(options:PaletteOptions):PaletteResults {
   const limits=new Map<PaletteGroup,number>(),result:PaletteResult[]=[];
   for(const item of weighted) {
     const count=limits.get(item.group)??0;
-    if(count>=MAX_PER_GROUP)continue;
+    if(count >= (item.group === 'apps' && scope === 'apps' ? 14 : MAX_PER_GROUP))continue;
     limits.set(item.group,count+1);
     result.push(item);
     if(result.length===MAX_RESULTS)break;
