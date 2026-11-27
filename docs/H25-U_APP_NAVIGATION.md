@@ -1,0 +1,5 @@
+# H25-U — THIEPN App Navigation v1
+
+Hub owns the generated catalogue. Run `node --experimental-strip-types scripts/generate-app-navigation.mjs` after an approved registry or visibility change. Unit tests check the snapshot against the canonical sources. Reference consumers vendor the same catalogue, runtime, declarations and stylesheet; there is no remote runtime dependency. Links open separate tabs with noopener/noreferrer, keeping the originating editor or study session intact. Return by switching to the original tab; Hub home is a fixed public URL. No arbitrary return URL, record payload, account material, cross-app history or data writes. Existing deep links and source-owned contextual handoffs remain authoritative. Quick actions are the approved owner-entry URLs, not record-specific transfers. Physical-device Back and installed-PWA behavior, keyboard and touch acceptance remain open until observed.
+
+Source baseline: 210da4e8bdfb00a8218a6f021ad244c4e8bda858. No deployment or merge authorized.

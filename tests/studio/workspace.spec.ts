@@ -9,7 +9,35 @@ async function save(page:Page){await page.locator('[data-workspace-dialog]').get
 async function task(page:Page,title='Read chapter six'){await page.locator('[data-planner] [data-action=new-task]').first().click();await page.getByLabel('Task',{exact:true}).fill(title);await save(page);}
 test('tasks, notes and tracker logs persist through layout edits and reload',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await ready(page);await task(page);
- await page.locator('[data-capture-draft]').fill('Study notes\nUseful ideas from chapter six.');await page.locator('[data-capture-form]').getByRole('button',{name:'Capture',exact:true}).click();await expect(page.getByRole('button',{name:'Open',exact:true}).first()).toBeVisible();
+ await page.locator('[data-capture-draft]').fill('Study notes\nUseful ideas from chapter six.');
+ // H25-U: prove the shared switcher and native modal preserve this unsaved draft.
+ const trigger=page.getByRole('button',{name:'Switch THIEPN app'});
+ const switcher=page.getByRole('dialog',{name:'THIEPN app switcher'});
+ await trigger.click();
+ await expect(switcher.getByRole('navigation',{name:'THIEPN apps',exact:true}).getByRole('link')).toHaveCount(HUB_VISIBLE_APP_IDS.length);
+ await expect(switcher.getByRole('navigation',{name:'App actions',exact:true}).getByRole('link')).toHaveCount(4);
+ await page.keyboard.press('Escape');
+ await expect(switcher).not.toBeVisible();
+ await expect(trigger).toBeFocused();
+ const destination='https://thiepn.dev/notes/';
+ await page.context().route(destination,route=>route.fulfill({contentType:'text/html',body:'<title>Notes navigation fixture</title>'}));
+ await trigger.click();
+ const notesLink=switcher.getByRole('link',{name:'Notes',exact:true});
+ await expect(notesLink).toHaveAttribute('target','_blank');
+ await expect(notesLink).toHaveAttribute('rel','noopener noreferrer');
+ const [opened]=await Promise.all([page.context().waitForEvent('page'),notesLink.click()]);
+ await opened.waitForLoadState('domcontentloaded');
+ await expect(opened).toHaveURL(destination);
+ expect(await opened.evaluate(()=>window.opener===null)).toBe(true);
+ await opened.close();
+ await page.context().unroute(destination);
+ await expect(page.locator('[data-capture-draft]')).toHaveValue('Study notes\nUseful ideas from chapter six.');
+ await expect(switcher).not.toBeVisible();
+ await page.locator('[data-action=search]').click();
+ await page.locator('[data-action=palette-scope][data-id=apps]').click();
+ await expect(page.locator('[data-search-results] [data-palette-primary]')).toHaveCount(HUB_VISIBLE_APP_IDS.length);
+ await page.keyboard.press('Escape');
+ await page.locator('[data-capture-form]').getByRole('button',{name:'Capture',exact:true}).click();await expect(page.getByRole('button',{name:'Open',exact:true}).first()).toBeVisible();
  await page.getByRole('button',{name:'Create a tracker',exact:true}).first().click();await page.getByLabel('Name',{exact:true}).fill('Reading');await save(page);
  await page.getByRole('button',{name:'+ Log',exact:true}).first().click();await page.getByLabel('Amount (sessions)').fill('2');await save(page);await expect(page.locator('.ws-tracker-table')).toContainText('2 / 5');
  await page.getByRole('button',{name:'Customize',exact:true}).click();const handle=page.locator('[data-drag]').nth(1);await handle.focus();await page.keyboard.press('ArrowDown');await page.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByRole('button',{name:'Customize',exact:true})).toBeVisible();
