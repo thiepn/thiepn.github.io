@@ -1,6 +1,7 @@
 import {hubIdentity} from './portal-auth';
 import {namespace} from '../lib/workspace/store';
 import {OfficeDeviceStore} from '../lib/office/device';
+import {standaloneOfficeBackup} from '../lib/office/standalone-backup';
 import {documentFilename,type OfficeDocument} from '../lib/office/documents';
 import {formatSelection,renderMarkdown,type FormatAction} from '../lib/office/markdown';
 import {findDocuments,outlineFor,backupDocuments,type DocumentSort} from '../lib/office/library';
@@ -39,6 +40,7 @@ if(root && shell){
   const selectVisible=pick<HTMLButtonElement>('[data-office-select-visible]');
   const clearSelection=pick<HTMLButtonElement>('[data-office-clear-selection]');
   const backup=pick<HTMLButtonElement>('[data-office-backup]');
+  const standaloneBackup=backup.cloneNode(false) as HTMLButtonElement;standaloneBackup.removeAttribute('data-office-backup');standaloneBackup.removeAttribute('id');standaloneBackup.type='button';standaloneBackup.textContent='Export for standalone Office';standaloneBackup.dataset.officeStandaloneBackup='';standaloneBackup.disabled=true;backup.after(standaloneBackup);
   const outline=pick<HTMLElement>('[data-office-outline]');
   const outlineEmpty=pick<HTMLElement>('[data-office-outline-empty]');
   const findQuery=pick<HTMLInputElement>('[data-office-find-query]');
@@ -1031,7 +1033,7 @@ if(root && shell){
     restoreFile.disabled=!store||blocked||!allowed()||busy;
     restoreConfirm.disabled=!pendingRestore||!restoreNew||!store||blocked||!allowed()||busy;
     restoreCancel.disabled=!pendingRestore||busy;
-    search.disabled=sort.disabled=backup.disabled=!store||!allowed()||busy;
+    search.disabled=sort.disabled=backup.disabled=standaloneBackup.disabled=!store||!allowed()||busy;
     findQuery.disabled=findCase.disabled=replaceValue.disabled=!editing;
     findPrevious.disabled=findNext.disabled=!editing||matches.length===0;
     replaceAll.disabled=!editing||matches.length===0||findTruncated;
@@ -1682,6 +1684,24 @@ if(root && shell){
       downloadBlob(new Blob([bytes],{type:'application/zip'}),'thiepn-office-markdown-'+new Date().toISOString().slice(0,10)+'.zip');
       message('Exported '+archive.documentCount+' saved Markdown documents in one ZIP. Full revision history is in JSON backups.');
     }catch(error){if(ticket===epoch)message(error instanceof Error?error.message:'Markdown bundle export failed.');}
+    finally{if(ticket===epoch){busy=false;enable();}}
+  })());
+  standaloneBackup.addEventListener('click',()=>void (async()=>{
+    if(!store||!allowed()||busy)return;
+    if(dirty||heldDraft||blocked){message('Save or export unsaved drafts before creating a portable backup.');return;}
+    const opened=store,ticket=epoch,scope=opened.scope;
+    if(window.prompt('Confirm the source scope for standalone Office export:',scope)!==scope)return;
+    if(ticket!==epoch||opened!==store||!allowed())return;
+    if(scope!==namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null))return;
+    busy=true;enable();
+    try{
+      const documents=await opened.list();
+      if(ticket!==epoch||opened!==store||!allowed()||dirty||heldDraft||blocked)return;
+      const json=await standaloneOfficeBackup(scope,documents);
+      if(ticket!==epoch||opened!==store||!allowed()||dirty||heldDraft||blocked||scope!==namespace(hubIdentity.status==='signed-in'?hubIdentity.id:null))return;
+      downloadBlob(new Blob([json],{type:'application/json;charset=utf-8'}),'thiepn-office-portable-'+new Date().toISOString().slice(0,10)+'.json');
+      message('Verified portable backup exported. No source records changed.');
+    }catch(error){if(ticket===epoch)message(error instanceof Error?error.message:'Portable backup failed.');}
     finally{if(ticket===epoch){busy=false;enable();}}
   })());
   backup.addEventListener('click',()=>void (async()=>{
