@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 test('Office native Markdown autosave, reload, history restore and export',async({page})=>{
  await page.goto('/home/documents/');
  await expect(page.locator('[data-office-new]')).toBeEnabled();
@@ -3527,4 +3528,17 @@ test('O36 target peer-tab CAS still rejects transferred excerpts and preserves n
  await peer.reload();
  await expect(peer.locator('[data-office-body]')).toHaveValue('Peer target revision.');
  await peer.close();
+});
+
+test('O6 standalone Office export preserves saved documents, history and privacy boundary',async({page})=>{
+ await page.goto('/home/documents/');await expect(page.locator('[data-office-new]')).toBeEnabled();
+ await page.locator('[data-office-new]').click();await page.locator('[data-office-title]').fill('Migration draft');await page.locator('[data-office-body]').fill('Initial revision');await page.locator('[data-office-save]').click();await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ await page.locator('[data-office-body]').fill('Second revision');await page.locator('[data-office-save]').click();await expect(page.locator('[data-office-status]')).toContainText('Saved locally');
+ const exportButton=page.locator('[data-office-standalone-backup]');await expect(exportButton).toBeEnabled();
+ page.once('dialog',d=>void d.dismiss());await exportButton.click();await expect(page.locator('[data-office-body]')).toHaveValue('Second revision');
+ page.once('dialog',d=>void d.accept('guest'));const dl=page.waitForEvent('download');await exportButton.click();
+ const data=JSON.parse(await readFile(await (await dl).path() as string,'utf8'));
+ expect(data.kind).toBe('thiepn-office-portable-backup');expect(data.scope).toBe('guest');expect(data.records[0].body).toBe('Second revision');expect(data.records[0].history.some((x:{body:string})=>x.body==='Initial revision')).toBe(true);expect(data.sha256).toMatch(/^[a-f0-9]{64}$/);
+ await page.reload();await expect(page.locator('[data-office-body]')).toHaveValue('Second revision');await expect(page.locator('[data-office-backup]')).toBeEnabled();
+ await page.locator('.ws-topbar-actions [data-action=account]').click();await page.locator('[data-account-dialog] [data-action=privacy]').click();await expect(exportButton).toBeDisabled();
 });
